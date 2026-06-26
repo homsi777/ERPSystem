@@ -1,0 +1,23 @@
+<UserControl x:Class="ERPSystem.Controls.SectionHeaderControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Margin="{StaticResource SectionBottomMargin}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+            <TextBlock x:Name="TxtTitle" Style="{StaticResource SectionTitleTextStyle}"/>
+            <TextBlock x:Name="TxtSubtitle" Style="{StaticResource CaptionTextStyle}"
+                       Margin="0,2,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button x:Name="BtnAction" Style="{StaticResource GhostButtonStyle}"
+                    Visibility="Collapsed" Click="BtnAction_Click"
+                    FontSize="12"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

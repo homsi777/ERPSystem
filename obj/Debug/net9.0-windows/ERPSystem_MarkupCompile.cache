@@ -1,0 +1,20 @@
+﻿ERPSystem
+
+
+winexe
+C#
+.cs
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\obj\Debug\net9.0-windows\
+ERPSystem
+none
+false
+TRACE;DEBUG;NET;NET9_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NET9_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\App.xaml
+34-221794689
+
+88-258318327
+2001333483930
+Controls\Customers\CustomerAccountStatementControl.xaml;Controls\Customers\CustomerProfilePanel.xaml;Controls\EnterpriseTableControl.xaml;Controls\ErpListModuleControl.xaml;Controls\MetricCardControl.xaml;Controls\ModuleShellControl.xaml;Controls\PlaceholderWorkspaceControl.xaml;Controls\Sales\InvoiceDetailsPanel.xaml;Controls\Sales\NewSalesInvoiceControl.xaml;Controls\SectionHeaderControl.xaml;Controls\Workspace\ActionWorkspaceView.xaml;Controls\Workspace\WorkspaceLayerControl.xaml;Dialogs\AddEditCustomerDialog.xaml;Dialogs\DocumentPreviewWindow.xaml;Dialogs\MockFeedbackDialog.xaml;Dialogs\NewInvoiceDialog.xaml;Dialogs\ReturnInvoiceDialog.xaml;MainWindow.xaml;Modules\AccountingModule.xaml;Modules\ChinaImportModule.xaml;Modules\CustomersModule.xaml;Modules\DashboardModule.xaml;Modules\HRModule.xaml;Modules\InventoryModule.xaml;Modules\POSModule.xaml;Modules\PurchasesModule.xaml;Modules\ReportsModule.xaml;Modules\SalesModule.xaml;Modules\SettingsModule.xaml;Modules\SuppliersModule.xaml;Resources\Themes\EnterpriseTheme.xaml;Shell\SidebarNavigation.xaml;Shell\TopContextBar.xaml;Shell\TopNavBar.xaml;
+
+False
+

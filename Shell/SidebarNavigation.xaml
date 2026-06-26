@@ -1,0 +1,304 @@
+<UserControl x:Class="ERPSystem.Shell.SidebarNavigation"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="clr-namespace:ERPSystem.Core">
+
+    <Border Background="{StaticResource SidebarBgBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="70"/>
+                <!-- Logo area -->
+                <RowDefinition Height="*"/>
+                <!-- Navigation items -->
+                <RowDefinition Height="Auto"/>
+                <!-- Bottom section -->
+            </Grid.RowDefinitions>
+
+            <!-- Logo / App Name Area -->
+            <Border Grid.Row="0" Background="{StaticResource SidebarLogoAreaBrush}"
+                    BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+                <Grid Margin="16,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- App Icon / Logo -->
+                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
+                            Background="{StaticResource PrimaryBrush}">
+                        <TextBlock Text="&#xE8C1;" FontFamily="Segoe MDL2 Assets"
+                                   FontSize="18" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- App Name -->
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                x:Name="AppNamePanel">
+                        <TextBlock x:Name="TxtAppName" Text="ERP Pro"
+                                   FontSize="14" FontWeight="Bold" Foreground="White"
+                                   FontFamily="Segoe UI"/>
+                        <TextBlock x:Name="TxtAppVersion" Text="v2.0 Enterprise"
+                                   FontSize="10" Foreground="{StaticResource SidebarTextBrush}"
+                                   FontFamily="Segoe UI"/>
+                    </StackPanel>
+
+                    <!-- Collapse Button -->
+                    <Button Grid.Column="2" x:Name="BtnToggle"
+                            Style="{StaticResource IconButtonStyle}"
+                            Foreground="{StaticResource SidebarTextBrush}"
+                            Width="28" Height="28" Click="BtnToggle_Click"
+                            ToolTip="Toggle Sidebar">
+                        <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Navigation Items -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Margin="0,8,0,0">
+                <StackPanel x:Name="NavPanel">
+
+                    <!-- Main Section -->
+                    <TextBlock x:Name="TxtSectionMain" Text="MAIN"
+                               Margin="16,12,16,4" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource SidebarHeaderTextBrush}"
+                               FontFamily="Segoe UI"
+                               x:FieldModifier="private"/>
+
+                    <Button x:Name="BtnDashboard" Tag="Dashboard"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE80F;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtDashboard" Text="الرئيسية"
+                                           VerticalAlignment="Center" x:FieldModifier="private"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <!-- Operations Section -->
+                    <TextBlock x:Name="TxtSectionOps" Text="OPERATIONS"
+                               Margin="16,16,16,4" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource SidebarHeaderTextBrush}"
+                               FontFamily="Segoe UI"/>
+
+                    <Button x:Name="BtnSales" Tag="Sales"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE8F1;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtSales" Text="المبيعات"
+                                           VerticalAlignment="Center"/>
+                                <Border Grid.Column="2" Background="#7C3AED" CornerRadius="10"
+                                        Padding="6,2" Margin="0,0,4,0" x:Name="BadgeSales">
+                                    <TextBlock Text="12" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <Button x:Name="BtnPurchases" Tag="Purchases"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE7BF;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtPurchases" Text="المشتريات"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <Button x:Name="BtnInventory" Tag="Inventory"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE821;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtInventory" Text="المخزون"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <Button x:Name="BtnPOS" Tag="ChinaImport"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtPOS" Text="استيراد الصين"
+                                           VerticalAlignment="Center"/>
+                                <Border Grid.Column="2" Background="{StaticResource SuccessBrush}" CornerRadius="10"
+                                        Padding="6,2" Margin="0,0,4,0">
+                                    <TextBlock Text="LIVE" FontSize="9" Foreground="White" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <!-- People Section -->
+                    <TextBlock x:Name="TxtSectionPeople" Text="PEOPLE"
+                               Margin="16,16,16,4" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource SidebarHeaderTextBrush}"
+                               FontFamily="Segoe UI"/>
+
+                    <Button x:Name="BtnCustomers" Tag="Customers"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE716;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtCustomers" Text="العملاء"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <Button x:Name="BtnSuppliers" Tag="Suppliers"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE779;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtSuppliers" Text="الموردون"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <!-- Finance Section -->
+                    <TextBlock x:Name="TxtSectionFinance" Text="FINANCE"
+                               Margin="16,16,16,4" FontSize="10" FontWeight="Bold"
+                               Foreground="{StaticResource SidebarHeaderTextBrush}"
+                               FontFamily="Segoe UI"/>
+
+                    <Button x:Name="BtnAccounting" Tag="Accounting"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE8C1;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtAccounting" Text="الحسابات"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <Button x:Name="BtnReports" Tag="Reports"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtReports" Text="التقارير"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                    <Separator Margin="12,12" Background="{StaticResource SidebarBorderBrush}"/>
+
+                    <Button x:Name="BtnSettings" Tag="Settings"
+                            Style="{StaticResource SidebarNavItemStyle}"
+                            Click="NavItem_Click">
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="&#xE713;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" x:Name="TxtSettings" Text="الإعدادات"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Bottom User Section -->
+            <Border Grid.Row="2" Background="{StaticResource SidebarSectionBgBrush}"
+                    BorderBrush="#1E293B" BorderThickness="0,1,0,0" Padding="12,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- User Avatar -->
+                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="17"
+                            Background="{StaticResource PrimaryBrush}">
+                        <TextBlock Text="م" FontSize="14" FontWeight="Bold" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontFamily="Segoe UI"/>
+                    </Border>
+
+                    <!-- User Info -->
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                x:Name="UserInfoPanel">
+                        <TextBlock x:Name="TxtUserName" Text="مدير النظام"
+                                   FontSize="13" FontWeight="SemiBold" Foreground="White"
+                                   FontFamily="Segoe UI"/>
+                        <TextBlock x:Name="TxtUserRole" Text="المسؤول الرئيسي"
+                                   FontSize="11" Foreground="{StaticResource SidebarTextBrush}"
+                                   FontFamily="Segoe UI"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Border>
+</UserControl>

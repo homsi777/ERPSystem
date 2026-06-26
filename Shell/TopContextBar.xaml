@@ -1,0 +1,130 @@
+<UserControl x:Class="ERPSystem.Shell.TopContextBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border Background="{StaticResource TopBarBgBrush}"
+            BorderBrush="{StaticResource TopBarBorderBrush}"
+            BorderThickness="0,0,0,1">
+        <Grid Margin="16,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Right (RTL start): Logo + company + date -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Width="40" Height="40" CornerRadius="8"
+                        Background="{StaticResource PrimaryBrush}" Margin="0,0,12,0">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="ERP" FontSize="9" FontWeight="Bold" Foreground="White"
+                                   HorizontalAlignment="Center" FontFamily="Segoe UI, Tahoma, Arial"/>
+                        <TextBlock Text="PRO" FontSize="8" FontWeight="SemiBold" Foreground="#BFDBFE"
+                                   HorizontalAlignment="Center" FontFamily="Segoe UI, Tahoma, Arial"/>
+                    </StackPanel>
+                </Border>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock x:Name="TxtCompanyName" Text="شركة الحمصي لاستيراد الأقمشة"
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="TxtBranchLabel" Text="الفرع:"
+                                   FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                   FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="CmbBranch" Width="120" Height="22"
+                                  FontSize="11" BorderThickness="0"
+                                  Background="Transparent"
+                                  Foreground="{StaticResource TextSecondaryBrush}"
+                                  FontFamily="Segoe UI, Tahoma, Arial"
+                                  VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="0,6,16,6"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtCurrentDate" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial"/>
+                    <TextBlock x:Name="TxtCurrentTime" FontSize="11"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Center: search -->
+            <Border Grid.Column="1" Style="{StaticResource SearchBoxStyle}"
+                    Width="360" HorizontalAlignment="Center" Height="36">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center" Margin="10,0,8,0"/>
+                    <TextBox Grid.Column="1" x:Name="TxtSearch" Background="Transparent"
+                             BorderThickness="0" FontSize="13"
+                             FontFamily="Segoe UI, Tahoma, Arial"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             VerticalAlignment="Center" Tag="بحث سريع..."/>
+                </Grid>
+            </Border>
+
+            <!-- Left (RTL end): controls + user -->
+            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="BtnLanguage" Style="{StaticResource GhostButtonStyle}"
+                        Click="BtnLanguage_Click" Margin="0,0,4,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE909;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock x:Name="TxtLangToggle" Text="العربية"
+                                   FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontFamily="Segoe UI, Tahoma, Arial"/>
+                    </StackPanel>
+                </Button>
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="4,8"/>
+                <Button x:Name="BtnNotifications" Style="{StaticResource IconButtonStyle}"
+                        Click="BtnNotifications_Click" Margin="2,0">
+                    <Grid>
+                        <TextBlock Text="&#xEA8F;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <Border Background="{StaticResource DangerBrush}" Width="8" Height="8"
+                                CornerRadius="4" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,4,4,0"/>
+                    </Grid>
+                </Button>
+                <Button x:Name="BtnSettingsQuick" Style="{StaticResource IconButtonStyle}"
+                        Click="BtnSettingsQuick_Click" Margin="2,0">
+                    <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <Border Width="1" Background="{StaticResource BorderBrush}" Margin="8,8"/>
+                <Button Style="{StaticResource GhostButtonStyle}" Padding="8,0"
+                        Click="BtnUserProfile_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="32" Height="32" CornerRadius="16"
+                                Background="{StaticResource PrimaryBrush}">
+                            <TextBlock Text="م" FontSize="13" FontWeight="Bold" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       FontFamily="Segoe UI, Tahoma, Arial"/>
+                        </Border>
+                        <StackPanel Margin="8,0,4,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtUserDisplay" Text="مدير النظام"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial"/>
+                            <TextBlock x:Name="TxtUserRoleDisplay" Text="مسؤول"
+                                       FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial"/>
+                        </StackPanel>
+                        <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

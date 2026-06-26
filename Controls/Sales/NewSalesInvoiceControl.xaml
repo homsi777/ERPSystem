@@ -1,0 +1,407 @@
+<UserControl x:Class="ERPSystem.Controls.Sales.NewSalesInvoiceControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FlowDirection="RightToLeft"
+             Background="{StaticResource AppBgBrush}">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+
+        <Style x:Key="InvoiceApproveBtn" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#FB7185" Offset="0"/>
+                                    <GradientStop Color="#F43F5E" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.92"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InvoiceSaveDraftBtn" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#78350F"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                Background="#FFEDD5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#FED7AA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InvoiceFieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="InvoiceSegmentBtn" TargetType="RadioButton">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="MinWidth" Value="64"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="GroupName" Value="InvoicePaymentType"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="White"/>
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InvoiceItemsHeader" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F0FDFA"/>
+            <Setter Property="Foreground" Value="#0F766E"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="BorderBrush" Value="#CCFBF1"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
+        <StackPanel MaxWidth="1200">
+
+            <!-- Page header + actions -->
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="فاتورة بيع جديدة" FontSize="22" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial"/>
+                    <TextBlock Text="إنشاء فاتورة بيع — اختيار العميل، الأصناف، وعدد الأثواب فقط (بدون أطوال)"
+                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial" Margin="0,4,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource GhostButtonStyle}" Margin="0,0,6,0"
+                            Click="BtnPrint_Click" ToolTip="طباعة">
+                        <TextBlock Text="&#xE749;" FontFamily="Segoe MDL2 Assets" FontSize="12"/>
+                    </Button>
+                    <Button Style="{StaticResource GhostButtonStyle}" Margin="0,0,6,0"
+                            Click="BtnPdf_Click" ToolTip="PDF">
+                        <TextBlock Text="PDF" FontSize="11" FontWeight="SemiBold"/>
+                    </Button>
+                    <Button Style="{StaticResource GhostButtonStyle}" Margin="0,0,6,0"
+                            Click="BtnPreview_Click" ToolTip="معاينة">
+                        <TextBlock Text="&#xE8A1;" FontFamily="Segoe MDL2 Assets" FontSize="12"/>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Click="BtnCancel_Click" Content="إلغاء"/>
+                    <Button Style="{StaticResource InvoiceSaveDraftBtn}" Margin="0,0,8,0"
+                            Content="حفظ مسودة وإرسال للتنفيذ" Click="BtnSaveDraft_Click"/>
+                    <Button Style="{StaticResource InvoiceApproveBtn}" Content="اعتماد الفاتورة"
+                            Click="BtnApprove_Click"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Workflow path -->
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="مسار فاتورة البيع" Style="{StaticResource SectionTitleTextStyle}"/>
+                    <TextBlock Text="المحاسب ينشئ المسودة ← المستودع ينفّذ الأطوال ← المحاسب يعتمد ← التسليم"
+                               FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,0,12"/>
+                    <Grid HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="32"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="32"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="32"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                            <Border Width="32" Height="32" CornerRadius="16"
+                                    Background="{StaticResource PrimaryBrush}" Margin="0,0,0,6">
+                                <TextBlock Text="1" Foreground="White" FontWeight="Bold" FontSize="13"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="محاسب — مسودة" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <Border Grid.Column="1" Height="2" VerticalAlignment="Top" Margin="0,15,0,0"
+                                Background="{StaticResource BorderBrush}"/>
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Center" Opacity="0.65">
+                            <Border Width="32" Height="32" CornerRadius="16"
+                                    Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="2" Margin="0,0,0,6">
+                                <TextBlock Text="2" FontWeight="SemiBold" FontSize="13"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="مستودع — تنفيذ" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <Border Grid.Column="3" Height="2" VerticalAlignment="Top" Margin="0,15,0,0"
+                                Background="{StaticResource BorderBrush}"/>
+                        <StackPanel Grid.Column="4" HorizontalAlignment="Center" Opacity="0.65">
+                            <Border Width="32" Height="32" CornerRadius="16"
+                                    Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="2" Margin="0,0,0,6">
+                                <TextBlock Text="3" FontWeight="SemiBold" FontSize="13"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="محاسب — اعتماد" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                        <Border Grid.Column="5" Height="2" VerticalAlignment="Top" Margin="0,15,0,0"
+                                Background="{StaticResource BorderBrush}"/>
+                        <StackPanel Grid.Column="6" HorizontalAlignment="Center" Opacity="0.65">
+                            <Border Width="32" Height="32" CornerRadius="16"
+                                    Background="White" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="2" Margin="0,0,0,6">
+                                <TextBlock Text="4" FontWeight="SemiBold" FontSize="13"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="تسليم — بطاقة" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Draft header fields -->
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Border Width="28" Height="28" CornerRadius="6"
+                                Background="{StaticResource PrimaryVeryLightBrush}" Margin="0,0,8,0">
+                            <TextBlock Text="&#xE9F9;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="مسودة" Style="{StaticResource SectionTitleTextStyle}" VerticalAlignment="Center"/>
+                        <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="100"
+                                Padding="10,4" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtStatusBadge" Text="مسودة" FontSize="11" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="رقم الفاتورة" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <TextBox x:Name="TxtInvoiceNumber" Text="INV-2026-0100" IsReadOnly="True"
+                                     Style="{StaticResource EnterpriseInputStyle}" Height="36"
+                                     Background="{StaticResource SurfaceAltBrush}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="التاريخ" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <DatePicker x:Name="DpDate" SelectedDate="2024-05-17" Height="36"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="اختيار العميل" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <ComboBox x:Name="CmbCustomer" Height="36" Style="{StaticResource EnterpriseComboBoxStyle}"
+                                      SelectedIndex="0">
+                                <ComboBoxItem Content="أحمد الحمصي"/>
+                                <ComboBoxItem Content="مؤسسة النسيج"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="الخزينة" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <ComboBox Height="36" Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                <ComboBoxItem Content="الخزينة العامة"/>
+                                <ComboBoxItem Content="صندوق جدة"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="المستودع" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <ComboBox Height="36" Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                <ComboBoxItem Content="مستودع رئيسي"/>
+                                <ComboBoxItem Content="مستودع جدة"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="نوع الدفع" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="3">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="BtnCash" Style="{StaticResource InvoiceSegmentBtn}"
+                                                 Content="نقدي" IsChecked="True" Checked="BtnCash_Checked"/>
+                                    <RadioButton x:Name="BtnCredit" Style="{StaticResource InvoiceSegmentBtn}"
+                                                 Content="آجل"/>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Margin="0,8,0,0"
+                                        Visibility="{Binding IsChecked, ElementName=BtnCredit, Converter={StaticResource BoolVis}}">
+                                <TextBlock Text="دفعة من الفاتورة" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <TextBox x:Name="TxtPartialPayment" Style="{StaticResource EnterpriseInputStyle}"
+                                         Height="36" VerticalContentAlignment="Center"
+                                         Text="0"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="6">
+                            <TextBlock Text="نوع العملة" Style="{StaticResource InvoiceFieldLabel}"/>
+                            <ComboBox Height="36" Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                <ComboBoxItem Content="دولار ($)"/>
+                                <ComboBoxItem Content="ر.س"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel>
+                        <TextBlock Text="ملاحظات" Style="{StaticResource InvoiceFieldLabel}"/>
+                        <TextBox Style="{StaticResource EnterpriseInputStyle}" Height="36"
+                                 VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Items table -->
+            <Border Style="{StaticResource CardNoPaddingStyle}" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="12,10,12,8">
+                        <TextBlock Text="أصناف الفاتورة" Style="{StaticResource SectionTitleTextStyle}"
+                                   VerticalAlignment="Center"/>
+                        <Button HorizontalAlignment="Left" Style="{StaticResource SecondaryButtonStyle}"
+                                Click="BtnAddLine_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                           Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="إضافة صنف" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <DataGrid Grid.Row="1" x:Name="ItemsGrid"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="{StaticResource BorderLightBrush}"
+                              BorderThickness="0" Background="White"
+                              RowHeight="44" FontSize="12"
+                              FontFamily="Segoe UI, Tahoma, Arial"
+                              ColumnHeaderStyle="{StaticResource InvoiceItemsHeader}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding GoodsType}" Width="*"/>
+                            <DataGridTextColumn Header="كود الثوب" Binding="{Binding BoltCode}" Width="90"/>
+                            <DataGridTextColumn Header="اللون" Binding="{Binding Color}" Width="80"/>
+                            <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCount}" Width="90"/>
+                            <DataGridTemplateColumn Header="الأطوال" Width="130">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#FFEDD5" CornerRadius="100"
+                                                Padding="8,3" HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding LengthStatus}" FontSize="10"
+                                                       Foreground="#C2410C" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="الوحدة" Binding="{Binding Unit}" Width="70"/>
+                            <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPrice, StringFormat=N1}" Width="90"/>
+                            <DataGridTemplateColumn Header="إجراءات" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                                Style="{StaticResource GhostButtonStyle}" FontSize="12"
+                                                Tag="{Binding}" Click="BtnRemoveLine_Click"
+                                                ToolTip="حذف"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- Summary -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <TextBlock Text="ملخص الأثواب" Style="{StaticResource SectionTitleTextStyle}"/>
+                    <WrapPanel x:Name="SummaryPills" Margin="0,4,0,8"/>
+                    <TextBlock Text="لا يمكن حساب المبلغ قبل أن يُدخل أمين المستودع طول كل ثوب على حدة"
+                               FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

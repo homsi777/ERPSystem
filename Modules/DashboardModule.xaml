@@ -1,0 +1,409 @@
+<UserControl x:Class="ERPSystem.Modules.DashboardModule"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ERPSystem.Controls">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                  Background="{StaticResource AppBgBrush}">
+        <Grid Margin="{StaticResource PageMargin}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="{StaticResource SectionBottomMargin}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="TxtPageTitle" Text="لوحة التحكم"
+                               Style="{StaticResource PageTitleTextStyle}"/>
+                    <TextBlock x:Name="TxtPageSubtitle"
+                               Text="نظرة عامة على أداء أعمالك لهذا اليوم"
+                               Style="{StaticResource PageSubtitleTextStyle}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnHeaderRefresh" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            Click="BtnHeaderRefresh_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE715;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                       Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtBtnRefresh" Text="تحديث" FontSize="12"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnHeaderNewInvoice" Style="{StaticResource PrimaryButtonStyle}"
+                            Click="BtnHeaderNewInvoice_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                       Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtBtnNewInvoice" Text="فاتورة جديدة" FontSize="12"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- KPI strip — 6 cards -->
+            <UniformGrid Grid.Row="1" Columns="6" Margin="0,0,0,12">
+                <controls:MetricCardControl x:Name="CardSales" Margin="0,0,6,0"
+                    CardTitle="مبيعات اليوم" CardValue="48,750 ر.س"
+                    CardIcon="&#xE8F1;" TrendValue="↑ 12.5%" TrendDirection="Up"
+                    CardDescription="مقارنة بالأمس"
+                    AccentColor="{StaticResource AccentSalesBrush}"/>
+                <controls:MetricCardControl x:Name="CardOrders" Margin="3,0,3,0"
+                    CardTitle="الطلبات النشطة" CardValue="134"
+                    CardIcon="&#xE9F9;" TrendValue="↑ 8.3%" TrendDirection="Up"
+                    CardDescription="مقارنة بالأمس"
+                    AccentColor="{StaticResource AccentOrdersBrush}"/>
+                <controls:MetricCardControl x:Name="CardInventory" Margin="3,0,3,0"
+                    CardTitle="حاويات نشطة" CardValue="12"
+                    CardIcon="&#xE7BF;" TrendValue="3 واصل" TrendDirection="Up"
+                    CardDescription="مركز عمليات الحاوية"
+                    AccentColor="{StaticResource AccentInventoryBrush}"/>
+                <controls:MetricCardControl x:Name="CardReceivables" Margin="3,0,3,0"
+                    CardTitle="الذمم المدينة" CardValue="83,400 ر.س"
+                    CardIcon="&#xE8C1;" TrendValue="↑ 5.2%" TrendDirection="Up"
+                    CardDescription="مستحقة من العملاء"
+                    AccentColor="{StaticResource AccentReceivableBrush}"/>
+                <controls:MetricCardControl x:Name="CardPayables" Margin="3,0,3,0"
+                    CardTitle="الذمم الدائنة" CardValue="32,100 ر.س"
+                    CardIcon="&#xEA8F;" TrendValue="↓ 3.8%" TrendDirection="Down"
+                    CardDescription="مستحقة للموردين"
+                    AccentColor="{StaticResource AccentPayableBrush}"/>
+                <controls:MetricCardControl x:Name="CardCustomers" Margin="6,0,0,0"
+                    CardTitle="العملاء النشطون" CardValue="2,847"
+                    CardIcon="&#xE716;" TrendValue="↑ 34 جديد" TrendDirection="Up"
+                    CardDescription="خلال هذا الشهر"
+                    AccentColor="{StaticResource AccentCustomersBrush}"/>
+            </UniformGrid>
+
+            <!-- Middle row: Activity | Table | Quick Actions (RTL column order) -->
+            <Grid Grid.Row="2" Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="320"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="260"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Activity (right in RTL = col 0) -->
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0">
+                    <StackPanel>
+                        <controls:SectionHeaderControl x:Name="ActivityHeader" Title="آخر النشاط"/>
+                        <StackPanel x:Name="ActivityList">
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource IconBadgeStyle}">
+                                    <TextBlock Text="&#xE9F9;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                               Foreground="{StaticResource PrimaryBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="فاتورة مبيعات #1045" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="عميل: شركة الأمل" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="3,200 ر.س" Style="{StaticResource BodyTextStyle}"
+                                               FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"
+                                               HorizontalAlignment="Left"/>
+                                    <TextBlock Text="منذ 12 د" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="40" Height="40" CornerRadius="8"
+                                        Background="{StaticResource AccentOrdersLightBrush}">
+                                    <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                               Foreground="{StaticResource AccentOrdersBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="عميل جديد مضاف" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="محمد أحمد العتيبي" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="منذ 28 د" Style="{StaticResource CaptionTextStyle}"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="40" Height="40" CornerRadius="8"
+                                        Background="{StaticResource AccentReceivableLightBrush}">
+                                    <TextBlock Text="&#xE7BF;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                               Foreground="{StaticResource AccentReceivableBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="أمر شراء #PO-0088" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="مورد: مؤسسة التوريد" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="8,500 ر.س" Style="{StaticResource BodyTextStyle}"
+                                               FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}"/>
+                                    <TextBlock Text="منذ ساعة" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="40" Height="40" CornerRadius="8"
+                                        Background="{StaticResource SuccessBgBrush}">
+                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                               Foreground="{StaticResource SuccessBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="تفصيل أثواب مكتمل" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="فاتورة INV-2026-0085 — 12 توب" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="12,340 ر.س" Style="{StaticResource BodyTextStyle}"
+                                               FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/>
+                                    <TextBlock Text="منذ 2 ساعة" Style="{StaticResource CaptionTextStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Main table (center) -->
+                <Border Grid.Column="2" Style="{StaticResource CardNoPaddingStyle}" Margin="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Padding="12,10,12,8">
+                            <controls:SectionHeaderControl x:Name="PendingHeader"
+                                                           Title="فواتير بانتظار المتابعة"/>
+                        </Border>
+                        <Border Grid.Row="1" Padding="12,0,12,8"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SearchBoxStyle}" Width="200" HorizontalAlignment="Left">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="&#xE721;" FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                                   VerticalAlignment="Center" Margin="8,0,6,0"/>
+                                        <TextBox Grid.Column="1" Background="Transparent" BorderThickness="0"
+                                                 FontSize="12" VerticalAlignment="Center" Tag="بحث..."/>
+                                    </Grid>
+                                </Border>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xEDE1;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                       Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="تصدير" FontSize="12" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource PrimaryButtonStyle}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                       Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="جديد" FontSize="12" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <DataGrid Grid.Row="2" x:Name="RecentGrid"
+                                  Style="{StaticResource EnterpriseDataGridStyle}"
+                                  ColumnHeaderStyle="{StaticResource EnterpriseColumnHeaderStyle}"
+                                  RowStyle="{StaticResource EnterpriseDataGridRowStyle}"
+                                  CellStyle="{StaticResource EnterpriseDataGridCellStyle}"
+                                  MinHeight="180"/>
+                        <Border Grid.Row="3" Padding="12,6"
+                                Background="{StaticResource SurfaceAltBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                            <TextBlock x:Name="TxtTableCount" Style="{StaticResource CaptionTextStyle}"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Quick actions (left in RTL = col 4) -->
+                <Border Grid.Column="4" Style="{StaticResource CardStyle}" Margin="0">
+                    <StackPanel>
+                        <controls:SectionHeaderControl Title="إجراءات سريعة"/>
+                        <UniformGrid Columns="2" Rows="3">
+                            <Button x:Name="BtnNewInvoice" Style="{StaticResource QuickActionButtonStyle}"
+                                    Margin="0,0,4,4" Click="QuickAction_Click" Tag="NewInvoice">
+                                <StackPanel>
+                                    <Border Width="44" Height="44" CornerRadius="8"
+                                            Background="{StaticResource SurfaceAltBrush}"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE9F9;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="{StaticResource PrimaryBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock x:Name="TxtQA_Invoice" Text="فاتورة بيع جديدة"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" Margin="0,6,0,0" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNewCustomer" Style="{StaticResource QuickActionButtonStyle}"
+                                    Margin="4,0,0,4" Click="QuickAction_Click" Tag="CustomerOpsCenter">
+                                <StackPanel>
+                                    <Border Width="44" Height="44" CornerRadius="8"
+                                            Background="{StaticResource AccentOrdersLightBrush}"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="{StaticResource AccentOrdersBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock x:Name="TxtQA_Customer" Text="مركز عمليات عميل"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" Margin="0,6,0,0" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNewProduct" Style="{StaticResource QuickActionButtonStyle}"
+                                    Margin="0,0,4,4" Click="QuickAction_Click" Tag="InventoryReport">
+                                <StackPanel>
+                                    <Border Width="44" Height="44" CornerRadius="8"
+                                            Background="{StaticResource AccentInventoryLightBrush}"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE821;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="{StaticResource AccentInventoryBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock x:Name="TxtQA_Product" Text="تقرير مخزون"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" Margin="0,6,0,0" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNewContainer" Style="{StaticResource QuickActionButtonStyle}"
+                                    Margin="4,0,0,4" Click="QuickAction_Click" Tag="NewContainer">
+                                <StackPanel>
+                                    <Border Width="44" Height="44" CornerRadius="8"
+                                            Background="{StaticResource InfoBgBrush}"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE7BF;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="{StaticResource AccentOrdersBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock x:Name="TxtQA_Container" Text="استيراد حاوية"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" Margin="0,6,0,0" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNewPurchase" Style="{StaticResource QuickActionButtonStyle}"
+                                    Margin="0,0,4,0" Click="QuickAction_Click" Tag="ReceiptVoucher">
+                                <StackPanel>
+                                    <Border Width="44" Height="44" CornerRadius="8"
+                                            Background="{StaticResource AccentReceivableLightBrush}"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE8C1;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="{StaticResource AccentReceivableBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock x:Name="TxtQA_Purchase" Text="سند قبض"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" Margin="0,6,0,0" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNewReport" Style="{StaticResource QuickActionButtonStyle}"
+                                    Margin="4,0,0,0" Click="QuickAction_Click" Tag="NewReport"
+                                    Visibility="Collapsed">
+                                <StackPanel>
+                                    <Border Style="{StaticResource IconBadgeStyle}" HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                   Foreground="{StaticResource InfoBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock x:Name="TxtQA_Report" Text="تقرير"
+                                               Style="{StaticResource CaptionTextStyle}"
+                                               HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Bottom row: Business overview | Collections -->
+            <Grid Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,0,0">
+                    <StackPanel>
+                        <controls:SectionHeaderControl x:Name="ChartHeader"
+                                                       Title="نظرة عامة على الأعمال"
+                                                       Subtitle="حاويات قادمة"/>
+                        <StackPanel x:Name="ContainersLegendPanel" Orientation="Horizontal" Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                <Border Width="8" Height="8" CornerRadius="4"
+                                        Background="{StaticResource PrimaryBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="واصلة" Style="{StaticResource CaptionTextStyle}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                <Border Width="8" Height="8" CornerRadius="4"
+                                        Background="{StaticResource AccentReceivableBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="جمارك" Style="{StaticResource CaptionTextStyle}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                <Border Width="8" Height="8" CornerRadius="4"
+                                        Background="{StaticResource AccentOrdersBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="موزّعة" Style="{StaticResource CaptionTextStyle}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4"
+                                        Background="{StaticResource SuccessBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="معتمدة" Style="{StaticResource CaptionTextStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <Border x:Name="ContainersChartPanel" MinHeight="100"
+                                Background="{StaticResource SurfaceAltBrush}" CornerRadius="8"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <controls:SectionHeaderControl x:Name="ProductsHeader"
+                                                       Title="عملاء يحتاجون تحصيل"/>
+                        <StackPanel x:Name="DebtCustomersPanel"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

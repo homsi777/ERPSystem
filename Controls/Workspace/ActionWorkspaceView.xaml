@@ -1,0 +1,35 @@
+<UserControl x:Class="ERPSystem.Controls.Workspace.ActionWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FlowDirection="RightToLeft"
+             Background="{StaticResource AppBgBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="{StaticResource PageMargin}">
+        <StackPanel x:Name="RootPanel" MaxWidth="1100">
+            <Border x:Name="HeaderCard" Style="{StaticResource CardStyle}" Margin="{StaticResource CardGapMargin}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource IconBadgeStyle}" Margin="0,0,12,0">
+                        <TextBlock x:Name="TxtActionIcon" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                   Foreground="{StaticResource PrimaryBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtActionTitle" Style="{StaticResource KpiValueTextStyle}"
+                                   FontSize="16"/>
+                        <TextBlock x:Name="TxtActionSubtitle" Style="{StaticResource BodyTextStyle}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="ContentCard" Style="{StaticResource CardStyle}" Margin="0">
+                <StackPanel x:Name="ContentPanel"/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
