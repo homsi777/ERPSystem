@@ -289,7 +289,7 @@
                                                HorizontalAlignment="Center" Margin="0,6,0,0" TextAlignment="Center"/>
                                 </StackPanel>
                             </Button>
-                            <Button x:Name="BtnNewProduct" Style="{StaticResource QuickActionButtonStyle}"
+                            <Button x:Name="BtnInventoryReport" Style="{StaticResource QuickActionButtonStyle}"
                                     Margin="0,0,4,4" Click="QuickAction_Click" Tag="InventoryReport">
                                 <StackPanel>
                                     <Border Width="44" Height="44" CornerRadius="8"

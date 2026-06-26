@@ -18,6 +18,8 @@ namespace ERPSystem
         private readonly PurchasesModule _purchases;
         private readonly HRModule _hr;
         private readonly SettingsModule _settings;
+        private bool _languageSubscribed;
+        private bool _navigationSubscribed;
 
         public MainWindow()
         {
@@ -42,8 +44,16 @@ namespace ERPSystem
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
-            NavigationStateManager.Instance.Navigated += (_, req) => NavigateTo(req);
+            if (!_languageSubscribed)
+            {
+                LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
+                _languageSubscribed = true;
+            }
+            if (!_navigationSubscribed)
+            {
+                NavigationStateManager.Instance.Navigated += (_, req) => NavigateTo(req);
+                _navigationSubscribed = true;
+            }
             ApplyFlowDirection();
             NavigateTo(new NavigationRequest(AppModule.Dashboard));
         }

@@ -24,8 +24,6 @@ namespace ERPSystem.Core.Actions
                 EntityType.SalesInvoice when row is SalesInvoice inv =>
                     inv.CustomerNameAr,
 
-                EntityType.SalesInvoice when row is SalesInvoiceGridRow ir => ir.CustomerName,
-
                 EntityType.SalesInvoice when row is Views.Sales.FabricSalesInvoiceRow fr =>
                     fr.CustomerName,
 
@@ -65,7 +63,6 @@ namespace ERPSystem.Core.Actions
             {
                 EntityType.Customer when row is CustomerModel c => c.Code,
                 EntityType.SalesInvoice when row is SalesInvoice inv => inv.InvoiceNumber,
-                EntityType.SalesInvoice when row is SalesInvoiceGridRow ir => ir.InvoiceNumber,
                 EntityType.SalesInvoice when row is Views.Sales.FabricSalesInvoiceRow fr => fr.InvoiceNumber,
                 EntityType.FabricItem when row is FabricItemModel f => f.Code,
                 EntityType.Supplier when row is SupplierModel s => s.Code,

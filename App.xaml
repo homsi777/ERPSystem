@@ -9,45 +9,9 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!-- ══════════════════════════════════════════════════════════ -->
-            <!--  SIDEBAR NAV ITEM STYLE (kept for potential reuse)       -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <Style x:Key="SidebarNavItemStyle" TargetType="Button">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="{StaticResource SidebarTextBrush}"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
-                <Setter Property="FontWeight" Value="Normal"/>
-                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                <Setter Property="Padding" Value="12,10"/>
-                <Setter Property="Margin" Value="8,1"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                  VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource SidebarHoverBrush}"/>
-                                    <Setter Property="Foreground" Value="#E2E8F0"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- Quick Action Button Style moved to EnterpriseTheme.xaml -->
-
-            <!-- ══════════════════════════════════════════════════════════ -->
             <!--  HORIZONTAL TOP NAV BAR STYLES                           -->
             <!-- ══════════════════════════════════════════════════════════ -->
 
-            <!-- Unified top nav item — direct links and dropdown triggers -->
             <Style x:Key="TopNavItemButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{StaticResource NavBarTextBrush}"/>
@@ -88,15 +52,6 @@
                 </Setter>
             </Style>
 
-            <Style x:Key="TopNavDirectButtonStyle" TargetType="Button"
-                   BasedOn="{StaticResource TopNavItemButtonStyle}"/>
-
-            <!-- Legacy key — nav uses Button only; kept so old references do not break -->
-            <Style x:Key="TopNavToggleStyle" TargetType="ToggleButton">
-                <Setter Property="Visibility" Value="Collapsed"/>
-            </Style>
-
-            <!-- Dropdown panel border (the popup card) -->
             <Style x:Key="DropdownCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="White"/>
                 <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
@@ -107,7 +62,6 @@
                 <Setter Property="MinWidth" Value="200"/>
             </Style>
 
-            <!-- Dropdown section header label -->
             <Style x:Key="DropdownSectionHeaderStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="10"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -116,7 +70,6 @@
                 <Setter Property="Margin" Value="10,10,10,4"/>
             </Style>
 
-            <!-- Sub-menu item button inside dropdown -->
             <Style x:Key="DropdownSubItemStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -150,7 +103,6 @@
                 </Setter>
             </Style>
 
-            <!-- Highlighted sub-menu item (e.g. Open POS) -->
             <Style x:Key="DropdownSubItemHighlightStyle" TargetType="Button"
                    BasedOn="{StaticResource DropdownSubItemStyle}">
                 <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
@@ -165,290 +117,6 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
-                                    <Setter TargetName="Root" Property="Opacity" Value="0.8"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- Dropdown thin separator -->
-            <Style x:Key="DropdownSeparatorStyle" TargetType="Border">
-                <Setter Property="Height" Value="1"/>
-                <Setter Property="Background" Value="{StaticResource BorderLightBrush}"/>
-                <Setter Property="Margin" Value="8,4"/>
-            </Style>
-
-
-            <!-- ══════════════════════════════════════════════════════════ -->
-            <!--  POS-SPECIFIC STYLES                                     -->
-            <!-- ══════════════════════════════════════════════════════════ -->
-
-            <!-- POS Category Button (tab-style) -->
-            <Style x:Key="POSCategoryStyle" TargetType="Button">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
-                <Setter Property="Padding" Value="14,0"/>
-                <Setter Property="Height" Value="40"/>
-                <Setter Property="Margin" Value="0,0,4,0"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Root" Property="Opacity" Value="0.8"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Category Button ACTIVE state -->
-            <Style x:Key="POSCategoryActiveStyle" TargetType="Button" BasedOn="{StaticResource POSCategoryStyle}">
-                <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-            </Style>
-
-            <!-- POS Product Card Button -->
-            <Style x:Key="POSProductCardStyle" TargetType="Button">
-                <Setter Property="Background" Value="White"/>
-                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                <Setter Property="Padding" Value="0"/>
-                <Setter Property="Margin" Value="6"/>
-                <Setter Property="Width" Value="152"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    CornerRadius="10" Effect="{StaticResource SubtleShadow}">
-                                <ContentPresenter/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Effect" Value="{StaticResource CardShadow}"/>
-                                    <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Root" Property="Opacity" Value="0.9"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Quantity Control Button (+/-) -->
-            <Style x:Key="POSQtyBtnStyle" TargetType="Button">
-                <Setter Property="Width" Value="26"/>
-                <Setter Property="Height" Value="26"/>
-                <Setter Property="FontSize" Value="15"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" CornerRadius="6"
-                                    Background="{TemplateBinding Background}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Opacity" Value="0.85"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Root" Property="Opacity" Value="0.7"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Cart Item Remove Button -->
-            <Style x:Key="POSRemoveBtnStyle" TargetType="Button">
-                <Setter Property="Width" Value="22"/>
-                <Setter Property="Height" Value="22"/>
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource DangerBgBrush}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Payment Method Button -->
-            <Style x:Key="POSPaymentBtnStyle" TargetType="Button">
-                <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}"/>
-                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-                <Setter Property="FontSize" Value="12"/>
-                <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
-                <Setter Property="Height" Value="44"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="8">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
-                                    <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Payment Method ACTIVE -->
-            <Style x:Key="POSPaymentActiveBtnStyle" TargetType="Button" BasedOn="{StaticResource POSPaymentBtnStyle}">
-                <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-            </Style>
-
-            <!-- POS Session Action Button -->
-            <Style x:Key="POSSessionBtnStyle" TargetType="Button">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="#CBD5E1"/>
-                <Setter Property="FontSize" Value="12"/>
-                <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
-                <Setter Property="Height" Value="32"/>
-                <Setter Property="Padding" Value="12,0"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="BorderBrush" Value="#334155"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="#1E293B"/>
-                                    <Setter Property="Foreground" Value="White"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Checkout Big Button -->
-            <Style x:Key="POSCheckoutStyle" TargetType="Button">
-                <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="FontSize" Value="15"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
-                <Setter Property="Height" Value="52"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    CornerRadius="10">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="#059669"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Root" Property="Opacity" Value="0.9"/>
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource BorderBrush}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <!-- POS Numpad digit button -->
-            <Style x:Key="POSNumpadBtnStyle" TargetType="Button">
-                <Setter Property="Background" Value="White"/>
-                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                <Setter Property="FontSize" Value="18"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="Height" Value="52"/>
-                <Setter Property="Margin" Value="3"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Root" Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="8">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
-                                    <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="Root" Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
                                     <Setter TargetName="Root" Property="Opacity" Value="0.8"/>
                                 </Trigger>

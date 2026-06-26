@@ -12,6 +12,7 @@ namespace ERPSystem.Shell
         public event EventHandler? SettingsRequested;
 
         private readonly DispatcherTimer _clockTimer;
+        private bool _languageSubscribed;
 
         public TopContextBar()
         {
@@ -38,7 +39,11 @@ namespace ERPSystem.Shell
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
+            if (!_languageSubscribed)
+            {
+                LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
+                _languageSubscribed = true;
+            }
             InitializeBranchSelector();
             UpdateClock();
             _clockTimer.Start();

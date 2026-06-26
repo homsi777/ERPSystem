@@ -21,7 +21,7 @@ namespace ERPSystem.Core.Sales
         public string ItemCode   { get; init; } = "";
         public string ItemNameAr { get; init; } = "";
         public string ItemNameEn { get; init; } = "";
-        public string Unit       { get; init; } = "قطعة";
+        public string Unit       { get; init; } = "متر";
         public decimal Qty       { get; init; }
         public decimal UnitPrice { get; init; }
         public decimal Discount  { get; init; }          // fixed amount per line
@@ -205,9 +205,9 @@ namespace ERPSystem.Core.Sales
         private static readonly Random _rng = new(99);
 
         private static readonly string[] CustomerNames = {
-            "محمد أحمد العتيبي", "شركة الأمل للتجارة", "مؤسسة النور التجارية",
-            "فهد سعد القحطاني", "شركة الرياض للتقنية", "عبدالله الزهراني",
-            "مجموعة النخبة التجارية", "يوسف علي المطيري", "نورة حمد العنزي",
+            "محمد أحمد العتيبي", "محل الأناقة للأقمشة", "مؤسسة النور للنسيج",
+            "فهد سعد القحطاني", "شركة الرياض للأقمشة", "عبدالله الزهراني",
+            "مجموعة النخبة للتجارة", "يوسف علي المطيري", "نورة حمد العنزي",
             "مؤسسة الربيع للاستيراد", "شركة هلا للتوزيع", "أحمد علي الدوسري"
         };
 
@@ -220,16 +220,16 @@ namespace ERPSystem.Core.Sales
         private static readonly string[] Branches = { "الرئيسي", "فرع جدة", "فرع الدمام" };
 
         private static readonly (string Ar, string En, string Code, decimal Price)[] Products = {
-            ("لاب توب Dell XPS 15", "Dell XPS 15",    "LT-001", 4500m),
-            ("iPhone 15 Pro",       "iPhone 15 Pro",   "PH-001", 3999m),
-            ("سماعة Sony WH-1000",  "Sony WH-1000",    "AC-001",  750m),
-            ("ماوس Logitech MX",    "Logitech MX",     "AC-002",  180m),
-            ("شاشة LG 27 4K",       "LG 27\" 4K",      "SC-001", 1350m),
-            ("iPad Pro M4",         "iPad Pro M4",     "TB-001", 3600m),
-            ("Samsung S24 Ultra",   "Samsung S24 Ultra","PH-002", 4200m),
-            ("كاميرا Canon R8",     "Canon EOS R8",    "CA-001", 2200m),
-            ("طابعة HP LaserJet",   "HP LaserJet",     "PR-001",  850m),
-            ("هارد SSD 1TB",        "1TB SSD",         "HD-001",  280m),
+            ("كتان F12 — أبيض",     "Cotton F12 White",   "FAB-101",  42.5m),
+            ("شيفون S8 — بيج",      "Chiffon S8 Beige",   "FAB-102",  38.0m),
+            ("ساتان M3 — أسود",     "Satin M3 Black",     "FAB-103",  45.0m),
+            ("كولومبيا — رمادي",    "Colombia Grey",      "FAB-104",  52.0m),
+            ("فيسكوز V2 — كريمي",   "Viscose V2 Cream",   "FAB-105",  36.5m),
+            ("جاكار J5 — ذهبي",     "Jacquard J5 Gold",   "FAB-106",  58.0m),
+            ("لين L1 — طبيعي",      "Linen L1 Natural",   "FAB-107",  48.0m),
+            ("تول T4 — أبيض",       "Tulle T4 White",     "FAB-108",  28.0m),
+            ("دانتيل D2 — أبيض",    "Lace D2 White",      "FAB-109",  65.0m),
+            ("مخمل V8 — كحلي",      "Velvet V8 Navy",     "FAB-110",  72.0m),
         };
 
         public static List<SalesInvoice> Generate(int count = 60)
@@ -275,16 +275,16 @@ namespace ERPSystem.Core.Sales
                     int pIdx;
                     do { pIdx = _rng.Next(Products.Length); } while (!usedItems.Add(pIdx));
                     var (ar, en, code, price) = Products[pIdx];
-                    int qty = _rng.Next(1, 4);
+                    decimal qty = _rng.Next(50, 500);
                     inv.Lines.Add(new InvoiceLine
                     {
                         ItemCode    = code,
                         ItemNameAr  = ar,
                         ItemNameEn  = en,
-                        Unit        = "قطعة",
+                        Unit        = "متر",
                         Qty         = qty,
                         UnitPrice   = price,
-                        Discount    = _rng.Next(0, 2) == 0 ? Math.Round(price * qty * 0.05m, 2) : 0
+                        Discount    = _rng.Next(0, 2) == 0 ? Math.Round(price * qty * 0.03m, 2) : 0
                     });
                 }
 
@@ -304,27 +304,5 @@ namespace ERPSystem.Core.Sales
 
             return list.OrderByDescending(i => i.Date).ToList();
         }
-    }
-
-    /// <summary>Flat row for sales invoice DataGrid binding.</summary>
-    public class SalesInvoiceGridRow
-    {
-        public SalesInvoice? Source { get; set; }
-        public string InvoiceNumber { get; set; } = "";
-        public string DisplayDate { get; set; } = "";
-        public string CustomerName { get; set; } = "";
-        public string TypeDisplay { get; set; } = "";
-        public string StatusDisplay { get; set; } = "";
-        public string PayMethodDisplay { get; set; } = "";
-        public string TotalDisplay { get; set; } = "";
-        public string PaidDisplay { get; set; } = "";
-        public string RemainingDisplay { get; set; } = "";
-        public string UserName { get; set; } = "";
-        public string Branch { get; set; } = "";
-        public bool IsCredit { get; set; }
-        public InvoiceStatus DocStatus { get; set; }
-        public PaymentStatus PayStatus { get; set; }
-        public decimal Remaining { get; set; }
-        public string PayStatusDisplay { get; set; } = "";
     }
 }

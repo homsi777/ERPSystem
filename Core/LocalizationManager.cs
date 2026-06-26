@@ -110,7 +110,7 @@ namespace ERPSystem.Core
             ["Module_Purchases"] = new() { ["ar"] = "إدارة المشتريات", ["en"] = "Purchases Management" },
             ["Module_Purchases_Sub"] = new() { ["ar"] = "إدارة أوامر الشراء والموردين وفواتير المشتريات", ["en"] = "Manage purchase orders, suppliers and purchase invoices" },
             ["Module_Inventory"] = new() { ["ar"] = "إدارة المخزون", ["en"] = "Inventory Management" },
-            ["Module_Inventory_Sub"] = new() { ["ar"] = "تتبع المنتجات والمواد والمستودعات", ["en"] = "Track products, materials and warehouses" },
+            ["Module_Inventory_Sub"] = new() { ["ar"] = "تتبع الأقمشة والأثواب والمستودعات", ["en"] = "Track fabrics, rolls and warehouses" },
             ["Module_Customers"] = new() { ["ar"] = "إدارة العملاء", ["en"] = "Customer Management" },
             ["Module_Customers_Sub"] = new() { ["ar"] = "قاعدة بيانات العملاء والمتابعة والذمم", ["en"] = "Customer database, follow-up and receivables" },
             ["Module_Suppliers"] = new() { ["ar"] = "إدارة الموردين", ["en"] = "Supplier Management" },
@@ -118,9 +118,7 @@ namespace ERPSystem.Core
             ["Module_Accounting"] = new() { ["ar"] = "الحسابات والمالية", ["en"] = "Accounting & Finance" },
             ["Module_Accounting_Sub"] = new() { ["ar"] = "القيود المحاسبية وميزان المراجعة والتقارير المالية", ["en"] = "Journal entries, trial balance and financial reports" },
             ["Module_Reports"] = new() { ["ar"] = "التقارير والتحليلات", ["en"] = "Reports & Analytics" },
-            ["Module_Reports_Sub"] = new() { ["ar"] = "تقارير المبيعات والمخزون والمالية", ["en"] = "Sales, inventory and financial reports" },
-            ["Module_POS"] = new() { ["ar"] = "نقطة البيع", ["en"] = "Point of Sale" },
-            ["Module_POS_Sub"] = new() { ["ar"] = "نظام البيع السريع للمحلات والمطاعم", ["en"] = "Fast sales system for retail and restaurants" },
+            ["Module_Reports_Sub"] = new() { ["ar"] = "تقارير المبيعات والمخزون والاستيراد", ["en"] = "Sales, inventory and import reports" },
             ["Module_Settings"] = new() { ["ar"] = "إعدادات النظام", ["en"] = "System Settings" },
             ["Module_Settings_Sub"] = new() { ["ar"] = "تكوين النظام والمستخدمين والصلاحيات", ["en"] = "System configuration, users and permissions" },
 
@@ -143,21 +141,6 @@ namespace ERPSystem.Core
             // Currency
             ["Currency"] = new() { ["ar"] = "ر.س", ["en"] = "SAR" },
 
-            // POS
-            ["POS_Categories"] = new() { ["ar"] = "الفئات", ["en"] = "Categories" },
-            ["POS_Products"] = new() { ["ar"] = "المنتجات", ["en"] = "Products" },
-            ["POS_Cart"] = new() { ["ar"] = "عربة الشراء", ["en"] = "Cart" },
-            ["POS_Customer"] = new() { ["ar"] = "العميل", ["en"] = "Customer" },
-            ["POS_Total"] = new() { ["ar"] = "الإجمالي", ["en"] = "Total" },
-            ["POS_Discount"] = new() { ["ar"] = "الخصم", ["en"] = "Discount" },
-            ["POS_Tax"] = new() { ["ar"] = "الضريبة", ["en"] = "Tax" },
-            ["POS_NetTotal"] = new() { ["ar"] = "الصافي", ["en"] = "Net Total" },
-            ["POS_Payment"] = new() { ["ar"] = "الدفع", ["en"] = "Payment" },
-            ["POS_Cash"] = new() { ["ar"] = "نقداً", ["en"] = "Cash" },
-            ["POS_Card"] = new() { ["ar"] = "بطاقة", ["en"] = "Card" },
-            ["POS_Transfer"] = new() { ["ar"] = "تحويل", ["en"] = "Transfer" },
-            ["POS_Checkout"] = new() { ["ar"] = "إتمام البيع", ["en"] = "Checkout" },
-
             // ─── Submenu: Sales ───
             ["Sub_Sales_Invoices"] = new() { ["ar"] = "فواتير البيع", ["en"] = "Sales Invoices" },
             ["Sub_Sales_Returns"] = new() { ["ar"] = "مرتجعات البيع", ["en"] = "Sales Returns" },
@@ -178,7 +161,7 @@ namespace ERPSystem.Core
             ["Sub_Purch_Section2"] = new() { ["ar"] = "تقارير", ["en"] = "Reports" },
 
             // ─── Submenu: Inventory ───
-            ["Sub_Inv_Products"] = new() { ["ar"] = "المنتجات", ["en"] = "Products" },
+            ["Sub_Inv_Products"] = new() { ["ar"] = "الأقمشة", ["en"] = "Fabrics" },
             ["Sub_Inv_Categories"] = new() { ["ar"] = "التصنيفات", ["en"] = "Categories" },
             ["Sub_Inv_Units"] = new() { ["ar"] = "وحدات القياس", ["en"] = "Units of Measure" },
             ["Sub_Inv_Warehouses"] = new() { ["ar"] = "المخازن", ["en"] = "Warehouses" },
@@ -186,7 +169,7 @@ namespace ERPSystem.Core
             ["Sub_Inv_Transfers"] = new() { ["ar"] = "تحويلات المخزون", ["en"] = "Stock Transfers" },
             ["Sub_Inv_Movements"] = new() { ["ar"] = "حركات المخزون", ["en"] = "Stock Movements" },
             ["Sub_Inv_Alerts"] = new() { ["ar"] = "تنبيهات النقص", ["en"] = "Low Stock Alerts" },
-            ["Sub_Inv_Section1"] = new() { ["ar"] = "المنتجات والفئات", ["en"] = "Products & Categories" },
+            ["Sub_Inv_Section1"] = new() { ["ar"] = "الأقمشة والتصنيفات", ["en"] = "Fabrics & Categories" },
             ["Sub_Inv_Section2"] = new() { ["ar"] = "العمليات", ["en"] = "Operations" },
 
             // ─── Submenu: Customers ───
@@ -220,15 +203,8 @@ namespace ERPSystem.Core
             ["Sub_Rep_Financial"] = new() { ["ar"] = "التقارير المالية", ["en"] = "Financial Reports" },
             ["Sub_Rep_Customers"] = new() { ["ar"] = "تقارير العملاء", ["en"] = "Customer Reports" },
             ["Sub_Rep_Suppliers"] = new() { ["ar"] = "تقارير الموردين", ["en"] = "Supplier Reports" },
-            ["Sub_Rep_POS"] = new() { ["ar"] = "تقارير نقطة البيع", ["en"] = "POS Reports" },
             ["Sub_Rep_Section1"] = new() { ["ar"] = "التشغيل", ["en"] = "Operations" },
             ["Sub_Rep_Section2"] = new() { ["ar"] = "المالية", ["en"] = "Finance" },
-
-            // ─── Submenu: POS ───
-            ["Sub_POS_Open"] = new() { ["ar"] = "فتح نقطة البيع", ["en"] = "Open POS" },
-            ["Sub_POS_Sessions"] = new() { ["ar"] = "جلسات نقاط البيع", ["en"] = "POS Sessions" },
-            ["Sub_POS_Settings"] = new() { ["ar"] = "إعدادات نقطة البيع", ["en"] = "POS Settings" },
-            ["Sub_POS_Reports"] = new() { ["ar"] = "تقارير نقطة البيع", ["en"] = "POS Reports" },
 
             // ─── Submenu: Settings ───
             ["Sub_Set_System"] = new() { ["ar"] = "إعدادات النظام", ["en"] = "System Settings" },

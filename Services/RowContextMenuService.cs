@@ -154,7 +154,6 @@ namespace ERPSystem.Services
         private static object? UnwrapEntity(object row, EntityType entityType) =>
             entityType switch
             {
-                EntityType.SalesInvoice when row is Core.Sales.SalesInvoiceGridRow g && g.Source != null => g.Source,
                 EntityType.SalesInvoice when row is Views.Sales.FabricSalesInvoiceRow f && f.Source != null => f.Source,
                 _ => row
             };

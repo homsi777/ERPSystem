@@ -17,6 +17,7 @@ namespace ERPSystem.Shell
         private readonly List<(Button Button, Popup? Popup, AppModule Module)> _navItems = new();
         private readonly List<MenuDef> _menuDefs = new();
         private Popup? _overflowPopup;
+        private bool _languageSubscribed;
 
         private record SubItem(string LabelKey, string Icon, AppModule Module, string SubPage,
                                bool Highlighted = false);
@@ -33,7 +34,11 @@ namespace ERPSystem.Shell
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            LocalizationManager.Instance.LanguageChanged += (_, _) => Rebuild();
+            if (!_languageSubscribed)
+            {
+                LocalizationManager.Instance.LanguageChanged += (_, _) => Rebuild();
+                _languageSubscribed = true;
+            }
             Rebuild();
         }
 

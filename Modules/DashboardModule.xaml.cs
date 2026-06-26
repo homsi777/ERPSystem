@@ -83,7 +83,7 @@ namespace ERPSystem.Modules
             TxtQA_Customer.Text = "مركز عمليات عميل";
             TxtQA_Product.Text = "تقرير مخزون";
             TxtQA_Purchase.Text = "سند قبض";
-            BtnNewProduct.Tag = "InventoryReport";
+            BtnInventoryReport.Tag = "InventoryReport";
             BtnNewPurchase.Tag = "ReceiptVoucher";
             BtnNewCustomer.Tag = "CustomerOpsCenter";
             BtnNewReport.Visibility = Visibility.Collapsed;
