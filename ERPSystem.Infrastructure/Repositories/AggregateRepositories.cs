@@ -1,0 +1,289 @@
+using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Enums;
+using ERPSystem.Infrastructure.Persistence;
+using ERPSystem.Infrastructure.Persistence.Mapping;
+using ERPSystem.Infrastructure.Persistence.Models.ChinaImport;
+using ERPSystem.Infrastructure.Persistence.Models.Sales;
+using Microsoft.EntityFrameworkCore;
+
+namespace ERPSystem.Infrastructure.Repositories;
+
+internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaContainerRepository
+{
+    public async Task<ContainerAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await LoadAggregateAsync(id, null, cancellationToken);
+
+    public async Task<ContainerAggregate?> GetByNumberAsync(string containerNumber, CancellationToken cancellationToken = default) =>
+        await LoadAggregateAsync(null, containerNumber, cancellationToken);
+
+    public async Task<IReadOnlyList<ContainerAggregate>> GetListAsync(
+        Guid companyId,
+        Guid? branchId = null,
+        ChinaContainerStatus? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Containers.AsNoTracking().Where(c => c.CompanyId == companyId);
+        if (branchId.HasValue)
+            query = query.Where(c => c.BranchId == branchId.Value);
+        if (status.HasValue)
+            query = query.Where(c => c.Status == (int)status.Value);
+
+        var headers = await query.OrderByDescending(c => c.ShipmentDate).ToListAsync(cancellationToken);
+        var results = new List<ContainerAggregate>();
+        foreach (var header in headers)
+            results.Add(await LoadAggregateFromHeaderAsync(header, cancellationToken));
+        return results;
+    }
+
+    public async Task AddAsync(ContainerAggregate aggregate, CancellationToken cancellationToken = default)
+    {
+        await context.Containers.AddAsync(ContainerMapper.ToHeaderEntity(aggregate), cancellationToken);
+        await SyncItemsAsync(aggregate, cancellationToken);
+        await SyncLandingCostAsync(aggregate, cancellationToken);
+    }
+
+    public async Task UpdateAsync(ContainerAggregate aggregate, CancellationToken cancellationToken = default)
+    {
+        var header = await context.Containers.FirstOrDefaultAsync(c => c.Id == aggregate.Id, cancellationToken)
+            ?? throw new InvalidOperationException("Container not found.");
+
+        var mapped = ContainerMapper.ToHeaderEntity(aggregate);
+        header.Status = mapped.Status;
+        header.TotalRolls = mapped.TotalRolls;
+        header.TotalMeters = mapped.TotalMeters;
+        header.TotalWeightKg = mapped.TotalWeightKg;
+        header.ApprovedAt = mapped.ApprovedAt;
+        header.ApprovedByUserId = mapped.ApprovedByUserId;
+        header.IsArchived = mapped.IsArchived;
+        header.UpdatedAt = DateTime.UtcNow;
+
+        await SyncItemsAsync(aggregate, cancellationToken);
+        await SyncLandingCostAsync(aggregate, cancellationToken);
+    }
+
+    private async Task<ContainerAggregate?> LoadAggregateAsync(Guid? id, string? number, CancellationToken ct)
+    {
+        var header = id.HasValue
+            ? await context.Containers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id.Value, ct)
+            : await context.Containers.AsNoTracking().FirstOrDefaultAsync(c => c.ContainerNumber == number, ct);
+        return header is null ? null : await LoadAggregateFromHeaderAsync(header, ct);
+    }
+
+    private async Task<ContainerAggregate> LoadAggregateFromHeaderAsync(ContainerEntity header, CancellationToken ct)
+    {
+        var items = await context.ContainerItems.AsNoTracking()
+            .Where(i => i.ContainerId == header.Id).OrderBy(i => i.LineNumber).ToListAsync(ct);
+        var landingCost = await context.LandingCosts.AsNoTracking()
+            .FirstOrDefaultAsync(l => l.ContainerId == header.Id, ct);
+        return ContainerMapper.ToAggregate(header, items, landingCost);
+    }
+
+    private async Task SyncItemsAsync(ContainerAggregate aggregate, CancellationToken ct)
+    {
+        var existing = await context.ContainerItems.Where(i => i.ContainerId == aggregate.Id).ToListAsync(ct);
+        context.ContainerItems.RemoveRange(existing);
+        await context.ContainerItems.AddRangeAsync(aggregate.Items.Select(i => new ContainerItemEntity
+        {
+            Id = i.Id,
+            ContainerId = aggregate.Id,
+            LineNumber = i.LineNumber,
+            FabricItemId = i.FabricItemId,
+            FabricColorId = i.FabricColorId,
+            RollCount = i.RollCount,
+            LengthMeters = i.LengthMeters.Value,
+            WeightKg = i.WeightKg?.Value,
+            BuyerCustomerId = i.BuyerCustomerId,
+            RowStatus = i.RowStatus
+        }), ct);
+    }
+
+    private async Task SyncLandingCostAsync(ContainerAggregate aggregate, CancellationToken ct)
+    {
+        if (aggregate.LandingCost is null)
+            return;
+
+        var existing = await context.LandingCosts.FirstOrDefaultAsync(l => l.ContainerId == aggregate.Id, ct);
+        var lc = aggregate.LandingCost;
+        if (existing is null)
+        {
+            await context.LandingCosts.AddAsync(new LandingCostEntity
+            {
+                Id = lc.Id,
+                ContainerId = aggregate.Id,
+                TotalLengthMeters = lc.TotalLengthFromInvoice.Value,
+                ContainerWeightKg = lc.ContainerWeight.Value,
+                CustomsAmount = lc.CustomsAmountPaid.Amount,
+                Shipping = lc.Shipping.Amount,
+                Clearance = lc.Clearance.Amount,
+                OtherExpenses = lc.OtherExpenses.Amount,
+                Status = (int)lc.Status,
+                CalculatedAt = lc.CalculatedAt,
+                CalculatedByUserId = lc.CalculatedByUserId
+            }, ct);
+        }
+        else
+        {
+            existing.Status = (int)lc.Status;
+            existing.CalculatedAt = lc.CalculatedAt;
+            existing.CalculatedByUserId = lc.CalculatedByUserId;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+}
+
+internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoiceRepository
+{
+    public async Task<SalesInvoiceAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await LoadAsync(id, null, cancellationToken);
+
+    public async Task<SalesInvoiceAggregate?> GetByNumberAsync(string invoiceNumber, CancellationToken cancellationToken = default) =>
+        await LoadAsync(null, invoiceNumber, cancellationToken);
+
+    public async Task<IReadOnlyList<SalesInvoiceAggregate>> GetListAsync(
+        Guid companyId,
+        Guid? branchId = null,
+        SalesInvoiceStatus? status = null,
+        Guid? customerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.SalesInvoices.AsNoTracking().Where(i => i.CompanyId == companyId);
+        if (branchId.HasValue) query = query.Where(i => i.BranchId == branchId.Value);
+        if (status.HasValue) query = query.Where(i => i.Status == (int)status.Value);
+        if (customerId.HasValue) query = query.Where(i => i.CustomerId == customerId.Value);
+
+        var headers = await query.OrderByDescending(i => i.InvoiceDate).ToListAsync(cancellationToken);
+        var list = new List<SalesInvoiceAggregate>();
+        foreach (var header in headers)
+            list.Add(await LoadFromHeaderAsync(header, cancellationToken));
+        return list;
+    }
+
+    public async Task<IReadOnlyList<SalesInvoiceAggregate>> GetDetailingQueueAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        var headers = await context.SalesInvoices.AsNoTracking()
+            .Where(i => i.WarehouseId == warehouseId && i.Status == (int)SalesInvoiceStatus.AwaitingDetailing)
+            .OrderBy(i => i.SentToWarehouseAt)
+            .ToListAsync(cancellationToken);
+
+        var list = new List<SalesInvoiceAggregate>();
+        foreach (var header in headers)
+            list.Add(await LoadFromHeaderAsync(header, cancellationToken));
+        return list;
+    }
+
+    public async Task AddAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default)
+    {
+        await context.SalesInvoices.AddAsync(SalesInvoiceMapper.ToHeaderEntity(aggregate), cancellationToken);
+        await SyncChildrenAsync(aggregate, cancellationToken);
+    }
+
+    public async Task UpdateAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default)
+    {
+        var header = await context.SalesInvoices.FirstOrDefaultAsync(i => i.Id == aggregate.Id, cancellationToken)
+            ?? throw new InvalidOperationException("Sales invoice not found.");
+
+        var mapped = SalesInvoiceMapper.ToHeaderEntity(aggregate);
+        header.Status = mapped.Status;
+        header.SubTotal = mapped.SubTotal;
+        header.DiscountTotal = mapped.DiscountTotal;
+        header.TaxTotal = mapped.TaxTotal;
+        header.GrandTotal = mapped.GrandTotal;
+        header.ApprovedByUserId = mapped.ApprovedByUserId;
+        header.SentToWarehouseAt = mapped.SentToWarehouseAt;
+        header.DetailedAt = mapped.DetailedAt;
+        header.ApprovedAt = mapped.ApprovedAt;
+        header.PrintedAt = mapped.PrintedAt;
+        header.DeliveredAt = mapped.DeliveredAt;
+        header.CancelledAt = mapped.CancelledAt;
+        header.CancelReason = mapped.CancelReason;
+        header.UpdatedAt = DateTime.UtcNow;
+
+        await SyncChildrenAsync(aggregate, cancellationToken);
+    }
+
+    private async Task<SalesInvoiceAggregate?> LoadAsync(Guid? id, string? number, CancellationToken ct)
+    {
+        var header = id.HasValue
+            ? await context.SalesInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id.Value, ct)
+            : await context.SalesInvoices.AsNoTracking().FirstOrDefaultAsync(i => i.InvoiceNumber == number, ct);
+        return header is null ? null : await LoadFromHeaderAsync(header, ct);
+    }
+
+    private async Task<SalesInvoiceAggregate> LoadFromHeaderAsync(SalesInvoiceEntity header, CancellationToken ct)
+    {
+        var items = await context.SalesInvoiceItems.AsNoTracking()
+            .Where(i => i.SalesInvoiceId == header.Id).OrderBy(i => i.LineNumber).ToListAsync(ct);
+        var rolls = await context.SalesInvoiceRollDetails.AsNoTracking()
+            .Where(r => r.SalesInvoiceId == header.Id).ToListAsync(ct);
+        var session = await context.WarehouseDetailingSessions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SalesInvoiceId == header.Id, ct);
+        return SalesInvoiceMapper.ToAggregate(header, items, rolls, session);
+    }
+
+    private async Task SyncChildrenAsync(SalesInvoiceAggregate aggregate, CancellationToken ct)
+    {
+        var existingItems = await context.SalesInvoiceItems.Where(i => i.SalesInvoiceId == aggregate.Id).ToListAsync(ct);
+        context.SalesInvoiceItems.RemoveRange(existingItems);
+        await context.SalesInvoiceItems.AddRangeAsync(aggregate.Items.Select(i => new SalesInvoiceItemEntity
+        {
+            Id = i.Id,
+            SalesInvoiceId = aggregate.Id,
+            LineNumber = i.LineNumber,
+            FabricItemId = i.FabricItemId,
+            FabricColorId = i.FabricColorId,
+            RollCount = i.RollCount,
+            UnitPrice = i.UnitPrice.Amount,
+            Unit = i.Unit,
+            LineTotal = i.LineTotal.Amount
+        }), ct);
+
+        var existingRolls = await context.SalesInvoiceRollDetails.Where(r => r.SalesInvoiceId == aggregate.Id).ToListAsync(ct);
+        context.SalesInvoiceRollDetails.RemoveRange(existingRolls);
+        await context.SalesInvoiceRollDetails.AddRangeAsync(aggregate.RollDetails.Select(r => new SalesInvoiceRollDetailEntity
+        {
+            Id = r.Id,
+            SalesInvoiceId = aggregate.Id,
+            SalesInvoiceItemId = r.SalesInvoiceItemId,
+            RollSequence = r.RollSequence.Value,
+            FabricRollId = r.FabricRollId,
+            LengthMeters = r.LengthMeters.Value,
+            EnteredByUserId = r.EnteredByUserId,
+            EnteredAt = r.EnteredAt
+        }), ct);
+
+        var existingSession = await context.WarehouseDetailingSessions
+            .FirstOrDefaultAsync(s => s.SalesInvoiceId == aggregate.Id, ct);
+        if (aggregate.DetailingSession is null)
+        {
+            if (existingSession is not null)
+                context.WarehouseDetailingSessions.Remove(existingSession);
+            return;
+        }
+
+        if (existingSession is null)
+        {
+            await context.WarehouseDetailingSessions.AddAsync(new WarehouseDetailingSessionEntity
+            {
+                Id = aggregate.DetailingSession.Id,
+                SalesInvoiceId = aggregate.Id,
+                Status = (int)aggregate.DetailingSession.Status,
+                AssignedOfficerUserId = aggregate.DetailingSession.AssignedOfficerUserId,
+                StartedAt = aggregate.DetailingSession.StartedAt,
+                CompletedAt = aggregate.DetailingSession.CompletedAt,
+                RejectionReason = aggregate.DetailingSession.RejectionReason
+            }, ct);
+        }
+        else
+        {
+            existingSession.Status = (int)aggregate.DetailingSession.Status;
+            existingSession.AssignedOfficerUserId = aggregate.DetailingSession.AssignedOfficerUserId;
+            existingSession.StartedAt = aggregate.DetailingSession.StartedAt;
+            existingSession.CompletedAt = aggregate.DetailingSession.CompletedAt;
+            existingSession.RejectionReason = aggregate.DetailingSession.RejectionReason;
+            existingSession.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+}

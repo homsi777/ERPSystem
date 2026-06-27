@@ -1,0 +1,16 @@
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.csproj.AssemblyReference.cache
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.AssemblyInfoInputs.cache
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.AssemblyInfo.cs
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.csproj.CoreCompileInputs.cache
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.sourcelink.json
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\bin\Debug\net9.0\ERPSystem.Application.deps.json
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\bin\Debug\net9.0\ERPSystem.Application.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\bin\Debug\net9.0\ERPSystem.Application.pdb
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\bin\Debug\net9.0\ERPSystem.Domain.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\bin\Debug\net9.0\ERPSystem.Domain.pdb
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSyste.6F763077.Up2Date
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\refint\ERPSystem.Application.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ERPSystem.Application.pdb
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Application\obj\Debug\net9.0\ref\ERPSystem.Application.dll

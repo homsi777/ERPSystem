@@ -1,0 +1,60 @@
+using ERPSystem.Domain.Enums;
+
+namespace ERPSystem.Application.DTOs.Sales;
+
+public sealed class SalesInvoiceDto
+{
+    public Guid Id { get; init; }
+    public string InvoiceNumber { get; init; } = "";
+    public SalesInvoiceStatus Status { get; init; }
+    public Guid CustomerId { get; init; }
+    public string CustomerName { get; init; } = "";
+    public Guid WarehouseId { get; init; }
+    public Guid ChinaContainerId { get; init; }
+    public DateTime InvoiceDate { get; init; }
+    public PaymentType PaymentType { get; init; }
+    public decimal SubTotal { get; init; }
+    public decimal DiscountTotal { get; init; }
+    public decimal TaxTotal { get; init; }
+    public decimal GrandTotal { get; init; }
+    public IReadOnlyList<SalesInvoiceLineDto> Lines { get; init; } = [];
+}
+
+public sealed class SalesInvoiceLineDto
+{
+    public Guid Id { get; init; }
+    public int LineNumber { get; init; }
+    public Guid FabricItemId { get; init; }
+    public Guid FabricColorId { get; init; }
+    public int RollCount { get; init; }
+    public decimal UnitPrice { get; init; }
+    public decimal LineTotal { get; init; }
+}
+
+public sealed class WarehouseDetailingDto
+{
+    public Guid InvoiceId { get; init; }
+    public string InvoiceNumber { get; init; } = "";
+    public string CustomerName { get; init; } = "";
+    public WarehouseDetailingStatus Status { get; init; }
+    public IReadOnlyList<WarehouseDetailingRollDto> Rolls { get; init; } = [];
+}
+
+public sealed class WarehouseDetailingRollDto
+{
+    public Guid RollDetailId { get; init; }
+    public Guid SalesInvoiceItemId { get; init; }
+    public int RollSequence { get; init; }
+    public decimal LengthMeters { get; init; }
+    public bool HasValidLength { get; init; }
+}
+
+public sealed class SalesInvoiceOperationsCenterDto
+{
+    public SalesInvoiceDto Invoice { get; init; } = null!;
+    public WarehouseDetailingDto? Detailing { get; init; }
+    public bool CanSendToWarehouse { get; init; }
+    public bool CanCompleteDetailing { get; init; }
+    public bool CanApprove { get; init; }
+    public bool CanCancel { get; init; }
+}

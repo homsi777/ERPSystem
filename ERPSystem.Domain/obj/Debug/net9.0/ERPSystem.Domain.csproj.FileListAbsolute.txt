@@ -1,0 +1,12 @@
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\bin\Debug\net9.0\ERPSystem.Domain.deps.json
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\bin\Debug\net9.0\ERPSystem.Domain.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\bin\Debug\net9.0\ERPSystem.Domain.pdb
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.AssemblyInfoInputs.cache
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.AssemblyInfo.cs
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.csproj.CoreCompileInputs.cache
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.sourcelink.json
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\refint\ERPSystem.Domain.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ERPSystem.Domain.pdb
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Domain\obj\Debug\net9.0\ref\ERPSystem.Domain.dll
