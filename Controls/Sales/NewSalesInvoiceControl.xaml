@@ -112,6 +112,9 @@
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
         </Style>
+        <Style x:Key="InvoiceHeaderCell" TargetType="StackPanel">
+            <Setter Property="Margin" Value="0,0,0,0"/>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
@@ -127,7 +130,7 @@
                     <TextBlock Text="فاتورة بيع جديدة" FontSize="22" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                FontFamily="Segoe UI, Tahoma, Arial"/>
-                    <TextBlock Text="إنشاء فاتورة بيع — اختيار العميل، الأصناف، وعدد الأثواب فقط (بدون أطوال)"
+                    <TextBlock Text="إنشاء فاتورة بيع — اختيار العميل، الحاوية، الأصناف، وعدد الأثواب (بدون أطوال)"
                                FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
                                FontFamily="Segoe UI, Tahoma, Arial" Margin="0,4,0,0"
                                TextWrapping="Wrap"/>
@@ -244,84 +247,127 @@
                         </Border>
                     </StackPanel>
 
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="رقم الفاتورة" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <TextBox x:Name="TxtInvoiceNumber" Text="INV-2026-0100" IsReadOnly="True"
-                                     Style="{StaticResource EnterpriseInputStyle}" Height="36"
-                                     Background="{StaticResource SurfaceAltBrush}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="التاريخ" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <DatePicker x:Name="DpDate" SelectedDate="2024-05-17" Height="36"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="4">
-                            <TextBlock Text="اختيار العميل" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <ComboBox x:Name="CmbCustomer" Height="36" Style="{StaticResource EnterpriseComboBoxStyle}"
-                                      SelectedIndex="0">
-                                <ComboBoxItem Content="أحمد الحمصي"/>
-                                <ComboBoxItem Content="مؤسسة النسيج"/>
-                            </ComboBox>
-                        </StackPanel>
-                    </Grid>
+                    <!-- Header fields — single bar (8 columns) -->
+                    <Border Background="{StaticResource SurfaceAltBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0.9*" MinWidth="88"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1*" MinWidth="96"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1.15*" MinWidth="110"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1*" MinWidth="96"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1.2*" MinWidth="120"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1*" MinWidth="96"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1.05*" MinWidth="100"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="0.95*" MinWidth="88"/>
+                            </Grid.ColumnDefinitions>
 
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="12"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="الخزينة" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <ComboBox Height="36" Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
-                                <ComboBoxItem Content="الخزينة العامة"/>
-                                <ComboBoxItem Content="صندوق جدة"/>
-                            </ComboBox>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="المستودع" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <ComboBox Height="36" Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
-                                <ComboBoxItem Content="مستودع رئيسي"/>
-                                <ComboBoxItem Content="مستودع جدة"/>
-                            </ComboBox>
-                        </StackPanel>
-                        <StackPanel Grid.Column="4">
-                            <TextBlock Text="نوع الدفع" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="3">
-                                <StackPanel Orientation="Horizontal">
-                                    <RadioButton x:Name="BtnCash" Style="{StaticResource InvoiceSegmentBtn}"
-                                                 Content="نقدي" IsChecked="True" Checked="BtnCash_Checked"/>
-                                    <RadioButton x:Name="BtnCredit" Style="{StaticResource InvoiceSegmentBtn}"
-                                                 Content="آجل"/>
-                                </StackPanel>
-                            </Border>
-                            <StackPanel Margin="0,8,0,0"
-                                        Visibility="{Binding IsChecked, ElementName=BtnCredit, Converter={StaticResource BoolVis}}">
-                                <TextBlock Text="دفعة من الفاتورة" Style="{StaticResource InvoiceFieldLabel}"/>
-                                <TextBox x:Name="TxtPartialPayment" Style="{StaticResource EnterpriseInputStyle}"
-                                         Height="36" VerticalContentAlignment="Center"
-                                         Text="0"/>
+                            <!-- 1. تاريخ -->
+                            <StackPanel Grid.Column="0" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="التاريخ" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <DatePicker x:Name="DpDate" SelectedDate="2024-05-17" Height="36"/>
                             </StackPanel>
-                        </StackPanel>
-                        <StackPanel Grid.Column="6">
-                            <TextBlock Text="نوع العملة" Style="{StaticResource InvoiceFieldLabel}"/>
-                            <ComboBox Height="36" Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
-                                <ComboBoxItem Content="دولار ($)"/>
-                                <ComboBoxItem Content="ر.س"/>
-                            </ComboBox>
-                        </StackPanel>
-                    </Grid>
+
+                            <!-- 2. رقم الفاتورة -->
+                            <StackPanel Grid.Column="2" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="رقم الفاتورة" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <TextBox x:Name="TxtInvoiceNumber" Text="INV-2026-0100" IsReadOnly="True"
+                                         Style="{StaticResource EnterpriseInputStyle}" Height="36"
+                                         Background="White"/>
+                            </StackPanel>
+
+                            <!-- 3. العميل -->
+                            <StackPanel Grid.Column="4" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="العميل" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <ComboBox x:Name="CmbCustomer" Height="36"
+                                          Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                    <ComboBoxItem Content="أحمد الحمصي"/>
+                                    <ComboBoxItem Content="مؤسسة النسيج"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- 4. المستودع -->
+                            <StackPanel Grid.Column="6" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="المستودع" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <ComboBox x:Name="CmbWarehouse" Height="36"
+                                          Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                    <ComboBoxItem Content="مستودع رئيسي"/>
+                                    <ComboBoxItem Content="مستودع جدة"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- 5. الحاوية -->
+                            <StackPanel Grid.Column="8" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="الحاوية" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <ComboBox x:Name="CmbContainer" Height="36"
+                                          Style="{StaticResource EnterpriseComboBoxStyle}"
+                                          DisplayMemberPath="Display" IsEditable="False"/>
+                            </StackPanel>
+
+                            <!-- 6. الصندوق -->
+                            <StackPanel Grid.Column="10" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="الصندوق" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <ComboBox x:Name="CmbCashbox" Height="36"
+                                          Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                    <ComboBoxItem Content="الخزينة العامة"/>
+                                    <ComboBoxItem Content="صندوق جدة"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- 7. نوع الدفع -->
+                            <StackPanel Grid.Column="12" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="نوع الدفع" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <Border Background="White" CornerRadius="8" Padding="3" Height="36"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <RadioButton x:Name="BtnCash" Style="{StaticResource InvoiceSegmentBtn}"
+                                                     Content="نقدي" IsChecked="True" Checked="BtnCash_Checked"/>
+                                        <RadioButton x:Name="BtnCredit" Style="{StaticResource InvoiceSegmentBtn}"
+                                                     Content="آجل"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- 8. العملة -->
+                            <StackPanel Grid.Column="14" Style="{StaticResource InvoiceHeaderCell}">
+                                <TextBlock Text="العملة" Style="{StaticResource InvoiceFieldLabel}"/>
+                                <ComboBox x:Name="CmbCurrency" Height="36"
+                                          Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
+                                    <ComboBoxItem Content="دولار ($)"/>
+                                    <ComboBoxItem Content="ر.س"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- دفعة جزئية عند الآجل -->
+                    <Border Margin="0,0,0,8" Padding="12,8"
+                            Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding IsChecked, ElementName=BtnCredit, Converter={StaticResource BoolVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="دفعة من الفاتورة (آجل)"
+                                       VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="#92400E" FontFamily="Segoe UI, Tahoma, Arial"/>
+                            <TextBox Grid.Column="2" x:Name="TxtPartialPayment"
+                                     Style="{StaticResource EnterpriseInputStyle}"
+                                     Height="34" VerticalContentAlignment="Center" Text="0"/>
+                        </Grid>
+                    </Border>
 
                     <StackPanel>
                         <TextBlock Text="ملاحظات" Style="{StaticResource InvoiceFieldLabel}"/>

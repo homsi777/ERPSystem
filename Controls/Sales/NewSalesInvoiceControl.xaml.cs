@@ -1,11 +1,22 @@
+using ERPSystem.Application.Queries.Containers;
+using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Core;
+using ERPSystem.Core.ChinaImport;
+using ERPSystem.Infrastructure.Seed;
 using ERPSystem.Services;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 
 namespace ERPSystem.Controls.Sales
 {
+    public sealed class ContainerPickItem
+    {
+        public Guid Id { get; init; }
+        public string Display { get; init; } = "";
+    }
+
     public class SalesInvoiceLineRow
     {
         public string GoodsType { get; set; } = "";
@@ -25,11 +36,69 @@ namespace ERPSystem.Controls.Sales
         public NewSalesInvoiceControl()
         {
             InitializeComponent();
-            Loaded += (_, _) =>
+            Loaded += OnLoaded;
+        }
+
+        public Guid? SelectedContainerId =>
+            CmbContainer.SelectedItem is ContainerPickItem item ? item.Id : null;
+
+        private async void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= OnLoaded;
+            LoadSampleLines();
+            UpdateStatusBadge();
+            await LoadContainersAsync();
+        }
+
+        private async Task LoadContainersAsync()
+        {
+            var items = new List<ContainerPickItem>();
+
+            if (AppServices.IsInitialized)
             {
-                LoadSampleLines();
-                UpdateStatusBadge();
-            };
+                try
+                {
+                    using var scope = AppServices.CreateScope();
+                    var handler = scope.ServiceProvider.GetRequiredService<GetChinaContainerListHandler>();
+                    var result = await handler.HandleAsync(new GetChinaContainerListQuery
+                    {
+                        CompanyId = DatabaseSeeder.DefaultCompanyId,
+                        BranchId = DatabaseSeeder.DefaultBranchId,
+                        Page = 1,
+                        PageSize = 100
+                    });
+
+                    if (result.IsSuccess && result.Value?.Items.Count > 0)
+                    {
+                        items.AddRange(result.Value.Items.Select(c => new ContainerPickItem
+                        {
+                            Id = c.Id,
+                            Display = string.IsNullOrWhiteSpace(c.SupplierName)
+                                ? c.ContainerNumber
+                                : $"{c.ContainerNumber} — {c.SupplierName}"
+                        }));
+                    }
+                }
+                catch
+                {
+                    // Fall back to sample data below.
+                }
+            }
+
+            if (items.Count == 0)
+            {
+                items.AddRange(ChinaImportSampleData.Generate(20).Select(c => new ContainerPickItem
+                {
+                    Id = Guid.Empty,
+                    Display = string.IsNullOrWhiteSpace(c.SupplierName)
+                        ? c.ContainerNumber
+                        : $"{c.ContainerNumber} — {c.SupplierName}"
+                }));
+            }
+
+            CmbContainer.ItemsSource = items;
+            if (items.Count > 0)
+                CmbContainer.SelectedIndex = 0;
         }
 
         private void LoadSampleLines()
@@ -62,6 +131,12 @@ namespace ERPSystem.Controls.Sales
 
         private void BtnSaveDraft_Click(object sender, RoutedEventArgs e)
         {
+            if (CmbContainer.SelectedItem is not ContainerPickItem)
+            {
+                MockInteractionService.ShowWarning("اختر الحاوية المرتبطة بالفاتورة.", "فاتورة بيع");
+                return;
+            }
+
             if (_lines.Count == 0)
             {
                 MockInteractionService.ShowWarning("أضف صنفاً واحداً على الأقل قبل الحفظ.");
@@ -75,8 +150,9 @@ namespace ERPSystem.Controls.Sales
 
             _status = "بانتظار التفصيل";
             UpdateStatusBadge();
+            var containerLabel = (CmbContainer.SelectedItem as ContainerPickItem)?.Display ?? "—";
             MockInteractionService.ShowSuccess(
-                $"تم حفظ الفاتورة {TxtInvoiceNumber.Text}.\n\nالحالة: {_status}",
+                $"تم حفظ الفاتورة {TxtInvoiceNumber.Text}.\n\nالحاوية: {containerLabel}\nالحالة: {_status}",
                 "تم الإرسال للمستودع");
 
             if (MockInteractionService.Confirm("فتح شاشة تفصيل الأطوال الآن؟", "تفصيل المستودع"))
