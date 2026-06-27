@@ -55,3 +55,25 @@ public sealed class WarehouseStockLowNotification
     public decimal AvailableMeters { get; init; }
     public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
 }
+
+public sealed class CustomerCreatedNotification
+{
+    public Guid CustomerId { get; init; }
+    public string CustomerCode { get; init; } = "";
+    public string CustomerName { get; init; } = "";
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class CustomerUpdatedNotification
+{
+    public Guid CustomerId { get; init; }
+    public string CustomerName { get; init; } = "";
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class CustomerDeactivatedNotification
+{
+    public Guid CustomerId { get; init; }
+    public string CustomerName { get; init; } = "";
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}

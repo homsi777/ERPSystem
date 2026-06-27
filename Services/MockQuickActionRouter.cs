@@ -5,6 +5,7 @@ using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Suppliers;
 using ERPSystem.Core.Workspace;
+using ERPSystem.Services.Customers;
 using System.Windows.Controls;
 
 namespace ERPSystem.Services
@@ -13,6 +14,9 @@ namespace ERPSystem.Services
     {
         public static void Execute(string? actionKey, OperationsCenterContext ctx, TabControl? tabs)
         {
+            if (CustomerActionRouter.TryHandleQuickAction(actionKey, ctx))
+                return;
+
             if (string.IsNullOrEmpty(actionKey))
             {
                 MockInteractionService.ShowComingSoon("هذا الإجراء");
@@ -77,7 +81,7 @@ namespace ERPSystem.Services
                     MockInteractionService.Navigate(AppModule.Sales, "NewReturn");
                     break;
                 case "ws:Statement":
-                    if (ctx.EntityRow is CustomerModel c)
+                    if (ctx.EntityRow is CustomerListRow c)
                         MockInteractionService.OpenCustomerStatement(c);
                     else if (ctx.EntityRow is SupplierModel)
                         WorkspaceWindowManager.Instance.OpenAction(

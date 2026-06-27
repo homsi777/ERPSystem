@@ -1,132 +1,143 @@
+using ERPSystem.Application.DTOs.Customers;
 using ERPSystem.Core;
-using ERPSystem.Core.Customers;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Services;
-using System.Collections;
+using ERPSystem.Services.Customers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace ERPSystem.Controls.Customers
+namespace ERPSystem.Controls.Customers;
+
+public class AccountLedgerRow
 {
-    public class StatementLineRow
+    public DateTime EntryDate { get; init; }
+    public string DocumentTypeDisplay { get; init; } = "";
+    public string DocumentNumber { get; init; } = "";
+    public decimal Debit { get; init; }
+    public decimal Credit { get; init; }
+    public decimal RunningBalance { get; init; }
+    public DocumentType DocumentType { get; init; }
+
+    public string DateDisplay => EntryDate.ToString("yyyy/MM/dd");
+    public string DebitDisplay => Debit > 0 ? Debit.ToString("N2") : "—";
+    public string CreditDisplay => Credit > 0 ? Credit.ToString("N2") : "—";
+    public string BalanceDisplay => RunningBalance.ToString("N2");
+}
+
+public partial class CustomerAccountStatementControl : UserControl
+{
+    private Guid? _customerId;
+    private string _customerName = "";
+    private readonly List<AccountLedgerRow> _allLines = new();
+
+    public CustomerAccountStatementControl()
     {
-        public string GoodsSummary { get; set; } = "";
-        public int Quantity { get; set; }
-        public string Lengths { get; set; } = "";
-        public decimal AvgPrice { get; set; }
-        public decimal InvoiceTotal { get; set; }
-        public string InvoiceNumber { get; set; } = "";
-        public string Date { get; set; } = "";
-        public string Notes { get; set; } = "";
-        public bool IsReturn { get; set; }
+        InitializeComponent();
+        DpFrom.SelectedDate = DateTime.Today.AddMonths(-1);
+        DpTo.SelectedDate = DateTime.Today;
+        Loaded += OnLoaded;
     }
 
-    public class StatementDivider { }
-
-    public partial class CustomerAccountStatementControl : UserControl
+    public void Initialize(Guid customerId, string customerName)
     {
-        private readonly List<StatementLineRow> _allLines = new();
-        private CustomerModel _customer = CustomerSampleData.Generate(1).First();
+        _customerId = customerId;
+        _customerName = customerName;
+        SetCustomerName(customerName);
+    }
 
-        public CustomerAccountStatementControl()
+    public void SetCustomerName(string name)
+    {
+        _customerName = name;
+        TxtTableTitle.Text = $"كشف حساب — {name}";
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        DpFrom.SelectedDateChanged += async (_, _) => await ReloadAsync();
+        DpTo.SelectedDateChanged += async (_, _) => await ReloadAsync();
+        TxtSearch.TextChanged += (_, _) => ApplyFilters();
+
+        if (_customerId.HasValue)
+            await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_customerId is not Guid id || !AppServices.IsInitialized)
+            return;
+
+        var result = await CustomerUiService.Instance.GetStatementAsync(
+            id, DpFrom.SelectedDate, DpTo.SelectedDate);
+
+        if (!ApplicationResultPresenter.Present(result))
+            return;
+
+        var dto = result.Value!;
+        SetCustomerName(dto.CustomerName);
+        _allLines.Clear();
+        _allLines.AddRange(dto.Lines.Select(l => new AccountLedgerRow
         {
-            InitializeComponent();
-            Loaded += (_, _) =>
-            {
-                SeedSampleData();
-                CmbCustomer.SelectionChanged += (_, _) => OnCustomerChanged();
-                DpFrom.SelectedDateChanged += (_, _) => ApplyFilters();
-                DpTo.SelectedDateChanged += (_, _) => ApplyFilters();
-                DpClaimDate.SelectedDateChanged += (_, _) => ApplyFilters();
-                ApplyFilters();
-            };
+            EntryDate = l.EntryDate,
+            DocumentType = l.DocumentType,
+            DocumentTypeDisplay = MapDocumentType(l.DocumentType),
+            DocumentNumber = l.DocumentNumber,
+            Debit = l.Debit,
+            Credit = l.Credit,
+            RunningBalance = l.RunningBalance
+        }));
+
+        TxtOpeningBalance.Text = $"{dto.OpeningBalance:N2} ر.س";
+        TxtClosingBalance.Text = $"{dto.ClosingBalance:N2} ر.س";
+        TxtTotalDebit.Text = $"{_allLines.Sum(x => x.Debit):N2} ر.س";
+        TxtTotalCredit.Text = $"{_allLines.Sum(x => x.Credit):N2} ر.س";
+
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        var term = TxtSearch?.Text?.Trim() ?? "";
+        IEnumerable<AccountLedgerRow> rows = _allLines;
+
+        if (!string.IsNullOrEmpty(term))
+        {
+            rows = rows.Where(r =>
+                r.DocumentNumber.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                r.DocumentTypeDisplay.Contains(term, StringComparison.OrdinalIgnoreCase));
         }
 
-        public void SetCustomerName(string name)
-        {
-            TxtTableTitle.Text = $"كشف حساب — {name}";
-        }
+        LinesGrid.ItemsSource = rows.ToList();
+    }
 
-        private void SeedSampleData()
-        {
-            _allLines.Clear();
-            _allLines.AddRange(new[]
-            {
-                new StatementLineRow { GoodsSummary = "كتان F12 — رمادي", Quantity = 10, Lengths = "2,400 يارد", AvgPrice = 12.5m, InvoiceTotal = 30000, InvoiceNumber = "SINV-1026", Date = "2026-06-01", Notes = "تسليم جزئي" },
-                new StatementLineRow { GoodsSummary = "كتان F12 — أبيض", Quantity = 8, Lengths = "1,920 يارد", AvgPrice = 12.0m, InvoiceTotal = 23040, InvoiceNumber = "SINV-1027", Date = "2026-06-05" },
-                new StatementLineRow { GoodsSummary = "شيفون S8 — بيج", Quantity = 6, Lengths = "1,440 يارد", AvgPrice = 11.5m, InvoiceTotal = 16560, InvoiceNumber = "SINV-1028", Date = "2026-06-10", Notes = "خصم 2%" },
-                new StatementLineRow { GoodsSummary = "سند مرتجع — كتان F12", Quantity = 2, Lengths = "480 يارد", AvgPrice = 12.5m, InvoiceTotal = -6000, InvoiceNumber = "SRV-1023", Date = "2026-06-12", Notes = "مرتجع جزئي", IsReturn = true },
-                new StatementLineRow { GoodsSummary = "كتان F12 — أزرق", Quantity = 12, Lengths = "2,880 يارد", AvgPrice = 12.8m, InvoiceTotal = 36864, InvoiceNumber = "SINV-1029", Date = "2026-06-14" },
-                new StatementLineRow { GoodsSummary = "كتان F12 — أسود", Quantity = 5, Lengths = "1,200 يارد", AvgPrice = 13.0m, InvoiceTotal = 15600, InvoiceNumber = "SINV-1030", Date = "2026-06-16", Notes = "آجل — دفعة $1,200" },
-            });
-        }
+    private static string MapDocumentType(DocumentType type) => type switch
+    {
+        DocumentType.SalesInvoice => "فاتورة بيع",
+        DocumentType.ReceiptVoucher => "سند قبض",
+        DocumentType.PaymentVoucher => "سند دفع",
+        _ => type.ToString()
+    };
 
-        private void OnCustomerChanged()
-        {
-            if (CmbCustomer.SelectedItem is ComboBoxItem item)
-            {
-                var text = item.Content?.ToString() ?? "محل الأناقة";
-                var name = text.Split('—')[0].Trim();
-                SetCustomerName(name);
-            }
-            ApplyFilters();
-        }
+    private void BtnReceipt_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
 
-        private void ApplyFilters()
-        {
-            var from = DpFrom.SelectedDate ?? DateTime.MinValue;
-            var to = DpTo.SelectedDate ?? DateTime.MaxValue;
+    private void BtnPrint_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "طباعة");
 
-            var filtered = _allLines.Where(l =>
-                DateTime.TryParse(l.Date, out var d) && d.Date >= from.Date && d.Date <= to.Date).ToList();
+    private void BtnPdf_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "PDF");
 
-            var items = new ArrayList();
-            StatementLineRow? prev = null;
-            foreach (var row in filtered)
-            {
-                if (prev != null && row.IsReturn && !prev.IsReturn)
-                    items.Add(new StatementDivider());
-                items.Add(row);
-                prev = row;
-            }
+    private void BtnExcel_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "Excel");
 
-            LinesList.ItemsSource = items;
-        }
+    private void DocumentNumber_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.DataContext is not AccountLedgerRow row)
+            return;
 
-        private void BtnReceipt_Click(object sender, RoutedEventArgs e)
-        {
+        if (row.DocumentType == DocumentType.SalesInvoice)
+            MockInteractionService.OpenInvoiceOperationsCenter(row.DocumentNumber);
+        else if (row.DocumentType == DocumentType.ReceiptVoucher)
             MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
-            MockInteractionService.ShowSuccess("تم فتح سند قبض تجريبي.", "سند قبض");
-        }
-
-        private void BtnReturn_Click(object sender, RoutedEventArgs e)
-        {
-            MockInteractionService.Navigate(AppModule.Sales, "NewReturn");
-            MockInteractionService.ShowSuccess("تم فتح سند مرتجع تجريبي.", "سند مرتجع");
-        }
-
-        private void BtnServices_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowComingSoon("خدمات إضافية على كشف الحساب");
-
-        private void BtnPrint_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "طباعة");
-
-        private void BtnPdf_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "PDF");
-
-        private void BtnExcel_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "Excel");
-
-        private void BtnReconcile_Click(object sender, RoutedEventArgs e)
-        {
-            if (MockInteractionService.Confirm("مطابقة كشف الحساب مع سجلات العميل؟", "مطابقة الكشف"))
-                MockInteractionService.ShowSuccess("تمت المطابقة بنجاح (تجريبي).", "مطابقة الكشف");
-        }
-
-        private void InvoiceNumber_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is FrameworkElement fe && fe.Tag is string num && !num.StartsWith("SRV"))
-                MockInteractionService.OpenInvoiceOperationsCenter(num);
-        }
     }
 }

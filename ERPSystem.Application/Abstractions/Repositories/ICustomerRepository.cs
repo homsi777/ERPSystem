@@ -9,6 +9,13 @@ public interface ICustomerRepository
         Guid companyId,
         string? search = null,
         CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<CustomerAggregate> Items, int TotalCount)> GetPagedAsync(
+        Guid companyId,
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
     Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
 }

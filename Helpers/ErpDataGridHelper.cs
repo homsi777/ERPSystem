@@ -68,6 +68,6 @@ namespace ERPSystem.Helpers
             return s;
         }
 
-        private static Brush Br(string key) => (Brush)Application.Current.Resources[key]!;
+        private static Brush Br(string key) => (Brush)System.Windows.Application.Current.Resources[key]!;
     }
 }

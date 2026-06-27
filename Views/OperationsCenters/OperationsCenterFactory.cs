@@ -90,82 +90,22 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildCustomer(WorkspaceOpenRequest req, string initialTab)
         {
-            var c = req.EntityRow as CustomerModel ?? CustomerSampleData.Generate(1).First();
-            var accent = Br("AccentCustomersBrush");
-            return OperationsCenterShell.Build(new OperationsCenterSpec
+            if (req.EntityRow is CustomerListRow row)
             {
-                Title = c.NameAr,
-                Subtitle = "مركز عمليات العميل — جملة أقمشة",
-                Breadcrumb = "ERP PRO › العملاء › مركز العمليات",
-                IconGlyph = "\uE716",
-                Accent = accent,
-                AccentLight = Br("PrimaryVeryLightBrush"),
-                StatusBadge = c.Status == CustomerStatus.Active ? "نشط" : "موقوف",
-                StatusBadgeBackground = c.Status == CustomerStatus.Active ? Br("SuccessBgBrush") : Br("WarningBgBrush"),
-                StatusBadgeForeground = c.Status == CustomerStatus.Active ? Br("SuccessBrush") : Br("WarningBrush"),
-                HeaderFields =
-                [
-                    ("كود العميل", c.Code),
-                    ("حد الائتمان", $"{c.CreditLimit:N0} ر.س"),
-                    ("الرصيد الحالي", $"{c.Balance:N0} ر.س"),
-                    ("عدد الفواتير", c.TotalInvoices.ToString()),
-                    ("الهاتف", c.Phone),
-                    ("المنطقة", c.Region),
-                    ("آخر معاملة", "2026/06/26"),
-                    ("آخر دفعة", "2026/06/20"),
-                ],
-                Kpis =
-                [
-                    ("الرصيد الحالي", $"{c.Balance:N0} ر.س", "\uE8C1"),
-                    ("إجمالي المبيعات", "248,500 ر.س", "\uE8F1"),
-                    ("فواتير غير مسددة", "3", "\uE9F9"),
-                    ("إجمالي التحصيل", "185,000 ر.س", "\uE7BF"),
-                    ("حاويات محجوزة", "2", "\uE7BF"),
-                    ("آخر شراء", "2026/06/15", "\uE787"),
-                ],
-                Tabs =
-                [
-                    Tab("Overview", "نظرة عامة", OverviewCustomer(c)),
-                    Tab("Statement", "كشف الحساب", StatementTabContent(c.NameAr)),
-                    Tab("Invoices", "الفواتير", PlaceholderUi.MockGrid(new[] {
-                        new { رقم = "INV-1045", التاريخ = "2026/06/26", المبلغ = "32,000", الحالة = "معتمدة" },
-                        new { رقم = "INV-1040", التاريخ = "2026/06/20", المبلغ = "18,500", الحالة = "بانتظار التفصيل" },
-                    })),
-                    Tab("Receipts", "سندات القبض", PlaceholderUi.MockGrid(new[] {
-                        new { رقم = "RCP-0042", التاريخ = "2026/06/20", المبلغ = "25,000", الحالة = "مرحّل" },
-                    })),
-                    Tab("Payments", "سندات الدفع", PlaceholderUi.TabContent("سندات الدفع")),
-                    Tab("Reservations", "حجوزات الحاويات", PlaceholderUi.MockGrid(new[] {
-                        new { حاوية = "CN-2026-001", الأثواب = 12, الحالة = "محجوز" },
-                    })),
-                    Tab("History", "سجل المبيعات", PlaceholderUi.MockGrid(new[] {
-                        new { التاريخ = "2026/06/26", القماش = "كولومبيا", الأمتار = 720, المبلغ = "32,400" },
-                    })),
-                    Tab("Notes", "ملاحظات", NotesEditor("ملاحظات التواصل مع العميل")),
-                    Tab("Documents", "المستندات", PlaceholderUi.DatabasePhase("المستندات والمرفقات")),
-                    Tab("Attachments", "المرفقات", PlaceholderUi.DatabasePhase("المرفقات")),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("عميل")),
-                ],
-                QuickActions =
-                [
-                    Q("فاتورة جديدة", true, null, actionKey: "ws:NewInvoice"),
-                    Q("سند قبض", false, "Receipts", actionKey: "tab:Receipts"),
-                    Q("طباعة كشف", false, null, actionKey: "preview:كشف حساب العميل"),
-                    Q("PDF", false, null, actionKey: "preview:كشف حساب العميل"),
-                    Q("Excel", false, null, actionKey: "preview:كشف حساب العميل"),
-                    Q("اتصال", false, null, actionKey: "comingsoon:Call"),
-                    Q("تعديل", false, null, actionKey: "form:EditCustomer"),
-                    Q("تعطيل", false, null, destructive: true, confirm: true, actionKey: "success:تم تعطيل العميل (تجريبي)"),
-                ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Statement", "Invoices", "Receipts", "Payments", "Reservations", "History", "Notes", "Documents", "Attachments", "Timeline"),
-                Context = new OperationsCenterContext
+                var ctrl = new CustomerOperationsCenterControl();
+                ctrl.Initialize(row.Id, initialTab);
+                return ctrl;
+            }
+
+            return new UserControl
+            {
+                Content = new TextBlock
                 {
-                    EntityType = EntityType.Customer,
-                    EntityRow = c,
-                    SourceModule = AppModule.Customers,
-                    Title = c.NameAr
+                    Text = "لم يتم تحديد عميل.",
+                    Margin = new Thickness(24),
+                    FontSize = 14
                 }
-            });
+            };
         }
 
         private static UserControl BuildSupplier(WorkspaceOpenRequest req, string initialTab)
@@ -674,10 +614,17 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UIElement BuildAccountStatement(WorkspaceOpenRequest req)
         {
+            if (req.EntityRow is CustomerListRow row)
+            {
+                var ctrl = new CustomerAccountStatementControl();
+                ctrl.Initialize(row.Id, row.NameAr);
+                return ctrl;
+            }
+
             var name = EntityDisplayNameResolver.Resolve(req.EntityRow, req.EntityType);
-            var ctrl = new CustomerAccountStatementControl();
-            ctrl.SetCustomerName(name);
-            return ctrl;
+            var fallback = new CustomerAccountStatementControl();
+            fallback.SetCustomerName(name);
+            return fallback;
         }
 
         private static UIElement BuildDetailingPanel(WorkspaceOpenRequest req)
@@ -793,6 +740,6 @@ namespace ERPSystem.Views.OperationsCenters
             bool destructive = false, bool confirm = false, string? actionKey = null) =>
             new() { Label = label, Primary = primary, TabKey = tab, Destructive = destructive, RequiresConfirmation = confirm, ActionKey = actionKey };
 
-        private static SolidColorBrush Br(string k) => (SolidColorBrush)Application.Current.Resources[k]!;
+        private static SolidColorBrush Br(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
     }
 }

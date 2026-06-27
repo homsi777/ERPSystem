@@ -32,6 +32,35 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         return entities.Select(CustomerMapper.ToAggregate).ToList();
     }
 
+    public async Task<(IReadOnlyList<CustomerAggregate> Items, int TotalCount)> GetPagedAsync(
+        Guid companyId,
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Customers.AsNoTracking()
+            .Where(c => c.CompanyId == companyId && c.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(c =>
+                c.Code.Contains(term) ||
+                c.NameAr.Contains(term) ||
+                c.NameEn.Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var entities = await query
+            .OrderBy(c => c.Code)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (entities.Select(CustomerMapper.ToAggregate).ToList(), totalCount);
+    }
+
     public async Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default)
     {
         await context.Customers.AddAsync(CustomerMapper.ToEntity(aggregate), cancellationToken);

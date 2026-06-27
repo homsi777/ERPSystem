@@ -34,6 +34,9 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
     public Task<string> NextJournalEntryNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
         NextAsync(branchId, "JournalEntry", cancellationToken);
 
+    public Task<string> NextCustomerCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "Customer", cancellationToken);
+
     private async Task<string> NextAsync(Guid branchId, string documentType, CancellationToken cancellationToken)
     {
         var counter = await context.DocumentCounters

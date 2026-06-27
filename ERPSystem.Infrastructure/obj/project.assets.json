@@ -1154,7 +1154,8 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
-          "ERPSystem.Domain": "1.0.0"
+          "ERPSystem.Domain": "1.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6"
         },
         "compile": {
           "bin/placeholder/ERPSystem.Application.dll": {}

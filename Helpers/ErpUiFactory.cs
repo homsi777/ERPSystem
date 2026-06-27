@@ -237,9 +237,9 @@ namespace ERPSystem.Helpers
         };
 
         private static System.Windows.Media.Effects.Effect? CardEffect() =>
-            Application.Current.Resources["CardShadow"] as System.Windows.Media.Effects.Effect;
+            System.Windows.Application.Current.Resources["CardShadow"] as System.Windows.Media.Effects.Effect;
 
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
-        private static Style S(string k) => (Style)Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
+        private static Style S(string k) => (Style)System.Windows.Application.Current.Resources[k]!;
     }
 }

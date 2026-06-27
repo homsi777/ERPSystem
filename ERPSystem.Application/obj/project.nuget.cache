@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "VPoh0ssbGW4=",
+  "dgSpecHash": "hKTYD022V0U=",
   "success": true,
   "projectFilePath": "C:\\Users\\Homsi\\Desktop\\POS ERP C#\\ERPSystem\\ERPSystem.Application\\ERPSystem.Application.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\Homsi\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.6\\microsoft.extensions.dependencyinjection.abstractions.9.0.6.nupkg.sha512"
+  ],
   "logs": []
 }

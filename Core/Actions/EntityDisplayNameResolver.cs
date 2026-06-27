@@ -18,6 +18,9 @@ namespace ERPSystem.Core.Actions
 
             return entityType switch
             {
+                EntityType.Customer when row is CustomerListRow c =>
+                    string.IsNullOrWhiteSpace(c.NameAr) ? c.Code : c.NameAr,
+
                 EntityType.Customer when row is CustomerModel c =>
                     string.IsNullOrWhiteSpace(c.NameAr) ? c.Code : c.NameAr,
 
@@ -61,6 +64,7 @@ namespace ERPSystem.Core.Actions
 
             return entityType switch
             {
+                EntityType.Customer when row is CustomerListRow c => c.Code,
                 EntityType.Customer when row is CustomerModel c => c.Code,
                 EntityType.SalesInvoice when row is SalesInvoice inv => inv.InvoiceNumber,
                 EntityType.SalesInvoice when row is Views.Sales.FabricSalesInvoiceRow fr => fr.InvoiceNumber,

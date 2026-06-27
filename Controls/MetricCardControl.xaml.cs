@@ -78,16 +78,16 @@ namespace ERPSystem.Controls
                 switch (TrendDirection)
                 {
                     case MetricTrend.Up:
-                        TrendBorder.Background = (SolidColorBrush)Application.Current.Resources["SuccessBgBrush"]!;
-                        TxtTrend.Foreground = (SolidColorBrush)Application.Current.Resources["SuccessBrush"]!;
+                        TrendBorder.Background = (SolidColorBrush)System.Windows.Application.Current.Resources["SuccessBgBrush"]!;
+                        TxtTrend.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["SuccessBrush"]!;
                         break;
                     case MetricTrend.Down:
-                        TrendBorder.Background = (SolidColorBrush)Application.Current.Resources["DangerBgBrush"]!;
-                        TxtTrend.Foreground = (SolidColorBrush)Application.Current.Resources["DangerBrush"]!;
+                        TrendBorder.Background = (SolidColorBrush)System.Windows.Application.Current.Resources["DangerBgBrush"]!;
+                        TxtTrend.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["DangerBrush"]!;
                         break;
                     default:
-                        TrendBorder.Background = (SolidColorBrush)Application.Current.Resources["BorderLightBrush"]!;
-                        TxtTrend.Foreground = (SolidColorBrush)Application.Current.Resources["TextMutedBrush"]!;
+                        TrendBorder.Background = (SolidColorBrush)System.Windows.Application.Current.Resources["BorderLightBrush"]!;
+                        TxtTrend.Foreground = (SolidColorBrush)System.Windows.Application.Current.Resources["TextMutedBrush"]!;
                         break;
                 }
             }

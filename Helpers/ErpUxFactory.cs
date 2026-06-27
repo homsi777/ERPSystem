@@ -81,7 +81,7 @@ namespace ERPSystem.Helpers
                 var btn = new Button
                 {
                     Content = label,
-                    Style = (Style)Application.Current.Resources[primary ? "PrimaryButtonStyle" : "SecondaryButtonStyle"]!,
+                    Style = (Style)System.Windows.Application.Current.Resources[primary ? "PrimaryButtonStyle" : "SecondaryButtonStyle"]!,
                     Height = ErpDesignTokens.ControlHeight,
                     Padding = new Thickness(10, 0, 10, 0),
                     Margin = new Thickness(0, 0, 6, 0),
@@ -142,7 +142,7 @@ namespace ERPSystem.Helpers
             return ErpUiFactory.Card(grid, new Thickness(0, 0, 0, 12));
         }
 
-        private static Brush B(string key) => (Brush)Application.Current.Resources[key]!;
-        private static Style S(string key) => (Style)Application.Current.Resources[key]!;
+        private static Brush B(string key) => (Brush)System.Windows.Application.Current.Resources[key]!;
+        private static Style S(string key) => (Style)System.Windows.Application.Current.Resources[key]!;
     }
 }

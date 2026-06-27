@@ -260,8 +260,8 @@ namespace ERPSystem.Controls.OperationsCenter
             return ErpUiFactory.Card(bar, new Thickness(0, 0, 0, ErpDesignTokens.SpaceMd));
         }
 
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
-        private static Style S(string k) => (Style)Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
+        private static Style S(string k) => (Style)System.Windows.Application.Current.Resources[k]!;
         private static FontFamily Ff() => ErpDesignTokens.UiFont;
     }
 }

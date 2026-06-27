@@ -60,17 +60,15 @@ public sealed class GetCustomerListHandler(ICustomerRepository customerRepositor
         GetCustomerListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var customers = await customerRepository.GetListAsync(query.CompanyId, query.Search, cancellationToken);
-        var items = customers
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(CustomerMapper.ToListDto)
-            .ToList();
+        var (customers, totalCount) = await customerRepository.GetPagedAsync(
+            query.CompanyId, query.Search, query.Page, query.PageSize, cancellationToken);
+
+        var items = customers.Select(CustomerMapper.ToListDto).ToList();
 
         return ApplicationResult<PagedResult<CustomerListDto>>.Success(new PagedResult<CustomerListDto>
         {
             Items = items,
-            TotalCount = customers.Count,
+            TotalCount = totalCount,
             Page = query.Page,
             PageSize = query.PageSize
         });
@@ -108,7 +106,10 @@ public sealed class GetCustomerOperationsCenterHandler(
     }
 }
 
-public sealed class GetCustomerStatementHandler(ICustomerRepository customerRepository)
+public sealed class GetCustomerStatementHandler(
+    ICustomerRepository customerRepository,
+    ISalesInvoiceRepository invoiceRepository,
+    IReceiptVoucherRepository receiptRepository)
     : IQueryHandler<GetCustomerStatementQuery, ApplicationResult<CustomerStatementDto>>
 {
     public async Task<ApplicationResult<CustomerStatementDto>> HandleAsync(
@@ -119,15 +120,76 @@ public sealed class GetCustomerStatementHandler(ICustomerRepository customerRepo
         if (aggregate is null)
             return ApplicationResult<CustomerStatementDto>.NotFound("Customer not found.");
 
+        var from = query.FromDate?.Date ?? DateTime.MinValue;
+        var to = query.ToDate?.Date.AddDays(1).AddTicks(-1) ?? DateTime.MaxValue;
+
+        var invoices = await invoiceRepository.GetListAsync(
+            aggregate.Customer.CompanyId,
+            customerId: query.CustomerId,
+            cancellationToken: cancellationToken);
+
+        var receipts = await receiptRepository.GetListAsync(
+            aggregate.Customer.CompanyId,
+            customerId: query.CustomerId,
+            cancellationToken: cancellationToken);
+
+        var rawLines = new List<(DateTime Date, DocumentType Type, string Number, decimal Debit, decimal Credit)>();
+
+        foreach (var inv in invoices.Where(i =>
+            i.Status >= SalesInvoiceStatus.Approved &&
+            i.InvoiceDate >= from && i.InvoiceDate <= to))
+        {
+            rawLines.Add((inv.InvoiceDate, DocumentType.SalesInvoice, inv.InvoiceNumber.Value, inv.GrandTotal.Amount, 0));
+        }
+
+        foreach (var rv in receipts.Where(r =>
+            r.Status == VoucherStatus.Posted &&
+            r.VoucherDate >= from && r.VoucherDate <= to))
+        {
+            rawLines.Add((rv.VoucherDate, DocumentType.ReceiptVoucher, rv.VoucherNumber, 0, rv.Amount.Amount));
+        }
+
+        var sorted = rawLines.OrderBy(l => l.Date).ThenBy(l => l.Number).ToList();
+        var running = 0m;
+        var lines = new List<CustomerStatementLineDto>();
+        foreach (var line in sorted)
+        {
+            running = running + line.Debit - line.Credit;
+            lines.Add(new CustomerStatementLineDto
+            {
+                EntryDate = line.Date,
+                DocumentType = line.Type,
+                DocumentNumber = line.Number,
+                Debit = line.Debit,
+                Credit = line.Credit,
+                RunningBalance = running
+            });
+        }
+
         var dto = new CustomerStatementDto
         {
             CustomerId = aggregate.Customer.Id,
             CustomerName = aggregate.Customer.NameAr,
             OpeningBalance = 0,
             ClosingBalance = aggregate.Customer.Balance.Amount,
-            Lines = []
+            Lines = lines
         };
 
         return ApplicationResult<CustomerStatementDto>.Success(dto);
+    }
+}
+
+public sealed class GetCustomerDetailsHandler(ICustomerRepository customerRepository)
+    : IQueryHandler<GetCustomerDetailsQuery, ApplicationResult<CustomerDetailsDto>>
+{
+    public async Task<ApplicationResult<CustomerDetailsDto>> HandleAsync(
+        GetCustomerDetailsQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var aggregate = await customerRepository.GetByIdAsync(query.CustomerId, cancellationToken);
+        if (aggregate is null)
+            return ApplicationResult<CustomerDetailsDto>.NotFound("Customer not found.");
+
+        return ApplicationResult<CustomerDetailsDto>.Success(CustomerMapper.ToDetailsDto(aggregate));
     }
 }

@@ -54,7 +54,7 @@ namespace ERPSystem.Helpers
         public static UIElement MockGrid(object[] rows) =>
             ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows));
 
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
         private static FontFamily Ff() => new("Segoe UI, Tahoma, Arial");
     }
 }

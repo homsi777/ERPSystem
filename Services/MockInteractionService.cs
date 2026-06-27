@@ -80,16 +80,28 @@ namespace ERPSystem.Services
                 EntityActionId.InvoiceView, EntityType.SalesInvoice, row, AppModule.Sales);
         }
 
-        public static void OpenCustomerStatement(CustomerModel? customer = null)
+        public static void OpenCustomerStatement(CustomerListRow? customer = null)
         {
-            customer ??= CustomerSampleData.Generate(1).First();
+            if (customer is null)
+            {
+                MockInteractionService.ShowWarning("اختر عميلاً من القائمة أولاً.", "كشف حساب");
+                MockInteractionService.Navigate(AppModule.Customers, "List");
+                return;
+            }
+
             WorkspaceWindowManager.Instance.OpenAction(
                 EntityActionId.CustomerStatement, EntityType.Customer, customer, AppModule.Customers);
         }
 
-        public static void OpenCustomerOperationsCenter(CustomerModel? customer = null)
+        public static void OpenCustomerOperationsCenter(CustomerListRow? customer = null)
         {
-            customer ??= CustomerSampleData.Generate(1).First();
+            if (customer is null)
+            {
+                MockInteractionService.ShowWarning("اختر عميلاً من القائمة أولاً.", "مركز العمليات");
+                MockInteractionService.Navigate(AppModule.Customers, "List");
+                return;
+            }
+
             WorkspaceWindowManager.Instance.OpenAction(
                 EntityActionId.OpenOperationsCenter, EntityType.Customer, customer, AppModule.Customers);
         }

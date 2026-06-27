@@ -153,7 +153,7 @@ namespace ERPSystem.Shell
         {
             return new Button
             {
-                Style = (Style)Application.Current.Resources["TopNavItemButtonStyle"]!,
+                Style = (Style)System.Windows.Application.Current.Resources["TopNavItemButtonStyle"]!,
                 Content = BuildNavLabel(label, icon, hasDropdown),
                 Tag = module,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -202,7 +202,7 @@ namespace ERPSystem.Shell
                     Text = "\uE70D",
                     FontFamily = ErpDesignTokens.IconFont,
                     FontSize = 8,
-                    Foreground = (Brush)Application.Current.Resources["NavBarTextBrush"]!,
+                    Foreground = (Brush)System.Windows.Application.Current.Resources["NavBarTextBrush"]!,
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(3, 2, 0, 0),
                     Opacity = 0.85
@@ -215,7 +215,7 @@ namespace ERPSystem.Shell
 
         private Border BuildSimpleDropdown(Section[] sections)
         {
-            var outer = new Border { Style = (Style)Application.Current.Resources["DropdownCardStyle"]! };
+            var outer = new Border { Style = (Style)System.Windows.Application.Current.Resources["DropdownCardStyle"]! };
             outer.CornerRadius = new CornerRadius(8);
             var stack = new StackPanel { MinWidth = 220 };
             outer.Child = stack;
@@ -228,7 +228,7 @@ namespace ERPSystem.Shell
         {
             var outer = new Border
             {
-                Style = (Style)Application.Current.Resources["DropdownCardStyle"]!,
+                Style = (Style)System.Windows.Application.Current.Resources["DropdownCardStyle"]!,
                 MinWidth = 440,
                 CornerRadius = new CornerRadius(8)
             };
@@ -241,7 +241,7 @@ namespace ERPSystem.Shell
             var divider = new Border
             {
                 Width = 1,
-                Background = (SolidColorBrush)Application.Current.Resources["BorderLightBrush"]!,
+                Background = (SolidColorBrush)System.Windows.Application.Current.Resources["BorderLightBrush"]!,
                 Margin = new Thickness(4, 8, 4, 8)
             };
             Grid.SetColumn(divider, 1);
@@ -267,7 +267,7 @@ namespace ERPSystem.Shell
                 parent.Children.Add(new TextBlock
                 {
                     Text = loc[section.TitleKey].ToUpperInvariant(),
-                    Style = (Style)Application.Current.Resources["DropdownSectionHeaderStyle"]!
+                    Style = (Style)System.Windows.Application.Current.Resources["DropdownSectionHeaderStyle"]!
                 });
             }
 
@@ -279,8 +279,8 @@ namespace ERPSystem.Shell
         {
             var loc = LocalizationManager.Instance;
             var style = item.Highlighted
-                ? (Style)Application.Current.Resources["DropdownSubItemHighlightStyle"]!
-                : (Style)Application.Current.Resources["DropdownSubItemStyle"]!;
+                ? (Style)System.Windows.Application.Current.Resources["DropdownSubItemHighlightStyle"]!
+                : (Style)System.Windows.Application.Current.Resources["DropdownSubItemStyle"]!;
 
             var sp = new StackPanel { Orientation = Orientation.Horizontal };
             sp.Children.Add(new TextBlock
@@ -291,8 +291,8 @@ namespace ERPSystem.Shell
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 10, 0),
                 Foreground = item.Highlighted
-                    ? (SolidColorBrush)Application.Current.Resources["PrimaryBrush"]!
-                    : (SolidColorBrush)Application.Current.Resources["TextSecondaryBrush"]!,
+                    ? (SolidColorBrush)System.Windows.Application.Current.Resources["PrimaryBrush"]!
+                    : (SolidColorBrush)System.Windows.Application.Current.Resources["TextSecondaryBrush"]!,
                 Width = 20,
                 TextAlignment = TextAlignment.Center
             });
@@ -342,8 +342,8 @@ namespace ERPSystem.Shell
 
         private static void ApplyActiveVisual(Button btn, bool isActive)
         {
-            var activeText = (SolidColorBrush)Application.Current.Resources["NavBarActiveTextBrush"]!;
-            var mutedText = (SolidColorBrush)Application.Current.Resources["NavBarTextBrush"]!;
+            var activeText = (SolidColorBrush)System.Windows.Application.Current.Resources["NavBarActiveTextBrush"]!;
+            var mutedText = (SolidColorBrush)System.Windows.Application.Current.Resources["NavBarTextBrush"]!;
 
             btn.Foreground = isActive ? activeText : mutedText;
             btn.FontWeight = isActive ? FontWeights.SemiBold : FontWeights.Normal;
@@ -351,7 +351,7 @@ namespace ERPSystem.Shell
 
             if (btn.Template.FindName("BgLayer", btn) is Border bg)
                 bg.Background = isActive
-                    ? (Brush)Application.Current.Resources["NavBarActiveBrush"]!
+                    ? (Brush)System.Windows.Application.Current.Resources["NavBarActiveBrush"]!
                     : Brushes.Transparent;
 
             if (btn.Template.FindName("ActiveBar", btn) is Border bar)
@@ -392,7 +392,7 @@ namespace ERPSystem.Shell
                 var btn = new Button
                 {
                     Content = label,
-                    Style = (Style)Application.Current.Resources["DropdownSubItemStyle"]!,
+                    Style = (Style)System.Windows.Application.Current.Resources["DropdownSubItemStyle"]!,
                     HorizontalContentAlignment = HorizontalAlignment.Stretch
                 };
                 var captured = def;
@@ -420,7 +420,7 @@ namespace ERPSystem.Shell
                 AllowsTransparency = true,
                 Child = new Border
                 {
-                    Style = (Style)Application.Current.Resources["DropdownCardStyle"]!,
+                    Style = (Style)System.Windows.Application.Current.Resources["DropdownCardStyle"]!,
                     CornerRadius = new CornerRadius(8),
                     Child = stack
                 },

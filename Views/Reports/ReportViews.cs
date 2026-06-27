@@ -101,9 +101,9 @@ namespace ERPSystem.Views.Reports
             }
         }, new Thickness(0, 0, 12, 12));
 
-        private static SolidColorBrush B(string k) => (SolidColorBrush)Application.Current.Resources[k]!;
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
-        private static Style S(string k) => (Style)Application.Current.Resources[k]!;
+        private static SolidColorBrush B(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
+        private static Style S(string k) => (Style)System.Windows.Application.Current.Resources[k]!;
         private static UserControl Wrap(UIElement c) => new() { Content = c, Background = Br("AppBgBrush") as SolidColorBrush };
     }
 }

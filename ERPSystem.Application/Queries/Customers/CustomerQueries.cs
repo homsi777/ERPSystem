@@ -1,5 +1,10 @@
 namespace ERPSystem.Application.Queries.Customers;
 
+public sealed class GetCustomerDetailsQuery
+{
+    public Guid CustomerId { get; init; }
+}
+
 public sealed class GetCustomerListQuery
 {
     public Guid CompanyId { get; init; }

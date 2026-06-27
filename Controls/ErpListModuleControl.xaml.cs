@@ -19,6 +19,7 @@ namespace ERPSystem.Controls
         private List<object>? _allItems;
         private string _emptyMessage = "لا توجد سجلات";
         private string? _emptyAction;
+        private bool _serverSideSearch;
 
         public ErpListModuleControl()
         {
@@ -76,6 +77,16 @@ namespace ERPSystem.Controls
 
         public void SetSearchMatcher(Func<object, string, bool> matcher) => _searchMatcher = matcher;
 
+        public void EnableServerSideSearch() => _serverSideSearch = true;
+
+        public void SetPrimaryButtonEnabled(bool enabled) => BtnPrimary.IsEnabled = enabled;
+
+        public void SetLoadingState(bool isLoading)
+        {
+            MainGrid.IsEnabled = !isLoading;
+            TxtFilterSummary.Text = isLoading ? "جاري التحميل..." : "";
+        }
+
         public void BindData(IEnumerable<object> items)
         {
             _allItems = items.ToList();
@@ -113,7 +124,8 @@ namespace ERPSystem.Controls
         private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
             SearchChanged?.Invoke(this, TxtSearch.Text);
-            ApplyFilters();
+            if (!_serverSideSearch)
+                ApplyFilters();
         }
 
         private void UpdateEmptyState(int count)

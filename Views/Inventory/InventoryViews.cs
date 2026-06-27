@@ -171,9 +171,9 @@ namespace ERPSystem.Views.Inventory
         private static void AddCol(DataGrid g, string h, string p, object w, string? fmt = null)
             => ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
 
-        private static SolidColorBrush B(string k) => (SolidColorBrush)Application.Current.Resources[k]!;
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
-        private static Style S(string k) => (Style)Application.Current.Resources[k]!;
+        private static SolidColorBrush B(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
+        private static Style S(string k) => (Style)System.Windows.Application.Current.Resources[k]!;
         private static UserControl Wrap(UIElement c) => new() { Content = c };
     }
 }

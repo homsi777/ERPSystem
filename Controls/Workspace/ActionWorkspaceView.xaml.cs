@@ -122,6 +122,14 @@ namespace ERPSystem.Controls.Workspace
             var row = _request.EntityRow;
             return _request.EntityType switch
             {
+                EntityType.Customer when row is CustomerListRow c => new()
+                {
+                    ("كود العميل", c.Code), ("اسم العميل", c.NameAr),
+                    ("الرصيد", $"{c.Balance:N2} ر.س"),
+                    ("الحد الائتماني", $"{c.CreditLimit:N2} ر.س"),
+                    ("النوع", c.TypeDisplay),
+                    ("الحالة", c.StatusDisplay),
+                },
                 EntityType.Customer when row is CustomerModel c => new()
                 {
                     ("كود العميل", c.Code), ("اسم العميل", c.NameAr),
@@ -275,7 +283,7 @@ namespace ERPSystem.Controls.Workspace
             Foreground = Br("TextPrimaryBrush"), FontFamily = Ff()
         };
 
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
         private static FontFamily Ff() => new("Segoe UI, Tahoma, Arial");
     }
 }

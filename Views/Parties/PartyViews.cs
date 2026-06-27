@@ -2,7 +2,6 @@ using ERPSystem.Controls;
 using ERPSystem.Controls.Customers;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
-using ERPSystem.Core.Customers;
 using ERPSystem.Core.Suppliers;
 using ERPSystem.Helpers;
 using System.Windows;
@@ -16,11 +15,11 @@ namespace ERPSystem.Views.Parties
     {
         public static UserControl CreateCustomer(string key) => key switch
         {
-            "Form" => PartyForm("عميل", true),
+            "Form" => Wrap(new CustomerFormControl()),
             "Opening" => OpeningBalances("عملاء"),
             "Statement" => Wrap(new CustomerAccountStatementControl()),
             "Invoices" => InvoicesPage("عميل"),
-            _ => CustomerList()
+            _ => Wrap(new CustomerListPageControl())
         };
 
         public static UserControl CreateSupplier(string key) => key switch
@@ -30,25 +29,6 @@ namespace ERPSystem.Views.Parties
             "Invoices" => InvoicesPage("مورد"),
             _ => SupplierList()
         };
-
-        private static UserControl CustomerList()
-        {
-            var data = CustomerSampleData.Generate(40);
-            var page = new ErpListModuleControl();
-            page.Configure(EntityType.Customer, AppModule.Customers);
-            page.SetHeader("سجل العملاء", "عملاء الجملة والموزعين", "\uE716", B("AccentCustomersBrush"));
-            page.SetPrimaryButton("إضافة عميل");
-            page.SetEmptyState("لا يوجد عملاء مسجلون", "إضافة عميل", "\uE716");
-            page.WirePrimaryTo(AppModule.Customers, "Form");
-            var g = page.Grid;
-            g.AutoGenerateColumns = false;
-            foreach (var (h, p, w) in new (string, string, object)[] {
-                ("الكود","Code",90),("الاسم","NameAr","*"),("المدينة","Region",100),("الهاتف","Phone",120),
-                ("الرصيد","Balance",100),("عدد الفواتير","TotalInvoices",90),("الحالة","Status",80)
-            }) AddCol(g, h, p, w, p == "Balance" ? "N2" : null);
-            page.BindData(data);
-            return page;
-        }
 
         private static UserControl SupplierList()
         {
@@ -136,9 +116,9 @@ namespace ERPSystem.Views.Parties
         private static void AddCol(DataGrid g, string h, string p, object w, string? fmt)
             => ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
 
-        private static SolidColorBrush B(string k) => (SolidColorBrush)Application.Current.Resources[k]!;
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
-        private static Style S(string k) => (Style)Application.Current.Resources[k]!;
+        private static SolidColorBrush B(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
+        private static Style S(string k) => (Style)System.Windows.Application.Current.Resources[k]!;
         private static UserControl Wrap(UIElement c) => new() { Content = c };
     }
 }

@@ -33,7 +33,7 @@ namespace ERPSystem.Views.China
             var page = new ErpListModuleControl();
             page.Configure(EntityType.ImportContainer, AppModule.ChinaImport);
             page.SetHeader("طلبات الصين", "قائمة حاويات استيراد الأقمشة من الصين", "\uE7BF",
-                (SolidColorBrush)Application.Current.Resources["AccentOrdersBrush"]!);
+                (SolidColorBrush)System.Windows.Application.Current.Resources["AccentOrdersBrush"]!);
             page.SetPrimaryButton("استيراد حاوية");
             page.SetEmptyState("لا توجد حاويات مستوردة", "استيراد حاوية", "\uE7BF");
             page.PrimaryActionRequested += (_, _) => Services.MockInteractionService.Navigate(AppModule.ChinaImport, "NewImport");
@@ -258,9 +258,9 @@ namespace ERPSystem.Views.China
         private static void AddCol(DataGrid g, string h, string path, object w, string? fmt = null)
             => ErpUiFactory.AddGridColumn(g, h, path, w, fmt);
 
-        private static SolidColorBrush B(string key) => (SolidColorBrush)Application.Current.Resources[key]!;
-        private static Brush Br(string key) => (Brush)Application.Current.Resources[key]!;
-        private static Style S(string key) => (Style)Application.Current.Resources[key]!;
+        private static SolidColorBrush B(string key) => (SolidColorBrush)System.Windows.Application.Current.Resources[key]!;
+        private static Brush Br(string key) => (Brush)System.Windows.Application.Current.Resources[key]!;
+        private static Style S(string key) => (Style)System.Windows.Application.Current.Resources[key]!;
 
         private static UserControl Wrap(UIElement content)
         {

@@ -1,6 +1,7 @@
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Workspace;
+using ERPSystem.Services.Customers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -85,7 +86,7 @@ namespace ERPSystem.Services
                         Header = action.GroupAr,
                         IsEnabled = false,
                         FontWeight = FontWeights.SemiBold,
-                        Foreground = (System.Windows.Media.Brush)Application.Current.Resources["TextMutedBrush"]!
+                        Foreground = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["TextMutedBrush"]!
                     });
                     currentGroup = action.GroupAr;
                 }
@@ -106,15 +107,19 @@ namespace ERPSystem.Services
                 };
 
                 if (captured.IsDestructive)
-                    mi.Foreground = (System.Windows.Media.Brush)Application.Current.Resources["DangerBrush"]!;
+                    mi.Foreground = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["DangerBrush"]!;
 
                 mi.Click += (_, _) =>
                 {
                     var entity = UnwrapEntity(rowItem, entityType);
+                    if (entity is null) return;
                     var displayName = EntityDisplayNameResolver.Resolve(entity, entityType);
 
                     if (captured.RequiresConfirmation &&
                         !ConfirmationDialogService.ConfirmDangerous(captured.LabelAr, displayName))
+                        return;
+
+                    if (CustomerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                         return;
 
                     WorkspaceWindowManager.Instance.OpenAction(
@@ -140,8 +145,8 @@ namespace ERPSystem.Services
                 Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 Foreground = action.IsDestructive
-                    ? (System.Windows.Media.Brush)Application.Current.Resources["DangerBrush"]!
-                    : (System.Windows.Media.Brush)Application.Current.Resources["TextSecondaryBrush"]!
+                    ? (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["DangerBrush"]!
+                    : (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["TextSecondaryBrush"]!
             });
             sp.Children.Add(new TextBlock
             {

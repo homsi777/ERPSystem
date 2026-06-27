@@ -60,6 +60,14 @@ public class Customer
     public void Block() => Status = CustomerStatus.Blocked;
     public void Activate() => Status = CustomerStatus.Active;
     public void Deactivate() => IsActive = false;
+
+    public void UpdateProfile(string nameAr, string nameEn, Money creditLimit, int paymentTermsDays)
+    {
+        NameAr = nameAr;
+        NameEn = nameEn;
+        CreditLimit = creditLimit;
+        PaymentTermsDays = paymentTermsDays;
+    }
 }
 
 public class Supplier

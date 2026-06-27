@@ -295,8 +295,8 @@ namespace ERPSystem.Controls.Workspace
             return null;
         }
 
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
-        private static Style S(string k) => (Style)Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
+        private static Style S(string k) => (Style)System.Windows.Application.Current.Resources[k]!;
         private static FontFamily Ff() => new("Segoe UI, Tahoma, Arial");
     }
 }

@@ -120,9 +120,9 @@ namespace ERPSystem.Controls.Sales
             TxtStatusBadge.Text = _status;
             TxtStatusBadge.Foreground = _status switch
             {
-                "بانتظار التفصيل" => (System.Windows.Media.Brush)Application.Current.Resources["WarningBrush"]!,
-                "معتمدة" => (System.Windows.Media.Brush)Application.Current.Resources["SuccessBrush"]!,
-                _ => (System.Windows.Media.Brush)Application.Current.Resources["PrimaryBrush"]!
+                "بانتظار التفصيل" => (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["WarningBrush"]!,
+                "معتمدة" => (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["SuccessBrush"]!,
+                _ => (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["PrimaryBrush"]!
             };
         }
 
@@ -183,6 +183,6 @@ namespace ERPSystem.Controls.Sales
         }
 
         private static System.Windows.Media.Brush Br(string key) =>
-            (System.Windows.Media.Brush)Application.Current.Resources[key]!;
+            (System.Windows.Media.Brush)System.Windows.Application.Current.Resources[key]!;
     }
 }

@@ -6,6 +6,7 @@ using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Core.Sales;
 using ERPSystem.Services;
+using ERPSystem.Services.Customers;
 using ERPSystem.Views.Sales;
 using System.Windows;
 using System.Windows.Controls;
@@ -105,10 +106,7 @@ namespace ERPSystem.Modules
 
             CardInventory.MouseLeftButtonUp += (_, _) => MockInteractionService.OpenLandingCostWorkspace();
             CardReceivables.MouseLeftButtonUp += (_, _) =>
-            {
-                var c = CustomerSampleData.Generate(8).OrderByDescending(x => x.Balance).First();
-                MockInteractionService.OpenCustomerStatement(c);
-            };
+                MockInteractionService.Navigate(AppModule.Customers, "List");
             CardPayables.MouseLeftButtonUp += (_, _) =>
             {
                 MockInteractionService.Navigate(AppModule.Suppliers, "Statement");
@@ -138,18 +136,27 @@ namespace ERPSystem.Modules
 
         private void LoadOperationalTables()
         {
-            LoadDebtCustomers();
+            _ = LoadDebtCustomersAsync();
             LoadContainersChart();
             LoadPendingWarehouseTasks();
         }
 
-        private void LoadDebtCustomers()
+        private async Task LoadDebtCustomersAsync()
         {
             DebtCustomersPanel.Children.Clear();
-            var customers = CustomerSampleData.Generate(8)
-                .Where(c => c.Balance > 5000)
+
+            if (!AppServices.IsInitialized)
+                return;
+
+            var result = await CustomerUiService.Instance.GetListAsync(null, 1, 50);
+            if (!result.IsSuccess || result.Value is null)
+                return;
+
+            var customers = result.Value.Items
+                .Where(c => c.Balance > 0)
                 .OrderByDescending(c => c.Balance)
                 .Take(5)
+                .Select(CustomerListRow.FromDto)
                 .ToList();
 
             foreach (var c in customers)
@@ -302,7 +309,7 @@ namespace ERPSystem.Modules
             }
         }
 
-        private static Brush Br(string k) => (Brush)Application.Current.Resources[k]!;
+        private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
         private static FontFamily Ff() => ErpDesignTokens.UiFont;
 
         public record TransactionRow(string Number, string Name, string Date, string Amount, string Status);
