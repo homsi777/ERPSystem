@@ -15,10 +15,27 @@ namespace ERPSystem.Services.Customers;
 public static class CustomerNavigationContext
 {
     public static Guid? EditCustomerId { get; set; }
+    public static Guid? StatementCustomerId { get; set; }
+    public static string? StatementCustomerName { get; set; }
 
     public static void BeginCreate() => EditCustomerId = null;
 
     public static void BeginEdit(Guid customerId) => EditCustomerId = customerId;
+
+    public static void BeginStatement(Guid customerId, string customerName)
+    {
+        StatementCustomerId = customerId;
+        StatementCustomerName = customerName;
+    }
+
+    public static (Guid? Id, string? Name) TakeStatementContext()
+    {
+        var id = StatementCustomerId;
+        var name = StatementCustomerName;
+        StatementCustomerId = null;
+        StatementCustomerName = null;
+        return (id, name);
+    }
 }
 
 public sealed class CustomerUiService

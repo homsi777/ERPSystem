@@ -73,6 +73,58 @@ public sealed class CreateSalesInvoiceDraftHandler(
     }
 }
 
+public sealed class UpdateSalesInvoiceDraftHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
+    : ICommandHandler<UpdateSalesInvoiceDraftCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        UpdateSalesInvoiceDraftCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var validation = Validation.ApplicationValidators.Validate(command);
+        if (validation is not null)
+            return validation;
+
+        if (!await permissionService.CanAsync("sales.create", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to update sales invoices.");
+
+        var aggregate = await invoiceRepository.GetByIdAsync(command.InvoiceId, cancellationToken);
+        if (aggregate is null)
+            return ApplicationResult.NotFound("Invoice not found.");
+
+        try
+        {
+            aggregate.UpdateDraftHeader(
+                command.CustomerId,
+                command.WarehouseId,
+                command.ChinaContainerId,
+                command.PaymentType);
+
+            var items = command.Lines
+                .Select(line => SalesInvoiceItem.Create(
+                    line.LineNumber,
+                    line.FabricItemId,
+                    line.FabricColorId,
+                    line.RollCount,
+                    new Money(line.UnitPrice)))
+                .ToList();
+
+            aggregate.ReplaceDraftLines(items);
+            Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
+
+            await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult();
+        }
+    }
+}
+
 public sealed class SendSalesInvoiceToWarehouseHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,

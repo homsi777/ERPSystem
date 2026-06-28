@@ -233,7 +233,8 @@ namespace ERPSystem.Helpers
         {
             SelectedDate = date ?? DateTime.Today,
             Height = ErpDesignTokens.ControlHeight,
-            Width = 160
+            Width = 160,
+            Style = S("EnterpriseDatePickerStyle")
         };
 
         private static System.Windows.Media.Effects.Effect? CardEffect() =>

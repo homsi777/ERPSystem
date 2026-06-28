@@ -1,15 +1,20 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using ERPSystem.Services;
 using System.Windows.Media;
+using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.DTOs.Sales;
+using ERPSystem.Services;
+using ERPSystem.Services.Sales;
 
 namespace ERPSystem.Controls.Workspace
 {
     public class DetailingRollRow
     {
+        public Guid RollDetailId { get; set; }
         public int RollIndex { get; set; }
         public string FabricCode { get; set; } = "";
         public string Color { get; set; } = "";
@@ -32,6 +37,8 @@ namespace ERPSystem.Controls.Workspace
         private DataGrid? _grid;
         private int _currentIndex;
         private decimal _pricePerMeter = 45m;
+        private Guid? _invoiceId;
+        private bool _isSubmitting;
 
         public event EventHandler? DetailingCompleted;
 
@@ -130,13 +137,13 @@ namespace ERPSystem.Controls.Workspace
                 Content = "حفظ التفصيل", Style = S("SecondaryButtonStyle"),
                 Height = 38, Padding = new Thickness(18, 0, 18, 0), Margin = new Thickness(0, 0, 8, 0), IsEnabled = false
             };
-            _btnSave.Click += (_, _) => TryComplete(saveOnly: true);
+            _btnSave.Click += async (_, _) => await TryCompleteAsync(saveOnly: true);
             _btnComplete = new Button
             {
                 Content = "إكمال التفصيل وإرسال للمحاسب", Style = S("PrimaryButtonStyle"),
                 Height = 38, Padding = new Thickness(18, 0, 18, 0), IsEnabled = false
             };
-            _btnComplete.Click += (_, _) => TryComplete(saveOnly: false);
+            _btnComplete.Click += async (_, _) => await TryCompleteAsync(saveOnly: false);
             actions.Children.Add(_btnSave);
             actions.Children.Add(_btnComplete);
             root.Children.Add(actions);
@@ -146,6 +153,7 @@ namespace ERPSystem.Controls.Workspace
 
         public void LoadInvoice(string invoiceNumber, string customer, string container, int rollCount, decimal pricePerMeter = 45m)
         {
+            _invoiceId = null;
             _pricePerMeter = pricePerMeter;
             _rows.Clear();
             var codes = new[] { "COL-01", "COL-02", "TRK-05", "LIN-08" };
@@ -167,17 +175,111 @@ namespace ERPSystem.Controls.Workspace
             Loaded += (_, _) => FocusLengthBox(0);
         }
 
-        private void TryComplete(bool saveOnly)
+        public void LoadFromDatabase(
+            Guid invoiceId,
+            string invoiceNumber,
+            string customer,
+            string container,
+            IReadOnlyList<WarehouseDetailingRollDto> rolls,
+            decimal pricePerMeter)
         {
+            _invoiceId = invoiceId;
+            _pricePerMeter = pricePerMeter;
+            _rows.Clear();
+
+            foreach (var roll in rolls.OrderBy(r => r.RollSequence))
+            {
+                _rows.Add(new DetailingRollRow
+                {
+                    RollDetailId = roll.RollDetailId,
+                    RollIndex = roll.RollSequence,
+                    FabricCode = "FAB-001",
+                    Color = "أبيض",
+                    LengthText = roll.HasValidLength && roll.LengthMeters > 0
+                        ? roll.LengthMeters.ToString(CultureInfo.CurrentCulture)
+                        : "",
+                    IsCurrent = roll.RollSequence == 1
+                });
+            }
+
+            _currentIndex = 0;
+            _txtCurrentRoll.Text = $"فاتورة {invoiceNumber} — {customer} — حاوية {container}";
+            UpdateTotals();
+            Dispatcher.BeginInvoke(() => FocusLengthBox(0), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private async Task TryCompleteAsync(bool saveOnly)
+        {
+            if (_isSubmitting)
+                return;
+
             if (!ValidateAllRolls(out var message))
             {
                 MockInteractionService.ShowWarning(message, "تفصيل غير مكتمل");
                 return;
             }
-            DetailingCompleted?.Invoke(this, EventArgs.Empty);
-            MockInteractionService.ShowSuccess(
-                saveOnly ? "تم حفظ التفصيل." : "تم إكمال التفصيل وإرسال إشعار للمحاسب.",
-                saveOnly ? "حفظ التفصيل" : "إكمال التفصيل");
+
+            if (saveOnly || _invoiceId is null || !AppServices.IsInitialized)
+            {
+                MockInteractionService.ShowSuccess(
+                    saveOnly ? "تم حفظ التفصيل محلياً." : "تم التحقق من الأطوال.",
+                    saveOnly ? "حفظ التفصيل" : "إكمال التفصيل");
+                return;
+            }
+
+            if (!saveOnly && !MockInteractionService.Confirm("إكمال التفصيل وحفظ الأطوال في النظام؟", "إكمال التفصيل"))
+                return;
+
+            _isSubmitting = true;
+            try
+            {
+                if (!await SalesUiService.Instance.CanCompleteDetailingAsync())
+                {
+                    MockInteractionService.ShowWarning("لا تملك صلاحية إكمال التفصيل.");
+                    return;
+                }
+
+                var entries = BuildRollEntries();
+                var result = await SalesUiService.Instance.CompleteDetailingAsync(_invoiceId.Value, entries);
+                if (!ApplicationResultPresenter.Present(result))
+                    return;
+
+                SalesListRefreshHub.RequestRefresh();
+                DetailingQueueRefreshHub.RequestRefresh();
+                DetailingCompleted?.Invoke(this, EventArgs.Empty);
+
+                MockInteractionService.ShowSuccess(
+                    "تم إكمال التفصيل وحفظ الأطوال. يمكنك الآن اعتماد الفاتورة من شاشة المبيعات.",
+                    "إكمال التفصيل");
+            }
+            finally
+            {
+                _isSubmitting = false;
+            }
+        }
+
+        private List<RollLengthEntryCommand> BuildRollEntries()
+        {
+            var entries = new List<RollLengthEntryCommand>();
+            foreach (var row in _rows)
+            {
+                if (!TryParseLength(row.LengthText, out var length))
+                    continue;
+
+                entries.Add(new RollLengthEntryCommand
+                {
+                    RollDetailId = row.RollDetailId,
+                    LengthMeters = length
+                });
+            }
+            return entries;
+        }
+
+        private static bool TryParseLength(string text, out decimal length)
+        {
+            length = 0;
+            return decimal.TryParse(text.Replace(",", "."), NumberStyles.Number, CultureInfo.InvariantCulture, out length)
+                && length > 0;
         }
 
         private bool ValidateAllRolls(out string message)
@@ -192,7 +294,7 @@ namespace ERPSystem.Controls.Workspace
                     FocusLengthBox(i);
                     return false;
                 }
-                if (!decimal.TryParse(r.LengthText.Replace(",", "."), out var len) || len <= 0)
+                if (!TryParseLength(r.LengthText, out _))
                 {
                     message = $"طول التوب رقم {r.RollIndex} يجب أن يكون أكبر من صفر.";
                     FocusLengthBox(i);
@@ -243,7 +345,7 @@ namespace ERPSystem.Controls.Workspace
 
         private void FocusLengthBox(int index)
         {
-            if (_grid == null) return;
+            if (_grid == null || index < 0 || index >= _rows.Count) return;
             _grid.ScrollIntoView(_rows[index]);
             _grid.UpdateLayout();
             Dispatcher.BeginInvoke(() =>
@@ -263,7 +365,7 @@ namespace ERPSystem.Controls.Workspace
             int filled = 0;
             foreach (var r in _rows)
             {
-                if (decimal.TryParse(r.LengthText.Replace(",", "."), out var len) && len > 0)
+                if (TryParseLength(r.LengthText, out var len))
                 {
                     total += len;
                     filled++;
@@ -280,7 +382,7 @@ namespace ERPSystem.Controls.Workspace
 
             bool complete = filled == _rows.Count && _rows.Count > 0;
             _btnSave.IsEnabled = filled > 0;
-            _btnComplete.IsEnabled = complete;
+            _btnComplete.IsEnabled = complete && _invoiceId.HasValue;
         }
 
         private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject

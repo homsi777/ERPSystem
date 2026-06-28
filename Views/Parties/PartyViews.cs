@@ -4,6 +4,7 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Suppliers;
 using ERPSystem.Helpers;
+using ERPSystem.Services.Customers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -17,7 +18,7 @@ namespace ERPSystem.Views.Parties
         {
             "Form" => Wrap(new CustomerFormControl()),
             "Opening" => OpeningBalances("عملاء"),
-            "Statement" => Wrap(new CustomerAccountStatementControl()),
+            "Statement" => CreateCustomerStatementView(),
             "Invoices" => InvoicesPage("عميل"),
             _ => Wrap(new CustomerListPageControl())
         };
@@ -47,6 +48,15 @@ namespace ERPSystem.Views.Parties
             }) AddCol(g, h, p, w, p == "Balance" ? "N2" : null);
             page.BindData(data);
             return page;
+        }
+
+        private static UserControl CreateCustomerStatementView()
+        {
+            var ctrl = new CustomerAccountStatementControl();
+            var (id, name) = CustomerNavigationContext.TakeStatementContext();
+            if (id is Guid customerId)
+                ctrl.Initialize(customerId, name ?? "");
+            return Wrap(ctrl);
         }
 
         private static UserControl PartyForm(string type, bool isCustomer)

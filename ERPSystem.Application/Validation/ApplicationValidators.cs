@@ -47,17 +47,40 @@ public static class ApplicationValidators
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 
-    public static ApplicationResult? Validate(CreateSalesInvoiceDraftCommand command)
+    public static ApplicationResult? Validate(CreateSalesInvoiceDraftCommand command) =>
+        ValidateSalesInvoiceDraft(
+            command.CustomerId,
+            command.WarehouseId,
+            command.ChinaContainerId,
+            command.Lines.Count);
+
+    public static ApplicationResult? Validate(UpdateSalesInvoiceDraftCommand command)
+    {
+        if (command.InvoiceId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.InvoiceId), "Invoice is required.");
+
+        return ValidateSalesInvoiceDraft(
+            command.CustomerId,
+            command.WarehouseId,
+            command.ChinaContainerId,
+            command.Lines.Count);
+    }
+
+    private static ApplicationResult? ValidateSalesInvoiceDraft(
+        Guid customerId,
+        Guid warehouseId,
+        Guid chinaContainerId,
+        int lineCount)
     {
         var errors = new List<ValidationError>();
-        if (command.CustomerId == Guid.Empty)
-            errors.Add(new ValidationError(nameof(command.CustomerId), "Customer is required."));
-        if (command.WarehouseId == Guid.Empty)
-            errors.Add(new ValidationError(nameof(command.WarehouseId), "Warehouse is required."));
-        if (command.ChinaContainerId == Guid.Empty)
-            errors.Add(new ValidationError(nameof(command.ChinaContainerId), "China container is required."));
-        if (command.Lines.Count == 0)
-            errors.Add(new ValidationError(nameof(command.Lines), "At least one line item is required."));
+        if (customerId == Guid.Empty)
+            errors.Add(new ValidationError("CustomerId", "Customer is required."));
+        if (warehouseId == Guid.Empty)
+            errors.Add(new ValidationError("WarehouseId", "Warehouse is required."));
+        if (chinaContainerId == Guid.Empty)
+            errors.Add(new ValidationError("ChinaContainerId", "China container is required."));
+        if (lineCount == 0)
+            errors.Add(new ValidationError("Lines", "At least one line item is required."));
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 

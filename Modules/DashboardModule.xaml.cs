@@ -1,3 +1,6 @@
+using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Application.Queries.Dashboard;
+using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.ChinaImport;
@@ -8,6 +11,7 @@ using ERPSystem.Core.Sales;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
 using ERPSystem.Views.Sales;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -49,35 +53,38 @@ namespace ERPSystem.Modules
             TxtBtnNewInvoice.Text = "فاتورة جديدة";
 
             CardSales.CardTitle = "مبيعات اليوم";
-            CardSales.CardValue = "48,750 ر.س";
             CardSales.CardDescription = "مقارنة بالأمس";
             CardSales.TrendValue = "↑ 12.5%";
 
             CardOrders.CardTitle = "بانتظار التفصيل";
-            CardOrders.CardValue = "8";
             CardOrders.CardDescription = "فواتير تحتاج تفصيل أثواب";
             CardOrders.TrendValue = "3 عاجلة";
 
             CardInventory.CardTitle = "تكلفة استيراد معلّقة";
-            CardInventory.CardValue = "3";
             CardInventory.CardDescription = "حاويات بانتظار Landing Cost";
             CardInventory.TrendValue = "CN-2026-001";
 
             CardReceivables.CardTitle = "التحصيل / الذمم";
-            CardReceivables.CardValue = "83,400 ر.س";
             CardReceivables.CardDescription = "عملاء يحتاجون تحصيل";
             CardReceivables.TrendValue = "↑ 5.2%";
 
             CardPayables.CardTitle = "الذمم الدائنة";
-            CardPayables.CardValue = "32,100 ر.س";
             CardPayables.CardDescription = "مستحقة للموردين";
             CardPayables.TrendValue = "↓ 3.8%";
             CardPayables.TrendDirection = Controls.MetricTrend.Down;
+            // TODO: not supported by handler yet — supplier payables balance
+            CardPayables.CardValue = "32,100 ر.س";
 
             CardCustomers.CardTitle = "العملاء النشطون";
-            CardCustomers.CardValue = "2,847";
             CardCustomers.CardDescription = "خلال هذا الشهر";
             CardCustomers.TrendValue = "↑ 34 جديد";
+            // TODO: not supported by handler yet — active customers count
+            CardCustomers.CardValue = "2,847";
+
+            CardSales.CardValue = "—";
+            CardOrders.CardValue = "—";
+            CardInventory.CardValue = "—";
+            CardReceivables.CardValue = "—";
 
             TxtQA_Invoice.Text = "فاتورة بيع جديدة";
             TxtQA_Container.Text = "استيراد حاوية";
@@ -97,6 +104,7 @@ namespace ERPSystem.Modules
 
             LoadOperationalTables();
             WireCardClicks();
+            _ = LoadKpiCardsAsync();
         }
 
         private void WireCardClicks()
@@ -114,10 +122,7 @@ namespace ERPSystem.Modules
             CardCustomers.MouseLeftButtonUp += (_, _) => MockInteractionService.Navigate(AppModule.Customers, "List");
             CardSales.MouseLeftButtonUp += (_, _) => MockInteractionService.Navigate(AppModule.Sales, "Invoices");
             CardOrders.MouseLeftButtonUp += (_, _) =>
-            {
-                MockInteractionService.Navigate(AppModule.Sales, "Delivery");
-                MockInteractionService.OpenDetailingWorkspace();
-            };
+                MockInteractionService.NavigateToWarehouseDetailing();
             ContainersChartPanel.Cursor = Cursors.Hand;
             ContainersChartPanel.MouseLeftButtonUp += (_, _) => MockInteractionService.OpenContainerOperationsCenter();
         }
@@ -125,7 +130,42 @@ namespace ERPSystem.Modules
         private void BtnHeaderRefresh_Click(object sender, RoutedEventArgs e)
         {
             LoadOperationalTables();
+            _ = LoadKpiCardsAsync();
             MockInteractionService.ShowSuccess("تم تحديث بيانات لوحة التحكم.", "تحديث");
+        }
+
+        private async Task LoadKpiCardsAsync()
+        {
+            if (!AppServices.IsInitialized)
+                return;
+
+            try
+            {
+                using var scope = AppServices.CreateScope();
+                var branch = scope.ServiceProvider.GetRequiredService<ICurrentBranchService>();
+                if (branch.CompanyId is not Guid companyId || branch.BranchId is not Guid branchId)
+                    return;
+
+                var handler = scope.ServiceProvider.GetRequiredService<GetDashboardSummaryHandler>();
+                var result = await handler.HandleAsync(new GetDashboardSummaryQuery
+                {
+                    CompanyId = companyId,
+                    BranchId = branchId
+                });
+
+                if (!result.IsSuccess || result.Value is null)
+                    return;
+
+                var dto = result.Value;
+                CardSales.CardValue = $"{dto.TodaySalesTotal:N0} ر.س";
+                CardOrders.CardValue = dto.AwaitingDetailingCount.ToString();
+                CardInventory.CardValue = dto.PendingContainersCount.ToString();
+                CardReceivables.CardValue = $"{dto.TotalCustomerOutstanding:N0} ر.س";
+            }
+            catch
+            {
+                // Keep fallback/placeholder values if the summary query fails.
+            }
         }
 
         private void BtnHeaderNewInvoice_Click(object sender, RoutedEventArgs e)

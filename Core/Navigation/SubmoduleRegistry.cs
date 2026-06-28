@@ -34,7 +34,8 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("InvoiceView", "عرض فاتورة بيع", "\uE7B3"),
                 new SubmoduleDef("NewReturn", "مرتجع بيع جديد", "\uE7A6"),
                 new SubmoduleDef("Returns", "قائمة مرتجعات البيع", "\uE8FD"),
-                new SubmoduleDef("Delivery", "التسليم / تفصيل الأطوال", "\uE8CB"),
+                new SubmoduleDef("Detailing", "تفصيل الأطوال — المستودع", "\uE8CB"),
+                new SubmoduleDef("Delivery", "التسليم", "\uE898"),
             },
             AppModule.Customers => new[]
             {

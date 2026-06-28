@@ -6,6 +6,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Core.Sales;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
+using ERPSystem.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -45,8 +46,6 @@ namespace ERPSystem.Views.Sales
 
     public static class SalesViews
     {
-        private static List<FabricSalesInvoiceRow> _invoices = BuildInvoices();
-
         public static UserControl Create(string key) => key switch
         {
             "NewInvoice" => BuildNewInvoice(),
@@ -54,62 +53,11 @@ namespace ERPSystem.Views.Sales
             "NewReturn" => BuildReturn(),
             "Returns" => BuildReturnsList(),
             "Delivery" => BuildDelivery(),
+            "Detailing" => BuildDetailing(),
             _ => BuildInvoiceList()
         };
 
-        private static List<FabricSalesInvoiceRow> BuildInvoices()
-        {
-            var src = SalesSampleData.Generate(40);
-            var rnd = new Random(3);
-            return src.Select((inv, i) => new FabricSalesInvoiceRow
-            {
-                Source = inv,
-                InvoiceNumber = inv.InvoiceNumber,
-                CustomerName = inv.CustomerNameAr,
-                RollCount = rnd.Next(3, 25),
-                Amount = inv.GrandTotal,
-                Date = inv.Date,
-                WorkflowStatus = (FabricInvoiceWorkflowStatus)(i % 7)
-            }).ToList();
-        }
-
-        private static UserControl BuildInvoiceList()
-        {
-            var page = new ErpListModuleControl();
-            page.Configure(EntityType.SalesInvoice, AppModule.Sales);
-            page.SetHeader("فواتير البيع", "إدارة فواتير بيع الأقمشة — التفصيل بالمتر", "\uE8F1", B("AccentSalesBrush"));
-            page.SetPrimaryButton("فاتورة بيع جديدة");
-            page.SetEmptyState("لا توجد فواتير بيع", "فاتورة بيع جديدة", "\uE9F9");
-            page.WirePrimaryTo(AppModule.Sales, "NewInvoice");
-
-            var statusFilter = ErpUiFactory.FilterCombo(
-                ["كل الحالات", "مسودة", "بانتظار التفصيل", "مفصلة", "معتمدة", "جاهزة للتسليم", "مسلمة", "ملغاة"], 140);
-            statusFilter.SelectionChanged += (_, _) =>
-            {
-                var sel = statusFilter.SelectedItem?.ToString() ?? "كل الحالات";
-                if (sel == "كل الحالات")
-                {
-                    page.SetExtraFilter(null);
-                    page.SetFilterSummary("");
-                }
-                else
-                {
-                    page.SetExtraFilter(o => o is FabricSalesInvoiceRow r && r.StatusDisplay == sel);
-                    page.SetFilterSummary($"الحالة: {sel}");
-                }
-            };
-            page.SetFilterExtras(statusFilter);
-
-            var g = page.Grid;
-            g.AutoGenerateColumns = false;
-            foreach (var (h, p, w) in new (string, string, object)[] {
-                ("رقم الفاتورة","InvoiceNumber",120),("العميل","CustomerName","*"),("المستودع","Warehouse",110),
-                ("الحاوية","Container",110),("الأثواب","RollCount",70),("المبلغ","Amount",100),
-                ("الحالة","StatusDisplay",120),("التاريخ","Date",100)
-            }) AddCol(g, h, p, w, p == "Amount" ? "N2" : p == "Date" ? "yyyy/MM/dd" : null);
-            page.BindData(_invoices.Cast<object>().ToList());
-            return page;
-        }
+        private static UserControl BuildInvoiceList() => new SalesInvoiceListPageControl();
 
         private static UserControl BuildNewInvoice() => Wrap(new NewSalesInvoiceControl());
 
@@ -165,42 +113,22 @@ namespace ERPSystem.Views.Sales
             return Wrap(root);
         }
 
+        private static UserControl BuildDetailing() => new WarehouseDetailingPageControl();
+
         private static UserControl BuildDelivery()
         {
-            var awaiting = _invoices.Where(i => i.WorkflowStatus == FabricInvoiceWorkflowStatus.AwaitingDetailing).ToList();
             var root = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(16) };
             var stack = new StackPanel();
-            stack.Children.Add(ErpUiFactory.SectionTitle("مهام المستودع — تفصيل الأطوال"));
+            stack.Children.Add(ErpUiFactory.SectionTitle("التسليم — بطاقة تسليم العميل"));
+            stack.Children.Add(PlaceholderUi.DatabasePhase("بطاقة التسليم وإذن التسليم"));
             stack.Children.Add(ErpUxFactory.InfoBanner(
-                $"لديك {awaiting.Count} فاتورة بانتظار التفصيل. اختر فاتورة أو ابدأ الإدخال السريع أدناه.", "warning"));
-
-            if (awaiting.Count > 0)
-            {
-                var first = awaiting[0];
-                var detailing = new WarehouseDetailingWorkspaceControl();
-                detailing.LoadInvoice(first.InvoiceNumber, first.CustomerName, first.Container, first.RollCount);
-                stack.Children.Add(ErpUiFactory.Card(detailing));
-            }
-            else
-            {
-                stack.Children.Add(ErpUiFactory.Card(new TextBlock
-                {
-                    Text = "لا توجد فواتير بانتظار التفصيل حالياً.",
-                    Foreground = Br("TextSecondaryBrush"), Margin = new Thickness(8)
-                }));
-            }
-
-            stack.Children.Add(ErpUiFactory.SectionTitle("قائمة الانتظار"));
-            var g = ErpUiFactory.BuildGrid(awaiting, false);
-            AddCol(g, "رقم الفاتورة", "InvoiceNumber", 120, null);
-            AddCol(g, "العميل", "CustomerName", 150, null);
-            AddCol(g, "الحاوية", "Container", 110, null);
-            AddCol(g, "الأثواب", "RollCount", 70, null);
-            AddCol(g, "الحالة", "StatusDisplay", 120, null);
-            stack.Children.Add(ErpUiFactory.Card(g));
+                "قسم التسليم غير مفعّل بعد. بعد اعتماد الفاتورة وإكمال التفصيل، ستُنشأ هنا بطاقة التسليم للعميل.",
+                "info"));
             root.Content = stack;
             return Wrap(root);
         }
+
+        private static FontFamily Ff() => new("Segoe UI, Tahoma, Arial");
 
         private static UserControl BuildReturn() => FormSimple("مرتجع بيع جديد", "إنشاء مرتجع من فاتورة بيع");
         private static UserControl BuildReturnsList() => FormSimple("قائمة مرتجعات البيع", "مرتجعات البيع المعتمدة");

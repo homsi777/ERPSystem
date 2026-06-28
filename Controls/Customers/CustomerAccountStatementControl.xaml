@@ -41,7 +41,35 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
+    <Grid>
+        <Border x:Name="EmptyStatePanel" Visibility="Collapsed"
+                Background="{StaticResource AppBgBrush}" Padding="32,48">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420">
+                <Border Width="56" Height="56" CornerRadius="28"
+                        Background="{StaticResource PrimaryVeryLightBrush}"
+                        HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <TextBlock Text="&#xE8A1;" FontFamily="Segoe MDL2 Assets" FontSize="24"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="يرجى اختيار عميل من القائمة لعرض كشف الحساب"
+                           FontSize="15" FontWeight="SemiBold" TextAlignment="Center"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"
+                           Margin="0,0,0,8"/>
+                <TextBlock Text="يمكنك فتح كشف الحساب من سجل العملاء أو من مركز عمليات العميل."
+                           FontSize="12" TextAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"
+                           Margin="0,0,0,20"/>
+                <Button x:Name="BtnOpenCustomerList" Content="فتح سجل العملاء"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Height="38" Padding="20,0" HorizontalAlignment="Center"
+                        Click="BtnOpenCustomerList_Click"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer x:Name="StatementContent" VerticalScrollBarVisibility="Auto" Padding="16,12">
         <StackPanel MaxWidth="1280">
             <TextBlock x:Name="TxtTableTitle" Text="كشف حساب"
                        FontSize="20" FontWeight="SemiBold"
@@ -60,16 +88,18 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="بحث في الكشف" Style="{StaticResource StmtFieldLabel}"/>
-                            <TextBox x:Name="TxtSearch" Height="36" Padding="8,0"
-                                     VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="TxtSearch" Height="36"
+                                     Style="{StaticResource EnterpriseInputStyle}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="من تاريخ" Style="{StaticResource StmtFieldLabel}"/>
-                            <DatePicker x:Name="DpFrom" Height="36"/>
+                            <DatePicker x:Name="DpFrom" Height="36"
+                                        Style="{StaticResource EnterpriseDatePickerStyle}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="4">
                             <TextBlock Text="إلى تاريخ" Style="{StaticResource StmtFieldLabel}"/>
-                            <DatePicker x:Name="DpTo" Height="36"/>
+                            <DatePicker x:Name="DpTo" Height="36"
+                                        Style="{StaticResource EnterpriseDatePickerStyle}"/>
                         </StackPanel>
                     </Grid>
 
@@ -140,5 +170,6 @@
                 </DataGrid>
             </Border>
         </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

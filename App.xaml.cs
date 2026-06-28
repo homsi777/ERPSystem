@@ -3,6 +3,7 @@ using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Sales;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -43,6 +44,7 @@ public partial class App : System.Windows.Application
 
             services.AddScoped<IPermissionService, WpfPermissionService>();
             services.AddSingleton<CustomerUiService>();
+            services.AddSingleton<SalesUiService>();
 
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);

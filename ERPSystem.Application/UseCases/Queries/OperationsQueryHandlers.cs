@@ -104,7 +104,9 @@ public sealed class GetWarehouseOperationsCenterHandler(
     }
 }
 
-public sealed class GetSalesInvoiceListHandler(ISalesInvoiceRepository invoiceRepository)
+public sealed class GetSalesInvoiceListHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    ICustomerRepository customerRepository)
     : IQueryHandler<GetSalesInvoiceListQuery, ApplicationResult<PagedResult<SalesInvoiceDto>>>
 {
     public async Task<ApplicationResult<PagedResult<SalesInvoiceDto>>> HandleAsync(
@@ -114,10 +116,15 @@ public sealed class GetSalesInvoiceListHandler(ISalesInvoiceRepository invoiceRe
         var invoices = await invoiceRepository.GetListAsync(
             query.CompanyId, query.BranchId, query.Status, query.CustomerId, cancellationToken);
 
+        var customers = await customerRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
+        var customerNames = customers.ToDictionary(c => c.Customer.Id, c => c.Customer.NameAr);
+
         var items = invoices
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(i => SalesInvoiceMapper.ToDto(i))
+            .Select(i => SalesInvoiceMapper.ToDto(
+                i,
+                customerNames.GetValueOrDefault(i.CustomerId, "")))
             .ToList();
 
         return ApplicationResult<PagedResult<SalesInvoiceDto>>.Success(new PagedResult<SalesInvoiceDto>
@@ -130,7 +137,9 @@ public sealed class GetSalesInvoiceListHandler(ISalesInvoiceRepository invoiceRe
     }
 }
 
-public sealed class GetSalesInvoiceOperationsCenterHandler(ISalesInvoiceRepository invoiceRepository)
+public sealed class GetSalesInvoiceOperationsCenterHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    ICustomerRepository customerRepository)
     : IQueryHandler<GetSalesInvoiceOperationsCenterQuery, ApplicationResult<SalesInvoiceOperationsCenterDto>>
 {
     public async Task<ApplicationResult<SalesInvoiceOperationsCenterDto>> HandleAsync(
@@ -141,12 +150,17 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(ISalesInvoiceReposito
         if (aggregate is null)
             return ApplicationResult<SalesInvoiceOperationsCenterDto>.NotFound("Invoice not found.");
 
+        var customer = await customerRepository.GetByIdAsync(aggregate.CustomerId, cancellationToken);
+        var customerName = customer?.Customer.NameAr ?? "";
+
         return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(
-            SalesInvoiceMapper.ToOperationsCenterDto(aggregate));
+            SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName));
     }
 }
 
-public sealed class GetWarehouseDetailingQueueHandler(ISalesInvoiceRepository invoiceRepository)
+public sealed class GetWarehouseDetailingQueueHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    ICustomerRepository customerRepository)
     : IQueryHandler<GetWarehouseDetailingQueueQuery, ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>> HandleAsync(
@@ -154,8 +168,16 @@ public sealed class GetWarehouseDetailingQueueHandler(ISalesInvoiceRepository in
         CancellationToken cancellationToken = default)
     {
         var invoices = await invoiceRepository.GetDetailingQueueAsync(query.WarehouseId, cancellationToken);
-        return ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>.Success(
-            invoices.Select(i => SalesInvoiceMapper.ToDetailingDto(i)).ToList());
+        var dtos = new List<WarehouseDetailingDto>();
+
+        foreach (var invoice in invoices)
+        {
+            var customer = await customerRepository.GetByIdAsync(invoice.CustomerId, cancellationToken);
+            var customerName = customer?.Customer.NameAr ?? "";
+            dtos.Add(SalesInvoiceMapper.ToDetailingDto(invoice, customerName));
+        }
+
+        return ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>.Success(dtos);
     }
 }
 

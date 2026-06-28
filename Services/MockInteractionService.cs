@@ -5,6 +5,7 @@ using ERPSystem.Core.Customers;
 using ERPSystem.Core.Sales;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Dialogs;
+using ERPSystem.Services.Sales;
 using ERPSystem.Views.Sales;
 
 namespace ERPSystem.Services
@@ -43,22 +44,24 @@ namespace ERPSystem.Services
             w.ShowDialog();
         }
 
-        public static void OpenDetailingWorkspace(string? invoiceNumber = null)
+        public static void OpenDetailingWorkspace(string? invoiceNumber = null, FabricSalesInvoiceRow? rowOverride = null)
         {
-            var si = SalesSampleData.Generate(20)
-                .First(i => invoiceNumber == null || i.InvoiceNumber == invoiceNumber);
-            var row = new FabricSalesInvoiceRow
+            if (rowOverride is not null)
+                SalesNavigationContext.BeginDetailing(null, rowOverride.InvoiceNumber);
+            else if (!string.IsNullOrWhiteSpace(invoiceNumber))
             {
-                Source = si,
-                InvoiceNumber = si.InvoiceNumber,
-                CustomerName = si.CustomerNameAr,
-                RollCount = 5,
-                Amount = si.GrandTotal,
-                Date = si.Date,
-                WorkflowStatus = FabricInvoiceWorkflowStatus.AwaitingDetailing
-            };
-            WorkspaceWindowManager.Instance.OpenAction(
-                EntityActionId.InvoiceDetailLengths, EntityType.SalesInvoice, row, AppModule.Sales);
+                SalesNavigationContext.BeginDetailing(null, invoiceNumber);
+            }
+
+            Navigate(AppModule.Sales, "Detailing");
+        }
+
+        /// <summary>Navigate warehouse officer to detailing — not delivery (delivery module is not ready).</summary>
+        public static void NavigateToWarehouseDetailing(string? invoiceNumber = null)
+        {
+            Navigate(AppModule.Sales, "Detailing");
+            if (!string.IsNullOrWhiteSpace(invoiceNumber))
+                OpenDetailingWorkspace(invoiceNumber);
         }
 
         public static void OpenInvoiceOperationsCenter(string invoiceNumber)

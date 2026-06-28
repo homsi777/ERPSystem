@@ -22,6 +22,16 @@ public sealed class SalesInvoiceLineCommand
     public decimal UnitPrice { get; init; }
 }
 
+public sealed class UpdateSalesInvoiceDraftCommand
+{
+    public Guid InvoiceId { get; init; }
+    public Guid CustomerId { get; init; }
+    public Guid WarehouseId { get; init; }
+    public Guid ChinaContainerId { get; init; }
+    public PaymentType PaymentType { get; init; }
+    public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
+}
+
 public sealed class SendSalesInvoiceToWarehouseCommand
 {
     public Guid InvoiceId { get; init; }

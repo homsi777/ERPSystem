@@ -12,7 +12,7 @@ TRACE;DEBUG;NET;NET9_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\App.xaml
 251497687044
 
-89273973645
+951630312563
 2282074294562
 Controls\Customers\CustomerAccountStatementControl.xaml;Controls\ErpListModuleControl.xaml;Controls\MetricCardControl.xaml;Controls\ModuleShellControl.xaml;Controls\Sales\NewSalesInvoiceControl.xaml;Controls\SectionHeaderControl.xaml;Controls\Workspace\ActionWorkspaceView.xaml;Controls\Workspace\WorkspaceLayerControl.xaml;Dialogs\DocumentPreviewWindow.xaml;Dialogs\MockFeedbackDialog.xaml;MainWindow.xaml;Modules\AccountingModule.xaml;Modules\ChinaImportModule.xaml;Modules\CustomersModule.xaml;Modules\DashboardModule.xaml;Modules\HRModule.xaml;Modules\InventoryModule.xaml;Modules\PurchasesModule.xaml;Modules\ReportsModule.xaml;Modules\SalesModule.xaml;Modules\SettingsModule.xaml;Modules\SuppliersModule.xaml;Resources\Themes\EnterpriseTheme.xaml;Shell\TopContextBar.xaml;Shell\TopNavBar.xaml;
 

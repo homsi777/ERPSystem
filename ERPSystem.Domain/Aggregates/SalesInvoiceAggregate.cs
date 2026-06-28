@@ -89,6 +89,38 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
             _rollDetails.Add(SalesInvoiceRollDetail.Create(item.Id, new RollNumber(seq)));
     }
 
+    public void UpdateDraftHeader(
+        Guid customerId,
+        Guid warehouseId,
+        Guid chinaContainerId,
+        PaymentType paymentType)
+    {
+        EnsureEditable();
+        if (customerId == Guid.Empty)
+            throw new ValidationException("Customer is required.");
+        if (warehouseId == Guid.Empty)
+            throw new ValidationException("Warehouse is required.");
+        if (chinaContainerId == Guid.Empty)
+            throw new ValidationException("China container is required for imported fabric sales.");
+
+        CustomerId = customerId;
+        WarehouseId = warehouseId;
+        ChinaContainerId = chinaContainerId;
+        PaymentType = paymentType;
+    }
+
+    public void ReplaceDraftLines(IReadOnlyList<SalesInvoiceItem> lines)
+    {
+        EnsureEditable();
+        if (lines.Count == 0)
+            throw new ValidationException("At least one line item is required.");
+
+        _items.Clear();
+        _rollDetails.Clear();
+        foreach (var item in lines.OrderBy(l => l.LineNumber))
+            AddItem(item);
+    }
+
     public void SendToWarehouse()
     {
         EnsureStatus(SalesInvoiceStatus.Draft);

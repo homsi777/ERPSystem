@@ -44,6 +44,7 @@ public partial class CustomerAccountStatementControl : UserControl
         _customerId = customerId;
         _customerName = customerName;
         SetCustomerName(customerName);
+        UpdateViewMode();
     }
 
     public void SetCustomerName(string name)
@@ -58,9 +59,21 @@ public partial class CustomerAccountStatementControl : UserControl
         DpTo.SelectedDateChanged += async (_, _) => await ReloadAsync();
         TxtSearch.TextChanged += (_, _) => ApplyFilters();
 
+        UpdateViewMode();
+
         if (_customerId.HasValue)
             await ReloadAsync();
     }
+
+    private void UpdateViewMode()
+    {
+        var hasCustomer = _customerId.HasValue;
+        EmptyStatePanel.Visibility = hasCustomer ? Visibility.Collapsed : Visibility.Visible;
+        StatementContent.Visibility = hasCustomer ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void BtnOpenCustomerList_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.Navigate(AppModule.Customers, "List");
 
     private async Task ReloadAsync()
     {
