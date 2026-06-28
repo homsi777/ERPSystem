@@ -32,11 +32,17 @@ internal sealed class PackingListExcelParser
 
     public static ParseOutput Parse(IWorksheetReader sheet)
     {
+        PackingListImportLogger.Stage("parse-start");
         var output = new ParseOutput();
         var firstRow = sheet.FirstRowUsed;
         var lastRow = sheet.LastRowUsed;
         if (firstRow <= 0 || lastRow <= 0)
+        {
+            PackingListImportLogger.Stage("parse-empty");
             return output;
+        }
+
+        PackingListImportLogger.Stage("parse-row-walk", $"rows={firstRow}-{lastRow}");
 
         var sequence = 0;
         PackingListGroupBuilder? currentGroup = null;
@@ -65,6 +71,7 @@ internal sealed class PackingListExcelParser
             if (IsColumnHeaderRow(sheet, rowNum))
             {
                 columnBlocks = DetectColumnBlocks(sheet, rowNum);
+                PackingListImportLogger.Stage("column-blocks", $"row={rowNum} blocks={columnBlocks.Count}");
                 continue;
             }
 
@@ -86,6 +93,7 @@ internal sealed class PackingListExcelParser
                 };
                 output.Groups.Add(currentGroup);
                 columnBlocks = null;
+                PackingListImportLogger.Stage("group-header", $"#{currentGroup.GroupIndex} {fabricCode}/{color}");
                 continue;
             }
 
@@ -128,6 +136,9 @@ internal sealed class PackingListExcelParser
             }
         }
 
+        PackingListImportLogger.Stage(
+            "parse-complete",
+            $"groups={output.Groups.Count} rolls={output.Groups.Sum(g => g.Rolls.Count)}");
         return output;
     }
 

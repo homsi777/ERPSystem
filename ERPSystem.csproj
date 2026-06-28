@@ -15,9 +15,11 @@
     <Compile Remove="ERPSystem.Application/**" />
     <Compile Remove="ERPSystem.Domain/**" />
     <Compile Remove="ERPSystem.Infrastructure/**" />
+    <Compile Remove="tools/**" />
     <None Remove="ERPSystem.Application/**" />
     <None Remove="ERPSystem.Domain/**" />
     <None Remove="ERPSystem.Infrastructure/**" />
+    <None Remove="tools/**" />
   </ItemGroup>
 
   <ItemGroup>

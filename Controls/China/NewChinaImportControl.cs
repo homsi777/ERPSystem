@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using WpfApplication = System.Windows.Application;
 
@@ -127,6 +128,8 @@ public sealed class NewChinaImportControl : UserControl
             return;
 
         _uploadButton.IsEnabled = false;
+        _uploadButton.Content = "جاري التحليل...";
+        Mouse.OverrideCursor = Cursors.Wait;
         try
         {
             var bytes = await File.ReadAllBytesAsync(dialog.FileName);
@@ -149,8 +152,18 @@ public sealed class NewChinaImportControl : UserControl
 
             MockInteractionService.Navigate(AppModule.ChinaImport, "FileAnalysis");
         }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"تعذّر استيراد الملف.\n\n{ex.Message}",
+                "استيراد حاوية",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
         finally
         {
+            Mouse.OverrideCursor = null;
+            _uploadButton.Content = "رفع ملف Excel";
             if (AppServices.IsInitialized)
             {
                 var canCreate = await ContainerUiService.Instance.CanCreateAsync();

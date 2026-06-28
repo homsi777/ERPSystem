@@ -29,22 +29,30 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 ExcelFileFormatDetector.UnsupportedFormatMessage);
         }
 
+        PackingListImportLogger.Stage("import-start", $"{query.FileName} format={format} bytes={query.FileContent.Length}");
+
         try
         {
-            using var sheet = ExcelWorksheetReaderFactory.Open(query.FileContent, query.FileName);
+            var parsed = await Task.Run(() =>
+            {
+                PackingListImportLogger.Stage("workbook-open-start");
+                using var sheet = ExcelWorksheetReaderFactory.Open(query.FileContent, query.FileName);
+                if (sheet.FirstRowUsed <= 0)
+                    throw new InvalidOperationException("EMPTY_SHEET");
 
-            if (sheet.FirstRowUsed <= 0)
-                return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed("File", "ملف Excel فارغ.");
+                return PackingListExcelParser.Parse(sheet);
+            }, cancellationToken);
 
-            var parsed = PackingListExcelParser.Parse(sheet);
             if (parsed.Groups.Count == 0)
                 return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed("File", "لم يتم العثور على مجموعات أقمشة في ملف Packing List.");
 
+            PackingListImportLogger.Stage("fabric-lookup-start", $"groups={parsed.Groups.Count}");
             var groups = new List<PackingListGroupDto>();
             var hasUnresolved = false;
 
             foreach (var group in parsed.Groups)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var parsedMeters = group.Rolls.Where(r => r.IsValid).Sum(r => r.QuantityMeters);
                 var parsedRolls = group.Rolls.Count(r => r.IsValid);
 
@@ -141,6 +149,8 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 ? $"المعلن: {parsed.DeclaredGrandMeters:N2} م / {parsed.DeclaredGrandRolls} توب — المحلّل: {totalParsedMeters:N2} م / {totalParsedRolls} توب"
                 : $"المحلّل: {totalParsedMeters:N2} م / {totalParsedRolls} توب (لا يوجد إجمالي معلن في الملف)";
 
+            PackingListImportLogger.Stage("import-complete", $"groups={groups.Count} rolls={totalParsedRolls}");
+
             return ApplicationResult<ContainerExcelParseResultDto>.Success(new ContainerExcelParseResultDto
             {
                 FileName = query.FileName,
@@ -159,12 +169,23 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 Groups = groups
             });
         }
+        catch (OperationCanceledException)
+        {
+            return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed(
+                "File",
+                "انتهت مهلة قراءة الملف. قد يكون الملف كبيراً جداً أو تالفاً.");
+        }
         catch (UnsupportedExcelFormatException ex)
         {
             return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed("File", ex.Message);
         }
-        catch (Exception)
+        catch (InvalidOperationException ex) when (ex.Message == "EMPTY_SHEET")
         {
+            return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed("File", "ملف Excel فارغ.");
+        }
+        catch (Exception ex)
+        {
+            PackingListImportLogger.Stage("import-failed", ex.GetType().Name + ": " + ex.Message);
             return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed(
                 "File",
                 ExcelFileFormatDetector.UnreadableFileMessage);
