@@ -14,6 +14,7 @@ internal sealed class ContainerConfiguration : IEntityTypeConfiguration<Containe
         builder.Property(x => x.ContainerNumber).HasMaxLength(50).IsRequired();
         builder.Property(x => x.TotalMeters).HasPrecision(18, 4);
         builder.Property(x => x.TotalWeightKg).HasPrecision(18, 4);
+        builder.Property(x => x.ExchangeRateToLocalCurrency).HasPrecision(18, 6);
         builder.HasIndex(x => new { x.CompanyId, x.ContainerNumber }).IsUnique();
         builder.HasQueryFilter(x => x.IsActive && !x.IsArchived);
     }
@@ -26,6 +27,7 @@ internal sealed class ContainerItemConfiguration : IEntityTypeConfiguration<Cont
         builder.ToTable("container_items", Schemas.ChinaImport);
         builder.HasKey(x => x.Id);
         builder.Property(x => x.LengthMeters).HasPrecision(18, 4);
+        builder.Property(x => x.LotCode).HasMaxLength(20);
         builder.HasIndex(x => new { x.ContainerId, x.LineNumber }).IsUnique();
     }
 }

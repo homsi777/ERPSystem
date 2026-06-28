@@ -7,6 +7,11 @@ public sealed class CreateChinaContainerCommand
     public Guid SupplierId { get; init; }
     public string ContainerNumber { get; init; } = "";
     public DateTime ShipmentDate { get; init; }
+    public DateTime? ExpectedArrival { get; init; }
+    public string? Notes { get; init; }
+    public decimal ExchangeRateToLocalCurrency { get; init; } = 1m;
+    public string? ImportFileName { get; init; }
+    public IReadOnlyList<ImportContainerLineCommand> Lines { get; init; } = [];
 }
 
 public sealed class ImportContainerExcelCommand
@@ -21,8 +26,10 @@ public sealed class ImportContainerLineCommand
     public int LineNumber { get; init; }
     public Guid FabricItemId { get; init; }
     public Guid FabricColorId { get; init; }
-    public int RollCount { get; init; }
+    public int RollCount { get; init; } = 1;
     public decimal LengthMeters { get; init; }
+    public decimal? WeightKg { get; init; }
+    public string? LotCode { get; init; }
     public Guid? BuyerCustomerId { get; init; }
 }
 

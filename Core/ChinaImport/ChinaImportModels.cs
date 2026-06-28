@@ -56,10 +56,15 @@ namespace ERPSystem.Core.ChinaImport
         public decimal LengthMeters { get; set; }
         public decimal WeightKg { get; set; }
         public string Note { get; set; } = "";
-        public string RowStatus { get; set; } = "صحيح";
+        public bool IsValid { get; set; } = true;
+        public string InvalidReason { get; set; } = "";
+        public Guid? FabricItemId { get; set; }
+        public Guid? FabricColorId { get; set; }
+        public string RowStatusDisplay => IsValid ? "صحيح" : "خطأ";
+        public string RowStatusDetail => IsValid ? "صحيح" : InvalidReason;
         public string FabricName => FabricType;
         public decimal Meters => LengthMeters;
-        public int Rolls { get; set; }
+        public int Rolls { get; set; } = 1;
         public string BuyerName { get; set; } = "";
     }
 
@@ -125,7 +130,8 @@ namespace ERPSystem.Core.ChinaImport
                 LengthMeters = rnd.Next(40, 65),
                 WeightKg = rnd.Next(18, 32),
                 Note = "",
-                RowStatus = rnd.Next(10) == 0 ? "خطأ" : "صحيح",
+                IsValid = rnd.Next(10) != 0,
+                InvalidReason = rnd.Next(10) == 0 ? "كود القماش غير موجود" : "",
                 Rolls = 1,
                 BuyerName = rnd.Next(3) == 0 ? "—" : $"عميل {rnd.Next(1, 20)}"
             }).ToList();
@@ -141,8 +147,8 @@ namespace ERPSystem.Core.ChinaImport
                 lines.Sum(l => l.WeightKg),
                 lines.Select(l => l.FabricCode).Distinct().Count(),
                 lines.Select(l => l.Color).Distinct().Count(),
-                lines.Count(l => l.RowStatus == "صحيح"),
-                lines.Count(l => l.RowStatus != "صحيح")
+                lines.Count(l => l.IsValid),
+                lines.Count(l => !l.IsValid)
             );
         }
     }

@@ -16,7 +16,8 @@ public sealed class CreateChinaContainerHandler(
     IChinaContainerRepository containerRepository,
     IUnitOfWork unitOfWork,
     INumberingService numberingService,
-    IPermissionService permissionService)
+    IPermissionService permissionService,
+    ICurrentUserService currentUserService)
     : ICommandHandler<CreateChinaContainerCommand, ApplicationResult<Guid>>
 {
     public async Task<ApplicationResult<Guid>> HandleAsync(
@@ -43,6 +44,36 @@ public sealed class CreateChinaContainerHandler(
                 command.SupplierId,
                 command.ShipmentDate);
 
+            aggregate.SetHeaderDetails(
+                command.ExpectedArrival,
+                command.Notes,
+                command.ExchangeRateToLocalCurrency);
+
+            if (!string.IsNullOrWhiteSpace(command.ImportFileName))
+            {
+                var userId = currentUserService.UserId ?? Guid.Empty;
+                var batch = ChinaImportBatch.Create(
+                    $"IMP-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                    command.ImportFileName,
+                    userId);
+                batch.SetCounts(command.Lines.Count, 0);
+                aggregate.AddImportBatch(batch);
+            }
+
+            foreach (var line in command.Lines)
+            {
+                aggregate.AddItem(ChinaContainerItem.Create(
+                    line.LineNumber,
+                    line.FabricItemId,
+                    line.FabricColorId,
+                    line.RollCount > 0 ? line.RollCount : 1,
+                    new LengthInMeters(line.LengthMeters),
+                    line.WeightKg.HasValue ? new WeightInKg(line.WeightKg.Value) : null,
+                    line.LotCode,
+                    line.BuyerCustomerId));
+            }
+
+            aggregate.BeginReview();
             Domain.Validators.ContainerValidator.Validate(aggregate);
 
             await containerRepository.AddAsync(aggregate, cancellationToken);

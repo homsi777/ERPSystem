@@ -529,6 +529,10 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("ExchangeRateToLocalCurrency")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<DateTime?>("ExpectedArrival")
                         .HasColumnType("timestamp with time zone");
 
@@ -614,6 +618,10 @@ namespace ERPSystem.Infrastructure.Migrations
 
                     b.Property<int>("LineNumber")
                         .HasColumnType("integer");
+
+                    b.Property<string>("LotCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<int>("RollCount")
                         .HasColumnType("integer");

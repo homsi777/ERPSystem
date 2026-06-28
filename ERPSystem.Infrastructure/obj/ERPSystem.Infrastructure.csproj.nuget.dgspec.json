@@ -55,6 +55,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "ClosedXML": {
+              "target": "Package",
+              "version": "[0.104.2, )"
+            },
             "Microsoft.Extensions.DependencyInjection.Abstractions": {
               "target": "Package",
               "version": "[9.0.6, )"

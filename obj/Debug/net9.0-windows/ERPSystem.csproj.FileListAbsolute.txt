@@ -105,3 +105,10 @@ C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\obj\Debug\net9.0-windows\refint\ERPS
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\obj\Debug\net9.0-windows\ERPSystem.pdb
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\obj\Debug\net9.0-windows\ERPSystem.genruntimeconfig.cache
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\obj\Debug\net9.0-windows\ref\ERPSystem.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\ClosedXML.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\ClosedXML.Parser.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\DocumentFormat.OpenXml.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\DocumentFormat.OpenXml.Framework.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\ExcelNumberFormat.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\RBush.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\SixLabors.Fonts.dll

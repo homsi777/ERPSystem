@@ -50,8 +50,13 @@ public static class ContainerMapper
         ContainerNumber = aggregate.ContainerNumber.Value,
         Status = aggregate.Status,
         ShipmentDate = aggregate.ShipmentDate,
+        ExpectedArrival = aggregate.ExpectedArrival,
         TotalRolls = aggregate.TotalRolls,
         TotalMeters = aggregate.TotalMeters.Value,
+        TotalWeightKg = aggregate.TotalWeight?.Value,
+        CodeCount = aggregate.Items.Select(i => i.FabricItemId).Distinct().Count(),
+        ColorCount = aggregate.Items.Select(i => i.FabricColorId).Distinct().Count(),
+        ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
         SupplierName = supplierName
     };
 

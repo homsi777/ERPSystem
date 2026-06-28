@@ -91,6 +91,44 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         return entities.Select(ToFabricItem).ToList();
     }
 
+    public async Task<FabricItem?> GetItemByCodeAsync(
+        Guid companyId,
+        string code,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return null;
+
+        var normalized = code.Trim();
+        var entity = await context.FabricItems.AsNoTracking()
+            .FirstOrDefaultAsync(
+                i => i.CompanyId == companyId &&
+                     i.Code.ToLower() == normalized.ToLower() &&
+                     i.IsActive,
+                cancellationToken);
+        return entity is null ? null : ToFabricItem(entity);
+    }
+
+    public async Task<FabricColor?> GetColorForItemAsync(
+        Guid fabricItemId,
+        string colorCodeOrName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(colorCodeOrName))
+            return null;
+
+        var normalized = colorCodeOrName.Trim();
+        var entity = await context.FabricColors.AsNoTracking()
+            .FirstOrDefaultAsync(
+                c => c.FabricItemId == fabricItemId &&
+                     c.IsActive &&
+                     (c.Code.ToLower() == normalized.ToLower() ||
+                      c.NameAr.ToLower() == normalized.ToLower() ||
+                      (c.NameEn != null && c.NameEn.ToLower() == normalized.ToLower())),
+                cancellationToken);
+        return entity is null ? null : ToFabricColor(entity);
+    }
+
     public async Task<IReadOnlyList<FabricCategory>> GetCategoriesAsync(
         Guid companyId,
         CancellationToken cancellationToken = default)

@@ -128,3 +128,11 @@ C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\obj\Debug\n
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\obj\Debug\net9.0\ERPSystem.Infrastructure.pdb
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\obj\Debug\net9.0\ERPSystem.Infrastructure.genruntimeconfig.cache
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\obj\Debug\net9.0\ref\ERPSystem.Infrastructure.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\ClosedXML.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\ClosedXML.Parser.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\DocumentFormat.OpenXml.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\DocumentFormat.OpenXml.Framework.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\ExcelNumberFormat.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\RBush.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\SixLabors.Fonts.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\ERPSystem.Infrastructure\bin\Debug\net9.0\System.IO.Packaging.dll

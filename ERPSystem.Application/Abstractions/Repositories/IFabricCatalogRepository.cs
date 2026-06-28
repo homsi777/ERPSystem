@@ -13,4 +13,12 @@ public interface IFabricCatalogRepository
     Task<IReadOnlyList<FabricCategory>> GetCategoriesAsync(
         Guid companyId,
         CancellationToken cancellationToken = default);
+    Task<FabricItem?> GetItemByCodeAsync(
+        Guid companyId,
+        string code,
+        CancellationToken cancellationToken = default);
+    Task<FabricColor?> GetColorForItemAsync(
+        Guid fabricItemId,
+        string colorCodeOrName,
+        CancellationToken cancellationToken = default);
 }

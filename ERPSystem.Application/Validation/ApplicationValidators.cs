@@ -30,8 +30,10 @@ public static class ApplicationValidators
             errors.Add(new ValidationError(nameof(command.BranchId), "Branch is required."));
         if (command.SupplierId == Guid.Empty)
             errors.Add(new ValidationError(nameof(command.SupplierId), "Supplier is required."));
-        if (string.IsNullOrWhiteSpace(command.ContainerNumber))
-            errors.Add(new ValidationError(nameof(command.ContainerNumber), "Container number is required."));
+        if (command.ExchangeRateToLocalCurrency <= 0)
+            errors.Add(new ValidationError(nameof(command.ExchangeRateToLocalCurrency), "Exchange rate must be greater than zero."));
+        if (command.Lines.Count == 0)
+            errors.Add(new ValidationError(nameof(command.Lines), "At least one import line is required."));
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 

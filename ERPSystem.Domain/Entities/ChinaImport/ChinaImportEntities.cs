@@ -33,6 +33,7 @@ public class ChinaContainerItem
     public int RollCount { get; private set; }
     public LengthInMeters LengthMeters { get; private set; } = null!;
     public WeightInKg? WeightKg { get; private set; }
+    public string? LotCode { get; private set; }
     public Guid? BuyerCustomerId { get; private set; }
     public string RowStatus { get; private set; } = "Valid";
 
@@ -44,6 +45,8 @@ public class ChinaContainerItem
         Guid fabricColorId,
         int rollCount,
         LengthInMeters lengthMeters,
+        WeightInKg? weightKg = null,
+        string? lotCode = null,
         Guid? buyerCustomerId = null) => new()
     {
         Id = Guid.NewGuid(),
@@ -52,10 +55,13 @@ public class ChinaContainerItem
         FabricColorId = fabricColorId,
         RollCount = rollCount,
         LengthMeters = lengthMeters,
-        BuyerCustomerId = buyerCustomerId
+        WeightKg = weightKg,
+        LotCode = lotCode,
+        BuyerCustomerId = buyerCustomerId,
+        RowStatus = ContainerImportRowStatus.Valid
     };
 
-    public bool IsValid => RowStatus.Equals("Valid", StringComparison.OrdinalIgnoreCase);
+    public bool IsValid => RowStatus.Equals(ContainerImportRowStatus.Valid, StringComparison.OrdinalIgnoreCase);
 }
 
 public class ChinaImportBatch

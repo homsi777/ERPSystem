@@ -5,6 +5,7 @@ using ERPSystem.Infrastructure.Persistence.Models.Documents;
 using ERPSystem.Infrastructure.Persistence.Models.Finance;
 using ERPSystem.Infrastructure.Persistence.Models.Identity;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
+using ERPSystem.Infrastructure.Persistence.Models.Parties;
 using ERPSystem.Infrastructure.Persistence.Models.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,10 +20,12 @@ public static class DatabaseSeeder
     public static readonly Guid AdminRoleId = Guid.Parse("44444444-4444-4444-4444-444444444444");
     public static readonly Guid DefaultWarehouseId = Guid.Parse("55555555-5555-5555-5555-555555555555");
     public static readonly Guid DefaultCashboxId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+    public static readonly Guid DefaultChinaSupplierId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
     public static async Task SeedAsync(ErpDbContext context, ILogger logger, CancellationToken cancellationToken = default)
     {
         await EnsureSchemasAsync(context, cancellationToken);
+        await EnsureChinaImportReferenceDataAsync(context, cancellationToken);
 
         if (await context.Companies.AnyAsync(cancellationToken))
         {
@@ -123,6 +126,17 @@ public static class DatabaseSeeder
             Currency = "SAR"
         });
 
+        context.Suppliers.Add(new SupplierEntity
+        {
+            Id = DefaultChinaSupplierId,
+            CompanyId = DefaultCompanyId,
+            Code = "SUP-CN-001",
+            Name = "مورد قوانغتشو",
+            Status = 0,
+            Balance = 0,
+            BalanceCurrency = "SAR"
+        });
+
         var categoryId = Guid.Parse("77777777-7777-7777-7777-777777777777");
         context.FabricCategories.Add(new FabricCategoryEntity
         {
@@ -184,6 +198,29 @@ public static class DatabaseSeeder
 
         await context.SaveChangesAsync(cancellationToken);
         logger.LogInformation("ERP PRO seed completed.");
+    }
+
+    private static async Task EnsureChinaImportReferenceDataAsync(
+        ErpDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!await context.Companies.AnyAsync(cancellationToken))
+            return;
+
+        if (!await context.Suppliers.AnyAsync(s => s.Id == DefaultChinaSupplierId, cancellationToken))
+        {
+            context.Suppliers.Add(new SupplierEntity
+            {
+                Id = DefaultChinaSupplierId,
+                CompanyId = DefaultCompanyId,
+                Code = "SUP-CN-001",
+                Name = "مورد قوانغتشو",
+                Status = 0,
+                Balance = 0,
+                BalanceCurrency = "SAR"
+            });
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static async Task EnsureSchemasAsync(ErpDbContext context, CancellationToken cancellationToken)

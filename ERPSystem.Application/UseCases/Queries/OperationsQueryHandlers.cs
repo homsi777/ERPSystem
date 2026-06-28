@@ -13,7 +13,9 @@ using ERPSystem.Application.Results;
 
 namespace ERPSystem.Application.UseCases.Queries;
 
-public sealed class GetChinaContainerListHandler(IChinaContainerRepository containerRepository)
+public sealed class GetChinaContainerListHandler(
+    IChinaContainerRepository containerRepository,
+    ISupplierRepository supplierRepository)
     : IQueryHandler<GetChinaContainerListQuery, ApplicationResult<PagedResult<ContainerListDto>>>
 {
     public async Task<ApplicationResult<PagedResult<ContainerListDto>>> HandleAsync(
@@ -23,10 +25,13 @@ public sealed class GetChinaContainerListHandler(IChinaContainerRepository conta
         var containers = await containerRepository.GetListAsync(
             query.CompanyId, query.BranchId, query.Status, cancellationToken);
 
+        var suppliers = await supplierRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
+        var supplierNames = suppliers.ToDictionary(s => s.Supplier.Id, s => s.Supplier.Name);
+
         var items = containers
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(c => ContainerMapper.ToListDto(c))
+            .Select(c => ContainerMapper.ToListDto(c, supplierNames.GetValueOrDefault(c.SupplierId, "—")))
             .ToList();
 
         return ApplicationResult<PagedResult<ContainerListDto>>.Success(new PagedResult<ContainerListDto>

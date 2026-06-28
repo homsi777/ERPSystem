@@ -159,6 +159,7 @@ internal static class ContainerMapper
         TotalWeightKg = aggregate.TotalWeight?.Value,
         Port = aggregate.Port,
         Notes = aggregate.Notes,
+        ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
         ApprovedAt = aggregate.ApprovedAt,
         ApprovedByUserId = aggregate.ApprovedByUserId,
         IsArchived = aggregate.IsArchived
@@ -186,6 +187,7 @@ internal static class ContainerMapper
             DomainHydrator.Set(aggregate, nameof(ContainerAggregate.TotalWeight), new WeightInKg(header.TotalWeightKg.Value));
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Port), header.Port);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Notes), header.Notes);
+        DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ExchangeRateToLocalCurrency), header.ExchangeRateToLocalCurrency);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ApprovedAt), header.ApprovedAt);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ApprovedByUserId), header.ApprovedByUserId);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.IsArchived), header.IsArchived);
@@ -199,6 +201,9 @@ internal static class ContainerMapper
             DomainHydrator.Set(item, nameof(ChinaContainerItem.FabricColorId), i.FabricColorId);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.RollCount), i.RollCount);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.LengthMeters), new LengthInMeters(i.LengthMeters));
+            if (i.WeightKg.HasValue)
+                DomainHydrator.Set(item, nameof(ChinaContainerItem.WeightKg), new WeightInKg(i.WeightKg.Value));
+            DomainHydrator.Set(item, nameof(ChinaContainerItem.LotCode), i.LotCode);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.BuyerCustomerId), i.BuyerCustomerId);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.RowStatus), i.RowStatus);
             return item;

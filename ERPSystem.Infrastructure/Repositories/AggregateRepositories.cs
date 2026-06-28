@@ -40,6 +40,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
     {
         await context.Containers.AddAsync(ContainerMapper.ToHeaderEntity(aggregate), cancellationToken);
         await SyncItemsAsync(aggregate, cancellationToken);
+        await SyncImportBatchesAsync(aggregate, cancellationToken);
         await SyncLandingCostAsync(aggregate, cancellationToken);
     }
 
@@ -55,6 +56,9 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
         header.TotalWeightKg = mapped.TotalWeightKg;
         header.ApprovedAt = mapped.ApprovedAt;
         header.ApprovedByUserId = mapped.ApprovedByUserId;
+        header.ExchangeRateToLocalCurrency = mapped.ExchangeRateToLocalCurrency;
+        header.ExpectedArrival = mapped.ExpectedArrival;
+        header.Notes = mapped.Notes;
         header.IsArchived = mapped.IsArchived;
         header.UpdatedAt = DateTime.UtcNow;
 
@@ -93,9 +97,28 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             RollCount = i.RollCount,
             LengthMeters = i.LengthMeters.Value,
             WeightKg = i.WeightKg?.Value,
+            LotCode = i.LotCode,
             BuyerCustomerId = i.BuyerCustomerId,
             RowStatus = i.RowStatus
         }), ct);
+    }
+
+    private async Task SyncImportBatchesAsync(ContainerAggregate aggregate, CancellationToken ct)
+    {
+        foreach (var batch in aggregate.ImportBatches)
+        {
+            await context.ImportBatches.AddAsync(new ImportBatchEntity
+            {
+                Id = batch.Id,
+                ContainerId = aggregate.Id,
+                BatchNumber = batch.BatchNumber,
+                FileName = batch.FileName,
+                ImportedAt = batch.ImportedAt,
+                ImportedByUserId = batch.ImportedByUserId,
+                ValidRowCount = batch.ValidRowCount,
+                ErrorRowCount = batch.ErrorRowCount
+            }, ct);
+        }
     }
 
     private async Task SyncLandingCostAsync(ContainerAggregate aggregate, CancellationToken ct)

@@ -15,3 +15,10 @@ public sealed class GetContainerOperationsCenterQuery
 {
     public Guid ContainerId { get; init; }
 }
+
+public sealed class ParseContainerExcelQuery
+{
+    public Guid CompanyId { get; init; }
+    public string FileName { get; init; } = "";
+    public byte[] FileContent { get; init; } = [];
+}

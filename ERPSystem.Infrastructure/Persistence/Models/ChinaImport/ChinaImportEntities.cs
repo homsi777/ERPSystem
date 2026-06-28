@@ -16,6 +16,7 @@ public class ContainerEntity : PersistenceEntity
     public decimal? TotalWeightKg { get; set; }
     public string? Port { get; set; }
     public string? Notes { get; set; }
+    public decimal ExchangeRateToLocalCurrency { get; set; } = 1m;
     public DateTime? ApprovedAt { get; set; }
     public Guid? ApprovedByUserId { get; set; }
 }
@@ -29,6 +30,7 @@ public class ContainerItemEntity : PersistenceEntity
     public int RollCount { get; set; }
     public decimal LengthMeters { get; set; }
     public decimal? WeightKg { get; set; }
+    public string? LotCode { get; set; }
     public Guid? BuyerCustomerId { get; set; }
     public string RowStatus { get; set; } = "Valid";
 }

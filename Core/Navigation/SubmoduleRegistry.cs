@@ -12,7 +12,8 @@ namespace ERPSystem.Core.Navigation
             {
                 new SubmoduleDef("Containers", "قائمة الحاويات", "\uE7BF"),
                 new SubmoduleDef("NewImport", "استيراد حاوية جديدة", "\uE8B7"),
-                new SubmoduleDef("ExcelReview", "مراجعة ملف Excel", "\uE8A5"),
+                new SubmoduleDef("FileAnalysis", "تحليل الملف", "\uE8A5"),
+                new SubmoduleDef("ExcelReview", "تحليل الملف", "\uE8A5"),
                 new SubmoduleDef("Distribution", "توزيع الكميات", "\uE8AB"),
                 new SubmoduleDef("Stocktake", "جرد الحاوية", "\uE7B3"),
                 new SubmoduleDef("LandingCost", "ملخص تكلفة الاستيراد", "\uE8C1"),

@@ -23,6 +23,7 @@ public sealed class ContainerAggregate : AggregateRoot
     public WeightInKg? TotalWeight { get; private set; }
     public string? Port { get; private set; }
     public string? Notes { get; private set; }
+    public decimal ExchangeRateToLocalCurrency { get; private set; } = 1m;
     public DateTime? ApprovedAt { get; private set; }
     public Guid? ApprovedByUserId { get; private set; }
     public bool IsArchived { get; private set; }
@@ -55,6 +56,18 @@ public sealed class ContainerAggregate : AggregateRoot
             ShipmentDate = shipmentDate,
             Status = ChinaContainerStatus.Draft
         };
+    }
+
+    public void SetHeaderDetails(
+        DateTime? expectedArrival,
+        string? notes,
+        decimal exchangeRateToLocalCurrency)
+    {
+        if (exchangeRateToLocalCurrency <= 0)
+            throw new ValidationException("Exchange rate must be greater than zero.");
+        ExpectedArrival = expectedArrival;
+        Notes = notes;
+        ExchangeRateToLocalCurrency = exchangeRateToLocalCurrency;
     }
 
     public void MarkInTransit() => TransitionTo(ChinaContainerStatus.InTransit);
