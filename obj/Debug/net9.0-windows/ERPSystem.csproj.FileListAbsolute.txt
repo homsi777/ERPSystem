@@ -112,3 +112,14 @@ C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\DocumentFor
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\ExcelNumberFormat.dll
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\RBush.dll
 C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\SixLabors.Fonts.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\BouncyCastle.Cryptography.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\Enums.NET.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\ExtendedNumerics.BigDecimal.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\MathNet.Numerics.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\Microsoft.IO.RecyclableMemoryStream.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\NPOI.Core.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\NPOI.OOXML.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\NPOI.OpenXml4Net.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\NPOI.OpenXmlFormats.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\ICSharpCode.SharpZipLib.dll
+C:\Users\Homsi\Desktop\POS ERP C#\ERPSystem\bin\Debug\net9.0-windows\SixLabors.ImageSharp.dll
