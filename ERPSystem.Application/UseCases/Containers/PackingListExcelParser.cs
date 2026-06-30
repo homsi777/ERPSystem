@@ -8,8 +8,11 @@ namespace ERPSystem.Application.UseCases.Containers;
 internal sealed class PackingListExcelParser
 {
     private const decimal MetersToleranceAbsolute = 0.05m;
-    private static readonly Regex GrandTotalRegex = new(
-        @"TOTAL\s*[:=]?\s*([\d,.]+)\s*MTS\s*/\s*(\d+)\s*ROLLS?",
+    private static readonly Regex GrandTotalMtsFirstRegex = new(
+        @"TOTAL\s*[:=]+\s*([\d,.]+)\s*MTS\s*/\s*(\d+)\s*ROLLS?",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex GrandTotalRollsFirstRegex = new(
+        @"(\d+)\s*ROL{1,2}S?\s*/\s*([\d,.]+)\s*M(?:TS)?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     internal sealed class ParseOutput
@@ -30,8 +33,9 @@ internal sealed class PackingListExcelParser
         public List<PackingListRollDto> Rolls { get; } = [];
     }
 
-    public static ParseOutput Parse(IWorksheetReader sheet)
+    public static ParseOutput Parse(IWorksheetReader sheet, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         PackingListImportLogger.Stage("parse-start");
         var output = new ParseOutput();
         var firstRow = sheet.FirstRowUsed;
@@ -47,13 +51,17 @@ internal sealed class PackingListExcelParser
         var sequence = 0;
         PackingListGroupBuilder? currentGroup = null;
         IReadOnlyList<int>? columnBlocks = null;
+        var gridOnlyMode = false;
 
         for (var rowNum = firstRow; rowNum <= lastRow; rowNum++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (TryParseGrandTotalRow(sheet, rowNum, out var grandMeters, out var grandRolls))
             {
                 output.DeclaredGrandMeters ??= grandMeters;
                 output.DeclaredGrandRolls ??= grandRolls;
+                PackingListImportLogger.Stage("grand-total", $"row={rowNum} meters={grandMeters} rolls={grandRolls}");
                 continue;
             }
 
@@ -62,7 +70,8 @@ internal sealed class PackingListExcelParser
                 var candidate = sheet.GetCellString(rowNum, 1);
                 if (!string.IsNullOrWhiteSpace(candidate) &&
                     !candidate.StartsWith("TOTAL", StringComparison.OrdinalIgnoreCase) &&
-                    !IsColumnHeaderRow(sheet, rowNum))
+                    !IsColumnHeaderRow(sheet, rowNum) &&
+                    !TryParseGrandTotalRow(sheet, rowNum, out _, out _))
                 {
                     output.SupplierNameFromFile = candidate;
                 }
@@ -72,16 +81,23 @@ internal sealed class PackingListExcelParser
             {
                 columnBlocks = DetectColumnBlocks(sheet, rowNum);
                 PackingListImportLogger.Stage("column-blocks", $"row={rowNum} blocks={columnBlocks.Count}");
+                if (currentGroup is null)
+                {
+                    currentGroup = CreateGridGroup(output, sheet, firstRow);
+                    gridOnlyMode = true;
+                }
                 continue;
             }
 
             if (IsGroupTotalRow(sheet, rowNum))
             {
                 columnBlocks = null;
+                PackingListImportLogger.Stage("section-total", $"row={rowNum}");
                 continue;
             }
 
-            if (TryParseGroupHeaderRow(sheet, rowNum, out var fabricCode, out var color, out var declaredMeters, out var declaredRolls))
+            if (columnBlocks is null &&
+                TryParseGroupHeaderRow(sheet, rowNum, out var fabricCode, out var color, out var declaredMeters, out var declaredRolls))
             {
                 currentGroup = new PackingListGroupBuilder
                 {
@@ -92,7 +108,7 @@ internal sealed class PackingListExcelParser
                     DeclaredTotalRolls = declaredRolls
                 };
                 output.Groups.Add(currentGroup);
-                columnBlocks = null;
+                gridOnlyMode = false;
                 PackingListImportLogger.Stage("group-header", $"#{currentGroup.GroupIndex} {fabricCode}/{color}");
                 continue;
             }
@@ -136,16 +152,22 @@ internal sealed class PackingListExcelParser
             }
         }
 
+        if (gridOnlyMode && output.Groups.Count == 1 && output.Groups[0].Rolls.Count > 0)
+        {
+            var gridGroup = output.Groups[0];
+            gridGroup.DeclaredTotalRolls = gridGroup.Rolls.Count(r => r.IsValid);
+            gridGroup.DeclaredTotalMeters = gridGroup.Rolls.Where(r => r.IsValid).Sum(r => r.QuantityMeters);
+        }
+
         PackingListImportLogger.Stage(
             "parse-complete",
-            $"groups={output.Groups.Count} rolls={output.Groups.Sum(g => g.Rolls.Count)}");
+            $"groups={output.Groups.Count} rolls={output.Groups.Sum(g => g.Rolls.Count)} valid={output.Groups.Sum(g => g.Rolls.Count(r => r.IsValid))}");
         return output;
     }
 
     /// <summary>
-    /// Scans every used cell on the column-header row; each cell whose normalized text
-    /// equals "ROLL NUMBER" starts a 3-column block (Roll | Quantity(M) | Lot).
-    /// Block count is therefore the number of such headers found — never hardcoded.
+    /// Each roll-column header starts a 3-column block (Roll | Quantity | Lot/Yards).
+    /// Supports supplier variants: ROLL NUMBER, ROLL NO, ROLL#, etc.
     /// </summary>
     public static IReadOnlyList<int> DetectColumnBlocks(IWorksheetReader sheet, int rowNumber)
     {
@@ -153,11 +175,14 @@ internal sealed class PackingListExcelParser
         var lastCol = sheet.GetLastColumnUsed(rowNumber);
         for (var col = 1; col <= lastCol; col++)
         {
-            if (NormalizeHeader(sheet.GetCellString(rowNumber, col)) == "ROLL NUMBER")
+            if (IsRollBlockHeader(NormalizeHeader(sheet.GetCellString(rowNumber, col))))
                 blocks.Add(col);
         }
         return blocks;
     }
+
+    private static bool IsRollBlockHeader(string normalizedHeader) =>
+        normalizedHeader is "ROLL NUMBER" or "ROLL NO" or "ROLL#" or "ROLL NO#";
 
     public static bool MetersApproximatelyEqual(decimal declared, decimal parsed)
     {
@@ -167,18 +192,42 @@ internal sealed class PackingListExcelParser
         return delta <= Math.Max(MetersToleranceAbsolute, declared * 0.001m);
     }
 
+    public static bool RollsApproximatelyEqual(int declared, int parsed) =>
+        declared <= 0 || declared == parsed;
+
+    private static PackingListGroupBuilder CreateGridGroup(ParseOutput output, IWorksheetReader sheet, int firstRow)
+    {
+        var label = sheet.GetCellString(firstRow, 1).Trim();
+        if (string.IsNullOrWhiteSpace(label))
+            label = "PACKINGLIST";
+
+        var group = new PackingListGroupBuilder
+        {
+            GroupIndex = output.Groups.Count + 1,
+            FabricCode = label,
+            Color = ""
+        };
+        output.Groups.Add(group);
+        PackingListImportLogger.Stage("grid-group", $"#{group.GroupIndex} label={label}");
+        return group;
+    }
+
     private static bool TryParseGrandTotalRow(IWorksheetReader sheet, int rowNumber, out decimal meters, out int rolls)
     {
         meters = 0;
         rolls = 0;
         foreach (var text in sheet.GetUsedCellStrings(rowNumber))
         {
-            var match = GrandTotalRegex.Match(text);
-            if (!match.Success)
-                continue;
-
-            if (TryParseDecimal(match.Groups[1].Value, out meters) &&
+            var match = GrandTotalMtsFirstRegex.Match(text);
+            if (match.Success &&
+                TryParseDecimal(match.Groups[1].Value, out meters) &&
                 TryParseInt(match.Groups[2].Value, out rolls))
+                return true;
+
+            match = GrandTotalRollsFirstRegex.Match(text);
+            if (match.Success &&
+                TryParseInt(match.Groups[1].Value, out rolls) &&
+                TryParseDecimal(match.Groups[2].Value, out meters))
                 return true;
         }
         return false;
@@ -207,28 +256,37 @@ internal sealed class PackingListExcelParser
             return false;
 
         if (fabricCode.StartsWith("TOTAL", StringComparison.OrdinalIgnoreCase) ||
-            NormalizeHeader(fabricCode) == "ROLL NUMBER")
+            IsRollBlockHeader(NormalizeHeader(fabricCode)))
+            return false;
+
+        // Roll detail rows use numeric roll# + numeric meters in the first two columns.
+        if (TryParseInt(fabricCode, out _) && TryParseDecimal(color, out _))
+            return false;
+
+        // Fabric codes contain at least one letter (TR3663, S30061, etc.).
+        if (!fabricCode.Any(char.IsLetter))
             return false;
 
         var lastCol = sheet.GetLastColumnUsed(rowNumber);
+        var hasMtsMarker = false;
+        var hasRollsMarker = false;
         for (var col = 2; col <= lastCol; col++)
         {
-            if (NormalizeHeader(sheet.GetCellString(rowNumber, col)) == "MTS")
+            var header = NormalizeHeader(sheet.GetCellString(rowNumber, col));
+            if (header == "MTS")
             {
+                hasMtsMarker = true;
                 TryParseDecimal(sheet.GetCellString(rowNumber, col - 1), out declaredMeters);
-                break;
+            }
+            else if (header is "ROLLS" or "ROLL" or "ROL")
+            {
+                hasRollsMarker = true;
+                TryParseInt(sheet.GetCellString(rowNumber, col - 1), out declaredRolls);
             }
         }
 
-        for (var col = lastCol; col >= 1; col--)
-        {
-            var text = sheet.GetCellString(rowNumber, col);
-            if (TryParseInt(text, out var rolls) && rolls > 0)
-            {
-                declaredRolls = rolls;
-                break;
-            }
-        }
+        if (!hasMtsMarker && !hasRollsMarker)
+            return false;
 
         return declaredMeters > 0 || declaredRolls > 0;
     }
@@ -238,14 +296,18 @@ internal sealed class PackingListExcelParser
 
     private static bool IsGroupTotalRow(IWorksheetReader sheet, int rowNumber)
     {
-        var first = sheet.GetCellString(rowNumber, 1);
+        var first = sheet.GetCellString(rowNumber, 1).Trim();
         if (string.IsNullOrWhiteSpace(first))
             return false;
+
+        if (first.Equals("TTY", StringComparison.OrdinalIgnoreCase))
+            return true;
 
         return first.StartsWith("TOTAL:", StringComparison.OrdinalIgnoreCase) ||
                (first.StartsWith("TOTAL", StringComparison.OrdinalIgnoreCase) &&
                 first.Contains(':') &&
-                !GrandTotalRegex.IsMatch(first));
+                !GrandTotalMtsFirstRegex.IsMatch(first) &&
+                !GrandTotalRollsFirstRegex.IsMatch(first));
     }
 
     private static string NormalizeHeader(string value) =>

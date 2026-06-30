@@ -35,16 +35,37 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
         {
             var parsed = await Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 PackingListImportLogger.Stage("workbook-open-start");
                 using var sheet = ExcelWorksheetReaderFactory.Open(query.FileContent, query.FileName);
+                cancellationToken.ThrowIfCancellationRequested();
                 if (sheet.FirstRowUsed <= 0)
                     throw new InvalidOperationException("EMPTY_SHEET");
 
-                return PackingListExcelParser.Parse(sheet);
+                return PackingListExcelParser.Parse(sheet, cancellationToken);
             }, cancellationToken);
 
             if (parsed.Groups.Count == 0)
                 return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed("File", "لم يتم العثور على مجموعات أقمشة في ملف Packing List.");
+
+            var totalParsedMeters = parsed.Groups.Sum(g => g.Rolls.Where(r => r.IsValid).Sum(r => r.QuantityMeters));
+            var totalParsedRolls = parsed.Groups.Sum(g => g.Rolls.Count(r => r.IsValid));
+
+            if (parsed.DeclaredGrandRolls.HasValue &&
+                !PackingListExcelParser.RollsApproximatelyEqual(parsed.DeclaredGrandRolls.Value, totalParsedRolls))
+            {
+                return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed(
+                    "File",
+                    $"تحذير: تم تحليل {totalParsedRolls} توب فقط من أصل {parsed.DeclaredGrandRolls.Value} المعلن في الملف. لا يمكن المتابعة.");
+            }
+
+            if (parsed.DeclaredGrandMeters.HasValue &&
+                !PackingListExcelParser.MetersApproximatelyEqual(parsed.DeclaredGrandMeters.Value, totalParsedMeters))
+            {
+                return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed(
+                    "File",
+                    $"تحذير: تم تحليل {totalParsedMeters:N2} متر فقط من أصل {parsed.DeclaredGrandMeters.Value:N2} المعلن في الملف. لا يمكن المتابعة.");
+            }
 
             PackingListImportLogger.Stage("fabric-lookup-start", $"groups={parsed.Groups.Count}");
             var groups = new List<PackingListGroupDto>();
@@ -143,7 +164,7 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
             var grandMetersMatch = parsed.DeclaredGrandMeters is null ||
                                    PackingListExcelParser.MetersApproximatelyEqual(parsed.DeclaredGrandMeters.Value, totalParsedMeters);
             var grandRollsMatch = parsed.DeclaredGrandRolls is null ||
-                                  parsed.DeclaredGrandRolls.Value == totalParsedRolls;
+                                  PackingListExcelParser.RollsApproximatelyEqual(parsed.DeclaredGrandRolls.Value, totalParsedRolls);
 
             var grandSummary = parsed.DeclaredGrandMeters.HasValue && parsed.DeclaredGrandRolls.HasValue
                 ? $"المعلن: {parsed.DeclaredGrandMeters:N2} م / {parsed.DeclaredGrandRolls} توب — المحلّل: {totalParsedMeters:N2} م / {totalParsedRolls} توب"

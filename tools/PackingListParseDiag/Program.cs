@@ -3,12 +3,20 @@ using ERPSystem.Application.UseCases.Containers;
 using ERPSystem.Application.UseCases.Containers.Excel;
 
 const int timeoutSeconds = 10;
-var filePath = args.Length > 0 ? args[0] : @"C:\Users\Homsi\Desktop\ALamal-AB\COLOMBIA.xls";
+var dumpMode = args.Contains("--dump");
+var filePath = args.FirstOrDefault(a => !a.StartsWith('-'))
+    ?? @"C:\Users\Homsi\Desktop\ALamal-AB\COLOMBIA.xls";
 
 if (!File.Exists(filePath))
 {
     Console.WriteLine($"File not found: {filePath}");
     return 1;
+}
+
+if (dumpMode)
+{
+    VerboseDump.Run(filePath);
+    return 0;
 }
 
 var bytes = await File.ReadAllBytesAsync(filePath);
@@ -44,4 +52,6 @@ var (output, elapsed) = await parseTask;
 Console.WriteLine($"Parse completed in {elapsed.TotalMilliseconds:N0} ms");
 Console.WriteLine($"Groups: {output.Groups.Count}");
 Console.WriteLine($"Rolls:  {output.Groups.Sum(g => g.Rolls.Count)}");
+Console.WriteLine($"Valid:  {output.Groups.Sum(g => g.Rolls.Count(r => r.IsValid))}");
+Console.WriteLine($"Grand:  {output.DeclaredGrandMeters} m / {output.DeclaredGrandRolls} rolls");
 return 0;
