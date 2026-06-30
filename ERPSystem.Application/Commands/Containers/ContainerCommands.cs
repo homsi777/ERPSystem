@@ -14,13 +14,6 @@ public sealed class CreateChinaContainerCommand
     public IReadOnlyList<ImportContainerLineCommand> Lines { get; init; } = [];
 }
 
-public sealed class ImportContainerExcelCommand
-{
-    public Guid ContainerId { get; init; }
-    public string FileName { get; init; } = "";
-    public IReadOnlyList<ImportContainerLineCommand> Lines { get; init; } = [];
-}
-
 public sealed class ImportContainerLineCommand
 {
     public int LineNumber { get; init; }
@@ -52,4 +45,5 @@ public sealed class ApproveContainerCommand
 public sealed class MoveContainerToWarehouseCommand
 {
     public Guid ContainerId { get; init; }
+    public Guid WarehouseId { get; init; }
 }

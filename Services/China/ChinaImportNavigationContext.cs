@@ -17,6 +17,9 @@ public static class ChinaImportNavigationContext
     public static ContainerExcelParseResultDto? LastParseResult { get; private set; }
     public static ChinaImportHeaderDraft? HeaderDraft { get; private set; }
     public static string? LastFileName { get; private set; }
+    public static ChinaImportCostPreviewDto? CostPreview { get; private set; }
+    public static Guid? ActiveContainerId { get; private set; }
+    public static Guid? CreatedContainerId { get; private set; }
 
     public static void SetParseSession(
         ContainerExcelParseResultDto parseResult,
@@ -30,10 +33,21 @@ public static class ChinaImportNavigationContext
 
     public static ContainerExcelParseResultDto? GetParseResult() => LastParseResult;
 
+    public static void SetCostPreview(ChinaImportCostPreviewDto preview) => CostPreview = preview;
+
+    public static void SetCreatedContainer(Guid containerId) => CreatedContainerId = containerId;
+
+    public static void SetActiveContainer(Guid containerId) => ActiveContainerId = containerId;
+
+    public static Guid? ResolveContainerId() => ActiveContainerId ?? CreatedContainerId;
+
     public static void Clear()
     {
         LastParseResult = null;
         HeaderDraft = null;
         LastFileName = null;
+        CostPreview = null;
+        ActiveContainerId = null;
+        CreatedContainerId = null;
     }
 }

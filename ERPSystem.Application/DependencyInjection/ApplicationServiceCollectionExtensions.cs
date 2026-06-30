@@ -58,6 +58,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCustomerStatementHandler>();
         services.AddScoped<GetDashboardSummaryHandler>();
         services.AddScoped<GetChinaContainerListHandler>();
+        services.AddScoped<GetContainerOperationsCenterHandler>();
         services.AddScoped<ImportContainerExcelHandler>();
         services.AddScoped<GetWarehouseListHandler>();
         services.AddScoped<GetSalesInvoiceListHandler>();

@@ -29,6 +29,10 @@ public sealed class ContainerDetailsDto
     public int TotalRolls { get; init; }
     public decimal TotalMeters { get; init; }
     public decimal? TotalWeightKg { get; init; }
+    public decimal ExchangeRateToLocalCurrency { get; init; }
+    public decimal ChinaInvoiceAmountUsd { get; init; }
+    public decimal FinancialTaxReserveUsd { get; init; }
+    public decimal? FinancialTaxReservePostedLocal { get; init; }
     public LandingCostDto? LandingCost { get; init; }
     public IReadOnlyList<ContainerItemDto> Items { get; init; } = [];
 }
@@ -64,6 +68,7 @@ public sealed class ContainerOperationsCenterDto
     public bool CanApprove { get; init; }
     public bool CanMoveToWarehouse { get; init; }
     public bool CanCalculateLandingCost { get; init; }
+    public bool IsReadyForSale { get; init; }
 }
 
 public sealed class ContainerExcelParseResultDto

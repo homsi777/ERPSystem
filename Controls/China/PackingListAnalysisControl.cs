@@ -144,6 +144,29 @@ public sealed class PackingListAnalysisControl : UserControl
         };
         backButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "NewImport");
         actions.Children.Add(backButton);
+
+        var grand = parseResult.GrandTotal;
+        var canContinue = grand.RollsMatch && grand.MetersMatch && !parseResult.HasUnresolvedGroups;
+        var continueButton = new Button
+        {
+            Content = "التالي — إدخال التكلفة",
+            Style = (Style)WpfApplication.Current.Resources["PrimaryButtonStyle"]!,
+            IsEnabled = canContinue
+        };
+        if (!canContinue && grand.DeclaredTotalRolls.HasValue && !grand.RollsMatch)
+        {
+            continueButton.ToolTip =
+                $"تحذير: تم تحليل {grand.ParsedTotalRolls} توب فقط من أصل {grand.DeclaredTotalRolls.Value} المعلن في الملف. لا يمكن المتابعة.";
+        }
+        else if (!canContinue && parseResult.HasUnresolvedGroups)
+        {
+            continueButton.ToolTip = "يوجد أكواد غير مربوطة. صحّح الملف أو سجّل الأكواد في الكتالوج قبل المتابعة.";
+        }
+        else
+        {
+            continueButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "CostEntry");
+        }
+        actions.Children.Add(continueButton);
         stack.Children.Add(actions);
 
         root.Content = stack;

@@ -46,8 +46,22 @@ static class VerboseDump
         m = 0; r = 0;
         foreach (var text in sheet.GetUsedCellStrings(row))
         {
-            var match = System.Text.RegularExpressions.Regex.Match(text, @"TOTAL\s*[:=]?\s*([\d,.]+)\s*MTS\s*/\s*(\d+)\s*ROLLS?", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            if (match.Success && decimal.TryParse(match.Groups[1].Value.Replace(",", ""), out m) && int.TryParse(match.Groups[2].Value, out r))
+            var mtsFirst = System.Text.RegularExpressions.Regex.Match(
+                text,
+                @"TOTAL\s*[:=]+\s*([\d,.]+)\s*MTS\s*/\s*(\d+)\s*ROLLS?",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (mtsFirst.Success &&
+                decimal.TryParse(mtsFirst.Groups[1].Value.Replace(",", ""), out m) &&
+                int.TryParse(mtsFirst.Groups[2].Value, out r))
+                return true;
+
+            var rollsFirst = System.Text.RegularExpressions.Regex.Match(
+                text,
+                @"(\d+)\s*ROL{1,2}S?\s*/\s*([\d,.]+)\s*M(?:TS)?",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (rollsFirst.Success &&
+                int.TryParse(rollsFirst.Groups[1].Value, out r) &&
+                decimal.TryParse(rollsFirst.Groups[2].Value.Replace(",", ""), out m))
                 return true;
         }
         return false;

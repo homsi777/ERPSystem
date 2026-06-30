@@ -195,6 +195,8 @@ public sealed class MoveContainerToWarehouseHandler(
     {
         if (command.ContainerId == Guid.Empty)
             return ApplicationResult.ValidationFailed(nameof(command.ContainerId), "Container is required.");
+        if (command.WarehouseId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.WarehouseId), "Warehouse is required.");
 
         if (!await permissionService.CanAsync("containers.move-to-warehouse", cancellationToken))
             return ApplicationResult.PermissionDenied("Not allowed to move container to warehouse.");

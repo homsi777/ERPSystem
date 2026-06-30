@@ -48,6 +48,8 @@ internal sealed class PackingListExcelParser
 
         PackingListImportLogger.Stage("parse-row-walk", $"rows={firstRow}-{lastRow}");
 
+        ScanDeclaredGrandTotals(sheet, firstRow, lastRow, output);
+
         var sequence = 0;
         PackingListGroupBuilder? currentGroup = null;
         IReadOnlyList<int>? columnBlocks = null;
@@ -56,14 +58,6 @@ internal sealed class PackingListExcelParser
         for (var rowNum = firstRow; rowNum <= lastRow; rowNum++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (TryParseGrandTotalRow(sheet, rowNum, out var grandMeters, out var grandRolls))
-            {
-                output.DeclaredGrandMeters ??= grandMeters;
-                output.DeclaredGrandRolls ??= grandRolls;
-                PackingListImportLogger.Stage("grand-total", $"row={rowNum} meters={grandMeters} rolls={grandRolls}");
-                continue;
-            }
 
             if (output.SupplierNameFromFile is null && rowNum <= firstRow + 5)
             {
@@ -194,6 +188,19 @@ internal sealed class PackingListExcelParser
 
     public static bool RollsApproximatelyEqual(int declared, int parsed) =>
         declared <= 0 || declared == parsed;
+
+    private static void ScanDeclaredGrandTotals(IWorksheetReader sheet, int firstRow, int lastRow, ParseOutput output)
+    {
+        for (var rowNum = firstRow; rowNum <= lastRow; rowNum++)
+        {
+            if (!TryParseGrandTotalRow(sheet, rowNum, out var grandMeters, out var grandRolls))
+                continue;
+
+            output.DeclaredGrandMeters ??= grandMeters;
+            output.DeclaredGrandRolls ??= grandRolls;
+            PackingListImportLogger.Stage("grand-total-scan", $"row={rowNum} meters={grandMeters} rolls={grandRolls}");
+        }
+    }
 
     private static PackingListGroupBuilder CreateGridGroup(ParseOutput output, IWorksheetReader sheet, int firstRow)
     {

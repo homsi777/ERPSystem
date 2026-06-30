@@ -4,6 +4,7 @@ using ERPSystem.Application.UseCases.Containers.Excel;
 
 const int timeoutSeconds = 10;
 var dumpMode = args.Contains("--dump");
+var safetyTest = args.Contains("--safety-test");
 var filePath = args.FirstOrDefault(a => !a.StartsWith('-'))
     ?? @"C:\Users\Homsi\Desktop\ALamal-AB\COLOMBIA.xls";
 
@@ -11,6 +12,11 @@ if (!File.Exists(filePath))
 {
     Console.WriteLine($"File not found: {filePath}");
     return 1;
+}
+
+if (safetyTest)
+{
+    return SafetyCheck.Run(filePath);
 }
 
 if (dumpMode)

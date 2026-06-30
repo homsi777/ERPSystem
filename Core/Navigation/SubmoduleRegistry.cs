@@ -1,4 +1,5 @@
 using ERPSystem.Core;
+using ERPSystem.Views.China;
 
 namespace ERPSystem.Core.Navigation
 {
@@ -13,7 +14,6 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Containers", "قائمة الحاويات", "\uE7BF"),
                 new SubmoduleDef("NewImport", "استيراد حاوية جديدة", "\uE8B7"),
                 new SubmoduleDef("FileAnalysis", "تحليل الملف", "\uE8A5"),
-                new SubmoduleDef("ExcelReview", "تحليل الملف", "\uE8A5"),
                 new SubmoduleDef("Distribution", "توزيع الكميات", "\uE8AB"),
                 new SubmoduleDef("Stocktake", "جرد الحاوية", "\uE7B3"),
                 new SubmoduleDef("LandingCost", "ملخص تكلفة الاستيراد", "\uE8C1"),
@@ -117,6 +117,16 @@ namespace ERPSystem.Core.Navigation
             var subs = Get(module);
             if (subs.Count == 0) return "";
             if (string.IsNullOrWhiteSpace(subPage)) return subs[0].Key;
+
+            if (module == AppModule.ChinaImport)
+            {
+                if (subPage.Equals("ExcelReview", StringComparison.OrdinalIgnoreCase))
+                    subPage = "FileAnalysis";
+
+                if (ChinaViews.IsKnownRoute(subPage))
+                    return subPage;
+            }
+
             return subs.FirstOrDefault(s =>
                 s.Key.Equals(subPage, StringComparison.OrdinalIgnoreCase) ||
                 s.LabelAr.Contains(subPage, StringComparison.OrdinalIgnoreCase))?.Key ?? subs[0].Key;

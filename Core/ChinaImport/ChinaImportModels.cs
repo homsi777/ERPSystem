@@ -136,20 +136,5 @@ namespace ERPSystem.Core.ChinaImport
                 BuyerName = rnd.Next(3) == 0 ? "—" : $"عميل {rnd.Next(1, 20)}"
             }).ToList();
         }
-
-        public static (int rolls, decimal meters, decimal weight, int codes, int colors, int valid, int errors)
-            GetImportSummary(string containerNumber)
-        {
-            var lines = GetContainerLines(containerNumber);
-            return (
-                lines.Count,
-                lines.Sum(l => l.LengthMeters),
-                lines.Sum(l => l.WeightKg),
-                lines.Select(l => l.FabricCode).Distinct().Count(),
-                lines.Select(l => l.Color).Distinct().Count(),
-                lines.Count(l => l.IsValid),
-                lines.Count(l => !l.IsValid)
-            );
-        }
     }
 }

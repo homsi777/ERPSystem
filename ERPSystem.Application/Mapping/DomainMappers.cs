@@ -71,6 +71,7 @@ public static class ContainerMapper
         TotalRolls = aggregate.TotalRolls,
         TotalMeters = aggregate.TotalMeters.Value,
         TotalWeightKg = aggregate.TotalWeight?.Value,
+        ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
         LandingCost = aggregate.LandingCost is null ? null : ToLandingCostDto(aggregate.LandingCost),
         Items = aggregate.Items.Select(i => new ContainerItemDto
         {
@@ -101,9 +102,11 @@ public static class ContainerMapper
     public static ContainerOperationsCenterDto ToOperationsCenterDto(ContainerAggregate aggregate) => new()
     {
         Container = ToDetailsDto(aggregate),
-        CanApprove = aggregate.LandingCost?.Status == LandingCostStatus.Reviewed,
+        CanApprove = aggregate.LandingCost?.Status == LandingCostStatus.Reviewed
+            && aggregate.Status == ChinaContainerStatus.LandingCostReviewed,
         CanMoveToWarehouse = aggregate.Status == ChinaContainerStatus.Approved,
-        CanCalculateLandingCost = aggregate.TotalMeters.Value > 0 && aggregate.LandingCost is null
+        CanCalculateLandingCost = aggregate.TotalMeters.Value > 0 && aggregate.LandingCost is null,
+        IsReadyForSale = aggregate.Status == ChinaContainerStatus.InWarehouse
     };
 }
 

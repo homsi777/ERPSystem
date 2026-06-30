@@ -159,8 +159,6 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 });
             }
 
-            var totalParsedMeters = groups.Sum(g => g.ParsedTotalMeters);
-            var totalParsedRolls = groups.Sum(g => g.ParsedTotalRolls);
             var grandMetersMatch = parsed.DeclaredGrandMeters is null ||
                                    PackingListExcelParser.MetersApproximatelyEqual(parsed.DeclaredGrandMeters.Value, totalParsedMeters);
             var grandRollsMatch = parsed.DeclaredGrandRolls is null ||
