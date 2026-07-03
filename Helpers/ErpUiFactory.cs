@@ -33,6 +33,26 @@ namespace ERPSystem.Helpers
             Child = content
         };
 
+        /// <summary>Removes an element from its logical parent so it can be hosted elsewhere.</summary>
+        public static void DetachFromVisualTree(UIElement element)
+        {
+            if (element is not FrameworkElement fe || fe.Parent is null)
+                return;
+
+            switch (fe.Parent)
+            {
+                case Panel panel:
+                    panel.Children.Remove(fe);
+                    break;
+                case ContentControl cc when ReferenceEquals(cc.Content, fe):
+                    cc.Content = null;
+                    break;
+                case Decorator decorator when ReferenceEquals(decorator.Child, fe):
+                    decorator.Child = null;
+                    break;
+            }
+        }
+
         public static Border IconBadge(string glyph, Brush accent, Brush? accentLight = null, double size = ErpDesignTokens.IconBadgeSize)
             => new()
             {

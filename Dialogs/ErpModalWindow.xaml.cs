@@ -1,6 +1,6 @@
+using ERPSystem.Helpers;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace ERPSystem.Dialogs;
 
@@ -26,7 +26,7 @@ public partial class ErpModalWindow : Window
 
     public void SetBody(UIElement content)
     {
-        DetachFromParent(content);
+        ErpUiFactory.DetachFromVisualTree(content);
         if (content is FrameworkElement fe)
             fe.Margin = new Thickness(20, 16, 20, 20);
 
@@ -58,7 +58,7 @@ public partial class ErpModalWindow : Window
             : Visibility.Visible;
         dlg.TxtIcon.Text = iconGlyph;
 
-        DetachFromParent(content);
+        ErpUiFactory.DetachFromVisualTree(content);
         if (content is FrameworkElement fe)
             fe.Margin = new Thickness(20, 16, 20, 20);
 
@@ -70,25 +70,6 @@ public partial class ErpModalWindow : Window
         };
 
         return dlg.ShowDialog();
-    }
-
-    private static void DetachFromParent(UIElement content)
-    {
-        if (content is not FrameworkElement fe || fe.Parent is null)
-            return;
-
-        switch (fe.Parent)
-        {
-            case Panel panel:
-                panel.Children.Remove(fe);
-                break;
-            case ContentControl cc when ReferenceEquals(cc.Content, fe):
-                cc.Content = null;
-                break;
-            case Decorator decorator when ReferenceEquals(decorator.Child, fe):
-                decorator.Child = null;
-                break;
-        }
     }
 
     private void BtnClose_Click(object sender, RoutedEventArgs e)

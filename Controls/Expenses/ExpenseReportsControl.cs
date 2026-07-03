@@ -257,6 +257,7 @@ public sealed class ExpenseReportsControl : UserControl
         }
 
         _grid.ItemsSource = report.Rows;
+        ErpUiFactory.DetachFromVisualTree(_grid);
         _previewHost.Children.Add(ErpUiFactory.SectionTitle("التفاصيل"));
         _previewHost.Children.Add(ErpUiFactory.Card(_grid));
         _previewHost.Children.Add(new TextBlock

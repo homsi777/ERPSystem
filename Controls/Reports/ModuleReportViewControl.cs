@@ -163,6 +163,7 @@ public sealed class ModuleReportViewControl : UserControl
         }
 
         _grid.ItemsSource = report.Rows.Select(r => new ModuleReportRowBinder(r)).ToList();
+        ErpUiFactory.DetachFromVisualTree(_grid);
         _body.Children.Add(ErpUiFactory.SectionTitle("النتائج"));
         _body.Children.Add(ErpUiFactory.Card(_grid));
     }
