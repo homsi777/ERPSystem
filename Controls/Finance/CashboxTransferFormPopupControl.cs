@@ -39,7 +39,7 @@ public sealed class CashboxTransferFormPopupControl : UserControl
         actions.Children.Add(_btnSave);
         actions.Children.Add(_btnCancel);
         stack.Children.Add(actions);
-        Content = new ScrollViewer { Padding = new Thickness(16), Content = stack };
+        Content = stack;
         Loaded += OnLoaded;
         _btnSave.Click += async (_, _) => await SaveAsync();
         _btnCancel.Click += (_, _) => CashboxPopupService.CancelActive();

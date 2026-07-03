@@ -1,6 +1,5 @@
 using ERPSystem.Controls.Finance;
 using ERPSystem.Dialogs;
-using ERPSystem.Helpers;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -25,26 +24,27 @@ public static class CashboxPopupService
     public static bool ShowTransfer(Guid? fromCashboxId = null)
     {
         CashboxNavigationContext.BeginTransfer(fromCashboxId);
-        _active = new ErpModalWindow();
-        _active.Configure("تحويل بين الصناديق", "خصم من المصدر وإضافة للوجهة فوراً", "\uE8AB", 520, 560);
-        _active.SetBody(new CashboxTransferFormPopupControl());
-        var result = _active.ShowDialog();
-        _active = null;
-        CashboxNavigationContext.TransferFromCashboxId = null;
-        return result == true;
+        return ShowDialog(
+            new CashboxTransferFormPopupControl(),
+            "تحويل بين الصناديق",
+            "خصم من المصدر وإضافة للوجهة فوراً",
+            "\uE8AB",
+            520,
+            560) == true;
     }
 
     public static void ShowOperationsCenter(Guid cashboxId, string? initialTab = null)
     {
         var oc = new CashboxOperationsCenterControl();
         oc.InitializeForPopup(cashboxId, initialTab);
-        ErpModalWindow.Show(
+        ShowDialog(
+            oc,
             "مركز عمل الصندوق",
             "حركات وتحويلات — بيانات حية",
-            oc,
             "\uE825",
             1000,
             720);
+        CashboxListRefreshHub.RequestRefresh();
     }
 
     public static void CloseActive(bool success = true)
@@ -64,12 +64,25 @@ public static class CashboxPopupService
 
     private static bool ShowForm(string title, string subtitle, string icon, Func<UserControl> factory)
     {
-        _active = new ErpModalWindow();
-        _active.Configure(title, subtitle, icon, 520, 480);
-        _active.SetBody(factory());
-        var result = _active.ShowDialog();
-        _active = null;
+        var result = ShowDialog(factory(), title, subtitle, icon, 520, 480);
         CashboxNavigationContext.EditCashboxId = null;
         return result == true;
+    }
+
+    private static bool? ShowDialog(
+        UIElement content,
+        string title,
+        string subtitle,
+        string icon,
+        double width,
+        double maxHeight = 680)
+    {
+        _active = new ErpModalWindow();
+        _active.Configure(title, subtitle, icon, width, maxHeight);
+        _active.SetBody(content);
+        var result = _active.ShowDialog();
+        _active = null;
+        CashboxNavigationContext.TransferFromCashboxId = null;
+        return result;
     }
 }

@@ -82,7 +82,7 @@ namespace ERPSystem.Controls.Workspace
         };
 
         private static bool UsesOperationsCenterChrome(WorkspaceOpenRequest request) =>
-            OperationsCenterFactory.TryBuild(request) != null;
+            OperationsCenterFactory.IsOperationsCenterRequest(request);
 
         private void ApplyOperationsCenterLayout()
         {

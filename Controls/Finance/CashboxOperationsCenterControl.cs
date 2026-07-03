@@ -73,7 +73,7 @@ public sealed class CashboxOperationsCenterControl : UserControl
         _tabs = BuildTabs();
         root.Children.Add(_tabs);
 
-        Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = root };
+        Content = root;
 
         if (!string.IsNullOrWhiteSpace(initialTab))
             SelectTab(initialTab);

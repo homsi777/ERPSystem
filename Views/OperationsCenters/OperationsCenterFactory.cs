@@ -43,8 +43,7 @@ namespace ERPSystem.Views.OperationsCenters
         public static UIElement? TryBuild(WorkspaceOpenRequest request)
         {
             var tab = ActionToTab(request.ActionId);
-            if (tab != null || request.ActionId == EntityActionId.OpenOperationsCenter ||
-                IsOperationsCenterAction(request.ActionId))
+            if (IsOperationsCenterRequest(request))
             {
                 return request.EntityType switch
                 {
@@ -73,6 +72,14 @@ namespace ERPSystem.Views.OperationsCenters
                 return BuildContainer(request, "LandingCost");
 
             return null;
+        }
+
+        public static bool IsOperationsCenterRequest(WorkspaceOpenRequest request)
+        {
+            var tab = ActionToTab(request.ActionId);
+            return tab != null
+                   || request.ActionId == EntityActionId.OpenOperationsCenter
+                   || IsOperationsCenterAction(request.ActionId);
         }
 
         private static bool IsOperationsCenterAction(EntityActionId id) => id switch
@@ -447,7 +454,7 @@ namespace ERPSystem.Views.OperationsCenters
 
             var oc = new CashboxOperationsCenterControl();
             oc.InitializeForPopup(id.Value, tab);
-            return new UserControl { Content = oc };
+            return oc;
         }
 
         private static UIElement BuildAccountStatement(WorkspaceOpenRequest req)
