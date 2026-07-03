@@ -151,9 +151,9 @@ public partial class ExtendSuppliersModule : Migration
             """);
 
         migrationBuilder.Sql($"""
-            INSERT INTO accounting.accounts ("Id", "CompanyId", "Code", "NameAr", "NameEn", "AccountType", "ParentId", "IsPostable", "IsActive", "IsArchived", "CreatedAt")
+            INSERT INTO "Accounts" ("Id", "CompanyId", "Code", "NameAr", "NameEn", "AccountType", "ParentId", "IsPostable", "IsActive", "IsArchived", "CreatedAt")
             SELECT '{AccountingAccountIds.OpeningBalanceEquity}', '{DatabaseSeeder.DefaultCompanyId}', '3100', 'أرصدة افتتاحية', 'Opening Balance Equity', 'Equity', '{AccountingAccountIds.RootEquity}', true, true, false, NOW() AT TIME ZONE 'UTC'
-            WHERE NOT EXISTS (SELECT 1 FROM accounting.accounts WHERE "Id" = '{AccountingAccountIds.OpeningBalanceEquity}');
+            WHERE NOT EXISTS (SELECT 1 FROM "Accounts" WHERE "Id" = '{AccountingAccountIds.OpeningBalanceEquity}');
             """);
     }
 
