@@ -172,6 +172,17 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<PostReceiptVoucherCommand, ApplicationResult>, PostReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<CreatePaymentVoucherCommand, ApplicationResult<Guid>>, CreatePaymentVoucherHandler>();
         services.AddScoped<ICommandHandler<PostPaymentVoucherCommand, ApplicationResult>, PostPaymentVoucherHandler>();
+        services.AddScoped<ICommandHandler<CreateCashboxCommand, ApplicationResult<Guid>>, CreateCashboxHandler>();
+        services.AddScoped<ICommandHandler<UpdateCashboxCommand, ApplicationResult>, UpdateCashboxHandler>();
+        services.AddScoped<ICommandHandler<DeactivateCashboxCommand, ApplicationResult>, DeactivateCashboxHandler>();
+        services.AddScoped<ICommandHandler<ActivateCashboxCommand, ApplicationResult>, ActivateCashboxHandler>();
+        services.AddScoped<ICommandHandler<CreateCashboxTransferCommand, ApplicationResult<Guid>>, CreateCashboxTransferHandler>();
+        services.AddScoped<ICommandHandler<PostCashboxTransferCommand, ApplicationResult>, PostCashboxTransferHandler>();
+        services.AddScoped<GetCashboxListHandler>();
+        services.AddScoped<GetCashboxDetailsHandler>();
+        services.AddScoped<GetCashboxMovementsHandler>();
+        services.AddScoped<GetCashboxTransferListHandler>();
+        services.AddScoped<GetCashboxOperationsCenterHandler>();
     }
 
     private static void RegisterSalesHandlers(IServiceCollection services)

@@ -479,6 +479,36 @@ internal static class FinanceMapper
         DomainHydrator.Set(cashbox, nameof(Cashbox.IsActive), entity.IsActive);
         return cashbox;
     }
+
+    public static CashboxTransfer ToDomain(CashboxTransferEntity entity)
+    {
+        var transfer = DomainHydrator.Create<CashboxTransfer>();
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.Id), entity.Id);
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.Number), entity.TransferNumber);
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.FromCashboxId), entity.FromCashboxId);
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.ToCashboxId), entity.ToCashboxId);
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.Amount), new Money(entity.Amount, entity.Currency));
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.Status), (VoucherStatus)entity.Status);
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.TransferDate), entity.TransferDate);
+        DomainHydrator.Set(transfer, nameof(CashboxTransfer.Notes), entity.Notes);
+        return transfer;
+    }
+
+    public static CashboxTransferEntity ToEntity(CashboxTransfer transfer, Guid companyId, Guid branchId) => new()
+    {
+        Id = transfer.Id,
+        CompanyId = companyId,
+        BranchId = branchId,
+        TransferNumber = transfer.Number,
+        FromCashboxId = transfer.FromCashboxId,
+        ToCashboxId = transfer.ToCashboxId,
+        Amount = transfer.Amount.Amount,
+        Currency = transfer.Amount.Currency,
+        TransferDate = transfer.TransferDate,
+        Status = (int)transfer.Status,
+        Notes = transfer.Notes,
+        PostedAt = transfer.Status == VoucherStatus.Posted ? DateTime.UtcNow : null
+    };
 }
 
 internal static class PurchaseMapper

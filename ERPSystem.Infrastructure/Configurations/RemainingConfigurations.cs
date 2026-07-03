@@ -204,6 +204,18 @@ internal sealed class PaymentVoucherConfiguration : IEntityTypeConfiguration<Pay
     }
 }
 
+internal sealed class CashboxTransferConfiguration : IEntityTypeConfiguration<CashboxTransferEntity>
+{
+    public void Configure(EntityTypeBuilder<CashboxTransferEntity> builder)
+    {
+        builder.ToTable("cashbox_transfers", Schemas.Finance);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.TransferNumber).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
+        builder.HasIndex(x => new { x.BranchId, x.TransferNumber }).IsUnique();
+    }
+}
+
 internal sealed class CashboxConfiguration : IEntityTypeConfiguration<CashboxEntity>
 {
     public void Configure(EntityTypeBuilder<CashboxEntity> builder)

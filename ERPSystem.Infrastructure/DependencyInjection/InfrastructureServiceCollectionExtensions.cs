@@ -64,6 +64,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IReceiptVoucherRepository, ReceiptVoucherRepository>();
         services.AddScoped<IPaymentVoucherRepository, PaymentVoucherRepository>();
         services.AddScoped<ICashboxRepository, CashboxRepository>();
+        services.AddScoped<ICashboxTransferRepository, CashboxTransferRepository>();
         services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IJournalBookRepository, JournalBookRepository>();

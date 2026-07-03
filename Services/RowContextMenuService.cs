@@ -1,12 +1,14 @@
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Workspace;
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
 using ERPSystem.Services.Inventory;
+using ERPSystem.Services.Finance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -73,6 +75,12 @@ namespace ERPSystem.Services
             if (entityType == EntityType.Warehouse && entity is WarehouseListExtendedDto wh)
             {
                 WarehouseContextMenuService.Show(wh, row);
+                return;
+            }
+
+            if (entityType == EntityType.Cashbox && entity is CashboxListDto cb)
+            {
+                CashboxContextMenuService.Show(cb, row);
                 return;
             }
 
@@ -180,6 +188,9 @@ namespace ERPSystem.Services
                 return;
 
             if (InventoryActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
+            if (CashboxActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                 return;
 
             WorkspaceWindowManager.Instance.OpenAction(

@@ -45,3 +45,46 @@ public sealed class PostPaymentVoucherCommand
     public Guid VoucherId { get; init; }
     public Guid? PurchaseInvoiceId { get; init; }
 }
+
+public sealed class CreateCashboxCommand
+{
+    public Guid CompanyId { get; init; }
+    public Guid BranchId { get; init; }
+    public string Code { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Currency { get; init; } = "USD";
+}
+
+public sealed class UpdateCashboxCommand
+{
+    public Guid CashboxId { get; init; }
+    public string Code { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Currency { get; init; } = "USD";
+}
+
+public sealed class DeactivateCashboxCommand
+{
+    public Guid CashboxId { get; init; }
+}
+
+public sealed class ActivateCashboxCommand
+{
+    public Guid CashboxId { get; init; }
+}
+
+public sealed class CreateCashboxTransferCommand
+{
+    public Guid CompanyId { get; init; }
+    public Guid BranchId { get; init; }
+    public Guid FromCashboxId { get; init; }
+    public Guid ToCashboxId { get; init; }
+    public decimal Amount { get; init; }
+    public string? Notes { get; init; }
+    public bool PostImmediately { get; init; } = true;
+}
+
+public sealed class PostCashboxTransferCommand
+{
+    public Guid TransferId { get; init; }
+}

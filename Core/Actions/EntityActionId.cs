@@ -128,6 +128,13 @@ namespace ERPSystem.Core.Actions
         WarehouseExportExcel,
         WarehouseExportPdf,
         WarehousePrint,
-        WarehouseProperties
+        WarehouseProperties,
+
+        CashboxEdit,
+        CashboxTransfer,
+        CashboxMovements,
+        CashboxProperties,
+        CashboxDeactivate,
+        CashboxActivate
     }
 }

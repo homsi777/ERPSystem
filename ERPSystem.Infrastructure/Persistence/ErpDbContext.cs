@@ -93,6 +93,7 @@ public sealed class ErpDbContext(DbContextOptions<ErpDbContext> options) : DbCon
     public DbSet<ReceiptVoucherEntity> ReceiptVouchers => Set<ReceiptVoucherEntity>();
     public DbSet<PaymentVoucherEntity> PaymentVouchers => Set<PaymentVoucherEntity>();
     public DbSet<CashboxEntity> Cashboxes => Set<CashboxEntity>();
+    public DbSet<CashboxTransferEntity> CashboxTransfers => Set<CashboxTransferEntity>();
     public DbSet<CostCenterEntity> CostCenters => Set<CostCenterEntity>();
 
     // accounting

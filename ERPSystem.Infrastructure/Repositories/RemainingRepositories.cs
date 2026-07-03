@@ -570,6 +570,86 @@ internal sealed class CashboxRepository(ErpDbContext context) : ICashboxReposito
         return entities.Select(FinanceMapper.ToDomain).ToList();
     }
 
+    public async Task<bool> ExistsByCodeAsync(
+        Guid branchId, string code, Guid? excludeId = null, CancellationToken cancellationToken = default)
+    {
+        var query = context.Cashboxes.AsNoTracking()
+            .Where(c => c.BranchId == branchId && c.Code == code);
+        if (excludeId.HasValue)
+            query = query.Where(c => c.Id != excludeId.Value);
+        return await query.AnyAsync(cancellationToken);
+    }
+
+    public async Task<(decimal Receipts, decimal Payments)> GetTodayTotalsAsync(
+        Guid cashboxId, CancellationToken cancellationToken = default)
+    {
+        var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
+        var posted = (int)VoucherStatus.Posted;
+
+        var receipts = await context.ReceiptVouchers.AsNoTracking()
+            .Where(v => v.CashboxId == cashboxId && v.Status == posted &&
+                        v.PostedAt >= today && v.PostedAt < tomorrow)
+            .SumAsync(v => v.Amount, cancellationToken);
+
+        var payments = await context.PaymentVouchers.AsNoTracking()
+            .Where(v => v.CashboxId == cashboxId && v.Status == posted &&
+                        v.PostedAt >= today && v.PostedAt < tomorrow)
+            .SumAsync(v => v.Amount, cancellationToken);
+
+        return (receipts, payments);
+    }
+
+    public async Task<IReadOnlyList<(DateTime Date, string Type, string Number, string Description, decimal Amount, bool IsInbound)>> GetMovementsAsync(
+        Guid cashboxId,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var posted = (int)VoucherStatus.Posted;
+        var from = fromDate?.Date ?? DateTime.MinValue;
+        var to = toDate?.Date.AddDays(1).AddTicks(-1) ?? DateTime.MaxValue;
+        var rows = new List<(DateTime, string, string, string, decimal, bool)>();
+
+        var receipts = await context.ReceiptVouchers.AsNoTracking()
+            .Where(v => v.CashboxId == cashboxId && v.Status == posted &&
+                        v.PostedAt >= from && v.PostedAt <= to)
+            .OrderByDescending(v => v.PostedAt)
+            .Select(v => new { v.PostedAt, v.VoucherNumber, v.Amount })
+            .ToListAsync(cancellationToken);
+        rows.AddRange(receipts.Select(r =>
+            (r.PostedAt ?? DateTime.UtcNow, "سند قبض", r.VoucherNumber, "تحصيل من عميل", r.Amount, true)));
+
+        var payments = await context.PaymentVouchers.AsNoTracking()
+            .Where(v => v.CashboxId == cashboxId && v.Status == posted &&
+                        v.PostedAt >= from && v.PostedAt <= to)
+            .OrderByDescending(v => v.PostedAt)
+            .Select(v => new { v.PostedAt, v.VoucherNumber, v.Amount })
+            .ToListAsync(cancellationToken);
+        rows.AddRange(payments.Select(p =>
+            (p.PostedAt ?? DateTime.UtcNow, "سند صرف", p.VoucherNumber, "صرف لمورد", p.Amount, false)));
+
+        var transfersOut = await context.CashboxTransfers.AsNoTracking()
+            .Where(t => t.FromCashboxId == cashboxId && t.Status == posted &&
+                        t.TransferDate >= from && t.TransferDate <= to)
+            .OrderByDescending(t => t.TransferDate)
+            .Select(t => new { t.TransferDate, t.TransferNumber, t.Amount })
+            .ToListAsync(cancellationToken);
+        rows.AddRange(transfersOut.Select(t =>
+            (t.TransferDate, "تحويل صادر", t.TransferNumber, "تحويل إلى صندوق آخر", t.Amount, false)));
+
+        var transfersIn = await context.CashboxTransfers.AsNoTracking()
+            .Where(t => t.ToCashboxId == cashboxId && t.Status == posted &&
+                        t.TransferDate >= from && t.TransferDate <= to)
+            .OrderByDescending(t => t.TransferDate)
+            .Select(t => new { t.TransferDate, t.TransferNumber, t.Amount })
+            .ToListAsync(cancellationToken);
+        rows.AddRange(transfersIn.Select(t =>
+            (t.TransferDate, "تحويل وارد", t.TransferNumber, "تحويل من صندوق آخر", t.Amount, true)));
+
+        return rows.OrderByDescending(r => r.Item1).ToList();
+    }
+
     public async Task AddAsync(Cashbox cashbox, CancellationToken cancellationToken = default) =>
         await context.Cashboxes.AddAsync(new CashboxEntity
         {
@@ -586,7 +666,57 @@ internal sealed class CashboxRepository(ErpDbContext context) : ICashboxReposito
     {
         var entity = await context.Cashboxes.FirstOrDefaultAsync(c => c.Id == cashbox.Id, cancellationToken)
             ?? throw new InvalidOperationException("Cashbox not found.");
+        entity.Code = cashbox.Code;
+        entity.Name = cashbox.Name;
+        entity.Currency = cashbox.Currency;
         entity.Balance = cashbox.Balance.Amount;
+        entity.IsActive = cashbox.IsActive;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+}
+
+internal sealed class CashboxTransferRepository(ErpDbContext context) : ICashboxTransferRepository
+{
+    public async Task<CashboxTransfer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.CashboxTransfers.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        return entity is null ? null : FinanceMapper.ToDomain(entity);
+    }
+
+    public async Task<IReadOnlyList<CashboxTransfer>> GetListAsync(
+        Guid branchId,
+        VoucherStatus? status = null,
+        Guid? cashboxId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.CashboxTransfers.AsNoTracking().Where(t => t.BranchId == branchId);
+        if (status.HasValue)
+            query = query.Where(t => t.Status == (int)status.Value);
+        if (cashboxId.HasValue)
+        {
+            var id = cashboxId.Value;
+            query = query.Where(t => t.FromCashboxId == id || t.ToCashboxId == id);
+        }
+
+        var entities = await query.OrderByDescending(t => t.TransferDate).ToListAsync(cancellationToken);
+        return entities.Select(FinanceMapper.ToDomain).ToList();
+    }
+
+    public async Task AddAsync(
+        CashboxTransfer transfer,
+        Guid companyId,
+        Guid branchId,
+        CancellationToken cancellationToken = default) =>
+        await context.CashboxTransfers.AddAsync(
+            FinanceMapper.ToEntity(transfer, companyId, branchId), cancellationToken);
+
+    public async Task UpdateAsync(CashboxTransfer transfer, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.CashboxTransfers.FirstOrDefaultAsync(t => t.Id == transfer.Id, cancellationToken)
+            ?? throw new InvalidOperationException("Cashbox transfer not found.");
+        entity.Status = (int)transfer.Status;
+        entity.PostedAt = transfer.Status == VoucherStatus.Posted ? DateTime.UtcNow : entity.PostedAt;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }

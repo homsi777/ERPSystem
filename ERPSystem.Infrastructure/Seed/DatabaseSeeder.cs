@@ -459,7 +459,10 @@ public static class DatabaseSeeder
             ("finance.receipt.create", "finance", "receipt-create"),
             ("finance.receipt.post", "finance", "receipt-post"),
             ("finance.payment.create", "finance", "payment-create"),
-            ("finance.payment.post", "finance", "payment-post")
+            ("finance.payment.post", "finance", "payment-post"),
+            ("finance.cashbox.create", "finance", "cashbox-create"),
+            ("finance.cashbox.edit", "finance", "cashbox-edit"),
+            ("finance.cashbox.transfer", "finance", "cashbox-transfer")
         ], cancellationToken);
     }
 

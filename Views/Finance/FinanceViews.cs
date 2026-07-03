@@ -1,5 +1,6 @@
 using ERPSystem.Controls;
 using ERPSystem.Controls.Accounting;
+using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using System.Windows;
@@ -15,7 +16,7 @@ namespace ERPSystem.Views.Finance
             "Receipts" => Wrap(new ReceiptVoucherPageControl()),
             "Payments" => Wrap(new PaymentVoucherPageControl()),
             "Cashboxes" => new CashboxListPageControl(),
-            "Transfers" => DevelopmentPage("تحويل بين الصناديق"),
+            "Transfers" => new CashboxTransferListPageControl(),
             "Receivables" => DevelopmentPage("الذمم المدينة"),
             "Payables" => DevelopmentPage("الذمم الدائنة"),
             "TrialBalance" => DevelopmentPage("ميزان المراجعة"),

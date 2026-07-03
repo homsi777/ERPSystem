@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Accounting;
 using ERPSystem.Application.DTOs.Capital;
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Controls.China;
 using ERPSystem.Core.Accounting;
@@ -67,6 +68,9 @@ namespace ERPSystem.Core.Actions
                 EntityType.Cashbox when row is Cashbox cb =>
                     cb.Name,
 
+                EntityType.Cashbox when row is CashboxListDto cb =>
+                    string.IsNullOrWhiteSpace(cb.Name) ? cb.Code : cb.Name,
+
                 EntityType.Expense when row is ExpenseListDto ex =>
                     ex.Name,
 
@@ -103,6 +107,7 @@ namespace ERPSystem.Core.Actions
                 EntityType.JournalEntry when row is JournalEntryModel j => j.EntryNumber,
                 EntityType.Warehouse when row is WarehouseEntity w => w.Code,
                 EntityType.Cashbox when row is Cashbox cb => cb.Code,
+                EntityType.Cashbox when row is CashboxListDto cb => cb.Code,
                 EntityType.Expense when row is ExpenseListDto ex => ex.Code,
                 EntityType.CapitalPartner when row is CapitalPartnerListDto p => p.Code,
                 EntityType.Account when row is AccountListDto a => a.Code,

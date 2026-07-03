@@ -25,7 +25,9 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
         ["Expense"] = "EXP",
         ["CapitalPartner"] = "PTR",
         ["ProfitDistribution"] = "DST",
-        ["SalesReturn"] = "SRET"
+        ["SalesReturn"] = "SRET",
+        ["Cashbox"] = "CASH",
+        ["CashboxTransfer"] = "CBT"
     };
 
     public Task<string> NextInvoiceNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
@@ -78,6 +80,12 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
 
     public Task<string> NextSalesReturnNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
         NextAsync(branchId, "SalesReturn", cancellationToken);
+
+    public Task<string> NextCashboxCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "Cashbox", cancellationToken);
+
+    public Task<string> NextCashboxTransferNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "CashboxTransfer", cancellationToken);
 
     private async Task<string> NextAsync(Guid branchId, string documentType, CancellationToken cancellationToken)
     {

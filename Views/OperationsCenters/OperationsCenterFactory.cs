@@ -7,7 +7,9 @@ using ERPSystem.Controls.Customers;
 using ERPSystem.Controls.Purchases;
 using ERPSystem.Controls.Suppliers;
 using ERPSystem.Controls.China;
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Controls.Expenses;
+using ERPSystem.Controls.Finance;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Controls.Workspace;
 using ERPSystem.Core;
@@ -428,44 +430,24 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildCashbox(WorkspaceOpenRequest req, string initialTab)
         {
-            if (req.EntityRow is not Cashbox cb)
+            Guid? id = req.EntityRow switch
+            {
+                CashboxListDto dto => dto.Id,
+                _ => null
+            };
+
+            if (!id.HasValue)
                 return NoEntityContextControl();
 
-            return OperationsCenterShell.Build(new OperationsCenterSpec
+            var tab = initialTab switch
             {
-                Title = cb.Name,
-                Subtitle = "مركز عمليات الصندوق",
-                Breadcrumb = "ERP PRO › المالية › صندوق",
-                IconGlyph = "\uE825",
-                Accent = Br("PrimaryBrush"),
-                AccentLight = Br("PrimaryVeryLightBrush"),
-                StatusBadge = "نشط",
-                HeaderFields = [("الكود", cb.Code), ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} $" : "—")],
-                Kpis =
-                [
-                    ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} $" : "—", "\uE8C1"),
-                    ("قبض اليوم", "—", "\uE7BF"),
-                    ("صرف اليوم", "—", "\uE719"),
-                ],
-                Tabs =
-                [
-                    Tab("Overview", "الحركات", PlaceholderUi.DevelopmentPhase("حركات الصندوق")),
-                    Tab("Transfers", "التحويلات", PlaceholderUi.DevelopmentPhase("تحويلات الصندوق")),
-                ],
-                QuickActions =
-                [
-                    Q("سند قبض", true, null, actionKey: "nav:Accounting:Receipts"),
-                    Q("سند صرف", false, null, actionKey: "nav:Accounting:Payments"),
-                ],
-                InitialTabIndex = 0,
-                Context = new OperationsCenterContext
-                {
-                    EntityType = EntityType.Cashbox,
-                    EntityRow = cb,
-                    SourceModule = AppModule.Accounting,
-                    Title = cb.Name
-                }
-            });
+                "Transfers" => "Transfers",
+                _ => "Movements"
+            };
+
+            var oc = new CashboxOperationsCenterControl();
+            oc.InitializeForPopup(id.Value, tab);
+            return new UserControl { Content = oc };
         }
 
         private static UIElement BuildAccountStatement(WorkspaceOpenRequest req)

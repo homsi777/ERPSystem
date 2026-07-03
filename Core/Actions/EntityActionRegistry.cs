@@ -99,8 +99,14 @@ namespace ERPSystem.Core.Actions
             [EntityType.Cashbox] =
             [
                 new(EntityActionId.OpenOperationsCenter, "فتح مركز العمليات", "\uE8A7"),
-                new(EntityActionId.VoucherPrint, "طباعة", "\uE749"),
-                new(EntityActionId.VoucherExportPdf, "تصدير PDF", "\uEDE1"),
+                new(EntityActionId.CashboxEdit, "تعديل الصندوق", "\uE70F", "الصندوق"),
+                new(EntityActionId.CashboxTransfer, "تحويل بين الصناديق", "\uE8AB", "التحويلات"),
+                new(EntityActionId.CashboxMovements, "حركات الصندوق", "\uE8CB", "الحركة"),
+                new(EntityActionId.CustomerReceipt, "سند قبض", "\uE7BF", "السندات"),
+                new(EntityActionId.CustomerPayment, "سند دفع", "\uE719", "السندات"),
+                new(EntityActionId.CashboxProperties, "خصائص", "\uE946", "الصندوق"),
+                new(EntityActionId.CashboxDeactivate, "تعطيل", "\uE7E8", "الصندوق", destructive: true),
+                new(EntityActionId.CashboxActivate, "تفعيل", "\uE73E", "الصندوق"),
             ],
             [EntityType.JournalEntry] =
             [

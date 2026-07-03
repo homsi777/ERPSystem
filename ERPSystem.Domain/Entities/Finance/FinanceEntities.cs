@@ -109,13 +109,24 @@ public class Cashbox
 
     private Cashbox() { }
 
-    public static Cashbox Create(Guid branchId, string code, string name) => new()
+    public static Cashbox Create(Guid branchId, string code, string name, string currency = "USD") => new()
     {
         Id = Guid.NewGuid(),
         BranchId = branchId,
         Code = code,
-        Name = name
+        Name = name,
+        Currency = currency
     };
+
+    public void UpdateProfile(string code, string name, string currency)
+    {
+        Code = code;
+        Name = name;
+        Currency = currency;
+    }
+
+    public void Activate() => IsActive = true;
+    public void Deactivate() => IsActive = false;
 
     public void ApplyReceipt(Money amount) => Balance = Balance.Add(amount);
     public void ApplyPayment(Money amount) => Balance = Balance.Subtract(amount);
@@ -159,10 +170,11 @@ public class CashboxTransfer
     public Money Amount { get; private set; } = Money.Zero();
     public VoucherStatus Status { get; private set; }
     public DateTime TransferDate { get; private set; }
+    public string? Notes { get; private set; }
 
     private CashboxTransfer() { }
 
-    public static CashboxTransfer Create(string number, Guid fromId, Guid toId, Money amount) => new()
+    public static CashboxTransfer Create(string number, Guid fromId, Guid toId, Money amount, string? notes = null) => new()
     {
         Id = Guid.NewGuid(),
         Number = number,
@@ -170,6 +182,21 @@ public class CashboxTransfer
         ToCashboxId = toId,
         Amount = amount,
         TransferDate = DateTime.UtcNow,
-        Status = VoucherStatus.Draft
+        Status = VoucherStatus.Draft,
+        Notes = notes
     };
+
+    public void Approve()
+    {
+        if (Status != VoucherStatus.Draft)
+            throw new Exceptions.AccountingException("Only draft transfers can be approved.");
+        Status = VoucherStatus.Approved;
+    }
+
+    public void Post()
+    {
+        if (Status != VoucherStatus.Approved && Status != VoucherStatus.Draft)
+            throw new Exceptions.AccountingException("Transfer cannot be posted.");
+        Status = VoucherStatus.Posted;
+    }
 }

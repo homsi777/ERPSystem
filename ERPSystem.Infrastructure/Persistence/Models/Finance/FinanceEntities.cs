@@ -34,3 +34,18 @@ public class CashboxEntity : PersistenceEntity
     public decimal Balance { get; set; }
     public string Currency { get; set; } = "USD";
 }
+
+public class CashboxTransferEntity : PersistenceEntity
+{
+    public Guid CompanyId { get; set; }
+    public Guid BranchId { get; set; }
+    public string TransferNumber { get; set; } = "";
+    public Guid FromCashboxId { get; set; }
+    public Guid ToCashboxId { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "USD";
+    public DateTime TransferDate { get; set; }
+    public int Status { get; set; }
+    public string? Notes { get; set; }
+    public DateTime? PostedAt { get; set; }
+}
