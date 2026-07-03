@@ -33,6 +33,9 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     public DateTime? ApprovedAt { get; private set; }
     public DateTime? PrintedAt { get; private set; }
     public DateTime? DeliveredAt { get; private set; }
+    public string? DeliveredToName { get; private set; }
+    public string? DeliveryDriverName { get; private set; }
+    public string? DeliveryNotes { get; private set; }
     public DateTime? CancelledAt { get; private set; }
     public string? CancelReason { get; private set; }
     public Guid? ReversedByJournalEntryId { get; private set; }
@@ -192,12 +195,31 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         Raise(new SalesInvoicePrinted(Id, InvoiceNumber.Value));
     }
 
-    public void Deliver(string? receivedByName)
+    public void Deliver(string? receivedByName, DateTime? deliveredAt = null, string? driverName = null, string? notes = null)
     {
         EnsureStatus(SalesInvoiceStatus.Printed, SalesInvoiceStatus.Approved);
         Status = SalesInvoiceStatus.Delivered;
-        DeliveredAt = DateTime.UtcNow;
+        DeliveredAt = deliveredAt ?? DateTime.UtcNow;
+        DeliveredToName = receivedByName;
+        DeliveryDriverName = driverName;
+        DeliveryNotes = notes;
         DeliveryNote.Create($"DN-{InvoiceNumber.Value}", Id, receivedByName);
+    }
+
+    public void UpdateWarehouse(Guid warehouseId)
+    {
+        if (Status != SalesInvoiceStatus.Draft)
+            throw new InvalidInvoiceWorkflowException("Warehouse can only be changed on draft invoices.");
+        if (warehouseId == Guid.Empty)
+            throw new ValidationException("Warehouse is required.");
+        WarehouseId = warehouseId;
+    }
+
+    public void ApplyReturn(bool isFullyReturned)
+    {
+        if (Status is SalesInvoiceStatus.Cancelled or SalesInvoiceStatus.Draft)
+            throw new InvalidInvoiceWorkflowException("Cannot apply return to a draft or cancelled invoice.");
+        Status = isFullyReturned ? SalesInvoiceStatus.Returned : SalesInvoiceStatus.PartiallyReturned;
     }
 
     public void Cancel(string reason)

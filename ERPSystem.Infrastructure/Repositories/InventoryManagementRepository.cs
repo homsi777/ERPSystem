@@ -362,16 +362,16 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
     public async Task<InventoryOperationsCenterDto> GetOperationsCenterAsync(
         Guid warehouseId, CancellationToken cancellationToken = default)
     {
-        var warehouses = await context.Warehouses.AsNoTracking()
-            .Where(w => w.Id == warehouseId).ToListAsync(cancellationToken);
-        var w = warehouses.FirstOrDefault();
-        if (w is null) throw new InvalidOperationException("Warehouse not found.");
+        var w = await context.Warehouses.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == warehouseId, cancellationToken)
+            ?? throw new InvalidOperationException("Warehouse not found.");
 
         var stocks = await context.WarehouseStocks.AsNoTracking()
             .Where(s => s.WarehouseId == warehouseId).ToListAsync(cancellationToken);
-        var rolls = await context.FabricRolls.AsNoTracking()
-            .Where(r => r.WarehouseId == warehouseId && r.RemainingLengthMeters > 0).ToListAsync(cancellationToken);
-        var value = rolls.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+        var allRolls = await context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == warehouseId).ToListAsync(cancellationToken);
+        var activeRolls = allRolls.Where(r => r.RemainingLengthMeters > 0).ToList();
+        var value = activeRolls.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
 
         var whDto = new WarehouseListExtendedDto
         {
@@ -382,24 +382,441 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         };
 
         var branchId = w.BranchId;
-        var transfers = await GetTransfersAsync(branchId, cancellationToken);
-        var stocktakes = await GetStocktakeSessionsAsync(branchId, cancellationToken);
+        var stockBalances = await GetFabricStockBalancesAsync(branchId, warehouseId, cancellationToken);
+        var locations = await GetLocationsAsync(warehouseId, cancellationToken);
+        var movements = await GetMovementsAsync(branchId, warehouseId, cancellationToken);
+        var audit = await GetAuditTrailAsync(warehouseId, "Warehouse", cancellationToken);
+        var timeline = await GetTimelineAsync(warehouseId, "Warehouse", cancellationToken);
+
+        var transfers = await context.StockTransfers.AsNoTracking()
+            .Where(t => t.FromWarehouseId == warehouseId || t.ToWarehouseId == warehouseId)
+            .OrderByDescending(t => t.Date).Take(20).ToListAsync(cancellationToken);
+        var stocktakes = await context.StocktakeSessions.AsNoTracking()
+            .Where(s => s.WarehouseId == warehouseId)
+            .OrderByDescending(s => s.Date).Take(20).ToListAsync(cancellationToken);
+        var openingDocs = await context.OpeningStockDocuments.AsNoTracking()
+            .Where(d => d.WarehouseId == warehouseId)
+            .OrderByDescending(d => d.OpeningDate).Take(10).ToListAsync(cancellationToken);
+
+        var pendingTransfers = transfers.Count(t => t.Status is (int)InventoryDocumentStatus.Draft or (int)InventoryDocumentStatus.Approved);
+        var pendingStocktakes = stocktakes.Count(s => s.Status is (int)InventoryDocumentStatus.Draft or (int)InventoryDocumentStatus.Counting or (int)InventoryDocumentStatus.Review);
+
+        string? costCenterName = null;
+        if (w.CostCenterId.HasValue)
+        {
+            costCenterName = await context.CostCenters.AsNoTracking()
+                .Where(c => c.Id == w.CostCenterId.Value)
+                .Select(c => c.Name)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        var executive = await BuildExecutiveDashboardAsync(
+            warehouseId, w.NameAr, branchId, value, stockBalances, allRolls, activeRolls,
+            transfers, stocktakes, openingDocs, audit, timeline, pendingTransfers, pendingStocktakes,
+            cancellationToken);
+
+        var branchAlerts = await GetAlertsAsync(branchId, true, cancellationToken);
+        var whAlerts = branchAlerts
+            .Where(a => a.WarehouseName == w.NameAr || a.WarehouseName is null)
+            .ToList();
 
         return new InventoryOperationsCenterDto
         {
             Warehouse = whDto,
-            Stock = await GetFabricStockBalancesAsync(branchId, warehouseId, cancellationToken),
+            CostCenterName = costCenterName,
+            Executive = executive,
+            Stock = stockBalances,
             Rolls = await GetFabricRollsAsync(warehouseId, cancellationToken),
-            Locations = await GetLocationsAsync(warehouseId, cancellationToken),
-            RecentMovements = await GetMovementsAsync(branchId, warehouseId, cancellationToken),
-            Alerts = await GetAlertsAsync(branchId, true, cancellationToken),
-            RecentAudit = await GetAuditTrailAsync(warehouseId, "Warehouse", cancellationToken),
-            Timeline = await GetTimelineAsync(warehouseId, "Warehouse", cancellationToken),
-            PendingTransfers = transfers.Count(t => t.Status is "Draft" or "Approved"),
-            PendingStocktakes = stocktakes.Count(s => s.Status is "Draft" or "Counting"),
+            Locations = locations,
+            RecentMovements = movements,
+            Alerts = whAlerts,
+            RecentAudit = audit,
+            Timeline = timeline,
+            PendingTransfers = pendingTransfers,
+            PendingStocktakes = pendingStocktakes,
             InventoryValue = value
         };
     }
+
+    private async Task<WarehouseExecutiveDashboardDto> BuildExecutiveDashboardAsync(
+        Guid warehouseId,
+        string warehouseName,
+        Guid branchId,
+        decimal inventoryValue,
+        IReadOnlyList<FabricStockBalanceDto> stockBalances,
+        IReadOnlyList<FabricRollEntity> allRolls,
+        IReadOnlyList<FabricRollEntity> activeRolls,
+        IReadOnlyList<StockTransferDocumentEntity> transfers,
+        IReadOnlyList<StocktakeSessionEntity> stocktakes,
+        IReadOnlyList<OpeningStockDocumentEntity> openingDocs,
+        IReadOnlyList<InventoryAuditDto> audit,
+        IReadOnlyList<InventoryTimelineDto> timeline,
+        int pendingTransfers,
+        int pendingStocktakes,
+        CancellationToken cancellationToken)
+    {
+        var since30 = DateTime.UtcNow.Date.AddDays(-29);
+        var fabricIds = activeRolls.Select(r => r.FabricItemId).Distinct().ToList();
+        var fabrics = fabricIds.Count > 0
+            ? await context.FabricItems.AsNoTracking()
+                .Where(f => fabricIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, cancellationToken)
+            : [];
+        var categoryIds = fabrics.Values.Select(f => f.CategoryId).Distinct().ToList();
+        var categories = categoryIds.Count > 0
+            ? await context.FabricCategories.AsNoTracking()
+                .Where(c => categoryIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, cancellationToken)
+            : [];
+
+        var valueByFabric = activeRolls
+            .GroupBy(r => r.FabricItemId)
+            .Select(g =>
+            {
+                var v = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+                return new { FabricId = g.Key, Value = v, Name = fabrics.GetValueOrDefault(g.Key)?.NameAr ?? "—" };
+            })
+            .OrderByDescending(x => x.Value).Take(8).ToList();
+        var totalVal = valueByFabric.Sum(x => x.Value);
+        var fabricSlices = valueByFabric.Select(x => new WarehouseValueSliceDto
+        {
+            Label = x.Name,
+            Value = x.Value,
+            Percent = totalVal > 0 ? Math.Round(x.Value / totalVal * 100, 1) : 0
+        }).ToList();
+
+        var valueByCategory = activeRolls
+            .GroupBy(r => fabrics.GetValueOrDefault(r.FabricItemId)?.CategoryId ?? Guid.Empty)
+            .Select(g =>
+            {
+                var v = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+                var catName = g.Key != Guid.Empty && categories.TryGetValue(g.Key, out var c) ? c.NameAr : "غير مصنف";
+                return new { Label = catName, Value = v };
+            })
+            .OrderByDescending(x => x.Value).Take(6).ToList();
+        var catTotal = valueByCategory.Sum(x => x.Value);
+        var categorySlices = valueByCategory.Select(x => new WarehouseValueSliceDto
+        {
+            Label = x.Label,
+            Value = x.Value,
+            Percent = catTotal > 0 ? Math.Round(x.Value / catTotal * 100, 1) : 0
+        }).ToList();
+
+        var damagedStatus = (int)FabricRollStatus.Wasted;
+        var blockedQuality = (int)InventoryQualityStatus.Damaged;
+        var quantities = new WarehouseQuantityMetricsDto
+        {
+            TotalRolls = activeRolls.Count,
+            TotalMeters = stockBalances.Sum(s => s.TotalMeters),
+            AvailableMeters = stockBalances.Sum(s => s.AvailableMeters),
+            ReservedMeters = stockBalances.Sum(s => s.ReservedMeters),
+            DamagedMeters = allRolls.Where(r => r.QualityStatus == blockedQuality).Sum(r => r.RemainingLengthMeters),
+            BlockedMeters = allRolls.Where(r => r.Status != (int)FabricRollStatus.Available && r.Status != damagedStatus)
+                .Sum(r => r.RemainingLengthMeters)
+        };
+
+        var whIds = await context.Warehouses.AsNoTracking()
+            .Where(w => w.BranchId == branchId).Select(w => w.Id).ToListAsync(cancellationToken);
+        var whMap = await context.Warehouses.AsNoTracking()
+            .Where(w => whIds.Contains(w.Id)).ToDictionaryAsync(w => w.Id, cancellationToken);
+
+        var recentMovementsRaw = await context.StockMovements.AsNoTracking()
+            .Where(m => m.WarehouseId == warehouseId ||
+                        m.SourceWarehouseId == warehouseId ||
+                        m.DestinationWarehouseId == warehouseId)
+            .OrderByDescending(m => m.MovementDate)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+
+        var movementIds = recentMovementsRaw.Select(m => m.Id).ToList();
+        var movementLines = movementIds.Count > 0
+            ? await context.StockMovementLines.AsNoTracking()
+                .Where(l => movementIds.Contains(l.MovementId)).ToListAsync(cancellationToken)
+            : [];
+        var userIds = recentMovementsRaw.Where(m => m.UserId.HasValue).Select(m => m.UserId!.Value).Distinct().ToList();
+        var users = userIds.Count > 0
+            ? await context.Users.AsNoTracking()
+                .Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, cancellationToken)
+            : [];
+
+        var movementCards = recentMovementsRaw.Select(m =>
+        {
+            var lines = movementLines.Where(l => l.MovementId == m.Id).ToList();
+            var type = (MovementType)m.Type;
+            var from = m.SourceWarehouseId.HasValue
+                ? whMap.GetValueOrDefault(m.SourceWarehouseId.Value)?.NameAr ?? "—"
+                : type is MovementType.Sale or MovementType.Transfer ? warehouseName : "—";
+            var to = m.DestinationWarehouseId.HasValue
+                ? whMap.GetValueOrDefault(m.DestinationWarehouseId.Value)?.NameAr ?? "—"
+                : type is MovementType.Import or MovementType.Purchase or MovementType.OpeningBalance
+                    ? warehouseName : "—";
+            if (type is MovementType.Import or MovementType.Purchase or MovementType.OpeningBalance or MovementType.Stocktake)
+                from = type switch
+                {
+                    MovementType.Import => "استيراد الصين",
+                    MovementType.Purchase => "فاتورة شراء",
+                    MovementType.OpeningBalance => "أول المدة",
+                    MovementType.Stocktake => "جرد",
+                    _ => from
+                };
+
+            return new WarehouseMovementCardDto
+            {
+                Id = m.Id,
+                MovementNumber = m.MovementNumber,
+                Type = type.ToString(),
+                TypeIcon = MovementIcon(type),
+                FromLabel = from,
+                ToLabel = to,
+                QuantityMeters = lines.Sum(l => Math.Abs(l.QuantityMeters)),
+                TotalValue = lines.Sum(l => Math.Abs(l.TotalValue)),
+                Timestamp = m.MovementDate,
+                Username = m.UserId.HasValue && users.TryGetValue(m.UserId.Value, out var u)
+                    ? (string.IsNullOrWhiteSpace(u.FullNameAr) ? u.Username : u.FullNameAr) : "—",
+                ReferenceType = m.ReferenceType.HasValue ? ((DocumentType)m.ReferenceType).ToString() : null,
+                ReferenceId = m.ReferenceId,
+                ReferenceNumber = m.MovementNumber
+            };
+        }).ToList();
+
+        var last30Movements = await context.StockMovements.AsNoTracking()
+            .Where(m => m.MovementDate >= since30 &&
+                        (m.WarehouseId == warehouseId ||
+                         m.SourceWarehouseId == warehouseId ||
+                         m.DestinationWarehouseId == warehouseId))
+            .ToListAsync(cancellationToken);
+        var last30Ids = last30Movements.Select(m => m.Id).ToList();
+        var last30Lines = last30Ids.Count > 0
+            ? await context.StockMovementLines.AsNoTracking()
+                .Where(l => last30Ids.Contains(l.MovementId)).ToListAsync(cancellationToken)
+            : [];
+
+        var incomingTypes = new HashSet<MovementType>
+        {
+            MovementType.Import, MovementType.Purchase, MovementType.OpeningBalance, MovementType.SaleReturn
+        };
+        var outgoingTypes = new HashSet<MovementType> { MovementType.Sale, MovementType.Consumption, MovementType.Damage };
+
+        decimal ClassifyIncoming(StockMovementEntity m)
+        {
+            var lines = last30Lines.Where(l => l.MovementId == m.Id).ToList();
+            if (m.DestinationWarehouseId == warehouseId) return lines.Sum(l => Math.Abs(l.QuantityMeters));
+            if (m.WarehouseId == warehouseId && m.SourceWarehouseId.HasValue && (MovementType)m.Type == MovementType.Transfer)
+                return lines.Sum(l => Math.Abs(l.QuantityMeters));
+            if (m.WarehouseId == warehouseId && incomingTypes.Contains((MovementType)m.Type))
+                return lines.Sum(l => Math.Abs(l.QuantityMeters));
+            if (m.WarehouseId == warehouseId && (MovementType)m.Type == MovementType.Stocktake)
+                return lines.Where(l => l.QuantityMeters > 0).Sum(l => l.QuantityMeters);
+            return 0;
+        }
+
+        decimal ClassifyOutgoing(StockMovementEntity m)
+        {
+            var lines = last30Lines.Where(l => l.MovementId == m.Id).ToList();
+            if (m.SourceWarehouseId == warehouseId) return lines.Sum(l => Math.Abs(l.QuantityMeters));
+            if (m.WarehouseId == warehouseId && m.DestinationWarehouseId.HasValue && (MovementType)m.Type == MovementType.Transfer)
+                return lines.Sum(l => Math.Abs(l.QuantityMeters));
+            if (m.WarehouseId == warehouseId && outgoingTypes.Contains((MovementType)m.Type))
+                return lines.Sum(l => Math.Abs(l.QuantityMeters));
+            if (m.WarehouseId == warehouseId && (MovementType)m.Type == MovementType.Stocktake)
+                return lines.Where(l => l.QuantityMeters < 0).Sum(l => Math.Abs(l.QuantityMeters));
+            return 0;
+        }
+
+        var dailyActivity = Enumerable.Range(0, 30)
+            .Select(i => since30.AddDays(i))
+            .Select(day =>
+            {
+                var dayMovements = last30Movements
+                    .Where(m => m.MovementDate.Date == day.Date).ToList();
+                var incoming = dayMovements.Sum(ClassifyIncoming);
+                var outgoing = dayMovements.Sum(ClassifyOutgoing);
+                return new WarehouseDailyActivityDto
+                {
+                    Date = day,
+                    IncomingMeters = incoming,
+                    OutgoingMeters = outgoing,
+                    NetMeters = incoming - outgoing
+                };
+            }).ToList();
+
+        var net30 = dailyActivity.Sum(d => d.NetMeters);
+        var trendPct = inventoryValue > 0 && net30 != 0
+            ? Math.Round(net30 / Math.Max(inventoryValue, 1) * 100, 1)
+            : 0m;
+
+        var sparkline = new List<decimal>();
+        var running = inventoryValue;
+        for (var i = dailyActivity.Count - 1; i >= 0; i--)
+        {
+            sparkline.Add(Math.Max(0, running));
+            running -= dailyActivity[i].NetMeters;
+        }
+        sparkline.Reverse();
+
+        var topFabrics = last30Lines
+            .Join(last30Movements, l => l.MovementId, m => m.Id, (l, m) => new { l, m })
+            .GroupBy(x => x.l.FabricItemId)
+            .Select(g => new WarehouseTopFabricDto
+            {
+                FabricName = fabrics.GetValueOrDefault(g.Key)?.NameAr ?? "—",
+                MetersMoved = g.Sum(x => Math.Abs(x.l.QuantityMeters)),
+                MovementCount = g.Select(x => x.m.Id).Distinct().Count()
+            })
+            .OrderByDescending(x => x.MetersMoved)
+            .Take(5)
+            .ToList();
+
+        var alerts = new List<WarehouseAlertCardDto>();
+        foreach (var s in stockBalances.Where(x => x.AvailableMeters > 0 && x.AvailableMeters <= 50))
+        {
+            alerts.Add(new WarehouseAlertCardDto
+            {
+                AlertType = "LowStock",
+                Severity = "Warning",
+                Title = "مخزون منخفض",
+                Message = $"{s.FabricName} / {s.ColorName}: {s.AvailableMeters:N1} م متاح",
+                NavigationTarget = "Stock"
+            });
+        }
+        foreach (var s in stockBalances.Where(x => x.AvailableMeters < 0 || x.TotalMeters < 0))
+        {
+            alerts.Add(new WarehouseAlertCardDto
+            {
+                AlertType = "NegativeStock",
+                Severity = "Critical",
+                Title = "مخزون سالب",
+                Message = $"{s.FabricName}: {s.AvailableMeters:N1} م",
+                NavigationTarget = "Stock"
+            });
+        }
+        if (pendingTransfers > 0)
+        {
+            alerts.Add(new WarehouseAlertCardDto
+            {
+                AlertType = "PendingTransfer",
+                Severity = "Info",
+                Title = "مناقلات معلقة",
+                Message = $"{pendingTransfers} مناقلة بانتظار الإكمال",
+                NavigationTarget = "Transfers"
+            });
+        }
+        if (pendingStocktakes > 0)
+        {
+            alerts.Add(new WarehouseAlertCardDto
+            {
+                AlertType = "PendingStocktake",
+                Severity = "Info",
+                Title = "جرد معلق",
+                Message = $"{pendingStocktakes} جلسة جرد نشطة",
+                NavigationTarget = "Stocktake"
+            });
+        }
+
+        var dbAlerts = await context.InventoryAlerts.AsNoTracking()
+            .Where(a => a.BranchId == branchId && !a.IsAcknowledged &&
+                        (a.WarehouseId == warehouseId || a.WarehouseId == null))
+            .OrderByDescending(a => a.CreatedAt).Take(5).ToListAsync(cancellationToken);
+        foreach (var a in dbAlerts)
+        {
+            alerts.Add(new WarehouseAlertCardDto
+            {
+                AlertType = ((InventoryAlertType)a.AlertType).ToString(),
+                Severity = ((InventoryAlertSeverity)a.Severity).ToString(),
+                Title = a.Title,
+                Message = a.Message,
+                DocumentId = a.FabricRollId
+            });
+        }
+
+        var documents = new List<WarehouseDocumentCardDto>();
+        foreach (var t in transfers.Take(5))
+        {
+            documents.Add(new WarehouseDocumentCardDto
+            {
+                DocumentType = "Transfer",
+                Id = t.Id,
+                Number = t.Number,
+                Status = ((InventoryDocumentStatus)t.Status).ToString(),
+                Date = t.Date,
+                NavigationTarget = "TransferWizard"
+            });
+        }
+        foreach (var s in stocktakes.Take(3))
+        {
+            documents.Add(new WarehouseDocumentCardDto
+            {
+                DocumentType = "Stocktake",
+                Id = s.Id,
+                Number = s.SessionNumber,
+                Status = ((InventoryDocumentStatus)s.Status).ToString(),
+                Date = s.Date,
+                NavigationTarget = "StocktakeWizard"
+            });
+        }
+        foreach (var d in openingDocs.Take(3))
+        {
+            documents.Add(new WarehouseDocumentCardDto
+            {
+                DocumentType = "OpeningStock",
+                Id = d.Id,
+                Number = d.DocumentNumber,
+                Status = ((InventoryDocumentStatus)d.Status).ToString(),
+                Date = d.OpeningDate,
+                NavigationTarget = "OpeningStockForm"
+            });
+        }
+        var recentDocuments = documents.OrderByDescending(d => d.Date).Take(5).ToList();
+
+        WarehouseUserActivityDto? lastActivity = null;
+        var lastAudit = audit.FirstOrDefault();
+        var lastTimeline = timeline.FirstOrDefault();
+        if (lastAudit is not null && (lastTimeline is null || lastAudit.RecordedAt >= lastTimeline.OccurredAt))
+        {
+            lastActivity = new WarehouseUserActivityDto
+            {
+                Username = lastAudit.Username,
+                ActionType = lastAudit.Action,
+                Timestamp = lastAudit.RecordedAt
+            };
+        }
+        else if (lastTimeline is not null)
+        {
+            lastActivity = new WarehouseUserActivityDto
+            {
+                Username = lastTimeline.Username,
+                ActionType = lastTimeline.Title,
+                Timestamp = lastTimeline.OccurredAt
+            };
+        }
+
+        return new WarehouseExecutiveDashboardDto
+        {
+            TotalInventoryValue = inventoryValue,
+            ValueTrendPercent30d = trendPct,
+            ValueByFabric = fabricSlices,
+            ValueByCategory = categorySlices,
+            ValueSparkline30d = sparkline,
+            Quantities = quantities,
+            RecentMovements = movementCards.Take(5).ToList(),
+            LastTransaction = movementCards.FirstOrDefault(),
+            TopMovingFabrics = topFabrics,
+            Alerts = alerts.Take(8).ToList(),
+            RecentDocuments = recentDocuments,
+            LastUserActivity = lastActivity,
+            Activity30Days = dailyActivity
+        };
+    }
+
+    private static string MovementIcon(MovementType type) => type switch
+    {
+        MovementType.Import => "\uE898",
+        MovementType.Purchase => "\uE7BF",
+        MovementType.Sale => "\uE9F9",
+        MovementType.Transfer => "\uE8AB",
+        MovementType.OpeningBalance => "\uE8C8",
+        MovementType.Stocktake => "\uE787",
+        MovementType.Adjustment or MovementType.Correction => "\uE70F",
+        _ => "\uE8CB"
+    };
 
     public async Task<Guid> CreateTransferAsync(
         StockTransfer transfer,

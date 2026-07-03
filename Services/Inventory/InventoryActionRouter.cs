@@ -1,12 +1,15 @@
 using ERPSystem.Application.DTOs.Inventory;
+using ERPSystem.Controls.Inventory;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Services;
-using System.Windows;
 
 namespace ERPSystem.Services.Inventory;
 
+/// <summary>
+/// توجيه مهام المستودع — كل الإجراءات عبر نوافذ منبثقة فقط (بدون NavigateTo).
+/// </summary>
 public static class InventoryActionRouter
 {
     public static bool TryHandle(EntityActionId actionId, EntityType entityType, object entityRow, AppModule sourceModule)
@@ -23,35 +26,41 @@ public static class InventoryActionRouter
         switch (actionId)
         {
             case EntityActionId.OpenOperationsCenter:
-                OpenOperationsCenter(row);
+                InventoryPopupService.ShowWarehouseWorkspace(row.Id);
                 break;
             case EntityActionId.WarehouseEdit:
-            case EntityActionId.WarehouseProperties:
                 InventoryPopupService.ShowEditWarehouse(row.Id);
+                break;
+            case EntityActionId.WarehouseProperties:
+                InventoryPopupService.ShowWarehouseProperties(row.Id);
                 break;
             case EntityActionId.FabricTransfer:
                 InventoryPopupService.ShowTransferWizard(row.Id);
                 break;
             case EntityActionId.WarehouseStockReport:
-                OpenOperationsCenter(row, "Stock");
+                InventoryPopupService.ShowWarehousePanel(row.Id, WarehousePopupPanel.Stock);
                 break;
             case EntityActionId.FabricMovement:
             case EntityActionId.WarehouseMovementHistory:
-                OpenOperationsCenter(row, "Movements");
+                InventoryPopupService.ShowWarehousePanel(row.Id, WarehousePopupPanel.Movements);
                 break;
             case EntityActionId.WarehouseStocktake:
                 InventoryPopupService.ShowStocktakeWizard(row.Id);
                 break;
             case EntityActionId.WarehouseTimeline:
-                OpenOperationsCenter(row, "Timeline");
+                InventoryPopupService.ShowWarehousePanel(row.Id, WarehousePopupPanel.Timeline);
                 break;
             case EntityActionId.WarehouseAudit:
-                OpenOperationsCenter(row, "Audit");
+                InventoryPopupService.ShowWarehousePanel(row.Id, WarehousePopupPanel.Audit);
                 break;
             case EntityActionId.WarehouseExportExcel:
-            case EntityActionId.WarehouseExportPdf:
-            case EntityActionId.WarehousePrint:
                 InventoryExportService.ExportWarehouseStock(row);
+                break;
+            case EntityActionId.WarehouseExportPdf:
+                InventoryPopupService.ShowWarehousePrintPreview(row);
+                break;
+            case EntityActionId.WarehousePrint:
+                InventoryPopupService.ShowWarehousePrintPreview(row);
                 break;
             case EntityActionId.WarehouseDuplicate:
                 _ = DuplicateAsync(row);
@@ -72,7 +81,6 @@ public static class InventoryActionRouter
 
         switch (actionKey)
         {
-            case "nav:Inventory:WarehouseForm":
             case "form:EditWarehouse":
                 InventoryPopupService.ShowEditWarehouse(row.Id);
                 return true;
@@ -91,12 +99,6 @@ public static class InventoryActionRouter
             default:
                 return false;
         }
-    }
-
-    public static void OpenOperationsCenter(WarehouseListExtendedDto row, string? tab = null)
-    {
-        InventoryNavigationContext.BeginWorkspace(row.Id, tab);
-        NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "WarehouseOperationsCenter");
     }
 
     private static async Task ArchiveAsync(WarehouseListExtendedDto row)

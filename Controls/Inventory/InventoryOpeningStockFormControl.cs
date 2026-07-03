@@ -162,7 +162,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         if (ApplicationResultPresenter.Present(result))
         {
             InventoryListRefreshHub.RequestRefresh();
-            NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "OpeningStock");
+            InventoryPopupService.CompleteSuccess();
         }
     }
 

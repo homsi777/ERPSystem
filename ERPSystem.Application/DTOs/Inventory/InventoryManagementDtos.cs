@@ -131,6 +131,8 @@ public sealed class InventoryDashboardDto
 public sealed class InventoryOperationsCenterDto
 {
     public WarehouseListExtendedDto Warehouse { get; init; } = null!;
+    public string? CostCenterName { get; init; }
+    public WarehouseExecutiveDashboardDto Executive { get; init; } = null!;
     public IReadOnlyList<FabricStockBalanceDto> Stock { get; init; } = [];
     public IReadOnlyList<FabricRollListDto> Rolls { get; init; } = [];
     public IReadOnlyList<StorageLocationDto> Locations { get; init; } = [];
@@ -141,6 +143,99 @@ public sealed class InventoryOperationsCenterDto
     public int PendingTransfers { get; init; }
     public int PendingStocktakes { get; init; }
     public decimal InventoryValue { get; init; }
+}
+
+public sealed class WarehouseExecutiveDashboardDto
+{
+    public decimal TotalInventoryValue { get; init; }
+    public decimal ValueTrendPercent30d { get; init; }
+    public IReadOnlyList<WarehouseValueSliceDto> ValueByFabric { get; init; } = [];
+    public IReadOnlyList<WarehouseValueSliceDto> ValueByCategory { get; init; } = [];
+    public IReadOnlyList<decimal> ValueSparkline30d { get; init; } = [];
+    public WarehouseQuantityMetricsDto Quantities { get; init; } = null!;
+    public IReadOnlyList<WarehouseMovementCardDto> RecentMovements { get; init; } = [];
+    public WarehouseMovementCardDto? LastTransaction { get; init; }
+    public IReadOnlyList<WarehouseTopFabricDto> TopMovingFabrics { get; init; } = [];
+    public IReadOnlyList<WarehouseAlertCardDto> Alerts { get; init; } = [];
+    public IReadOnlyList<WarehouseDocumentCardDto> RecentDocuments { get; init; } = [];
+    public WarehouseUserActivityDto? LastUserActivity { get; init; }
+    public IReadOnlyList<WarehouseDailyActivityDto> Activity30Days { get; init; } = [];
+}
+
+public sealed class WarehouseValueSliceDto
+{
+    public string Label { get; init; } = "";
+    public decimal Value { get; init; }
+    public decimal Percent { get; init; }
+}
+
+public sealed class WarehouseQuantityMetricsDto
+{
+    public int TotalRolls { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public decimal ReservedMeters { get; init; }
+    public decimal DamagedMeters { get; init; }
+    public decimal BlockedMeters { get; init; }
+}
+
+public sealed class WarehouseMovementCardDto
+{
+    public Guid Id { get; init; }
+    public string MovementNumber { get; init; } = "";
+    public string Type { get; init; } = "";
+    public string TypeIcon { get; init; } = "";
+    public string FromLabel { get; init; } = "";
+    public string ToLabel { get; init; } = "";
+    public decimal QuantityMeters { get; init; }
+    public decimal TotalValue { get; init; }
+    public DateTime Timestamp { get; init; }
+    public string Username { get; init; } = "";
+    public string? ReferenceType { get; init; }
+    public Guid? ReferenceId { get; init; }
+    public string? ReferenceNumber { get; init; }
+}
+
+public sealed class WarehouseTopFabricDto
+{
+    public string FabricName { get; init; } = "";
+    public decimal MetersMoved { get; init; }
+    public int MovementCount { get; init; }
+}
+
+public sealed class WarehouseAlertCardDto
+{
+    public string AlertType { get; init; } = "";
+    public string Severity { get; init; } = "";
+    public string Title { get; init; } = "";
+    public string Message { get; init; } = "";
+    public string? NavigationTarget { get; init; }
+    public Guid? DocumentId { get; init; }
+}
+
+public sealed class WarehouseDocumentCardDto
+{
+    public string DocumentType { get; init; } = "";
+    public Guid Id { get; init; }
+    public string Number { get; init; } = "";
+    public string Status { get; init; } = "";
+    public DateTime Date { get; init; }
+    public string NavigationTarget { get; init; } = "";
+}
+
+public sealed class WarehouseUserActivityDto
+{
+    public string Username { get; init; } = "";
+    public string ActionType { get; init; } = "";
+    public DateTime Timestamp { get; init; }
+}
+
+public sealed class WarehouseDailyActivityDto
+{
+    public DateTime Date { get; init; }
+    public decimal IncomingMeters { get; init; }
+    public decimal OutgoingMeters { get; init; }
+    public decimal NetMeters { get; init; }
 }
 
 public sealed class InventoryAuditDto

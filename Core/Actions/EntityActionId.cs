@@ -20,6 +20,12 @@ namespace ERPSystem.Core.Actions
         InvoiceExportPdf,
         InvoiceReturn,
         InvoiceCancel,
+        InvoiceSendToWarehouse,
+        InvoiceApprove,
+        InvoiceDeliver,
+        InvoiceCallCustomer,
+        InvoiceViewReturns,
+        InvoiceViewReceipts,
 
         FabricCard,
         FabricMovement,

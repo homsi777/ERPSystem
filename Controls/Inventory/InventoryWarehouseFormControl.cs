@@ -169,8 +169,7 @@ public sealed class InventoryWarehouseFormControl : UserControl
                 else
                 {
                     InventoryListRefreshHub.RequestRefresh();
-                    InventoryNavigationContext.BeginWorkspace(_editId.Value);
-                    NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "WarehouseOperationsCenter");
+                    InventoryPopupService.ShowWarehouseWorkspace(_editId.Value);
                 }
             }
             else
@@ -188,8 +187,7 @@ public sealed class InventoryWarehouseFormControl : UserControl
                 else
                 {
                     InventoryListRefreshHub.RequestRefresh();
-                    InventoryNavigationContext.BeginWorkspace(result.Value);
-                    NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "WarehouseOperationsCenter");
+                    InventoryPopupService.ShowWarehouseWorkspace(result.Value);
                 }
             }
         }

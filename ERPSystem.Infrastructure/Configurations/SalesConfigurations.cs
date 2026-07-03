@@ -53,3 +53,48 @@ internal sealed class WarehouseDetailingSessionConfiguration : IEntityTypeConfig
         builder.HasIndex(x => x.SalesInvoiceId).IsUnique();
     }
 }
+
+internal sealed class SalesReturnConfiguration : IEntityTypeConfiguration<SalesReturnEntity>
+{
+    public void Configure(EntityTypeBuilder<SalesReturnEntity> builder)
+    {
+        builder.ToTable("sales_returns", Schemas.Sales);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.ReturnNumber).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.OriginalInvoiceNumber).HasMaxLength(50);
+        builder.Property(x => x.TotalAmount).HasPrecision(18, 2);
+        builder.Property(x => x.ReasonNotes).HasMaxLength(500);
+        builder.Property(x => x.Notes).HasMaxLength(1000);
+        builder.Property(x => x.JournalEntryNumber).HasMaxLength(50);
+        builder.HasIndex(x => new { x.CompanyId, x.ReturnNumber }).IsUnique();
+        builder.HasIndex(x => x.OriginalInvoiceId);
+        builder.HasIndex(x => x.CustomerId);
+        builder.HasQueryFilter(x => x.IsActive && !x.IsArchived);
+    }
+}
+
+internal sealed class SalesReturnLineConfiguration : IEntityTypeConfiguration<SalesReturnLineEntity>
+{
+    public void Configure(EntityTypeBuilder<SalesReturnLineEntity> builder)
+    {
+        builder.ToTable("sales_return_lines", Schemas.Sales);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.OriginalMeters).HasPrecision(18, 4);
+        builder.Property(x => x.ReturnMeters).HasPrecision(18, 4);
+        builder.Property(x => x.UnitPrice).HasPrecision(18, 2);
+        builder.Property(x => x.LineTotal).HasPrecision(18, 2);
+        builder.HasIndex(x => new { x.SalesReturnId, x.LineNumber }).IsUnique();
+    }
+}
+
+internal sealed class ReceiptInvoicePaymentConfiguration : IEntityTypeConfiguration<ReceiptInvoicePaymentEntity>
+{
+    public void Configure(EntityTypeBuilder<ReceiptInvoicePaymentEntity> builder)
+    {
+        builder.ToTable("receipt_invoice_payments", Schemas.Sales);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
+        builder.HasIndex(x => x.SalesInvoiceId);
+        builder.HasIndex(x => x.ReceiptVoucherId);
+    }
+}

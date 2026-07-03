@@ -72,7 +72,7 @@ namespace ERPSystem.Services
 
             if (entityType == EntityType.Warehouse && entity is WarehouseListExtendedDto wh)
             {
-                WarehouseContextMenuService.Show(wh, grid);
+                WarehouseContextMenuService.Show(wh, row);
                 return;
             }
 
@@ -85,7 +85,11 @@ namespace ERPSystem.Services
 
             if (entityType == EntityType.Warehouse && entity is WarehouseListExtendedDto wh)
             {
-                WarehouseContextMenuService.Show(wh, grid);
+                var row = grid.ItemContainerGenerator.ContainerFromItem(rowItem) as DataGridRow;
+                if (row is not null)
+                    WarehouseContextMenuService.Show(wh, row);
+                else
+                    WarehouseContextMenuService.Show(wh, grid);
                 return;
             }
 

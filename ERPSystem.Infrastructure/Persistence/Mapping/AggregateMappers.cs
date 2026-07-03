@@ -56,6 +56,9 @@ internal static class SalesInvoiceMapper
         ApprovedAt = aggregate.ApprovedAt,
         PrintedAt = aggregate.PrintedAt,
         DeliveredAt = aggregate.DeliveredAt,
+        DeliveredToName = aggregate.DeliveredToName,
+        DeliveryDriverName = aggregate.DeliveryDriverName,
+        DeliveryNotes = aggregate.DeliveryNotes,
         CancelledAt = aggregate.CancelledAt,
         CancelReason = aggregate.CancelReason,
         ReversedByJournalEntryId = aggregate.ReversedByJournalEntryId,
@@ -90,6 +93,9 @@ internal static class SalesInvoiceMapper
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.ApprovedAt), header.ApprovedAt);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.PrintedAt), header.PrintedAt);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DeliveredAt), header.DeliveredAt);
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DeliveredToName), header.DeliveredToName);
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DeliveryDriverName), header.DeliveryDriverName);
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DeliveryNotes), header.DeliveryNotes);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.CancelledAt), header.CancelledAt);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.CancelReason), header.CancelReason);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.ReversedByJournalEntryId), header.ReversedByJournalEntryId);
@@ -137,6 +143,72 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(aggregate, "_detailingSession", detailing);
         }
 
+        return aggregate;
+    }
+}
+
+internal static class SalesReturnMapper
+{
+    public static SalesReturnEntity ToHeaderEntity(SalesReturnAggregate aggregate) => new()
+    {
+        Id = aggregate.Id,
+        CompanyId = aggregate.CompanyId,
+        BranchId = aggregate.BranchId,
+        ReturnNumber = aggregate.ReturnNumber,
+        OriginalInvoiceId = aggregate.OriginalInvoiceId,
+        OriginalInvoiceNumber = aggregate.OriginalInvoiceNumber,
+        CustomerId = aggregate.CustomerId,
+        WarehouseId = aggregate.WarehouseId,
+        ReturnDate = aggregate.ReturnDate,
+        Reason = (int)aggregate.Reason,
+        ReasonNotes = aggregate.ReasonNotes,
+        Notes = aggregate.Notes,
+        Status = (int)aggregate.Status,
+        TotalAmount = aggregate.TotalAmount.Amount,
+        CreatedByUserId = aggregate.CreatedByUserId,
+        PostedByUserId = aggregate.PostedByUserId,
+        PostedAt = aggregate.PostedAt,
+        JournalEntryNumber = aggregate.JournalEntryNumber
+    };
+
+    public static SalesReturnAggregate ToAggregate(SalesReturnEntity header, IReadOnlyList<SalesReturnLineEntity> lines)
+    {
+        var aggregate = DomainHydrator.Create<SalesReturnAggregate>();
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.Id), header.Id);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.ReturnNumber), header.ReturnNumber);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.CompanyId), header.CompanyId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.BranchId), header.BranchId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.OriginalInvoiceId), header.OriginalInvoiceId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.OriginalInvoiceNumber), header.OriginalInvoiceNumber);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.CustomerId), header.CustomerId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.WarehouseId), header.WarehouseId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.ReturnDate), header.ReturnDate);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.Reason), (SalesReturnReason)header.Reason);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.ReasonNotes), header.ReasonNotes);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.Notes), header.Notes);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.Status), (VoucherStatus)header.Status);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.TotalAmount), new Money(header.TotalAmount));
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.CreatedByUserId), header.CreatedByUserId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.PostedByUserId), header.PostedByUserId);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.PostedAt), header.PostedAt);
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.JournalEntryNumber), header.JournalEntryNumber);
+
+        var domainLines = lines.OrderBy(l => l.LineNumber).Select(l =>
+        {
+            var line = DomainHydrator.Create<SalesReturnLine>();
+            DomainHydrator.Set(line, nameof(SalesReturnLine.Id), l.Id);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.LineNumber), l.LineNumber);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.OriginalInvoiceItemId), l.OriginalInvoiceItemId);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.FabricItemId), l.FabricItemId);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.FabricColorId), l.FabricColorId);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.OriginalMeters), l.OriginalMeters);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.ReturnMeters), l.ReturnMeters);
+            DomainHydrator.Set(line, nameof(SalesReturnLine.UnitPrice), new Money(l.UnitPrice));
+            DomainHydrator.Set(line, nameof(SalesReturnLine.LineTotal), new Money(l.LineTotal));
+            return line;
+        }).ToList();
+
+        AggregateCollectionHelper.SetPrivateList(aggregate, "_lines", domainLines);
         return aggregate;
     }
 }

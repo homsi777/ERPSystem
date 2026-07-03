@@ -371,3 +371,86 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         }
     }
 }
+
+internal sealed class SalesReturnRepository(ErpDbContext context) : ISalesReturnRepository
+{
+    public async Task<SalesReturnAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var header = await context.SalesReturns.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (header is null) return null;
+        var lines = await context.SalesReturnLines.AsNoTracking()
+            .Where(l => l.SalesReturnId == id)
+            .OrderBy(l => l.LineNumber)
+            .ToListAsync(cancellationToken);
+        return SalesReturnMapper.ToAggregate(header, lines);
+    }
+
+    public async Task<IReadOnlyList<SalesReturnAggregate>> GetListAsync(
+        Guid companyId,
+        Guid? branchId = null,
+        VoucherStatus? status = null,
+        Guid? customerId = null,
+        Guid? originalInvoiceId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.SalesReturns.AsNoTracking().Where(r => r.CompanyId == companyId);
+        if (branchId.HasValue) query = query.Where(r => r.BranchId == branchId.Value);
+        if (status.HasValue) query = query.Where(r => r.Status == (int)status.Value);
+        if (customerId.HasValue) query = query.Where(r => r.CustomerId == customerId.Value);
+        if (originalInvoiceId.HasValue) query = query.Where(r => r.OriginalInvoiceId == originalInvoiceId.Value);
+
+        var headers = await query.OrderByDescending(r => r.ReturnDate).ToListAsync(cancellationToken);
+        var result = new List<SalesReturnAggregate>();
+        foreach (var header in headers)
+        {
+            var lines = await context.SalesReturnLines.AsNoTracking()
+                .Where(l => l.SalesReturnId == header.Id)
+                .OrderBy(l => l.LineNumber)
+                .ToListAsync(cancellationToken);
+            result.Add(SalesReturnMapper.ToAggregate(header, lines));
+        }
+        return result;
+    }
+
+    public async Task AddAsync(SalesReturnAggregate aggregate, CancellationToken cancellationToken = default)
+    {
+        await context.SalesReturns.AddAsync(SalesReturnMapper.ToHeaderEntity(aggregate), cancellationToken);
+        await SyncLinesAsync(aggregate, cancellationToken);
+    }
+
+    public async Task UpdateAsync(SalesReturnAggregate aggregate, CancellationToken cancellationToken = default)
+    {
+        var header = await context.SalesReturns.FirstOrDefaultAsync(r => r.Id == aggregate.Id, cancellationToken)
+            ?? throw new InvalidOperationException("Sales return not found.");
+        var mapped = SalesReturnMapper.ToHeaderEntity(aggregate);
+        header.Status = mapped.Status;
+        header.TotalAmount = mapped.TotalAmount;
+        header.Reason = mapped.Reason;
+        header.ReasonNotes = mapped.ReasonNotes;
+        header.Notes = mapped.Notes;
+        header.PostedByUserId = mapped.PostedByUserId;
+        header.PostedAt = mapped.PostedAt;
+        header.JournalEntryNumber = mapped.JournalEntryNumber;
+        header.UpdatedAt = DateTime.UtcNow;
+        await SyncLinesAsync(aggregate, cancellationToken);
+    }
+
+    private async Task SyncLinesAsync(SalesReturnAggregate aggregate, CancellationToken ct)
+    {
+        var existing = await context.SalesReturnLines.Where(l => l.SalesReturnId == aggregate.Id).ToListAsync(ct);
+        context.SalesReturnLines.RemoveRange(existing);
+        await context.SalesReturnLines.AddRangeAsync(aggregate.Lines.Select(l => new SalesReturnLineEntity
+        {
+            Id = l.Id,
+            SalesReturnId = aggregate.Id,
+            LineNumber = l.LineNumber,
+            OriginalInvoiceItemId = l.OriginalInvoiceItemId,
+            FabricItemId = l.FabricItemId,
+            FabricColorId = l.FabricColorId,
+            OriginalMeters = l.OriginalMeters,
+            ReturnMeters = l.ReturnMeters,
+            UnitPrice = l.UnitPrice.Amount,
+            LineTotal = l.LineTotal.Amount
+        }), ct);
+    }
+}

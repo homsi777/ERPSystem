@@ -59,3 +59,18 @@ public sealed class CancelSalesInvoiceCommand
     public Guid InvoiceId { get; init; }
     public string Reason { get; init; } = "";
 }
+
+public sealed class ConfirmSalesInvoiceDeliveryCommand
+{
+    public Guid InvoiceId { get; init; }
+    public DateTime DeliveryDate { get; init; }
+    public string? ReceivedByName { get; init; }
+    public string? DriverName { get; init; }
+    public string? Notes { get; init; }
+}
+
+public sealed class UpdateSalesInvoiceWarehouseCommand
+{
+    public Guid InvoiceId { get; init; }
+    public Guid WarehouseId { get; init; }
+}

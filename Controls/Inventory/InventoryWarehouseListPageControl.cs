@@ -1,4 +1,3 @@
-using ERPSystem.Application.Commands.Inventory;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
@@ -7,6 +6,7 @@ using ERPSystem.Services;
 using ERPSystem.Services.Inventory;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ERPSystem.Controls.Inventory;
@@ -14,6 +14,7 @@ namespace ERPSystem.Controls.Inventory;
 public sealed class InventoryWarehouseListPageControl : UserControl
 {
     private readonly ErpListModuleControl _page = new();
+    private DataGridTemplateColumn? _tasksColumn;
     private bool _isLoading;
 
     public InventoryWarehouseListPageControl()
@@ -27,11 +28,11 @@ public sealed class InventoryWarehouseListPageControl : UserControl
         _page.Grid.MouseDoubleClick += (_, _) =>
         {
             if (_page.Grid.SelectedItem is WarehouseListExtendedDto w)
-            {
-                InventoryNavigationContext.BeginWorkspace(w.Id);
-                NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "WarehouseOperationsCenter");
-            }
+                InventoryPopupService.ShowWarehouseWorkspace(w.Id);
         };
+
+        // ⋮ — بديل لزر اليمين (نفس ExpenseContextMenuService.Show)
+        _page.Grid.PreviewMouseLeftButtonUp += OnGridTasksClick;
 
         var g = _page.Grid;
         g.AutoGenerateColumns = false;
@@ -50,9 +51,61 @@ public sealed class InventoryWarehouseListPageControl : UserControl
         })
             ErpUiFactory.AddGridColumn(g, h, p, w, null);
 
+        AddActionsColumn(g);
+
         Content = _page;
         Loaded += OnLoaded;
         InventoryListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+    }
+
+    private void OnGridTasksClick(object sender, MouseButtonEventArgs e)
+    {
+        if (FindParent<DataGridCell>(e.OriginalSource as DependencyObject) is not { Column: var col, DataContext: WarehouseListExtendedDto w } cell)
+            return;
+        if (_tasksColumn is null || col != _tasksColumn) return;
+
+        e.Handled = true;
+        WarehouseContextMenuService.Show(w, cell);
+    }
+
+    private void AddActionsColumn(DataGrid grid)
+    {
+        _tasksColumn = new DataGridTemplateColumn
+        {
+            Header = "مهام",
+            Width = 72,
+            IsReadOnly = true
+        };
+
+        var template = new DataTemplate();
+        var factory = new FrameworkElementFactory(typeof(Border));
+        factory.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        factory.SetValue(Border.PaddingProperty, new Thickness(4));
+        factory.SetValue(Border.CursorProperty, Cursors.Hand);
+        factory.SetValue(Border.ToolTipProperty, "قائمة المهام");
+
+        var icon = new FrameworkElementFactory(typeof(TextBlock));
+        icon.SetValue(TextBlock.TextProperty, "\uE712");
+        icon.SetValue(TextBlock.FontFamilyProperty, new FontFamily("Segoe MDL2 Assets"));
+        icon.SetValue(TextBlock.FontSizeProperty, 16.0);
+        icon.SetValue(TextBlock.ForegroundProperty, B("PrimaryBrush"));
+        icon.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        icon.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+        factory.AppendChild(icon);
+
+        template.VisualTree = factory;
+        _tasksColumn.CellTemplate = template;
+        grid.Columns.Add(_tasksColumn);
+    }
+
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child != null)
+        {
+            if (child is T match) return match;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

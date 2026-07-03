@@ -9,5 +9,7 @@ public enum SalesInvoiceStatus
     Approved = 4,
     Printed = 5,
     Delivered = 6,
-    Cancelled = 7
+    Cancelled = 7,
+    PartiallyReturned = 8,
+    Returned = 9
 }
