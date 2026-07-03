@@ -81,17 +81,36 @@ internal static class CustomerMapper
 
 internal static class SupplierMapper
 {
-    public static SupplierEntity ToEntity(SupplierAggregate aggregate) => new()
+    public static SupplierEntity ToEntity(SupplierAggregate aggregate)
     {
-        Id = aggregate.Supplier.Id,
-        CompanyId = aggregate.Supplier.CompanyId,
-        Code = aggregate.Supplier.Code,
-        Name = aggregate.Supplier.Name,
-        Status = (int)aggregate.Supplier.Status,
-        Balance = aggregate.Supplier.Balance.Amount,
-        BalanceCurrency = aggregate.Supplier.Balance.Currency,
-        IsActive = aggregate.Supplier.IsActive
-    };
+        var s = aggregate.Supplier;
+        return new SupplierEntity
+        {
+            Id = s.Id,
+            CompanyId = s.CompanyId,
+            Code = s.Code,
+            Name = s.NameAr,
+            NameAr = s.NameAr,
+            NameEn = s.NameEn,
+            Status = (int)s.Status,
+            Balance = s.Balance.Amount,
+            BalanceCurrency = s.Balance.Currency,
+            CreditLimit = s.CreditLimit.Amount,
+            CreditLimitCurrency = s.CreditLimit.Currency,
+            PaymentTermsDays = s.PaymentTermsDays,
+            CurrencyCode = s.CurrencyCode,
+            Phone = s.Phone,
+            Email = s.Email,
+            Address = s.Address,
+            Country = s.Country,
+            City = s.City,
+            TaxNumber = s.TaxNumber,
+            PayablesAccountId = s.PayablesAccountId,
+            Notes = s.Notes,
+            OpeningBalancePosted = s.OpeningBalancePosted,
+            IsActive = s.IsActive
+        };
+    }
 
     public static SupplierAggregate ToAggregate(SupplierEntity entity)
     {
@@ -99,18 +118,48 @@ internal static class SupplierMapper
         DomainHydrator.Set(supplier, nameof(Supplier.Id), entity.Id);
         DomainHydrator.Set(supplier, nameof(Supplier.CompanyId), entity.CompanyId);
         DomainHydrator.Set(supplier, nameof(Supplier.Code), entity.Code);
-        DomainHydrator.Set(supplier, nameof(Supplier.Name), entity.Name);
+        var nameAr = string.IsNullOrWhiteSpace(entity.NameAr) ? entity.Name : entity.NameAr;
+        DomainHydrator.Set(supplier, nameof(Supplier.NameAr), nameAr);
+        DomainHydrator.Set(supplier, nameof(Supplier.NameEn), string.IsNullOrWhiteSpace(entity.NameEn) ? nameAr : entity.NameEn);
         DomainHydrator.Set(supplier, nameof(Supplier.Status), (SupplierStatus)entity.Status);
         DomainHydrator.Set(supplier, nameof(Supplier.Balance), new Money(entity.Balance, entity.BalanceCurrency));
+        DomainHydrator.Set(supplier, nameof(Supplier.CreditLimit), new Money(entity.CreditLimit, entity.CreditLimitCurrency));
+        DomainHydrator.Set(supplier, nameof(Supplier.PaymentTermsDays), entity.PaymentTermsDays);
+        DomainHydrator.Set(supplier, nameof(Supplier.CurrencyCode), entity.CurrencyCode);
+        DomainHydrator.Set(supplier, nameof(Supplier.Phone), entity.Phone);
+        DomainHydrator.Set(supplier, nameof(Supplier.Email), entity.Email);
+        DomainHydrator.Set(supplier, nameof(Supplier.Address), entity.Address);
+        DomainHydrator.Set(supplier, nameof(Supplier.Country), entity.Country);
+        DomainHydrator.Set(supplier, nameof(Supplier.City), entity.City);
+        DomainHydrator.Set(supplier, nameof(Supplier.TaxNumber), entity.TaxNumber);
+        DomainHydrator.Set(supplier, nameof(Supplier.PayablesAccountId), entity.PayablesAccountId);
+        DomainHydrator.Set(supplier, nameof(Supplier.Notes), entity.Notes);
+        DomainHydrator.Set(supplier, nameof(Supplier.OpeningBalancePosted), entity.OpeningBalancePosted);
         DomainHydrator.Set(supplier, nameof(Supplier.IsActive), entity.IsActive);
         return SupplierAggregate.FromSupplier(supplier);
     }
 
     public static void UpdateEntity(SupplierEntity entity, SupplierAggregate aggregate)
     {
-        entity.Balance = aggregate.Supplier.Balance.Amount;
-        entity.Status = (int)aggregate.Supplier.Status;
-        entity.IsActive = aggregate.Supplier.IsActive;
+        var mapped = ToEntity(aggregate);
+        entity.Name = mapped.Name;
+        entity.NameAr = mapped.NameAr;
+        entity.NameEn = mapped.NameEn;
+        entity.Status = mapped.Status;
+        entity.Balance = mapped.Balance;
+        entity.CreditLimit = mapped.CreditLimit;
+        entity.PaymentTermsDays = mapped.PaymentTermsDays;
+        entity.CurrencyCode = mapped.CurrencyCode;
+        entity.Phone = mapped.Phone;
+        entity.Email = mapped.Email;
+        entity.Address = mapped.Address;
+        entity.Country = mapped.Country;
+        entity.City = mapped.City;
+        entity.TaxNumber = mapped.TaxNumber;
+        entity.PayablesAccountId = mapped.PayablesAccountId;
+        entity.Notes = mapped.Notes;
+        entity.OpeningBalancePosted = mapped.OpeningBalancePosted;
+        entity.IsActive = mapped.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }

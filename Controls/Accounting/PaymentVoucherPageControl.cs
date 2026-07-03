@@ -2,6 +2,7 @@ using ERPSystem.Application.DTOs.Expenses;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
+using ERPSystem.Services.Purchases;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +17,7 @@ public sealed class PaymentVoucherPageControl : UserControl
     private readonly ComboBox _supplier = new() { MinWidth = 280, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly ComboBox _cashbox = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly TextBox _amount = ErpUiFactory.FormField("0");
+    private readonly TextBox _reference = ErpUiFactory.FormField("");
     private readonly DatePicker _date = ErpUiFactory.FormDate(DateTime.Today);
     private readonly TextBlock _status = new()
     {
@@ -27,17 +29,19 @@ public sealed class PaymentVoucherPageControl : UserControl
     private readonly Button _post = new() { Content = "ترحيل", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
 
     private Guid? _draftId;
+    private Guid? _purchaseInvoiceId;
     private bool _busy;
 
     public PaymentVoucherPageControl()
     {
         var stack = new StackPanel { Margin = new Thickness(16) };
         stack.Children.Add(ErpUiFactory.SectionTitle("سند صرف"));
-        stack.Children.Add(ErpUxFactory.InfoBanner("دفع نقدي لمورد — احفظ مسودة ثم رحّل السند.", "info"));
+        stack.Children.Add(ErpUxFactory.InfoBanner("دفع نقدي لمورد — يُخصم من حساب الذمم الدائنة للمورد (وليس الحساب الرئيسي).", "info"));
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("المورد *", _supplier),
             ("الصندوق *", _cashbox),
             ("المبلغ *", _amount),
+            ("مرجع الفاتورة", _reference),
             ("التاريخ", _date))));
         stack.Children.Add(_status);
 
@@ -60,7 +64,6 @@ public sealed class PaymentVoucherPageControl : UserControl
             _supplier.ItemsSource = suppliers.Value;
             _supplier.DisplayMemberPath = nameof(FinancePartyOption.Display);
             _supplier.SelectedValuePath = nameof(FinancePartyOption.Id);
-            _supplier.SelectedIndex = 0;
         }
 
         var boxes = await FinanceUiService.Instance.GetCashboxesAsync();
@@ -70,6 +73,29 @@ public sealed class PaymentVoucherPageControl : UserControl
             _cashbox.DisplayMemberPath = nameof(CashboxOptionDto.Name);
             _cashbox.SelectedValuePath = nameof(CashboxOptionDto.Id);
             _cashbox.SelectedIndex = 0;
+        }
+
+        ApplyPurchasePaymentContext();
+    }
+
+    private void ApplyPurchasePaymentContext()
+    {
+        var (invoiceId, supplierId, amount, reference) = PurchaseNavigationContext.TakePaymentContext();
+        _purchaseInvoiceId = invoiceId;
+
+        if (supplierId is Guid sid && sid != Guid.Empty)
+            _supplier.SelectedValue = sid;
+
+        if (amount is > 0)
+            _amount.Text = amount.Value.ToString(CultureInfo.InvariantCulture);
+
+        if (!string.IsNullOrWhiteSpace(reference))
+            _reference.Text = reference;
+
+        if (_purchaseInvoiceId.HasValue)
+        {
+            _status.Text = $"دفعة مرتبطة بفاتورة شراء — سيتم تحديث حالة الفاتورة عند الترحيل.";
+            _status.Foreground = (Brush)WpfApplication.Current.Resources["PrimaryBrush"]!;
         }
     }
 
@@ -131,15 +157,21 @@ public sealed class PaymentVoucherPageControl : UserControl
         _post.IsEnabled = false;
         try
         {
-            var result = await FinanceUiService.Instance.PostPaymentVoucherAsync(voucherId);
+            var result = await FinanceUiService.Instance.PostPaymentVoucherAsync(voucherId, _purchaseInvoiceId);
             if (!ApplicationResultPresenter.Present(result))
                 return;
 
-            MockInteractionService.ShowSuccess("تم ترحيل سند الصرف.");
+            MockInteractionService.ShowSuccess(
+                _purchaseInvoiceId.HasValue
+                    ? "تم ترحيل سند الصرف وتحديث حالة فاتورة الشراء."
+                    : "تم ترحيل سند الصرف.");
             _draftId = null;
+            _purchaseInvoiceId = null;
             _post.IsEnabled = false;
             _status.Text = "تم الترحيل بنجاح.";
             _amount.Text = "0";
+            _reference.Text = "";
+            PurchaseListRefreshHub.RequestRefresh();
         }
         finally
         {

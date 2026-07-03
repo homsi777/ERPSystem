@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using System.Reflection;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Accounting;
@@ -405,23 +406,245 @@ internal static class PurchaseMapper
     {
         var invoice = DomainHydrator.Create<PurchaseInvoice>();
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.Id), header.Id);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.CompanyId), header.CompanyId);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.BranchId), header.BranchId);
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.InvoiceNumber), header.InvoiceNumber);
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.SupplierId), header.SupplierId);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.SupplierReference), header.SupplierReference);
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.InvoiceDate), header.InvoiceDate);
-        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.TotalAmount), new Money(header.TotalAmount));
-        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.Remaining), new Money(header.Remaining));
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.DueDate), header.DueDate);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.WarehouseId), header.WarehouseId);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.CurrencyCode), header.CurrencyCode);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.SubTotal), new Money(header.SubTotal, header.CurrencyCode));
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.DiscountAmount), new Money(header.DiscountAmount, header.CurrencyCode));
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.TaxAmount), new Money(header.TaxAmount, header.CurrencyCode));
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.TotalAmount), new Money(header.TotalAmount, header.CurrencyCode));
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.PaidAmount), new Money(header.PaidAmount, header.CurrencyCode));
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.Remaining), new Money(header.Remaining, header.CurrencyCode));
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.Status), (PurchaseInvoiceStatus)header.Status);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.PurchaseOrderId), header.PurchaseOrderId);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.Notes), header.Notes);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.PostedAt), header.PostedAt);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.PostedByUserId), header.PostedByUserId);
 
+        var domainItems = new List<PurchaseInvoiceItem>();
         foreach (var item in items)
         {
-            var domainItem = PurchaseInvoiceItem.Create(
-                item.FabricItemId,
-                new LengthInMeters(item.QuantityMeters),
-                new Money(item.UnitPrice));
+            PurchaseInvoiceItem domainItem = (PurchaseLineType)item.LineType == PurchaseLineType.Expense
+                ? PurchaseInvoiceItem.CreateExpenseLine(
+                    item.ExpenseAccountId ?? AccountingAccountIds.OperatingExpenses,
+                    new Money(item.LineTotal, header.CurrencyCode),
+                    item.Description)
+                : PurchaseInvoiceItem.CreateInventoryLine(
+                    item.FabricItemId ?? Guid.Empty,
+                    item.FabricColorId,
+                    new LengthInMeters(item.QuantityMeters),
+                    item.RollCount,
+                    new Money(item.UnitPrice, header.CurrencyCode),
+                    item.Description);
             DomainHydrator.Set(domainItem, nameof(PurchaseInvoiceItem.Id), item.Id);
-            invoice.AddItem(domainItem);
+            domainItems.Add(domainItem);
         }
+        invoice.HydrateItems(domainItems);
 
         return invoice;
     }
+
+    public static PurchaseInvoiceEntity ToEntity(PurchaseInvoice invoice) => new()
+    {
+        Id = invoice.Id,
+        CompanyId = invoice.CompanyId,
+        BranchId = invoice.BranchId,
+        InvoiceNumber = invoice.InvoiceNumber,
+        SupplierId = invoice.SupplierId,
+        SupplierReference = invoice.SupplierReference,
+        InvoiceDate = invoice.InvoiceDate,
+        DueDate = invoice.DueDate,
+        WarehouseId = invoice.WarehouseId,
+        CurrencyCode = invoice.CurrencyCode,
+        SubTotal = invoice.SubTotal.Amount,
+        DiscountAmount = invoice.DiscountAmount.Amount,
+        TaxAmount = invoice.TaxAmount.Amount,
+        TotalAmount = invoice.TotalAmount.Amount,
+        PaidAmount = invoice.PaidAmount.Amount,
+        Remaining = invoice.Remaining.Amount,
+        Status = (int)invoice.Status,
+        PurchaseOrderId = invoice.PurchaseOrderId,
+        Notes = invoice.Notes,
+        PostedAt = invoice.PostedAt,
+        PostedByUserId = invoice.PostedByUserId,
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    public static void UpdateEntity(PurchaseInvoiceEntity entity, PurchaseInvoice invoice)
+    {
+        entity.SupplierId = invoice.SupplierId;
+        entity.SupplierReference = invoice.SupplierReference;
+        entity.InvoiceDate = invoice.InvoiceDate;
+        entity.DueDate = invoice.DueDate;
+        entity.WarehouseId = invoice.WarehouseId;
+        entity.CurrencyCode = invoice.CurrencyCode;
+        entity.SubTotal = invoice.SubTotal.Amount;
+        entity.DiscountAmount = invoice.DiscountAmount.Amount;
+        entity.TaxAmount = invoice.TaxAmount.Amount;
+        entity.TotalAmount = invoice.TotalAmount.Amount;
+        entity.PaidAmount = invoice.PaidAmount.Amount;
+        entity.Remaining = invoice.Remaining.Amount;
+        entity.Status = (int)invoice.Status;
+        entity.Notes = invoice.Notes;
+        entity.PostedAt = invoice.PostedAt;
+        entity.PostedByUserId = invoice.PostedByUserId;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
+    public static PurchaseInvoiceItemEntity ToItemEntity(Guid invoiceId, PurchaseInvoiceItem item) => new()
+    {
+        Id = item.Id,
+        PurchaseInvoiceId = invoiceId,
+        LineType = (int)item.LineType,
+        FabricItemId = item.FabricItemId,
+        FabricColorId = item.FabricColorId,
+        ExpenseAccountId = item.ExpenseAccountId,
+        Description = item.Description,
+        QuantityMeters = item.Quantity.Value,
+        RollCount = item.RollCount,
+        UnitPrice = item.UnitPrice.Amount,
+        LineTotal = item.LineTotal.Amount,
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    public static PurchaseOrder ToOrderDomain(PurchaseOrderEntity header, IReadOnlyList<PurchaseOrderLineEntity> lines)
+    {
+        var order = DomainHydrator.Create<PurchaseOrder>();
+        DomainHydrator.Set(order, nameof(PurchaseOrder.Id), header.Id);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.CompanyId), header.CompanyId);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.BranchId), header.BranchId);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.OrderNumber), header.OrderNumber);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.SupplierId), header.SupplierId);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.OrderDate), header.OrderDate);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.ExpectedDeliveryDate), header.ExpectedDeliveryDate);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.Status), (PurchaseOrderStatus)header.Status);
+        DomainHydrator.Set(order, nameof(PurchaseOrder.TotalAmount), new Money(header.TotalAmount));
+        DomainHydrator.Set(order, nameof(PurchaseOrder.Notes), header.Notes);
+        var domainLines = new List<PurchaseOrderLine>();
+        foreach (var line in lines)
+        {
+            var domainLine = PurchaseOrderLine.Create(line.FabricItemId, line.Description, line.Quantity, new Money(line.UnitCost));
+            DomainHydrator.Set(domainLine, nameof(PurchaseOrderLine.Id), line.Id);
+            domainLines.Add(domainLine);
+        }
+        order.HydrateLines(domainLines);
+        return order;
+    }
+
+    public static PurchaseOrderEntity ToOrderEntity(PurchaseOrder order) => new()
+    {
+        Id = order.Id,
+        CompanyId = order.CompanyId,
+        BranchId = order.BranchId,
+        OrderNumber = order.OrderNumber,
+        SupplierId = order.SupplierId,
+        OrderDate = order.OrderDate,
+        ExpectedDeliveryDate = order.ExpectedDeliveryDate,
+        TotalAmount = order.TotalAmount.Amount,
+        Status = (int)order.Status,
+        Notes = order.Notes,
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    public static void UpdateOrderEntity(PurchaseOrderEntity entity, PurchaseOrder order)
+    {
+        entity.SupplierId = order.SupplierId;
+        entity.ExpectedDeliveryDate = order.ExpectedDeliveryDate;
+        entity.TotalAmount = order.TotalAmount.Amount;
+        entity.Status = (int)order.Status;
+        entity.Notes = order.Notes;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
+    public static PurchaseOrderLineEntity ToOrderLineEntity(Guid orderId, PurchaseOrderLine line) => new()
+    {
+        Id = line.Id,
+        PurchaseOrderId = orderId,
+        FabricItemId = line.FabricItemId,
+        Description = line.Description,
+        Quantity = line.Quantity,
+        UnitCost = line.UnitCost.Amount,
+        LineTotal = line.LineTotal.Amount,
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    public static PurchaseReturn ToReturnDomain(PurchaseReturnEntity header, IReadOnlyList<PurchaseReturnLineEntity> lines)
+    {
+        var ret = DomainHydrator.Create<PurchaseReturn>();
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.Id), header.Id);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.CompanyId), header.CompanyId);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.BranchId), header.BranchId);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.ReturnNumber), header.ReturnNumber);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.OriginalInvoiceId), header.OriginalInvoiceId);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.ReturnDate), header.ReturnDate);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.TotalAmount), new Money(header.TotalAmount));
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.Status), (PurchaseReturnStatus)header.Status);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.Notes), header.Notes);
+        DomainHydrator.Set(ret, nameof(PurchaseReturn.PostedAt), header.PostedAt);
+        var domainLines = new List<PurchaseReturnLine>();
+        foreach (var line in lines)
+        {
+            var domainLine = PurchaseReturnLine.Create(
+                line.OriginalInvoiceItemId,
+                (PurchaseLineType)line.LineType,
+                line.FabricItemId,
+                line.FabricColorId,
+                line.QuantityMeters,
+                new Money(line.UnitPrice));
+            DomainHydrator.Set(domainLine, nameof(PurchaseReturnLine.Id), line.Id);
+            domainLines.Add(domainLine);
+        }
+        ret.HydrateLines(domainLines);
+        return ret;
+    }
+
+    public static PurchaseReturnEntity ToReturnEntity(PurchaseReturn purchaseReturn) => new()
+    {
+        Id = purchaseReturn.Id,
+        CompanyId = purchaseReturn.CompanyId,
+        BranchId = purchaseReturn.BranchId,
+        ReturnNumber = purchaseReturn.ReturnNumber,
+        OriginalInvoiceId = purchaseReturn.OriginalInvoiceId,
+        ReturnDate = purchaseReturn.ReturnDate,
+        TotalAmount = purchaseReturn.TotalAmount.Amount,
+        Status = (int)purchaseReturn.Status,
+        Notes = purchaseReturn.Notes,
+        PostedAt = purchaseReturn.PostedAt,
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    public static void UpdateReturnEntity(PurchaseReturnEntity entity, PurchaseReturn purchaseReturn)
+    {
+        entity.TotalAmount = purchaseReturn.TotalAmount.Amount;
+        entity.Status = (int)purchaseReturn.Status;
+        entity.Notes = purchaseReturn.Notes;
+        entity.PostedAt = purchaseReturn.PostedAt;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
+    public static PurchaseReturnLineEntity ToReturnLineEntity(Guid returnId, PurchaseReturnLine line) => new()
+    {
+        Id = line.Id,
+        PurchaseReturnId = returnId,
+        OriginalInvoiceItemId = line.OriginalInvoiceItemId,
+        LineType = (int)line.LineType,
+        FabricItemId = line.FabricItemId,
+        FabricColorId = line.FabricColorId,
+        QuantityMeters = line.QuantityMeters,
+        UnitPrice = line.UnitPrice.Amount,
+        LineTotal = line.LineTotal.Amount,
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
 }

@@ -16,7 +16,9 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
         ["JournalEntry"] = "JE",
         ["Customer"] = "CUS",
         ["Supplier"] = "SUP",
-        ["PurchaseInvoice"] = "PI",
+        ["PurchaseInvoice"] = "PINV",
+        ["PurchaseOrder"] = "PO",
+        ["PurchaseReturn"] = "PRET",
         ["Expense"] = "EXP",
         ["CapitalPartner"] = "PTR",
         ["ProfitDistribution"] = "DST"
@@ -40,6 +42,9 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
     public Task<string> NextCustomerCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
         NextAsync(branchId, "Customer", cancellationToken);
 
+    public Task<string> NextSupplierCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "Supplier", cancellationToken);
+
     public Task<string> NextExpenseCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
         NextAsync(branchId, "Expense", cancellationToken);
 
@@ -48,6 +53,15 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
 
     public Task<string> NextDistributionCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
         NextAsync(branchId, "ProfitDistribution", cancellationToken);
+
+    public Task<string> NextPurchaseInvoiceNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "PurchaseInvoice", cancellationToken);
+
+    public Task<string> NextPurchaseOrderNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "PurchaseOrder", cancellationToken);
+
+    public Task<string> NextPurchaseReturnNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
+        NextAsync(branchId, "PurchaseReturn", cancellationToken);
 
     private async Task<string> NextAsync(Guid branchId, string documentType, CancellationToken cancellationToken)
     {

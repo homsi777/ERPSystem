@@ -1,14 +1,14 @@
 using ERPSystem.Controls;
 using ERPSystem.Controls.Customers;
+using ERPSystem.Controls.Suppliers;
 using ERPSystem.Core;
-using ERPSystem.Core.Actions;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Suppliers;
 using ERPSystem.Views.Reports;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace ERPSystem.Views.Parties
 {
@@ -26,23 +26,34 @@ namespace ERPSystem.Views.Parties
 
         public static UserControl CreateSupplier(string key) => key switch
         {
-            "Form" => PartyForm("مورد"),
-            "Statement" => SupplierEmptyContextPage("كشف حساب المورد", "اختر مورداً لعرض كشف حسابه"),
-            "Invoices" => SupplierEmptyContextPage("كشف فواتير المورد", "اختر مورداً لعرض فواتيره"),
+            "Form" => Wrap(new SupplierFormControl()),
+            "Opening" => Wrap(new SupplierOpeningBalanceControl()),
+            "Statement" => CreateSupplierStatementView(),
+            "Invoices" => CreateSupplierInvoicesView(),
             "Reports" => ModuleReportsViews.CreateHub(AppModule.Suppliers),
-            _ => SupplierList()
+            _ => Wrap(new SupplierListPageControl())
         };
 
-        private static UserControl SupplierList()
+        private static UserControl CreateSupplierStatementView()
         {
-            var page = new ErpListModuleControl();
-            page.Configure(EntityType.Supplier, AppModule.Suppliers);
-            page.SetHeader("سجل الموردين", "موردو الصين والموردون المحليون", "\uE779", B("AccentPayableBrush"));
-            page.SetPrimaryButton("إضافة مورد");
-            page.SetEmptyState("لا يوجد موردون مضافون بعد", "إضافة مورد", "\uE779");
-            page.WirePrimaryTo(AppModule.Suppliers, "Form");
-            page.BindData([]);
-            return page;
+            var ctrl = new SupplierAccountStatementControl();
+            var (id, name) = SupplierNavigationContext.TakeStatementContext();
+            if (id is Guid supplierId)
+                ctrl.Initialize(supplierId, name ?? "");
+            return Wrap(ctrl);
+        }
+
+        private static UserControl CreateSupplierInvoicesView()
+        {
+            var (id, name) = SupplierNavigationContext.TakeStatementContext();
+            if (id is Guid supplierId)
+            {
+                var list = new SupplierInvoiceListControl();
+                list.Initialize(supplierId);
+                return Wrap(list);
+            }
+
+            return Wrap(PlaceholderUi.EmptyMessage("اختر مورداً لعرض فواتيره"));
         }
 
         private static UserControl CreateCustomerStatementView()
@@ -68,34 +79,6 @@ namespace ERPSystem.Views.Parties
             return Wrap(PlaceholderUi.EmptyMessage("اختر عميلاً لعرض فواتيره"));
         }
 
-        private static UserControl SupplierEmptyContextPage(string title, string message)
-        {
-            var root = new ScrollViewer { Padding = new Thickness(16) };
-            var stack = new StackPanel();
-            stack.Children.Add(ErpUiFactory.SectionTitle(title));
-            stack.Children.Add(PlaceholderUi.EmptyMessage(message));
-            root.Content = stack;
-            return Wrap(root);
-        }
-
-        private static UserControl PartyForm(string type)
-        {
-            var root = new ScrollViewer { Padding = new Thickness(16) };
-            var stack = new StackPanel();
-            stack.Children.Add(ErpUiFactory.SectionTitle($"إضافة / تعديل {type}"));
-            stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-                ("الاسم", ErpUiFactory.FormField("")),
-                ("الهاتف", ErpUiFactory.FormField("")),
-                ("المدينة", ErpUiFactory.FormField("")),
-                ("العنوان", ErpUiFactory.FormField("")),
-                ("حد الائتمان", ErpUiFactory.FormField("")),
-                ("العملة", ErpUiFactory.FormField("")),
-                ("ملاحظات", ErpUiFactory.FormField("")),
-                ("الحالة", ErpUiFactory.FilterCombo([])))));
-            root.Content = stack;
-            return Wrap(root);
-        }
-
         private static UserControl OpeningBalances(string type)
         {
             var root = new ScrollViewer { Padding = new Thickness(16) };
@@ -106,7 +89,6 @@ namespace ERPSystem.Views.Parties
             return Wrap(root);
         }
 
-        private static SolidColorBrush B(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
         private static UserControl Wrap(UIElement c) => new() { Content = c };
     }
 }

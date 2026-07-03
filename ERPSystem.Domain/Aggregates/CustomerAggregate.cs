@@ -38,4 +38,10 @@ public sealed class SupplierAggregate : AggregateRoot
         Id = supplier.Id,
         Supplier = supplier
     };
+
+    public void RecordPostedPurchase(decimal amount) =>
+        Supplier.ApplyPostedPurchase(new ValueObjects.Money(amount, Supplier.CurrencyCode));
+
+    public void RecordPostedPayment(decimal amount) =>
+        Supplier.ApplyPostedPayment(new ValueObjects.Money(amount, Supplier.CurrencyCode));
 }

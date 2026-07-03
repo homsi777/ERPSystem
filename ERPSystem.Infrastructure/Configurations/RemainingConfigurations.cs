@@ -221,6 +221,65 @@ internal sealed class PurchaseInvoiceConfiguration : IEntityTypeConfiguration<Pu
     }
 }
 
+internal sealed class PurchaseInvoiceItemConfiguration : IEntityTypeConfiguration<PurchaseInvoiceItemEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseInvoiceItemEntity> builder)
+    {
+        builder.ToTable("purchase_invoice_items", Schemas.Purchasing);
+        builder.HasKey(x => x.Id);
+    }
+}
+
+internal sealed class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrderEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseOrderEntity> builder)
+    {
+        builder.ToTable("purchase_orders", Schemas.Purchasing);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.OrderNumber).HasMaxLength(50).IsRequired();
+        builder.HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
+    }
+}
+
+internal sealed class PurchaseOrderLineConfiguration : IEntityTypeConfiguration<PurchaseOrderLineEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseOrderLineEntity> builder)
+    {
+        builder.ToTable("purchase_order_lines", Schemas.Purchasing);
+        builder.HasKey(x => x.Id);
+    }
+}
+
+internal sealed class PurchaseReturnConfiguration : IEntityTypeConfiguration<PurchaseReturnEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseReturnEntity> builder)
+    {
+        builder.ToTable("purchase_returns", Schemas.Purchasing);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.ReturnNumber).HasMaxLength(50).IsRequired();
+        builder.HasIndex(x => new { x.CompanyId, x.ReturnNumber }).IsUnique();
+    }
+}
+
+internal sealed class PurchaseReturnLineConfiguration : IEntityTypeConfiguration<PurchaseReturnLineEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseReturnLineEntity> builder)
+    {
+        builder.ToTable("purchase_return_lines", Schemas.Purchasing);
+        builder.HasKey(x => x.Id);
+    }
+}
+
+internal sealed class PurchaseInvoicePaymentConfiguration : IEntityTypeConfiguration<PurchaseInvoicePaymentEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseInvoicePaymentEntity> builder)
+    {
+        builder.ToTable("purchase_invoice_payments", Schemas.Purchasing);
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.PurchaseInvoiceId);
+    }
+}
+
 internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLogEntity>
 {
     public void Configure(EntityTypeBuilder<AuditLogEntity> builder)

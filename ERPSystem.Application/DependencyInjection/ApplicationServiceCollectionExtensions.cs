@@ -7,11 +7,14 @@ using ERPSystem.Application.Commands.Customers;
 using ERPSystem.Application.Commands.Expenses;
 using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.Commands.Purchases;
+using ERPSystem.Application.Commands.Suppliers;
 using ERPSystem.Application.Queries.Accounting;
 using ERPSystem.Application.Queries.Capital;
 using ERPSystem.Application.Queries.Customers;
 using ERPSystem.Application.Queries.Dashboard;
 using ERPSystem.Application.Queries.Expenses;
+using ERPSystem.Application.Queries.Purchases;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Accounting;
 using ERPSystem.Application.UseCases.Capital;
@@ -24,6 +27,8 @@ using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Application.UseCases.Reports;
 using ERPSystem.Application.UseCases.Sales;
+using ERPSystem.Application.UseCases.Purchases;
+using ERPSystem.Application.UseCases.Suppliers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ERPSystem.Application.DependencyInjection;
@@ -34,6 +39,8 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<IDomainEventDispatcher, DomainEvents.DomainEventDispatcher>();
         RegisterCustomerHandlers(services);
+        RegisterSupplierHandlers(services);
+        RegisterPurchaseHandlers(services);
         RegisterExpenseHandlers(services);
         RegisterCapitalHandlers(services);
         RegisterAccountingHandlers(services);
@@ -49,6 +56,30 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CreateCustomerCommand, ApplicationResult<Guid>>, CreateCustomerHandler>();
         services.AddScoped<ICommandHandler<UpdateCustomerCommand, ApplicationResult>, UpdateCustomerHandler>();
         services.AddScoped<ICommandHandler<DeactivateCustomerCommand, ApplicationResult>, DeactivateCustomerHandler>();
+    }
+
+    private static void RegisterSupplierHandlers(IServiceCollection services)
+    {
+        services.AddScoped<ICommandHandler<CreateSupplierCommand, ApplicationResult<Guid>>, CreateSupplierHandler>();
+        services.AddScoped<ICommandHandler<UpdateSupplierCommand, ApplicationResult>, UpdateSupplierHandler>();
+        services.AddScoped<ICommandHandler<DeactivateSupplierCommand, ApplicationResult>, DeactivateSupplierHandler>();
+        services.AddScoped<ICommandHandler<PostSupplierOpeningBalanceCommand, ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>>, PostSupplierOpeningBalanceHandler>();
+    }
+
+    private static void RegisterPurchaseHandlers(IServiceCollection services)
+    {
+        services.AddScoped<ICommandHandler<CreatePurchaseInvoiceDraftCommand, ApplicationResult<Guid>>, CreatePurchaseInvoiceDraftHandler>();
+        services.AddScoped<ICommandHandler<UpdatePurchaseInvoiceDraftCommand, ApplicationResult>, UpdatePurchaseInvoiceDraftHandler>();
+        services.AddScoped<ICommandHandler<PostPurchaseInvoiceCommand, ApplicationResult<string>>, PostPurchaseInvoiceHandler>();
+        services.AddScoped<ICommandHandler<CancelPurchaseInvoiceCommand, ApplicationResult>, CancelPurchaseInvoiceHandler>();
+        services.AddScoped<ICommandHandler<CreatePurchaseOrderCommand, ApplicationResult<Guid>>, CreatePurchaseOrderHandler>();
+        services.AddScoped<ICommandHandler<UpdatePurchaseOrderCommand, ApplicationResult>, UpdatePurchaseOrderHandler>();
+        services.AddScoped<ICommandHandler<SendPurchaseOrderCommand, ApplicationResult>, SendPurchaseOrderHandler>();
+        services.AddScoped<ICommandHandler<CancelPurchaseOrderCommand, ApplicationResult>, CancelPurchaseOrderHandler>();
+        services.AddScoped<ICommandHandler<ConvertPurchaseOrderToInvoiceCommand, ApplicationResult<Guid>>, ConvertPurchaseOrderToInvoiceHandler>();
+        services.AddScoped<ICommandHandler<CreatePurchaseReturnCommand, ApplicationResult<Guid>>, CreatePurchaseReturnHandler>();
+        services.AddScoped<ICommandHandler<UpdatePurchaseReturnDraftCommand, ApplicationResult>, UpdatePurchaseReturnDraftHandler>();
+        services.AddScoped<ICommandHandler<PostPurchaseReturnCommand, ApplicationResult<string>>, PostPurchaseReturnHandler>();
     }
 
     private static void RegisterExpenseHandlers(IServiceCollection services)
@@ -162,6 +193,19 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCustomerDetailsHandler>();
         services.AddScoped<GetCustomerOperationsCenterHandler>();
         services.AddScoped<GetCustomerStatementHandler>();
+        services.AddScoped<GetSupplierListHandler>();
+        services.AddScoped<GetSupplierDetailsHandler>();
+        services.AddScoped<GetSupplierOperationsCenterHandler>();
+        services.AddScoped<GetSupplierStatementHandler>();
+        services.AddScoped<GetSupplierInvoiceListHandler>();
+        services.AddScoped<GetPurchaseInvoiceListHandler>();
+        services.AddScoped<GetPurchaseInvoiceDetailsHandler>();
+        services.AddScoped<GetPurchaseInvoiceOperationsCenterHandler>();
+        services.AddScoped<GetPurchaseOrderListHandler>();
+        services.AddScoped<GetPurchaseOrderDetailsHandler>();
+        services.AddScoped<GetPurchaseReturnListHandler>();
+        services.AddScoped<GetPurchaseReturnDetailsHandler>();
+        services.AddScoped<GetPostedPurchaseInvoicesForSupplierHandler>();
         services.AddScoped<GetDashboardSummaryHandler>();
         services.AddScoped<GetChinaContainerListHandler>();
         services.AddScoped<GetContainerOperationsCenterHandler>();

@@ -82,6 +82,19 @@ internal sealed class SupplierRepository(ErpDbContext context) : ISupplierReposi
         return entity is null ? null : SupplierMapper.ToAggregate(entity);
     }
 
+    public async Task<bool> ExistsByCodeAsync(
+        Guid companyId,
+        string code,
+        Guid? excludeId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == companyId && s.Code == code);
+        if (excludeId.HasValue)
+            query = query.Where(s => s.Id != excludeId.Value);
+        return await query.AnyAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SupplierAggregate>> GetListAsync(
         Guid companyId,
         string? search = null,
@@ -91,11 +104,61 @@ internal sealed class SupplierRepository(ErpDbContext context) : ISupplierReposi
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            query = query.Where(s => s.Code.Contains(term) || s.Name.Contains(term));
+            query = query.Where(s =>
+                s.Code.Contains(term) ||
+                s.Name.Contains(term) ||
+                s.NameAr.Contains(term) ||
+                (s.Phone != null && s.Phone.Contains(term)) ||
+                (s.Country != null && s.Country.Contains(term)));
         }
 
         var entities = await query.OrderBy(s => s.Code).ToListAsync(cancellationToken);
         return entities.Select(SupplierMapper.ToAggregate).ToList();
+    }
+
+    public async Task<(IReadOnlyList<SupplierAggregate> Items, int TotalCount)> GetPagedAsync(
+        Guid companyId,
+        string? search,
+        string? country,
+        int? paymentTermsDays,
+        bool? hasBalance,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == companyId && s.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(s =>
+                s.Code.Contains(term) ||
+                s.NameAr.Contains(term) ||
+                s.NameEn.Contains(term) ||
+                (s.Phone != null && s.Phone.Contains(term)) ||
+                (s.Country != null && s.Country.Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(country) && country != "الكل")
+            query = query.Where(s => s.Country == country);
+
+        if (paymentTermsDays.HasValue)
+            query = query.Where(s => s.PaymentTermsDays == paymentTermsDays.Value);
+
+        if (hasBalance == true)
+            query = query.Where(s => s.Balance > 0);
+        else if (hasBalance == false)
+            query = query.Where(s => s.Balance <= 0);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var entities = await query
+            .OrderBy(s => s.Code)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (entities.Select(SupplierMapper.ToAggregate).ToList(), totalCount);
     }
 
     public async Task AddAsync(SupplierAggregate aggregate, CancellationToken cancellationToken = default) =>

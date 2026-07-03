@@ -36,4 +36,5 @@ public sealed class ApprovePaymentVoucherCommand
 public sealed class PostPaymentVoucherCommand
 {
     public Guid VoucherId { get; init; }
+    public Guid? PurchaseInvoiceId { get; init; }
 }

@@ -6,6 +6,7 @@ using ERPSystem.Application.Common;
 using ERPSystem.Application.Notifications;
 using ERPSystem.Application.Results;
 using ERPSystem.Domain.Entities.Finance;
+using ERPSystem.Domain.Entities.Purchasing;
 using ERPSystem.Domain.ValueObjects;
 
 namespace ERPSystem.Application.UseCases.Finance;
@@ -162,6 +163,9 @@ public sealed class CreatePaymentVoucherHandler(
 
 public sealed class PostPaymentVoucherHandler(
     IPaymentVoucherRepository voucherRepository,
+    ISupplierRepository supplierRepository,
+    IPurchaseInvoiceRepository purchaseInvoiceRepository,
+    IPurchaseInvoicePaymentRepository purchasePaymentRepository,
     ICashboxRepository cashboxRepository,
     IIntegratedAccountingService integratedAccounting,
     IUnitOfWork unitOfWork,
@@ -182,6 +186,10 @@ public sealed class PostPaymentVoucherHandler(
         if (voucher is null)
             return ApplicationResult.NotFound("Payment voucher not found.");
 
+        var supplierAgg = await supplierRepository.GetByIdAsync(voucher.SupplierId, cancellationToken);
+        if (supplierAgg is null)
+            return ApplicationResult.NotFound("Supplier not found.");
+
         var cashbox = await cashboxRepository.GetByIdAsync(voucher.CashboxId, cancellationToken);
         if (cashbox is null)
             return ApplicationResult.NotFound("Cashbox not found.");
@@ -191,6 +199,7 @@ public sealed class PostPaymentVoucherHandler(
             voucher.Approve();
             voucher.Post();
             cashbox.ApplyPayment(voucher.Amount);
+            supplierAgg.Supplier.ApplyPostedPayment(voucher.Amount);
 
             await voucherRepository.UpdateAsync(voucher, cancellationToken);
             await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
@@ -198,8 +207,25 @@ public sealed class PostPaymentVoucherHandler(
                 voucher.Id,
                 voucher.VoucherNumber,
                 voucher.SupplierId,
+                supplierAgg.Supplier.PayablesAccountId,
+                AccountingAccountIds.CashUsd,
                 voucher.Amount.Amount,
                 cancellationToken);
+
+            if (command.PurchaseInvoiceId is Guid invoiceId)
+            {
+                var invoice = await purchaseInvoiceRepository.GetByIdAsync(invoiceId, cancellationToken);
+                if (invoice is not null)
+                {
+                    invoice.ApplyPayment(voucher.Amount.Amount);
+                    await purchasePaymentRepository.AddAsync(
+                        PurchaseInvoicePayment.Create(invoiceId, voucher.Id, voucher.Amount),
+                        cancellationToken);
+                    await purchaseInvoiceRepository.UpdateAsync(invoice, cancellationToken);
+                }
+            }
+
+            await supplierRepository.UpdateAsync(supplierAgg, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult.Success();

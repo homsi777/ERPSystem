@@ -21,4 +21,7 @@ public interface IFabricCatalogRepository
         Guid fabricItemId,
         string colorCodeOrName,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FabricColor>> GetColorsForItemAsync(
+        Guid fabricItemId,
+        CancellationToken cancellationToken = default);
 }

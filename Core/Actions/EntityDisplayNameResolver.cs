@@ -36,11 +36,17 @@ namespace ERPSystem.Core.Actions
                 EntityType.FabricItem when row is FabricItemModel f =>
                     f.FabricName,
 
+                EntityType.Supplier when row is SupplierListRow s =>
+                    string.IsNullOrWhiteSpace(s.NameAr) ? s.Code : s.NameAr,
+
                 EntityType.Supplier when row is SupplierModel s =>
                     s.Name,
 
+                EntityType.PurchaseInvoice when row is PurchaseListRow p =>
+                    p.InvoiceNumber,
+
                 EntityType.PurchaseInvoice when row is PurchaseInvoiceModel p =>
-                    p.SupplierName,
+                    p.InvoiceNumber,
 
                 EntityType.ImportContainer when row is ContainerListRow c =>
                     c.ContainerNumber,
@@ -84,7 +90,9 @@ namespace ERPSystem.Core.Actions
                 EntityType.SalesInvoice when row is SalesInvoice inv => inv.InvoiceNumber,
                 EntityType.SalesInvoice when row is Views.Sales.FabricSalesInvoiceRow fr => fr.InvoiceNumber,
                 EntityType.FabricItem when row is FabricItemModel f => f.Code,
+                EntityType.Supplier when row is SupplierListRow s => s.Code,
                 EntityType.Supplier when row is SupplierModel s => s.Code,
+                EntityType.PurchaseInvoice when row is PurchaseListRow p => p.InvoiceNumber,
                 EntityType.PurchaseInvoice when row is PurchaseInvoiceModel p => p.InvoiceNumber,
                 EntityType.ImportContainer when row is ContainerListRow c => c.ContainerNumber,
                 EntityType.Employee when row is EmployeeModel e => e.EmployeeCode,

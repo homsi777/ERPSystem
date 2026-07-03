@@ -134,6 +134,17 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         return entity is null ? null : ToFabricColor(entity);
     }
 
+    public async Task<IReadOnlyList<FabricColor>> GetColorsForItemAsync(
+        Guid fabricItemId,
+        CancellationToken cancellationToken = default)
+    {
+        var entities = await context.FabricColors.AsNoTracking()
+            .Where(c => c.FabricItemId == fabricItemId && c.IsActive)
+            .OrderBy(c => c.Code)
+            .ToListAsync(cancellationToken);
+        return entities.Select(ToFabricColor).ToList();
+    }
+
     public async Task<IReadOnlyList<FabricCategory>> GetCategoriesAsync(
         Guid companyId,
         CancellationToken cancellationToken = default)
@@ -170,54 +181,6 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         DomainHydrator.Set(color, nameof(FabricColor.NameAr), entity.NameAr);
         return color;
     }
-}
-
-internal sealed class PurchaseInvoiceRepository(ErpDbContext context) : IPurchaseInvoiceRepository
-{
-    public async Task<PurchaseInvoice?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        var header = await context.PurchaseInvoices.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (header is null) return null;
-        var items = await context.PurchaseInvoiceItems.AsNoTracking()
-            .Where(i => i.PurchaseInvoiceId == id).ToListAsync(cancellationToken);
-        return PurchaseMapper.ToDomain(header, items);
-    }
-
-    public async Task<IReadOnlyList<PurchaseInvoice>> GetListAsync(
-        Guid companyId,
-        PurchaseInvoiceStatus? status = null,
-        CancellationToken cancellationToken = default)
-    {
-        var query = context.PurchaseInvoices.AsNoTracking().Where(p => p.CompanyId == companyId);
-        if (status.HasValue)
-            query = query.Where(p => p.Status == (int)status.Value);
-
-        var headers = await query.ToListAsync(cancellationToken);
-        var list = new List<PurchaseInvoice>();
-        foreach (var header in headers)
-        {
-            var items = await context.PurchaseInvoiceItems.AsNoTracking()
-                .Where(i => i.PurchaseInvoiceId == header.Id).ToListAsync(cancellationToken);
-            list.Add(PurchaseMapper.ToDomain(header, items));
-        }
-        return list;
-    }
-
-    public async Task AddAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default) =>
-        await context.PurchaseInvoices.AddAsync(new PurchaseInvoiceEntity
-        {
-            Id = invoice.Id,
-            CompanyId = Guid.Empty,
-            InvoiceNumber = invoice.InvoiceNumber,
-            SupplierId = invoice.SupplierId,
-            InvoiceDate = invoice.InvoiceDate,
-            TotalAmount = invoice.TotalAmount.Amount,
-            Remaining = invoice.Remaining.Amount,
-            Status = (int)invoice.Status
-        }, cancellationToken);
-
-    public Task UpdateAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
 }
 
 internal sealed class ReceiptVoucherRepository(ErpDbContext context) : IReceiptVoucherRepository
@@ -469,6 +432,48 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
         }).ToList();
 
         return (rows, total);
+    }
+
+    public async Task<IReadOnlyList<JournalEntryListRow>> GetBySourceIdAsync(
+        Guid sourceId,
+        CancellationToken cancellationToken = default)
+    {
+        var headers = await context.JournalEntries.AsNoTracking()
+            .Where(j => j.SourceId == sourceId)
+            .OrderByDescending(j => j.EntryDate)
+            .ToListAsync(cancellationToken);
+        if (headers.Count == 0)
+            return [];
+
+        var ids = headers.Select(h => h.Id).ToList();
+        var lineStats = await context.JournalEntryLines.AsNoTracking()
+            .Where(l => ids.Contains(l.JournalEntryId))
+            .GroupBy(l => l.JournalEntryId)
+            .Select(g => new
+            {
+                JournalEntryId = g.Key,
+                DebitTotal = g.Sum(x => x.Debit),
+                CreditTotal = g.Sum(x => x.Credit),
+                LineCount = g.Count()
+            })
+            .ToDictionaryAsync(x => x.JournalEntryId, cancellationToken);
+
+        return headers.Select(h =>
+        {
+            lineStats.TryGetValue(h.Id, out var stats);
+            return new JournalEntryListRow
+            {
+                Id = h.Id,
+                EntryNumber = h.EntryNumber,
+                EntryDate = h.EntryDate,
+                Description = h.Description,
+                Status = (JournalEntryStatus)h.Status,
+                DebitTotal = stats?.DebitTotal ?? 0m,
+                CreditTotal = stats?.CreditTotal ?? 0m,
+                LineCount = stats?.LineCount ?? 0,
+                SourceType = h.SourceType.HasValue ? (DocumentType)h.SourceType.Value : null
+            };
+        }).ToList();
     }
 
     public async Task UpdateAsync(AccountingAggregate entry, CancellationToken cancellationToken = default)

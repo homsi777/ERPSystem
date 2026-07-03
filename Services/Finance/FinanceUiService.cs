@@ -136,10 +136,15 @@ public sealed class FinanceUiService
 
     public async Task<ApplicationResult> PostPaymentVoucherAsync(
         Guid voucherId,
+        Guid? purchaseInvoiceId = null,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<PostPaymentVoucherCommand, ApplicationResult>>();
-        return await handler.HandleAsync(new PostPaymentVoucherCommand { VoucherId = voucherId }, cancellationToken);
+        return await handler.HandleAsync(new PostPaymentVoucherCommand
+        {
+            VoucherId = voucherId,
+            PurchaseInvoiceId = purchaseInvoiceId
+        }, cancellationToken);
     }
 }

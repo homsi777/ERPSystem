@@ -23,11 +23,3 @@ public enum FabricRollStatus
     Wasted = 3,
     InTransit = 4
 }
-
-public enum PurchaseInvoiceStatus
-{
-    Draft = 0,
-    Approved = 1,
-    Posted = 2,
-    Cancelled = 3
-}

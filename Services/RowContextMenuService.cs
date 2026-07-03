@@ -2,6 +2,7 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
 using System.Windows;
@@ -146,6 +147,9 @@ namespace ERPSystem.Services
                 return;
 
             if (CustomerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
+            if (SupplierActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                 return;
 
             if (ExpenseActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))

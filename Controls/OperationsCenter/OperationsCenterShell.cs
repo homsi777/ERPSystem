@@ -4,6 +4,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.China;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
@@ -240,6 +241,10 @@ namespace ERPSystem.Controls.OperationsCenter
 
                         if (spec.Context is not null &&
                             CustomerActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
+                            return;
+
+                        if (spec.Context is not null &&
+                            SupplierActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
                             return;
 
                         if (spec.Context?.EntityType == EntityType.Expense &&

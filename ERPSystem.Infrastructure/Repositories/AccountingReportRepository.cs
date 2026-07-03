@@ -136,6 +136,7 @@ internal sealed class AccountingReportRepository(ErpDbContext context) : IAccoun
                 entry.EntryNumber,
                 entry.EntryDate,
                 entry.Description,
+                entry.SourceType,
                 line.Narrative,
                 line.Debit,
                 line.Credit
@@ -158,10 +159,38 @@ internal sealed class AccountingReportRepository(ErpDbContext context) : IAccoun
                 LineNarrative = item.Narrative,
                 Debit = item.Debit,
                 Credit = item.Credit,
-                RunningBalance = running
+                RunningBalance = running,
+                SourceType = item.SourceType.HasValue ? (DocumentType)item.SourceType.Value : null
             });
         }
 
         return rows;
+    }
+
+    public async Task<decimal> GetLiabilityAccountBalanceBeforeAsync(
+        Guid accountId,
+        DateTime beforeDate,
+        CancellationToken cancellationToken = default)
+    {
+        var postedStatus = (int)JournalEntryStatus.Posted;
+        var end = UtcDateTimeNormalizer.ToUtc(beforeDate.Date.AddTicks(-1));
+
+        var totals = await (
+            from line in context.JournalEntryLines.AsNoTracking()
+            join entry in context.JournalEntries.AsNoTracking() on line.JournalEntryId equals entry.Id
+            where line.AccountId == accountId
+                  && entry.Status == postedStatus
+                  && entry.EntryDate < end
+            group line by 1 into g
+            select new
+            {
+                Debit = g.Sum(x => x.Debit),
+                Credit = g.Sum(x => x.Credit)
+            }).FirstOrDefaultAsync(cancellationToken);
+
+        if (totals is null)
+            return 0m;
+
+        return totals.Credit - totals.Debit;
     }
 }

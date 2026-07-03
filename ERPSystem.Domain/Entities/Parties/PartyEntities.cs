@@ -74,25 +74,95 @@ public class Supplier
 {
     public Guid Id { get; private set; }
     public string Code { get; private set; } = "";
-    public string Name { get; private set; } = "";
+    public string NameAr { get; private set; } = "";
+    public string NameEn { get; private set; } = "";
+    public string Name => NameAr;
     public SupplierStatus Status { get; private set; }
     public Money Balance { get; private set; } = Money.Zero();
+    public Money CreditLimit { get; private set; } = Money.Zero();
+    public int PaymentTermsDays { get; private set; }
+    public string CurrencyCode { get; private set; } = "SAR";
+    public string? Phone { get; private set; }
+    public string? Email { get; private set; }
+    public string? Address { get; private set; }
+    public string? Country { get; private set; }
+    public string? City { get; private set; }
+    public string? TaxNumber { get; private set; }
+    public Guid PayablesAccountId { get; private set; }
+    public string? Notes { get; private set; }
+    public bool OpeningBalancePosted { get; private set; }
     public bool IsActive { get; private set; } = true;
     public Guid CompanyId { get; private set; }
 
     private Supplier() { }
 
-    public static Supplier Create(Guid companyId, string code, string name) => new()
+    public static Supplier Create(
+        Guid companyId,
+        string code,
+        string nameAr,
+        string nameEn,
+        Guid payablesAccountId,
+        string currencyCode = "SAR",
+        int paymentTermsDays = 30,
+        Money? creditLimit = null) => new()
     {
         Id = Guid.NewGuid(),
         CompanyId = companyId,
         Code = code,
-        Name = name,
+        NameAr = nameAr,
+        NameEn = string.IsNullOrWhiteSpace(nameEn) ? nameAr : nameEn,
+        PayablesAccountId = payablesAccountId,
+        CurrencyCode = currencyCode,
+        PaymentTermsDays = paymentTermsDays,
+        CreditLimit = creditLimit ?? Money.Zero(),
         Status = SupplierStatus.Active
     };
 
     public void ApplyPostedPurchase(Money amount) => Balance = Balance.Add(amount);
     public void ApplyPostedPayment(Money amount) => Balance = Balance.Subtract(amount);
+
+    public void MarkOpeningBalancePosted(decimal amount)
+    {
+        if (OpeningBalancePosted)
+            throw new InvalidOperationException("Opening balance already posted for this supplier.");
+
+        OpeningBalancePosted = true;
+        if (amount > 0)
+            Balance = Balance.Add(new Money(amount, CurrencyCode));
+    }
+
+    public void Suspend() => Status = SupplierStatus.Suspended;
+    public void Block() => Status = SupplierStatus.Blocked;
+    public void Activate() => Status = SupplierStatus.Active;
+    public void Deactivate() => IsActive = false;
+
+    public void UpdateProfile(
+        string nameAr,
+        string nameEn,
+        int paymentTermsDays,
+        Money creditLimit,
+        string? phone,
+        string? email,
+        string? address,
+        string? country,
+        string? city,
+        string? taxNumber,
+        Guid payablesAccountId,
+        string? notes)
+    {
+        NameAr = nameAr;
+        NameEn = string.IsNullOrWhiteSpace(nameEn) ? nameAr : nameEn;
+        PaymentTermsDays = paymentTermsDays;
+        CreditLimit = creditLimit;
+        Phone = phone;
+        Email = email;
+        Address = address;
+        Country = country;
+        City = city;
+        TaxNumber = taxNumber;
+        PayablesAccountId = payablesAccountId;
+        Notes = notes;
+    }
 }
 
 public class ChinaSupplier

@@ -56,6 +56,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
         services.AddScoped<IPurchaseInvoiceRepository, PurchaseInvoiceRepository>();
+        services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+        services.AddScoped<IPurchaseReturnRepository, PurchaseReturnRepository>();
+        services.AddScoped<IPurchaseInvoicePaymentRepository, PurchaseInvoicePaymentRepository>();
         services.AddScoped<IReceiptVoucherRepository, ReceiptVoucherRepository>();
         services.AddScoped<IPaymentVoucherRepository, PaymentVoucherRepository>();
         services.AddScoped<ICashboxRepository, CashboxRepository>();
@@ -69,6 +72,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IModuleReportRepository, ModuleReportRepository>();
 
         services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
+        services.AddScoped<IPurchaseInventoryService, PurchaseInventoryService>();
         services.AddScoped<IIntegratedAccountingService, IntegratedAccountingService>();
         services.AddScoped<IContainerWarehouseImportService, ContainerWarehouseImportService>();
 

@@ -21,6 +21,11 @@ public interface IAccountingReportRepository
         DateTime fromDate,
         DateTime toDate,
         CancellationToken cancellationToken = default);
+
+    Task<decimal> GetLiabilityAccountBalanceBeforeAsync(
+        Guid accountId,
+        DateTime beforeDate,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class TrialBalanceRow
@@ -44,4 +49,5 @@ public sealed class AccountLedgerRow
     public decimal Debit { get; init; }
     public decimal Credit { get; init; }
     public decimal RunningBalance { get; init; }
+    public DocumentType? SourceType { get; init; }
 }

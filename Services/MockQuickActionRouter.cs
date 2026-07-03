@@ -3,9 +3,12 @@ using ERPSystem.Controls.China;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Customers;
+using ERPSystem.Core.Purchases;
 using ERPSystem.Core.Suppliers;
+using ERPSystem.Services.Purchases;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.China;
 using System.Windows.Controls;
 
@@ -16,6 +19,9 @@ namespace ERPSystem.Services
         public static void Execute(string? actionKey, OperationsCenterContext ctx, TabControl? tabs)
         {
             if (CustomerActionRouter.TryHandleQuickAction(actionKey, ctx))
+                return;
+
+            if (SupplierActionRouter.TryHandleQuickAction(actionKey, ctx))
                 return;
 
             if (string.IsNullOrEmpty(actionKey))
@@ -84,9 +90,11 @@ namespace ERPSystem.Services
                 case "ws:Statement":
                     if (ctx.EntityRow is CustomerListRow c)
                         MockInteractionService.OpenCustomerStatement(c);
-                    else if (ctx.EntityRow is SupplierModel)
-                        WorkspaceWindowManager.Instance.OpenAction(
-                            EntityActionId.SupplierStatement, ctx.EntityType, ctx.EntityRow, ctx.SourceModule);
+                    else if (ctx.EntityRow is SupplierListRow s)
+                    {
+                        SupplierNavigationContext.BeginStatement(s.Id, s.NameAr);
+                        MockInteractionService.Navigate(AppModule.Suppliers, "Statement");
+                    }
                     break;
                 case "ws:Detailing":
                     MockInteractionService.OpenDetailingWorkspace();
@@ -99,6 +107,24 @@ namespace ERPSystem.Services
                     break;
                 case "form:EditCustomer":
                     MockInteractionService.Navigate(AppModule.Customers, "Form");
+                    break;
+                case "ws:PurchasePayment":
+                    if (ctx.EntityRow is PurchaseListRow pr)
+                    {
+                        _ = PurchaseUiService.Instance.GetInvoiceDetailsAsync(pr.Id).ContinueWith(t =>
+                        {
+                            if (t.Result.IsSuccess && t.Result.Value is not null)
+                                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                                    PurchaseActionRouter.OpenPayment(t.Result.Value));
+                        });
+                    }
+                    break;
+                case "form:EditPurchaseInvoice":
+                    if (ctx.EntityRow is PurchaseListRow editRow)
+                    {
+                        PurchaseNavigationContext.BeginEdit(editRow.Id);
+                        MockInteractionService.Navigate(AppModule.Purchases, "Form");
+                    }
                     break;
                 case "form:EditSupplier":
                     MockInteractionService.Navigate(AppModule.Suppliers, "Form");

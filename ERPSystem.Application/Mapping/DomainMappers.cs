@@ -1,5 +1,7 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Application.DTOs.Customers;
+using ERPSystem.Application.DTOs.Suppliers;
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.DTOs.Warehouses;
@@ -40,6 +42,50 @@ public static class CustomerMapper
         Phone = aggregate.Customer.Phone?.Value,
         Email = aggregate.Customer.Email?.Value,
         IsActive = aggregate.Customer.IsActive
+    };
+}
+
+public static class SupplierMapper
+{
+    public static SupplierListDto ToListDto(SupplierAggregate aggregate) => new()
+    {
+        Id = aggregate.Supplier.Id,
+        Code = aggregate.Supplier.Code,
+        NameAr = aggregate.Supplier.NameAr,
+        NameEn = aggregate.Supplier.NameEn,
+        Country = aggregate.Supplier.Country,
+        Phone = aggregate.Supplier.Phone,
+        Balance = aggregate.Supplier.Balance.Amount,
+        PaymentTermsDays = aggregate.Supplier.PaymentTermsDays,
+        PaymentTermsDisplay = SupplierPaymentTermsDisplay.Format(aggregate.Supplier.PaymentTermsDays),
+        Status = aggregate.Supplier.Status,
+        IsActive = aggregate.Supplier.IsActive,
+        OpeningBalancePosted = aggregate.Supplier.OpeningBalancePosted
+    };
+
+    public static SupplierDetailsDto ToDetailsDto(SupplierAggregate aggregate, string? payablesAccountName = null) => new()
+    {
+        Id = aggregate.Supplier.Id,
+        Code = aggregate.Supplier.Code,
+        NameAr = aggregate.Supplier.NameAr,
+        NameEn = aggregate.Supplier.NameEn,
+        Phone = aggregate.Supplier.Phone,
+        Email = aggregate.Supplier.Email,
+        Address = aggregate.Supplier.Address,
+        Country = aggregate.Supplier.Country,
+        City = aggregate.Supplier.City,
+        CurrencyCode = aggregate.Supplier.CurrencyCode,
+        PaymentTermsDays = aggregate.Supplier.PaymentTermsDays,
+        PaymentTermsDisplay = SupplierPaymentTermsDisplay.Format(aggregate.Supplier.PaymentTermsDays),
+        CreditLimit = aggregate.Supplier.CreditLimit.Amount,
+        TaxNumber = aggregate.Supplier.TaxNumber,
+        PayablesAccountId = aggregate.Supplier.PayablesAccountId,
+        PayablesAccountName = payablesAccountName,
+        Notes = aggregate.Supplier.Notes,
+        Balance = aggregate.Supplier.Balance.Amount,
+        Status = aggregate.Supplier.Status,
+        IsActive = aggregate.Supplier.IsActive,
+        OpeningBalancePosted = aggregate.Supplier.OpeningBalancePosted
     };
 }
 

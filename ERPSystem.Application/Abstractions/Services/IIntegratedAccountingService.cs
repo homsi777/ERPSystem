@@ -1,4 +1,5 @@
 using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Entities.Purchasing;
 
 namespace ERPSystem.Application.Abstractions.Services;
 
@@ -23,6 +24,8 @@ public interface IIntegratedAccountingService
         Guid voucherId,
         string voucherNumber,
         Guid supplierId,
+        Guid payablesAccountId,
+        Guid cashAccountId,
         decimal amount,
         CancellationToken cancellationToken = default);
 
@@ -31,5 +34,23 @@ public interface IIntegratedAccountingService
         Guid paymentId,
         decimal amountBase,
         string description,
+        CancellationToken cancellationToken = default);
+
+    Task<string> PostSupplierOpeningBalanceAsync(
+        Guid supplierId,
+        Guid payablesAccountId,
+        decimal amount,
+        DateTime postingDate,
+        string referenceNote,
+        CancellationToken cancellationToken = default);
+
+    Task<string> PostPurchaseInvoiceAsync(
+        PurchaseInvoice invoice,
+        Guid payablesAccountId,
+        CancellationToken cancellationToken = default);
+
+    Task<string> PostPurchaseReturnAsync(
+        PurchaseReturn purchaseReturn,
+        Guid payablesAccountId,
         CancellationToken cancellationToken = default);
 }

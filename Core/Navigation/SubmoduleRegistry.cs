@@ -52,9 +52,10 @@ namespace ERPSystem.Core.Navigation
             },
             AppModule.Suppliers => new[]
             {
-                new SubmoduleDef("List", "سجل الموردين", "\uE779"),
-                new SubmoduleDef("Form", "إضافة / تعديل مورد", "\uE70F"),
-                new SubmoduleDef("Statement", "كشف حساب مورد", "\uE8A1"),
+            new SubmoduleDef("List", "سجل الموردين", "\uE779"),
+            new SubmoduleDef("Form", "إضافة / تعديل مورد", "\uE70F"),
+            new SubmoduleDef("Opening", "أرصدة افتتاحية", "\uE8C1"),
+            new SubmoduleDef("Statement", "كشف حساب مورد", "\uE8A1"),
                 new SubmoduleDef("Invoices", "كشف فواتير مورد", "\uE9F9"),
                 new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
@@ -103,6 +104,7 @@ namespace ERPSystem.Core.Navigation
             AppModule.Purchases => new[]
             {
                 new SubmoduleDef("Invoices", "فواتير الشراء", "\uE9F9"),
+                new SubmoduleDef("Form", "فاتورة شراء جديدة", "\uE70F"),
                 new SubmoduleDef("Orders", "أمر شراء", "\uE8A5"),
                 new SubmoduleDef("Returns", "مرتجع شراء", "\uE7A6"),
                 new SubmoduleDef("Reports", "التقارير", "\uE9D2"),

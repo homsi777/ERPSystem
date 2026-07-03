@@ -32,6 +32,8 @@ public static class DatabaseSeeder
         await EnsureIntegratedAccountingAccountsAsync(context, cancellationToken);
         await EnsureJournalBooksAsync(context, cancellationToken);
         await EnsureAccountingPermissionsAsync(context, cancellationToken);
+        await EnsureSupplierPermissionsAsync(context, cancellationToken);
+        await EnsurePurchasePermissionsAsync(context, cancellationToken);
         await ChinaImportFabricCatalogSeeder.EnsureAsync(context, DefaultCompanyId, cancellationToken);
         await ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken);
         await CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken);
@@ -85,6 +87,11 @@ public static class DatabaseSeeder
         {
             ("customers.create", "customers", "create"),
             ("customers.deactivate", "customers", "deactivate"),
+            ("suppliers.create", "suppliers", "create"),
+            ("suppliers.deactivate", "suppliers", "deactivate"),
+            ("suppliers.opening-balance", "suppliers", "opening-balance"),
+            ("purchases.create", "purchases", "create"),
+            ("purchases.post", "purchases", "post"),
             ("containers.create", "containers", "create"),
             ("containers.approve", "containers", "approve"),
             ("containers.landing-cost", "containers", "landing-cost"),
@@ -116,17 +123,7 @@ public static class DatabaseSeeder
         };
 
         foreach (var (code, module, action) in permissions)
-        {
-            var permissionId = Guid.NewGuid();
-            context.Permissions.Add(new PermissionEntity
-            {
-                Id = permissionId,
-                Code = code,
-                Module = module,
-                Action = action
-            });
-            context.RolePermissions.Add(new RolePermissionEntity { RoleId = AdminRoleId, PermissionId = permissionId });
-        }
+            await EnsurePermissionAsync(context, code, module, action, cancellationToken);
 
         context.Warehouses.Add(new WarehouseEntity
         {
@@ -237,9 +234,15 @@ public static class DatabaseSeeder
                 CompanyId = DefaultCompanyId,
                 Code = "SUP-CN-001",
                 Name = "مورد قوانغتشو",
+                NameAr = "مورد قوانغتشو",
+                NameEn = "Guangzhou Supplier",
+                Country = "الصين",
                 Status = 0,
                 Balance = 0,
-                BalanceCurrency = "SAR"
+                BalanceCurrency = "SAR",
+                PaymentTermsDays = 30,
+                CurrencyCode = "SAR",
+                PayablesAccountId = AccountingAccountIds.AccountsPayable
             });
             await context.SaveChangesAsync(cancellationToken);
         }
@@ -287,7 +290,8 @@ public static class DatabaseSeeder
             (AccountingAccountIds.AccountsPayable, "2100", "ذمم موردين", "Accounts Payable", "Liability", AccountingAccountIds.RootLiabilities),
             (AccountingAccountIds.SalesRevenue, "4100", "إيراد مبيعات", "Sales Revenue", "Revenue", AccountingAccountIds.RootRevenue),
             (AccountingAccountIds.CostOfGoodsSold, "5100", "تكلفة مبيعات", "Cost of Goods Sold", "Expense", AccountingAccountIds.RootExpense),
-            (AccountingAccountIds.OperatingExpenses, "5210", "مصاريف تشغيل", "Operating Expenses", "Expense", AccountingAccountIds.RootExpense)
+            (AccountingAccountIds.OperatingExpenses, "5210", "مصاريف تشغيل", "Operating Expenses", "Expense", AccountingAccountIds.RootExpense),
+            (AccountingAccountIds.OpeningBalanceEquity, "3100", "أرصدة افتتاحية", "Opening Balance Equity", "Equity", AccountingAccountIds.RootEquity)
         };
 
         foreach (var (id, code, nameAr, nameEn, type, parentId) in accounts)
@@ -349,31 +353,36 @@ public static class DatabaseSeeder
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static async Task EnsureAccountingPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    private static async Task EnsurePermissionAsync(
+        ErpDbContext context,
+        string code,
+        string module,
+        string action,
+        CancellationToken cancellationToken)
     {
-        var codes = new[]
-        {
-            "accounting.account.create",
-            "accounting.account.edit",
-            "accounting.account.deactivate",
-            "accounting.account.view"
-        };
+        var permissionId = await context.Permissions
+            .Where(p => p.Code == code)
+            .Select(p => p.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        foreach (var code in codes)
+        if (permissionId == Guid.Empty)
         {
-            if (await context.Permissions.AnyAsync(p => p.Code == code, cancellationToken))
-                continue;
-
-            var permissionId = Guid.NewGuid();
+            permissionId = Guid.NewGuid();
             context.Permissions.Add(new PermissionEntity
             {
                 Id = permissionId,
                 Code = code,
-                Module = "accounting",
-                Action = code.Split('.').Last()
+                Module = module,
+                Action = action
             });
+        }
 
-            if (await context.Roles.AnyAsync(r => r.Id == AdminRoleId, cancellationToken))
+        if (await context.Roles.AnyAsync(r => r.Id == AdminRoleId, cancellationToken))
+        {
+            var linked = await context.RolePermissions.AnyAsync(
+                rp => rp.RoleId == AdminRoleId && rp.PermissionId == permissionId,
+                cancellationToken);
+            if (!linked)
             {
                 context.RolePermissions.Add(new RolePermissionEntity
                 {
@@ -382,8 +391,50 @@ public static class DatabaseSeeder
                 });
             }
         }
+    }
+
+    private static async Task EnsurePermissionsAsync(
+        ErpDbContext context,
+        IEnumerable<(string Code, string Module, string Action)> permissions,
+        CancellationToken cancellationToken)
+    {
+        foreach (var (code, module, action) in permissions)
+            await EnsurePermissionAsync(context, code, module, action, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureAccountingPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("accounting.account.create", "accounting", "account-create"),
+            ("accounting.account.edit", "accounting", "account-edit"),
+            ("accounting.account.deactivate", "accounting", "account-deactivate"),
+            ("accounting.account.view", "accounting", "account-view"),
+            ("accounting.journal.create", "accounting", "journal-create"),
+            ("accounting.journal.post", "accounting", "journal-post"),
+            ("accounting.journal.reverse", "accounting", "journal-reverse")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureSupplierPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("suppliers.create", "suppliers", "create"),
+            ("suppliers.deactivate", "suppliers", "deactivate"),
+            ("suppliers.opening-balance", "suppliers", "opening-balance")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsurePurchasePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("purchases.create", "purchases", "create"),
+            ("purchases.post", "purchases", "post")
+        ], cancellationToken);
     }
 
     private static async Task EnsureSchemasAsync(ErpDbContext context, CancellationToken cancellationToken)

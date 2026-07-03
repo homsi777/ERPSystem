@@ -19,6 +19,9 @@ public interface IJournalEntryRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<JournalEntryListRow>> GetBySourceIdAsync(
+        Guid sourceId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class JournalEntryListRow

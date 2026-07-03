@@ -3,6 +3,8 @@ using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Suppliers;
+using ERPSystem.Services.Purchases;
 using ERPSystem.Services.Sales;
 using ERPSystem.Services.China;
 using ERPSystem.Services.Expenses;
@@ -50,6 +52,8 @@ public partial class App : System.Windows.Application
 
             services.AddScoped<IPermissionService, WpfPermissionService>();
             services.AddSingleton<CustomerUiService>();
+            services.AddSingleton<SupplierUiService>();
+            services.AddSingleton<PurchaseUiService>();
             services.AddSingleton<SalesUiService>();
             services.AddSingleton<ContainerUiService>();
             services.AddSingleton<ExpenseUiService>();

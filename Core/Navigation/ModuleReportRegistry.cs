@@ -45,6 +45,8 @@ public static class ModuleReportRegistry
             new("sup.balances", "أرصدة الموردين", "ذمم دائنة للموردين", "\uE7BF", "الذمم"),
             new("sup.statements", "كشوف حساب", "ملخص حسابات الموردين", "\uE8A1", "الذمم"),
             new("sup.invoices", "فواتير الموردين", "فواتير الشراء", "\uE9F9", "المشتريات"),
+            new("sup.top_suppliers", "أكبر الموردين", "أعلى الموردين حسب حجم المشتريات", "\uE9D2", "تحليلي"),
+            new("sup.overdue", "متأخرات الموردين", "ذمم متأخرة حسب شروط السداد", "\uE823", "الذمم"),
         ],
         AppModule.Accounting =>
         [
@@ -80,6 +82,9 @@ public static class ModuleReportRegistry
         [
             new("pur.invoices", "فواتير الشراء", "فواتير الموردين", "\uE9F9", "مشتريات"),
             new("pur.by_supplier", "مشتريات حسب المورد", "تحليل تجميعي", "\uE779", "تحليلي"),
+            new("pur.overdue", "فواتير متأخرة", "مستحقات تجاوزت تاريخ الاستحقاق", "\uE823", "مشتريات"),
+            new("pur.returns", "مرتجعات الشراء", "إشعارات دائنة للموردين", "\uE7A6", "مشتريات"),
+            new("pur.orders", "أوامر الشراء", "طلبات الشراء وحالتها", "\uE8A5", "مشتريات"),
         ],
         AppModule.HR =>
         [

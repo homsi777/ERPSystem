@@ -25,9 +25,24 @@ public class SupplierEntity : PersistenceEntity
     public Guid CompanyId { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public string NameAr { get; set; } = "";
+    public string NameEn { get; set; } = "";
     public int Status { get; set; }
     public decimal Balance { get; set; }
     public string BalanceCurrency { get; set; } = "SAR";
+    public decimal CreditLimit { get; set; }
+    public string CreditLimitCurrency { get; set; } = "SAR";
+    public int PaymentTermsDays { get; set; }
+    public string CurrencyCode { get; set; } = "SAR";
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    public string? Country { get; set; }
+    public string? City { get; set; }
+    public string? TaxNumber { get; set; }
+    public Guid PayablesAccountId { get; set; }
+    public string? Notes { get; set; }
+    public bool OpeningBalancePosted { get; set; }
 }
 
 public class ChinaSupplierEntity : PersistenceEntity

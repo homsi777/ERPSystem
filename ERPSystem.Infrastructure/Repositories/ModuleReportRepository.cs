@@ -37,8 +37,14 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             "cus.balances" or "cus.statements" => await BuildCustomerBalancesAsync(query, cancellationToken),
             "cus.invoices" => await BuildCustomerInvoicesAsync(query, cancellationToken),
             "sup.balances" or "sup.statements" => await BuildSupplierBalancesAsync(query, cancellationToken),
+            "sup.top_suppliers" => await BuildTopSuppliersAsync(query, cancellationToken),
+            "sup.overdue" => await BuildSupplierOverdueAsync(query, cancellationToken),
             "sup.invoices" => await BuildPurchaseInvoicesAsync(query, cancellationToken),
-            "pur.invoices" or "pur.by_supplier" => await BuildPurchaseInvoicesAsync(query, cancellationToken),
+            "pur.invoices" => await BuildPurchaseInvoicesAsync(query, cancellationToken),
+            "pur.by_supplier" => await BuildPurchaseBySupplierAsync(query, cancellationToken),
+            "pur.overdue" => await BuildPurchaseOverdueAsync(query, cancellationToken),
+            "pur.returns" => await BuildPurchaseReturnsReportAsync(query, cancellationToken),
+            "pur.orders" => await BuildPurchaseOrdersReportAsync(query, cancellationToken),
             "cn.containers" => await BuildContainerReportAsync(query, cancellationToken),
             "cn.sale_ready" => await BuildSaleReadyContainersAsync(query, cancellationToken),
             "cn.landing_cost" => await BuildLandingCostReportAsync(query, cancellationToken),
@@ -483,6 +489,87 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             Kpi("إجمالي", suppliers.Sum(s => s.Balance).ToString("N2")));
     }
 
+    private async Task<ModuleReportResultDto> BuildTopSuppliersAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var from = query.FromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        var to = query.ToDate ?? DateTime.Today;
+
+        var invoices = await context.PurchaseInvoices.AsNoTracking()
+            .Where(p => p.InvoiceDate >= from && p.InvoiceDate <= to && !p.IsArchived)
+            .ToListAsync(ct);
+
+        var supIds = invoices.Select(p => p.SupplierId).Distinct().ToList();
+        var supMap = await context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == query.CompanyId && supIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => new { s.Code, Name = string.IsNullOrWhiteSpace(s.NameAr) ? s.Name : s.NameAr }, ct);
+
+        var rows = invoices
+            .GroupBy(i => i.SupplierId)
+            .Select(g =>
+            {
+                var meta = supMap.GetValueOrDefault(g.Key);
+                return Row(
+                    ("Code", meta?.Code ?? "—"),
+                    ("Name", meta?.Name ?? "—"),
+                    ("Invoices", g.Count()),
+                    ("Total", g.Sum(x => x.TotalAmount)));
+            })
+            .OrderByDescending(r => (decimal)r["Total"]!)
+            .Take(25)
+            .ToList();
+
+        return Result(query, "أكبر الموردين", "حسب حجم المشتريات في الفترة",
+            Cols(
+                ("Code", "الكود", 80, null),
+                ("Name", "المورد", "*", null),
+                ("Invoices", "فواتير", 70, null),
+                ("Total", "إجمالي", 110, "N2")),
+            rows,
+            Kpi("موردون", rows.Count.ToString()));
+    }
+
+    private async Task<ModuleReportResultDto> BuildSupplierOverdueAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var suppliers = await context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == query.CompanyId && s.IsActive && !s.IsArchived && s.Balance > 0)
+            .ToListAsync(ct);
+
+        var invoices = await context.PurchaseInvoices.AsNoTracking()
+            .Where(p => p.Remaining > 0 && !p.IsArchived)
+            .ToListAsync(ct);
+
+        var rows = new List<Dictionary<string, object?>>();
+        foreach (var s in suppliers)
+        {
+            var overdue = invoices
+                .Where(i => i.SupplierId == s.Id &&
+                            i.InvoiceDate.AddDays(s.PaymentTermsDays) < DateTime.Today)
+                .Sum(i => i.Remaining);
+
+            if (overdue <= 0 && s.Balance <= 0)
+                continue;
+
+            rows.Add(Row(
+                ("Code", s.Code),
+                ("Name", string.IsNullOrWhiteSpace(s.NameAr) ? s.Name : s.NameAr),
+                ("Balance", s.Balance),
+                ("Overdue", overdue > 0 ? overdue : s.Balance),
+                ("Terms", s.PaymentTermsDays)));
+        }
+
+        return Result(query, "متأخرات الموردين", "ذمم تجاوزت شروط السداد",
+            Cols(
+                ("Code", "الكود", 80, null),
+                ("Name", "المورد", "*", null),
+                ("Balance", "الرصيد", 100, "N2"),
+                ("Overdue", "متأخر", 100, "N2"),
+                ("Terms", "أيام السداد", 90, null)),
+            rows,
+            Kpi("موردون", rows.Count.ToString()));
+    }
+
     private async Task<ModuleReportResultDto> BuildPurchaseInvoicesAsync(
         GetModuleReportQuery query, CancellationToken ct)
     {
@@ -514,6 +601,89 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             rows,
             Kpi("فواتير", rows.Count.ToString()),
             Kpi("إجمالي", invoices.Sum(p => p.TotalAmount).ToString("N2")));
+    }
+
+    private async Task<ModuleReportResultDto> BuildPurchaseBySupplierAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var from = query.FromDate ?? new DateTime(DateTime.Today.Year, 1, 1);
+        var invoices = await context.PurchaseInvoices.AsNoTracking()
+            .Where(p => p.CompanyId == query.CompanyId && !p.IsArchived && p.InvoiceDate >= from)
+            .ToListAsync(ct);
+        var supMap = await context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == query.CompanyId)
+            .ToDictionaryAsync(s => s.Id, s => string.IsNullOrWhiteSpace(s.NameAr) ? s.Name : s.NameAr, ct);
+
+        var rows = invoices.GroupBy(i => i.SupplierId).Select(g => Row(
+            ("Supplier", supMap.GetValueOrDefault(g.Key, "—")),
+            ("Invoices", g.Count()),
+            ("Total", g.Sum(x => x.TotalAmount)),
+            ("Remaining", g.Sum(x => x.Remaining)))).OrderByDescending(r => (decimal)r["Total"]!).ToList();
+
+        return Result(query, "مشتريات حسب المورد", "تجميع YTD",
+            Cols(("Supplier", "المورد", "*", null), ("Invoices", "فواتير", 70, null), ("Total", "إجمالي", 110, "N2"), ("Remaining", "متبقي", 100, "N2")),
+            rows, Kpi("موردون", rows.Count.ToString()));
+    }
+
+    private async Task<ModuleReportResultDto> BuildPurchaseOverdueAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var today = DateTime.Today;
+        var invoices = await context.PurchaseInvoices.AsNoTracking()
+            .Where(p => p.CompanyId == query.CompanyId && !p.IsArchived && p.Remaining > 0 && p.DueDate < today)
+            .ToListAsync(ct);
+        var supMap = await context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == query.CompanyId)
+            .ToDictionaryAsync(s => s.Id, s => string.IsNullOrWhiteSpace(s.NameAr) ? s.Name : s.NameAr, ct);
+
+        var rows = invoices.Select(p => Row(
+            ("Number", p.InvoiceNumber),
+            ("Supplier", supMap.GetValueOrDefault(p.SupplierId, "—")),
+            ("DueDate", p.DueDate),
+            ("Remaining", p.Remaining))).ToList();
+
+        return Result(query, "فواتير شراء متأخرة", "مستحقات تجاوزت الاستحقاق",
+            Cols(("Number", "الفاتورة", 110, null), ("Supplier", "المورد", "*", null), ("DueDate", "الاستحقاق", 100, "yyyy/MM/dd"), ("Remaining", "المتبقي", 100, "N2")),
+            rows, Kpi("فواتير", rows.Count.ToString()));
+    }
+
+    private async Task<ModuleReportResultDto> BuildPurchaseReturnsReportAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var returns = await context.PurchaseReturns.AsNoTracking()
+            .Where(r => r.CompanyId == query.CompanyId && !r.IsArchived)
+            .OrderByDescending(r => r.ReturnDate).ToListAsync(ct);
+        var rows = returns.Select(r => Row(
+            ("Number", r.ReturnNumber),
+            ("Date", r.ReturnDate),
+            ("Total", r.TotalAmount),
+            ("Status", r.Status.ToString()))).ToList();
+
+        return Result(query, "مرتجعات الشراء", "إشعارات دائنة",
+            Cols(("Number", "المرتجع", 110, null), ("Date", "التاريخ", 100, "yyyy/MM/dd"), ("Total", "المبلغ", 100, "N2"), ("Status", "الحالة", 90, null)),
+            rows, Kpi("مرتجعات", rows.Count.ToString()));
+    }
+
+    private async Task<ModuleReportResultDto> BuildPurchaseOrdersReportAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var orders = await context.PurchaseOrders.AsNoTracking()
+            .Where(o => o.CompanyId == query.CompanyId && !o.IsArchived)
+            .OrderByDescending(o => o.OrderDate).ToListAsync(ct);
+        var supMap = await context.Suppliers.AsNoTracking()
+            .Where(s => s.CompanyId == query.CompanyId)
+            .ToDictionaryAsync(s => s.Id, s => string.IsNullOrWhiteSpace(s.NameAr) ? s.Name : s.NameAr, ct);
+
+        var rows = orders.Select(o => Row(
+            ("Number", o.OrderNumber),
+            ("Supplier", supMap.GetValueOrDefault(o.SupplierId, "—")),
+            ("Date", o.OrderDate),
+            ("Total", o.TotalAmount),
+            ("Status", o.Status.ToString()))).ToList();
+
+        return Result(query, "أوامر الشراء", "طلبات الشراء",
+            Cols(("Number", "الأمر", 100, null), ("Supplier", "المورد", "*", null), ("Date", "التاريخ", 100, "yyyy/MM/dd"), ("Total", "الإجمالي", 100, "N2"), ("Status", "الحالة", 90, null)),
+            rows, Kpi("أوامر", rows.Count.ToString()));
     }
 
     private async Task<ModuleReportResultDto> BuildContainerReportAsync(

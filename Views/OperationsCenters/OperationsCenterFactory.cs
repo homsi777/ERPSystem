@@ -1,6 +1,8 @@
 using ERPSystem.Application.DTOs.Expenses;
 using ERPSystem.Controls.Sales;
 using ERPSystem.Controls.Customers;
+using ERPSystem.Controls.Purchases;
+using ERPSystem.Controls.Suppliers;
 using ERPSystem.Controls.China;
 using ERPSystem.Controls.Expenses;
 using ERPSystem.Controls.OperationsCenter;
@@ -115,56 +117,14 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildSupplier(WorkspaceOpenRequest req, string initialTab)
         {
-            if (req.EntityRow is not SupplierModel s)
-                return NoEntityContextControl();
-
-            return OperationsCenterShell.Build(new OperationsCenterSpec
+            if (req.EntityRow is SupplierListRow row)
             {
-                Title = s.Name,
-                Subtitle = "مركز عمليات المورد",
-                Breadcrumb = "ERP PRO › الموردون › مركز العمليات",
-                IconGlyph = "\uE779",
-                Accent = Br("AccentPayableBrush"),
-                AccentLight = Br("WarningBgBrush"),
-                StatusBadge = s.StatusDisplay,
-                HeaderFields =
-                [
-                    ("كود المورد", s.Code), ("البلد", s.Country), ("النوع", s.TypeDisplay),
-                    ("الرصيد", $"{s.Balance:N0} ر.س"), ("عدد الفواتير", s.InvoiceCount.ToString()),
-                ],
-                Kpis =
-                [
-                    ("الرصيد", $"{s.Balance:N0} ر.س", "\uE8C1"),
-                    ("مشتريات", "—", "\uE7BF"),
-                    ("حاويات", "—", "\uE7BF"),
-                    ("مدفوعات", "—", "\uE719"),
-                ],
-                Tabs =
-                [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة المورد")),
-                    Tab("Statement", "كشف الحساب", PlaceholderUi.DevelopmentPhase("كشف حساب المورد")),
-                    Tab("Invoices", "فواتير الشراء", PlaceholderUi.DevelopmentPhase("فواتير الشراء")),
-                    Tab("Payments", "المدفوعات", PlaceholderUi.DevelopmentPhase("مدفوعات المورد")),
-                    Tab("Containers", "الحاويات", PlaceholderUi.DevelopmentPhase("حاويات المورد")),
-                    Tab("ImportHistory", "سجل الاستيراد", PlaceholderUi.DevelopmentPhase("سجل الاستيراد")),
-                    Tab("Notes", "ملاحظات", NotesEditor("")),
-                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
-                ],
-                QuickActions =
-                [
-                    Q("سند دفع", true, "Payments", actionKey: "nav:Accounting:Payments"),
-                    Q("كشف حساب", false, "Statement"),
-                    Q("تعديل", false, null, actionKey: "form:EditSupplier"),
-                ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Statement", "Invoices", "Payments", "Containers", "ImportHistory", "Notes", "Timeline"),
-                Context = new OperationsCenterContext
-                {
-                    EntityType = EntityType.Supplier,
-                    EntityRow = s,
-                    SourceModule = AppModule.Suppliers,
-                    Title = s.Name
-                }
-            });
+                var ctrl = new SupplierOperationsCenterControl();
+                ctrl.Initialize(row.Id, initialTab);
+                return ctrl;
+            }
+
+            return NoEntityContextControl();
         }
 
         private static UserControl BuildContainer(WorkspaceOpenRequest req, string initialTab)
@@ -333,51 +293,14 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildPurchaseInvoice(WorkspaceOpenRequest req, string initialTab)
         {
-            if (req.EntityRow is not PurchaseInvoiceModel p)
-                return NoEntityContextControl();
-
-            return OperationsCenterShell.Build(new OperationsCenterSpec
+            if (req.EntityRow is PurchaseListRow row)
             {
-                Title = p.InvoiceNumber,
-                Subtitle = "مركز عمليات فاتورة الشراء",
-                Breadcrumb = "ERP PRO › المشتريات › فاتورة",
-                IconGlyph = "\uE7BF",
-                Accent = Br("AccentOrdersBrush"),
-                AccentLight = Br("WarningBgBrush"),
-                StatusBadge = p.StatusDisplay,
-                HeaderFields =
-                [
-                    ("المورد", p.SupplierName),
-                    ("التاريخ", p.InvoiceDate.ToString("yyyy/MM/dd")),
-                    ("الإجمالي", $"{p.TotalAmount:N0} ر.س"),
-                    ("المتبقي", $"{p.Remaining:N0} ر.س"),
-                ],
-                Kpis =
-                [
-                    ("الإجمالي", $"{p.TotalAmount:N0} ر.س", "\uE8C1"),
-                    ("المتبقي", $"{p.Remaining:N0} ر.س", "\uE719"),
-                    ("البنود", p.LineCount > 0 ? p.LineCount.ToString() : "—", "\uE821"),
-                ],
-                Tabs =
-                [
-                    Tab("Overview", "التفاصيل", PlaceholderUi.DevelopmentPhase("تفاصيل فاتورة الشراء")),
-                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
-                    Tab("Printing", "الطباعة", PrintPreview()),
-                ],
-                QuickActions =
-                [
-                    Q("طباعة", false, null, actionKey: "preview:فاتورة الشراء"),
-                    Q("مرتجع", false, null, actionKey: "nav:Purchases:Returns"),
-                ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Timeline", "Printing"),
-                Context = new OperationsCenterContext
-                {
-                    EntityType = EntityType.PurchaseInvoice,
-                    EntityRow = p,
-                    SourceModule = AppModule.Purchases,
-                    Title = p.InvoiceNumber
-                }
-            });
+                var ctrl = new PurchaseInvoiceOperationsCenterControl();
+                ctrl.Initialize(row.Id);
+                return ctrl;
+            }
+
+            return NoEntityContextControl();
         }
 
         private static UserControl BuildEmployee(WorkspaceOpenRequest req, string initialTab)
