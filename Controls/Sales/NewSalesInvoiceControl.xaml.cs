@@ -193,12 +193,16 @@ namespace ERPSystem.Controls.Sales
         private SalesInvoiceStatus _domainStatus = SalesInvoiceStatus.Draft;
         private bool _cellEditFailed;
         private bool _isSaving;
+        private bool _initialized;
 
         public NewSalesInvoiceControl()
         {
             InitializeComponent();
             DataContext = this;
             Loaded += OnLoaded;
+            IsVisibleChanged += OnIsVisibleChanged;
+            CustomerListRefreshHub.RefreshRequested += OnCustomersRefreshRequested;
+            Unloaded += (_, _) => CustomerListRefreshHub.RefreshRequested -= OnCustomersRefreshRequested;
             CmbContainer.SelectionChanged += (_, _) => _ = ReloadStockOptionsAsync();
             CmbWarehouse.SelectionChanged += (_, _) => _ = ReloadStockOptionsAsync();
         }
@@ -208,11 +212,14 @@ namespace ERPSystem.Controls.Sales
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
-            Loaded -= OnLoaded;
-            TxtInvoiceNumber.Text = "جديد";
-            DpDate.SelectedDate = DateTime.Today;
-            ItemsGrid.ItemsSource = _lines;
-            ItemsGrid.PreviewMouseLeftButtonDown += ItemsGrid_PreviewMouseLeftButtonDown;
+            if (!_initialized)
+            {
+                _initialized = true;
+                TxtInvoiceNumber.Text = "جديد";
+                DpDate.SelectedDate = DateTime.Today;
+                ItemsGrid.ItemsSource = _lines;
+                ItemsGrid.PreviewMouseLeftButtonDown += ItemsGrid_PreviewMouseLeftButtonDown;
+            }
 
             await LoadLookupsAsync();
             await ReloadStockOptionsAsync();
@@ -222,12 +229,28 @@ namespace ERPSystem.Controls.Sales
             {
                 await LoadInvoiceAsync(editId.Value);
             }
-            else
+            else if (_lines.Count == 0)
             {
                 EnsureDefaultLine();
             }
 
             UpdateStatusBadge();
+        }
+
+        private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (e.NewValue is not true || !IsLoaded || !_initialized || _invoiceId.HasValue)
+                return;
+
+            await LoadCustomersAsync();
+        }
+
+        private void OnCustomersRefreshRequested(object? sender, EventArgs e)
+        {
+            if (!IsLoaded || _invoiceId.HasValue)
+                return;
+
+            _ = LoadCustomersAsync();
         }
 
         private void EnsureDefaultLine()
@@ -246,11 +269,21 @@ namespace ERPSystem.Controls.Sales
 
         private async Task LoadCustomersAsync()
         {
+            var previousId = CmbCustomer.SelectedItem is CustomerPickItem selected ? selected.Id : (Guid?)null;
             var items = new List<CustomerPickItem>();
+
             if (AppServices.IsInitialized)
             {
-                var result = await CustomerUiService.Instance.GetListAsync("", 1, 200);
-                if (result.IsSuccess && result.Value?.Items.Count > 0)
+                var result = await CustomerUiService.Instance.GetListAsync("", 1, 500);
+                if (!result.IsSuccess)
+                {
+                    ApplicationResultPresenter.Present(result);
+                    CmbCustomer.ItemsSource = null;
+                    CmbCustomer.SelectedIndex = -1;
+                    return;
+                }
+
+                if (result.Value?.Items.Count > 0)
                 {
                     items.AddRange(result.Value.Items.Select(c => new CustomerPickItem
                     {
@@ -260,10 +293,19 @@ namespace ERPSystem.Controls.Sales
                 }
             }
 
+            CmbCustomer.ItemsSource = null;
             CmbCustomer.ItemsSource = items;
             CmbCustomer.DisplayMemberPath = nameof(CustomerPickItem.Display);
-            if (items.Count > 0)
-                CmbCustomer.SelectedIndex = 0;
+            if (items.Count == 0)
+            {
+                CmbCustomer.SelectedIndex = -1;
+                return;
+            }
+
+            var restore = previousId.HasValue
+                ? items.FindIndex(i => i.Id == previousId.Value)
+                : -1;
+            CmbCustomer.SelectedIndex = restore >= 0 ? restore : 0;
         }
 
         private async Task LoadWarehousesAsync()
