@@ -17,6 +17,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Distribution", "توزيع الكميات", "\uE8AB"),
                 new SubmoduleDef("Stocktake", "جرد الحاوية", "\uE7B3"),
                 new SubmoduleDef("LandingCost", "ملخص تكلفة الاستيراد", "\uE8C1"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Inventory => new[]
             {
@@ -27,6 +28,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Stocktake", "الجرد", "\uE7B3"),
                 new SubmoduleDef("Transfers", "المناقلات", "\uE8AB"),
                 new SubmoduleDef("Settings", "إعدادات المخزون", "\uE713"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Sales => new[]
             {
@@ -37,6 +39,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Returns", "قائمة مرتجعات البيع", "\uE8FD"),
                 new SubmoduleDef("Detailing", "تفصيل الأطوال — المستودع", "\uE8CB"),
                 new SubmoduleDef("Delivery", "التسليم", "\uE898"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Customers => new[]
             {
@@ -45,6 +48,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Opening", "أرصدة افتتاحية", "\uE8C1"),
                 new SubmoduleDef("Statement", "كشف حساب عميل", "\uE8A1"),
                 new SubmoduleDef("Invoices", "كشف فواتير عميل", "\uE9F9"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Suppliers => new[]
             {
@@ -52,11 +56,14 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Form", "إضافة / تعديل مورد", "\uE70F"),
                 new SubmoduleDef("Statement", "كشف حساب مورد", "\uE8A1"),
                 new SubmoduleDef("Invoices", "كشف فواتير مورد", "\uE9F9"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Accounting => new[]
             {
-                new SubmoduleDef("Chart", "دليل الحسابات", "\uE8C3"),
-                new SubmoduleDef("Journal", "القيود اليومية", "\uE8C1"),
+                new SubmoduleDef("Chart", "شجرة الحسابات", "\uE8C3"),
+                new SubmoduleDef("Journal", "دفتر اليومية", "\uE8C1"),
+                new SubmoduleDef("JournalBooks", "دفاتر اليومية", "\uE8A5"),
+                new SubmoduleDef("AccountLedger", "كشف حساب", "\uE8A1"),
                 new SubmoduleDef("Receipts", "سند قبض", "\uE7A6"),
                 new SubmoduleDef("Payments", "سند صرف", "\uE719"),
                 new SubmoduleDef("Cashboxes", "الصناديق", "\uE825"),
@@ -64,22 +71,41 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Receivables", "الذمم المدينة", "\uE8F1"),
                 new SubmoduleDef("Payables", "الذمم الدائنة", "\uE7BF"),
                 new SubmoduleDef("TrialBalance", "ميزان مراجعة", "\uE9D2"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
+            },
+            AppModule.Expenses => new[]
+            {
+                new SubmoduleDef("List", "المصاريف", "\uE9D9"),
+                new SubmoduleDef("Entries", "سجل القيود", "\uE8A5"),
+                new SubmoduleDef("Entry", "قيد مصروف جديد", "\uE70F"),
+                new SubmoduleDef("Form", "تعريف مصروف جديد", "\uE710"),
+                new SubmoduleDef("Dashboard", "لوحة المصاريف", "\uE9D2"),
+                new SubmoduleDef("Reports", "تقارير المصاريف", "\uE8A1"),
+                new SubmoduleDef("Workspace", "مركز عمل المصروف", "\uE8A7"),
+                new SubmoduleDef("Categories", "فئات المصاريف", "\uECA5"),
+            },
+            AppModule.CapitalPartners => new[]
+            {
+                new SubmoduleDef("List", "سجل الشركاء", "\uE716"),
+                new SubmoduleDef("Transactions", "حركات رأس المال", "\uE8A5"),
+                new SubmoduleDef("Investment", "حركة رأس مال", "\uE710"),
+                new SubmoduleDef("Form", "شريك جديد", "\uE70F"),
+                new SubmoduleDef("Dashboard", "لوحة رأس المال", "\uE8C1"),
+                new SubmoduleDef("Distributions", "توزيع الأرباح", "\uE9D2"),
+                new SubmoduleDef("Reports", "تقارير رأس المال", "\uE8A1"),
+                new SubmoduleDef("Workspace", "مركز عمل الشريك", "\uE8A7"),
             },
             AppModule.Reports => new[]
             {
-                new SubmoduleDef("Financial", "القوائم المالية", "\uE8C1"),
-                new SubmoduleDef("Inventory", "تقارير المخزون", "\uE821"),
-                new SubmoduleDef("Containers", "تقارير الحاويات", "\uE7BF"),
-                new SubmoduleDef("Sales", "تقارير المبيعات", "\uE8F1"),
-                new SubmoduleDef("Customers", "تقارير العملاء", "\uE716"),
-                new SubmoduleDef("Suppliers", "تقارير الموردين", "\uE779"),
-                new SubmoduleDef("BI", "مؤشرات الإدارة", "\uE9D2"),
+                new SubmoduleDef("BI", "لوحة الإدارة", "\uE9D2"),
+                new SubmoduleDef("Reports", "التقارير التنفيذية", "\uE8A1"),
             },
             AppModule.Purchases => new[]
             {
                 new SubmoduleDef("Invoices", "فواتير الشراء", "\uE9F9"),
                 new SubmoduleDef("Orders", "أمر شراء", "\uE8A5"),
                 new SubmoduleDef("Returns", "مرتجع شراء", "\uE7A6"),
+                new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.HR => new[]
             {

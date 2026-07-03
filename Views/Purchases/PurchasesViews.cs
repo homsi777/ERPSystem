@@ -3,7 +3,7 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Purchases;
 using ERPSystem.Helpers;
-using System.Collections;
+using ERPSystem.Views.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -17,6 +17,7 @@ namespace ERPSystem.Views.Purchases
         {
             "Orders" => FormPage("أمر شراء", "إنشاء أمر شراء أقمشة"),
             "Returns" => FormPage("مرتجع شراء", "مرتجع فاتورة شراء"),
+            "Reports" => ModuleReportsViews.CreateHub(AppModule.Purchases),
             _ => InvoiceList()
         };
 

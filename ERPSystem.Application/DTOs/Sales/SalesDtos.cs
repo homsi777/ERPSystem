@@ -26,6 +26,9 @@ public sealed class SalesInvoiceLineDto
     public int LineNumber { get; init; }
     public Guid FabricItemId { get; init; }
     public Guid FabricColorId { get; init; }
+    public string FabricDisplayName { get; init; } = "";
+    public string FabricCode { get; init; } = "";
+    public string ColorDisplayName { get; init; } = "";
     public int RollCount { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal LineTotal { get; init; }
@@ -36,6 +39,9 @@ public sealed class WarehouseDetailingDto
     public Guid InvoiceId { get; init; }
     public string InvoiceNumber { get; init; } = "";
     public string CustomerName { get; init; } = "";
+    public Guid ChinaContainerId { get; init; }
+    public DateTime? SentToWarehouseAt { get; init; }
+    public decimal? RepresentativeUnitPrice { get; init; }
     public WarehouseDetailingStatus Status { get; init; }
     public IReadOnlyList<WarehouseDetailingRollDto> Rolls { get; init; } = [];
 }
@@ -45,8 +51,26 @@ public sealed class WarehouseDetailingRollDto
     public Guid RollDetailId { get; init; }
     public Guid SalesInvoiceItemId { get; init; }
     public int RollSequence { get; init; }
+    public string FabricDisplayName { get; init; } = "";
+    public string FabricCode { get; init; } = "";
+    public string ColorDisplayName { get; init; } = "";
     public decimal LengthMeters { get; init; }
     public bool HasValidLength { get; init; }
+}
+
+public sealed class SalesWarehouseStockOptionDto
+{
+    public Guid FabricItemId { get; init; }
+    public Guid FabricColorId { get; init; }
+    public string FabricDisplayName { get; init; } = "";
+    public string FabricCode { get; init; } = "";
+    public string ColorDisplayName { get; init; } = "";
+    public int AvailableRollCount { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public decimal? SalePricePerMeter { get; init; }
+
+    public string Display =>
+        $"{FabricDisplayName} / {ColorDisplayName} — {AvailableRollCount} توب — {AvailableMeters:N1} م";
 }
 
 public sealed class SalesInvoiceOperationsCenterDto

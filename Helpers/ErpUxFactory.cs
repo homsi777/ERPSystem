@@ -20,6 +20,7 @@ namespace ERPSystem.Helpers
             EntityType.JournalEntry => (B("PrimaryBrush"), B("PrimaryVeryLightBrush"), "\uE8C1"),
             EntityType.Warehouse => (B("AccentInventoryBrush"), B("SuccessBgBrush"), "\uE8B7"),
             EntityType.Cashbox => (B("AccentReceivableBrush"), B("WarningBgBrush"), "\uE8C1"),
+            EntityType.Expense => (B("AccentPayableBrush"), B("WarningBgBrush"), "\uE9D9"),
             _ => (B("PrimaryBrush"), B("PrimaryVeryLightBrush"), "\uE8A5")
         };
 

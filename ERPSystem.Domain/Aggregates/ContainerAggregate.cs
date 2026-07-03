@@ -24,6 +24,8 @@ public sealed class ContainerAggregate : AggregateRoot
     public string? Port { get; private set; }
     public string? Notes { get; private set; }
     public decimal ExchangeRateToLocalCurrency { get; private set; } = 1m;
+    public decimal ChinaInvoiceAmountUsd { get; private set; }
+    public decimal? FinancialTaxReservePostedLocal { get; private set; }
     public DateTime? ApprovedAt { get; private set; }
     public Guid? ApprovedByUserId { get; private set; }
     public bool IsArchived { get; private set; }
@@ -31,11 +33,13 @@ public sealed class ContainerAggregate : AggregateRoot
     private readonly List<ChinaContainerItem> _items = [];
     private readonly List<ChinaImportBatch> _importBatches = [];
     private readonly List<ContainerCustomerDistribution> _distributions = [];
+    private readonly List<ContainerFabricTypeLine> _fabricTypeLines = [];
     private LandingCost? _landingCost;
 
     public IReadOnlyList<ChinaContainerItem> Items => _items.AsReadOnly();
     public IReadOnlyList<ChinaImportBatch> ImportBatches => _importBatches.AsReadOnly();
     public IReadOnlyList<ContainerCustomerDistribution> Distributions => _distributions.AsReadOnly();
+    public IReadOnlyList<ContainerFabricTypeLine> FabricTypeLines => _fabricTypeLines.AsReadOnly();
     public LandingCost? LandingCost => _landingCost;
 
     private ContainerAggregate() { }
@@ -70,6 +74,16 @@ public sealed class ContainerAggregate : AggregateRoot
         ExchangeRateToLocalCurrency = exchangeRateToLocalCurrency;
     }
 
+    public void SetChinaInvoiceFinancials(decimal chinaInvoiceAmountUsd, decimal exchangeRateToLocalCurrency)
+    {
+        if (chinaInvoiceAmountUsd < 0)
+            throw new ValidationException("China invoice amount cannot be negative.");
+        ChinaInvoiceAmountUsd = chinaInvoiceAmountUsd;
+        FinancialTaxReservePostedLocal = chinaInvoiceAmountUsd > 0
+            ? Domain.Services.ChinaImportFinancials.TaxReserveLocal(chinaInvoiceAmountUsd, exchangeRateToLocalCurrency)
+            : null;
+    }
+
     public void MarkInTransit() => TransitionTo(ChinaContainerStatus.InTransit);
     public void MarkArrived(DateTime arrivalDate)
     {
@@ -94,6 +108,38 @@ public sealed class ContainerAggregate : AggregateRoot
         TransitionTo(ChinaContainerStatus.UnderReview);
     }
 
+    public void SetFabricTypeLines(IReadOnlyList<ContainerFabricTypeLine> lines)
+    {
+        _fabricTypeLines.Clear();
+        foreach (var line in lines.OrderBy(l => l.LineNumber))
+            _fabricTypeLines.Add(line);
+    }
+
+    public void SetTypeSalePrices(IReadOnlyList<(Guid TypeLineId, decimal MarginPerMeterUsd)> margins)
+    {
+        foreach (var (typeLineId, margin) in margins)
+        {
+            var line = _fabricTypeLines.FirstOrDefault(l => l.Id == typeLineId)
+                ?? throw new ValidationException("Fabric type line not found.");
+            line.SetSalePrice(margin);
+        }
+    }
+
+    public void EnsureSalePricesForApproval()
+    {
+        if (_fabricTypeLines.Count == 0)
+            return;
+
+        var missing = _fabricTypeLines
+            .Where(l => l.SalePricePerMeterUsd <= 0)
+            .Select(l => l.TypeDisplayName)
+            .ToList();
+
+        if (missing.Count > 0)
+            throw new ContainerApprovalException(
+                $"لا يمكن الاعتماد قبل إدخال سعر البيع لكل نوع قماش. الأنواع الناقصة: {string.Join("، ", missing)}");
+    }
+
     public void SetLandingCost(LandingCost landingCost)
     {
         if (TotalMeters.Value <= 0)
@@ -110,6 +156,7 @@ public sealed class ContainerAggregate : AggregateRoot
             throw new ContainerApprovalException("Landing cost must be reviewed before container approval.");
         if (_items.Any(i => !i.IsValid))
             throw new ContainerApprovalException("All container items must be valid.");
+        EnsureSalePricesForApproval();
         _landingCost.Approve();
         Status = ChinaContainerStatus.Approved;
         ApprovedAt = DateTime.UtcNow;

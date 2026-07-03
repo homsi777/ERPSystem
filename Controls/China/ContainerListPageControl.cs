@@ -19,6 +19,7 @@ public sealed class ContainerListRow
     public Guid Id { get; init; }
     public string ContainerNumber { get; init; } = "";
     public string SupplierName { get; init; } = "";
+    public ChinaContainerStatus Status { get; init; }
     public string OrderNumber { get; init; } = "—";
     public DateTime ShipmentDate { get; init; }
     public DateTime? ExpectedArrival { get; init; }
@@ -37,11 +38,29 @@ public sealed class ContainerListRow
         Id = dto.Id,
         ContainerNumber = dto.ContainerNumber,
         SupplierName = dto.SupplierName,
+        Status = dto.Status,
         ShipmentDate = dto.ShipmentDate,
         ExpectedArrival = dto.ExpectedArrival,
         StatusDisplay = dto.Status.ToArabic(),
         CodeCount = dto.CodeCount,
         ColorCount = dto.ColorCount,
+        TotalRolls = dto.TotalRolls,
+        TotalMeters = dto.TotalMeters,
+        TotalWeightKg = dto.TotalWeightKg ?? 0,
+        LastUpdated = dto.ShipmentDate
+    };
+
+    public static ContainerListRow FromDetails(ContainerDetailsDto dto) => new()
+    {
+        Id = dto.Id,
+        ContainerNumber = dto.ContainerNumber,
+        SupplierName = dto.SupplierName,
+        Status = dto.Status,
+        ShipmentDate = dto.ShipmentDate,
+        ExpectedArrival = dto.ArrivalDate,
+        StatusDisplay = dto.Status.ToArabic(),
+        CodeCount = dto.Items.Select(i => i.FabricItemId).Distinct().Count(),
+        ColorCount = dto.Items.Select(i => i.FabricColorId).Distinct().Count(),
         TotalRolls = dto.TotalRolls,
         TotalMeters = dto.TotalMeters,
         TotalWeightKg = dto.TotalWeightKg ?? 0,
@@ -83,8 +102,8 @@ public sealed class ContainerListPageControl : UserControl
         _page.SetFilterExtras(_statusFilter);
         _statusFilter.SelectionChanged += async (_, _) => await LoadContainersAsync(_pendingSearch);
 
-        _page.PrimaryActionRequested += (_, _) =>
-            MockInteractionService.Navigate(AppModule.ChinaImport, "NewImport");
+            _page.PrimaryActionRequested += (_, _) =>
+            ChinaImportNavigation.Navigate("NewImport");
 
         _page.SearchChanged += (_, term) =>
         {
@@ -98,6 +117,13 @@ public sealed class ContainerListPageControl : UserControl
              m.SupplierName.Contains(term, StringComparison.OrdinalIgnoreCase)));
 
         SetupContainerGrid(_page.Grid);
+        _page.Grid.MouseDoubleClick += OnGridDoubleClick;
+    }
+
+    private void OnGridDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_page.Grid.SelectedItem is ContainerListRow row)
+            ChinaImportNavigation.OpenOperationsCenter(row);
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)

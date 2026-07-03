@@ -11,6 +11,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Header -->
@@ -80,8 +81,32 @@
                     AccentColor="{StaticResource AccentCustomersBrush}"/>
             </UniformGrid>
 
+            <!-- Sales insights — mock data (USD) -->
+            <UniformGrid Grid.Row="2" Columns="4" Margin="0,0,0,12">
+                <controls:MetricCardControl x:Name="CardTopCustomer" Margin="0,0,6,0"
+                    CardTitle="أكثر عميل يشتري" CardValue="—"
+                    CardIcon="&#xE77B;" TrendValue="هذا العام" TrendDirection="Up"
+                    CardDescription="إجمالي المشتريات"
+                    AccentColor="{StaticResource AccentCustomersBrush}"/>
+                <controls:MetricCardControl x:Name="CardTopFabric" Margin="3,0,3,0"
+                    CardTitle="أكثر توب مباع" CardValue="—"
+                    CardIcon="&#xE7C5;" TrendValue="هذا العام" TrendDirection="Up"
+                    CardDescription="كود القماش + اللون"
+                    AccentColor="{StaticResource AccentInventoryBrush}"/>
+                <controls:MetricCardControl x:Name="CardLeastCustomer" Margin="3,0,3,0"
+                    CardTitle="أقل عميل يشتري" CardValue="—"
+                    CardIcon="&#xE77B;" TrendValue="هذا العام" TrendDirection="Down"
+                    CardDescription="إجمالي المشتريات"
+                    AccentColor="{StaticResource AccentReceivableBrush}"/>
+                <controls:MetricCardControl x:Name="CardLeastFabric" Margin="6,0,0,0"
+                    CardTitle="أقل توب مباع" CardValue="—"
+                    CardIcon="&#xE7C5;" TrendValue="هذا العام" TrendDirection="Down"
+                    CardDescription="كود القماش + اللون"
+                    AccentColor="{StaticResource AccentOrdersBrush}"/>
+            </UniformGrid>
+
             <!-- Middle row: Activity | Table | Quick Actions (RTL column order) -->
-            <Grid Grid.Row="2" Margin="0,0,0,12">
+            <Grid Grid.Row="3" Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="320"/>
                     <ColumnDefinition Width="12"/>
@@ -357,7 +382,7 @@
             </Grid>
 
             <!-- Bottom row: Business overview | Collections -->
-            <Grid Grid.Row="3">
+            <Grid Grid.Row="4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="12"/>

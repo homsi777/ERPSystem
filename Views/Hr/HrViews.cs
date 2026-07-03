@@ -3,6 +3,7 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.HR;
 using ERPSystem.Helpers;
+using ERPSystem.Views.Reports;
 using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,7 +23,7 @@ namespace ERPSystem.Views.Hr
             "Contracts" => Placeholder("العقود", new[] { new { الموظف = "محمد العتيبي", النوع = "دوام كامل", البداية = "2024/01/01" } }),
             "Payroll" => Placeholder("الرواتب", new[] { new { الشهر = "يونيو 2026", الإجمالي = "68,000 ر.س", الحالة = "مسودة" } }),
             "Advances" => Placeholder("السلف والخصومات", new[] { new { الموظف = "فهد الغامدي", النوع = "سلفة", المبلغ = "2,000 ر.س" } }),
-            "Reports" => Placeholder("تقارير HR", new[] { new { التقرير = "ملخص الحضور", الفترة = "يونيو 2026" } }),
+            "Reports" => ModuleReportsViews.CreateHub(AppModule.HR),
             _ => EmployeeList()
         };
 

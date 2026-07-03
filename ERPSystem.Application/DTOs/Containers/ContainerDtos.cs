@@ -1,3 +1,4 @@
+using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.DTOs.Containers;
@@ -24,6 +25,7 @@ public sealed class ContainerDetailsDto
     public string ContainerNumber { get; init; } = "";
     public ChinaContainerStatus Status { get; init; }
     public Guid SupplierId { get; init; }
+    public string SupplierName { get; init; } = "";
     public DateTime ShipmentDate { get; init; }
     public DateTime? ArrivalDate { get; init; }
     public int TotalRolls { get; init; }
@@ -34,6 +36,7 @@ public sealed class ContainerDetailsDto
     public decimal FinancialTaxReserveUsd { get; init; }
     public decimal? FinancialTaxReservePostedLocal { get; init; }
     public LandingCostDto? LandingCost { get; init; }
+    public IReadOnlyList<ContainerFabricTypeLineDto> FabricTypeLines { get; init; } = [];
     public IReadOnlyList<ContainerItemDto> Items { get; init; } = [];
 }
 
@@ -53,8 +56,14 @@ public sealed class LandingCostDto
     public decimal ContainerWeightKg { get; init; }
     public decimal CustomsAmount { get; init; }
     public decimal Shipping { get; init; }
+    public decimal Insurance { get; init; }
     public decimal Clearance { get; init; }
     public decimal OtherExpenses { get; init; }
+    public decimal OtherExpense1 { get; init; }
+    public decimal OtherExpense2 { get; init; }
+    public decimal OtherExpense3 { get; init; }
+    public decimal OtherExpense4 { get; init; }
+    public bool UsesWeightedAllocation { get; init; }
     public decimal TotalImportExpenses { get; init; }
     public decimal CustomsCostPerMeter { get; init; }
     public decimal ExpenseCostPerMeter { get; init; }
@@ -65,7 +74,9 @@ public sealed class LandingCostDto
 public sealed class ContainerOperationsCenterDto
 {
     public ContainerDetailsDto Container { get; init; } = null!;
+    public ContainerInventoryMetricsDto? Inventory { get; init; }
     public bool CanApprove { get; init; }
+    public bool CanSetSalePrices { get; init; }
     public bool CanMoveToWarehouse { get; init; }
     public bool CanCalculateLandingCost { get; init; }
     public bool IsReadyForSale { get; init; }

@@ -155,6 +155,82 @@ public class LandingCostExpense
     };
 }
 
+public class ContainerFabricTypeLine
+{
+    public Guid Id { get; private set; }
+    public int LineNumber { get; private set; }
+    public string TypeDisplayName { get; private set; } = "";
+    public string MatchKey { get; private set; } = "";
+    public Guid? FabricItemId { get; private set; }
+    public Guid? FabricColorId { get; private set; }
+    public decimal LengthMeters { get; private set; }
+    public int RollCount { get; private set; }
+    public decimal NetWeightKg { get; private set; }
+    public decimal Cbm { get; private set; }
+    public decimal ChinaUnitPriceUsd { get; private set; }
+    public decimal InvoiceLineAmountUsd { get; private set; }
+    public decimal ExpenseShareUsd { get; private set; }
+    public decimal LandedCostPerMeterUsd { get; private set; }
+    public decimal MarginPerMeterUsd { get; private set; }
+    public decimal SalePricePerMeterUsd { get; private set; }
+    public bool HasInvoiceMatch { get; private set; }
+    public bool HasPlMatch { get; private set; }
+    public bool HasDplMatch { get; private set; }
+    public string? MatchWarnings { get; private set; }
+    public bool UsesWeightedAllocation { get; private set; }
+
+    private ContainerFabricTypeLine() { }
+
+    public static ContainerFabricTypeLine Create(
+        int lineNumber,
+        string typeDisplayName,
+        string matchKey,
+        Guid? fabricItemId,
+        Guid? fabricColorId,
+        decimal lengthMeters,
+        int rollCount,
+        decimal netWeightKg,
+        decimal cbm,
+        decimal chinaUnitPriceUsd,
+        decimal invoiceLineAmountUsd,
+        bool hasInvoice,
+        bool hasPl,
+        bool hasDpl,
+        string? matchWarnings,
+        bool usesWeightedAllocation) => new()
+    {
+        Id = Guid.NewGuid(),
+        LineNumber = lineNumber,
+        TypeDisplayName = typeDisplayName,
+        MatchKey = matchKey,
+        FabricItemId = fabricItemId,
+        FabricColorId = fabricColorId,
+        LengthMeters = lengthMeters,
+        RollCount = rollCount,
+        NetWeightKg = netWeightKg,
+        Cbm = cbm,
+        ChinaUnitPriceUsd = chinaUnitPriceUsd,
+        InvoiceLineAmountUsd = invoiceLineAmountUsd,
+        HasInvoiceMatch = hasInvoice,
+        HasPlMatch = hasPl,
+        HasDplMatch = hasDpl,
+        MatchWarnings = matchWarnings,
+        UsesWeightedAllocation = usesWeightedAllocation
+    };
+
+    public void ApplyCostAllocation(decimal expenseShareUsd, decimal landedCostPerMeterUsd)
+    {
+        ExpenseShareUsd = expenseShareUsd;
+        LandedCostPerMeterUsd = landedCostPerMeterUsd;
+    }
+
+    public void SetSalePrice(decimal marginPerMeterUsd)
+    {
+        MarginPerMeterUsd = marginPerMeterUsd;
+        SalePricePerMeterUsd = LandedCostPerMeterUsd + marginPerMeterUsd;
+    }
+}
+
 public class LandingCost
 {
     public Guid Id { get; private set; }
@@ -162,8 +238,14 @@ public class LandingCost
     public WeightInKg ContainerWeight { get; private set; } = null!;
     public Money CustomsAmountPaid { get; private set; } = Money.Zero();
     public Money Shipping { get; private set; } = Money.Zero();
+    public Money Insurance { get; private set; } = Money.Zero();
     public Money Clearance { get; private set; } = Money.Zero();
     public Money OtherExpenses { get; private set; } = Money.Zero();
+    public Money OtherExpense1 { get; private set; } = Money.Zero();
+    public Money OtherExpense2 { get; private set; } = Money.Zero();
+    public Money OtherExpense3 { get; private set; } = Money.Zero();
+    public Money OtherExpense4 { get; private set; } = Money.Zero();
+    public bool UsesWeightedAllocation { get; private set; }
     public LandingCostStatus Status { get; private set; }
     public DateTime? CalculatedAt { get; private set; }
     public Guid? CalculatedByUserId { get; private set; }
@@ -171,8 +253,11 @@ public class LandingCost
 
     private LandingCost() { }
 
-    public Money TotalImportExpenses =>
-        CustomsAmountPaid.Add(Shipping).Add(Clearance).Add(OtherExpenses);
+    public Money TotalSharedExpenses =>
+        Shipping.Add(Insurance).Add(CustomsAmountPaid).Add(Clearance)
+            .Add(OtherExpenses).Add(OtherExpense1).Add(OtherExpense2).Add(OtherExpense3).Add(OtherExpense4);
+
+    public Money TotalImportExpenses => TotalSharedExpenses;
 
     public decimal CustomsCostPerMeter =>
         TotalLengthFromInvoice.Value > 0 ? CustomsAmountPaid.Amount / TotalLengthFromInvoice.Value : 0;
@@ -189,15 +274,37 @@ public class LandingCost
         Money customsAmount,
         Money shipping,
         Money clearance,
-        Money otherExpenses) => new()
+        Money otherExpenses) =>
+        CreateExtended(totalLength, containerWeight, customsAmount, shipping, Money.Zero(), clearance,
+            otherExpenses, Money.Zero(), Money.Zero(), Money.Zero(), Money.Zero(), false);
+
+    public static LandingCost CreateExtended(
+        LengthInMeters totalLength,
+        WeightInKg containerWeight,
+        Money customsClearanceAmount,
+        Money shipping,
+        Money insurance,
+        Money clearanceLegacy,
+        Money otherExpensesLegacy,
+        Money otherExpense1,
+        Money otherExpense2,
+        Money otherExpense3,
+        Money otherExpense4,
+        bool usesWeightedAllocation) => new()
     {
         Id = Guid.NewGuid(),
         TotalLengthFromInvoice = totalLength,
         ContainerWeight = containerWeight,
-        CustomsAmountPaid = customsAmount,
+        CustomsAmountPaid = customsClearanceAmount,
         Shipping = shipping,
-        Clearance = clearance,
-        OtherExpenses = otherExpenses,
+        Insurance = insurance,
+        Clearance = clearanceLegacy,
+        OtherExpenses = otherExpensesLegacy,
+        OtherExpense1 = otherExpense1,
+        OtherExpense2 = otherExpense2,
+        OtherExpense3 = otherExpense3,
+        OtherExpense4 = otherExpense4,
+        UsesWeightedAllocation = usesWeightedAllocation,
         Status = LandingCostStatus.Draft
     };
 

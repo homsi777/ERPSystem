@@ -65,6 +65,8 @@ public class SalesInvoiceRollDetail
         EnteredAt = DateTime.UtcNow;
     }
 
+    public void AssignFabricRoll(Guid fabricRollId) => FabricRollId = fabricRollId;
+
     public bool HasValidLength => LengthMeters.Value > 0;
 }
 

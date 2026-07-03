@@ -7,6 +7,7 @@ using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.ChinaImport;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Domain.Enums;
+using ERPSystem.Domain.Services;
 
 namespace ERPSystem.Application.Mapping;
 
@@ -60,19 +61,24 @@ public static class ContainerMapper
         SupplierName = supplierName
     };
 
-    public static ContainerDetailsDto ToDetailsDto(ContainerAggregate aggregate) => new()
+    public static ContainerDetailsDto ToDetailsDto(ContainerAggregate aggregate, string supplierName = "") => new()
     {
         Id = aggregate.Id,
         ContainerNumber = aggregate.ContainerNumber.Value,
         Status = aggregate.Status,
         SupplierId = aggregate.SupplierId,
+        SupplierName = supplierName,
         ShipmentDate = aggregate.ShipmentDate,
         ArrivalDate = aggregate.ArrivalDate,
         TotalRolls = aggregate.TotalRolls,
         TotalMeters = aggregate.TotalMeters.Value,
         TotalWeightKg = aggregate.TotalWeight?.Value,
         ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
+        ChinaInvoiceAmountUsd = aggregate.ChinaInvoiceAmountUsd,
+        FinancialTaxReserveUsd = ChinaImportFinancials.TaxReserveUsd(aggregate.ChinaInvoiceAmountUsd),
+        FinancialTaxReservePostedLocal = aggregate.FinancialTaxReservePostedLocal,
         LandingCost = aggregate.LandingCost is null ? null : ToLandingCostDto(aggregate.LandingCost),
+        FabricTypeLines = aggregate.FabricTypeLines.Select(ToFabricTypeLineDto).ToList(),
         Items = aggregate.Items.Select(i => new ContainerItemDto
         {
             LineNumber = i.LineNumber,
@@ -90,8 +96,14 @@ public static class ContainerMapper
         ContainerWeightKg = landingCost.ContainerWeight.Value,
         CustomsAmount = landingCost.CustomsAmountPaid.Amount,
         Shipping = landingCost.Shipping.Amount,
+        Insurance = landingCost.Insurance.Amount,
         Clearance = landingCost.Clearance.Amount,
         OtherExpenses = landingCost.OtherExpenses.Amount,
+        OtherExpense1 = landingCost.OtherExpense1.Amount,
+        OtherExpense2 = landingCost.OtherExpense2.Amount,
+        OtherExpense3 = landingCost.OtherExpense3.Amount,
+        OtherExpense4 = landingCost.OtherExpense4.Amount,
+        UsesWeightedAllocation = landingCost.UsesWeightedAllocation,
         TotalImportExpenses = landingCost.TotalImportExpenses.Amount,
         CustomsCostPerMeter = landingCost.CustomsCostPerMeter,
         ExpenseCostPerMeter = landingCost.ExpenseCostPerMeter,
@@ -99,10 +111,32 @@ public static class ContainerMapper
         Status = landingCost.Status
     };
 
-    public static ContainerOperationsCenterDto ToOperationsCenterDto(ContainerAggregate aggregate) => new()
+    public static ContainerFabricTypeLineDto ToFabricTypeLineDto(ContainerFabricTypeLine line) => new()
     {
-        Container = ToDetailsDto(aggregate),
+        Id = line.Id,
+        LineNumber = line.LineNumber,
+        TypeDisplayName = line.TypeDisplayName,
+        FabricItemId = line.FabricItemId,
+        FabricColorId = line.FabricColorId,
+        LengthMeters = line.LengthMeters,
+        RollCount = line.RollCount,
+        NetWeightKg = line.NetWeightKg,
+        ChinaUnitPriceUsd = line.ChinaUnitPriceUsd,
+        ExpenseShareUsd = line.ExpenseShareUsd,
+        LandedCostPerMeterUsd = line.LandedCostPerMeterUsd,
+        MarginPerMeterUsd = line.MarginPerMeterUsd,
+        SalePricePerMeterUsd = line.SalePricePerMeterUsd
+    };
+
+    public static ContainerOperationsCenterDto ToOperationsCenterDto(ContainerAggregate aggregate, string supplierName = "") => new()
+    {
+        Container = ToDetailsDto(aggregate, supplierName),
         CanApprove = aggregate.LandingCost?.Status == LandingCostStatus.Reviewed
+            && aggregate.Status == ChinaContainerStatus.LandingCostReviewed
+            && (aggregate.FabricTypeLines.Count == 0
+                || aggregate.FabricTypeLines.All(l => l.SalePricePerMeterUsd > 0)),
+        CanSetSalePrices = aggregate.FabricTypeLines.Count > 0
+            && aggregate.LandingCost?.Status == LandingCostStatus.Reviewed
             && aggregate.Status == ChinaContainerStatus.LandingCostReviewed,
         CanMoveToWarehouse = aggregate.Status == ChinaContainerStatus.Approved,
         CanCalculateLandingCost = aggregate.TotalMeters.Value > 0 && aggregate.LandingCost is null,
@@ -144,6 +178,9 @@ public static class SalesInvoiceMapper
         InvoiceId = aggregate.Id,
         InvoiceNumber = aggregate.InvoiceNumber.Value,
         CustomerName = customerName,
+        ChinaContainerId = aggregate.ChinaContainerId,
+        SentToWarehouseAt = aggregate.SentToWarehouseAt,
+        RepresentativeUnitPrice = aggregate.Items.FirstOrDefault()?.UnitPrice.Amount,
         Status = aggregate.DetailingSession?.Status ?? WarehouseDetailingStatus.Pending,
         Rolls = aggregate.RollDetails.Select(r => new WarehouseDetailingRollDto
         {

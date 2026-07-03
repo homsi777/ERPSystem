@@ -45,5 +45,7 @@ internal sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
                 EntityId = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "Id")?.CurrentValue as Guid? ?? Guid.Empty
             });
         }
+
+        UtcDateTimeNormalizer.NormalizeTrackedEntities(db);
     }
 }

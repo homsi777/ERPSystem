@@ -14,7 +14,8 @@ namespace ERPSystem.Application.UseCases.Queries;
 public sealed class GetDashboardSummaryHandler(
     ISalesInvoiceRepository invoiceRepository,
     IChinaContainerRepository containerRepository,
-    ICustomerRepository customerRepository)
+    ICustomerRepository customerRepository,
+    IInventoryRepository inventoryRepository)
     : IQueryHandler<GetDashboardSummaryQuery, ApplicationResult<DashboardSummaryDto>>
 {
     public async Task<ApplicationResult<DashboardSummaryDto>> HandleAsync(
@@ -46,7 +47,7 @@ public sealed class GetDashboardSummaryHandler(
             TodaySalesTotal = invoices
                 .Where(i => i.InvoiceDate.Date == DateTime.UtcNow.Date && i.Status >= SalesInvoiceStatus.Approved)
                 .Sum(i => i.GrandTotal.Amount),
-            LowStockItemsCount = 0
+            LowStockItemsCount = await inventoryRepository.CountLowStockItemsAsync(query.BranchId, cancellationToken: cancellationToken)
         };
 
         return ApplicationResult<DashboardSummaryDto>.Success(dto);

@@ -126,6 +126,40 @@ public static class ApplicationValidators
             errors.Add(new ValidationError(nameof(command.Description), "Description is required."));
         if (command.Lines.Count == 0)
             errors.Add(new ValidationError(nameof(command.Lines), "At least one journal line is required."));
+        if (command.CompanyId == Guid.Empty)
+            errors.Add(new ValidationError(nameof(command.CompanyId), "Company is required."));
+        if (command.BranchId == Guid.Empty)
+            errors.Add(new ValidationError(nameof(command.BranchId), "Branch is required."));
+
+        var debit = command.Lines.Sum(l => l.Debit);
+        var credit = command.Lines.Sum(l => l.Credit);
+        if (Math.Abs(debit - credit) > 0.01m)
+            errors.Add(new ValidationError(nameof(command.Lines), "Journal entry must be balanced."));
+
+        return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
+    }
+
+    public static ApplicationResult? Validate(CreateAccountCommand command)
+    {
+        var errors = new List<ValidationError>();
+        if (command.CompanyId == Guid.Empty)
+            errors.Add(new ValidationError(nameof(command.CompanyId), "Company is required."));
+        if (string.IsNullOrWhiteSpace(command.Code))
+            errors.Add(new ValidationError(nameof(command.Code), "Account code is required."));
+        if (string.IsNullOrWhiteSpace(command.NameAr))
+            errors.Add(new ValidationError(nameof(command.NameAr), "Account name is required."));
+        return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
+    }
+
+    public static ApplicationResult? Validate(UpdateAccountCommand command)
+    {
+        var errors = new List<ValidationError>();
+        if (command.AccountId == Guid.Empty)
+            errors.Add(new ValidationError(nameof(command.AccountId), "Account is required."));
+        if (string.IsNullOrWhiteSpace(command.Code))
+            errors.Add(new ValidationError(nameof(command.Code), "Account code is required."));
+        if (string.IsNullOrWhiteSpace(command.NameAr))
+            errors.Add(new ValidationError(nameof(command.NameAr), "Account name is required."));
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 }

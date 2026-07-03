@@ -4,6 +4,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Core.Domain;
 using ERPSystem.Core.Inventory;
 using ERPSystem.Helpers;
+using ERPSystem.Views.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -21,6 +22,7 @@ namespace ERPSystem.Views.Inventory
             "Stocktake" => BuildStocktake(),
             "Transfers" => BuildTransfers(),
             "Settings" => BuildSettings(),
+            "Reports" => ModuleReportsViews.CreateHub(AppModule.Inventory),
             "Warehouses" => BuildWarehousesHub(),
             _ => BuildWarehousesHub()
         };

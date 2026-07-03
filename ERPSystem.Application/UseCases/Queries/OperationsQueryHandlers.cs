@@ -44,7 +44,10 @@ public sealed class GetChinaContainerListHandler(
     }
 }
 
-public sealed class GetContainerOperationsCenterHandler(IChinaContainerRepository containerRepository)
+public sealed class GetContainerOperationsCenterHandler(
+    IChinaContainerRepository containerRepository,
+    ISupplierRepository supplierRepository,
+    IInventoryRepository inventoryRepository)
     : IQueryHandler<GetContainerOperationsCenterQuery, ApplicationResult<ContainerOperationsCenterDto>>
 {
     public async Task<ApplicationResult<ContainerOperationsCenterDto>> HandleAsync(
@@ -55,8 +58,21 @@ public sealed class GetContainerOperationsCenterHandler(IChinaContainerRepositor
         if (aggregate is null)
             return ApplicationResult<ContainerOperationsCenterDto>.NotFound("Container not found.");
 
-        return ApplicationResult<ContainerOperationsCenterDto>.Success(
-            ContainerMapper.ToOperationsCenterDto(aggregate));
+        var supplier = await supplierRepository.GetByIdAsync(aggregate.SupplierId, cancellationToken);
+        var supplierName = supplier?.Supplier.Name ?? "—";
+        var inventory = await inventoryRepository.GetContainerMetricsAsync(query.ContainerId, cancellationToken);
+        var baseDto = ContainerMapper.ToOperationsCenterDto(aggregate, supplierName);
+
+        return ApplicationResult<ContainerOperationsCenterDto>.Success(new ContainerOperationsCenterDto
+        {
+            Container = baseDto.Container,
+            Inventory = inventory,
+            CanApprove = baseDto.CanApprove,
+            CanSetSalePrices = baseDto.CanSetSalePrices,
+            CanMoveToWarehouse = baseDto.CanMoveToWarehouse,
+            CanCalculateLandingCost = baseDto.CanCalculateLandingCost,
+            IsReadyForSale = baseDto.IsReadyForSale
+        });
     }
 }
 
@@ -144,7 +160,8 @@ public sealed class GetSalesInvoiceListHandler(
 
 public sealed class GetSalesInvoiceOperationsCenterHandler(
     ISalesInvoiceRepository invoiceRepository,
-    ICustomerRepository customerRepository)
+    ICustomerRepository customerRepository,
+    IFabricCatalogRepository fabricCatalogRepository)
     : IQueryHandler<GetSalesInvoiceOperationsCenterQuery, ApplicationResult<SalesInvoiceOperationsCenterDto>>
 {
     public async Task<ApplicationResult<SalesInvoiceOperationsCenterDto>> HandleAsync(
@@ -158,14 +175,39 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
         var customer = await customerRepository.GetByIdAsync(aggregate.CustomerId, cancellationToken);
         var customerName = customer?.Customer.NameAr ?? "";
 
-        return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(
-            SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName));
+        var baseDto = SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName);
+        var enrichedLines = await SalesInvoiceCatalogEnricher.EnrichLinesAsync(
+            baseDto.Invoice.Lines,
+            fabricCatalogRepository,
+            cancellationToken);
+
+        WarehouseDetailingDto? enrichedDetailing = null;
+        if (baseDto.Detailing is not null)
+        {
+            var enrichedRolls = await SalesInvoiceCatalogEnricher.EnrichRollsAsync(
+                aggregate,
+                baseDto.Detailing.Rolls,
+                fabricCatalogRepository,
+                cancellationToken);
+            enrichedDetailing = SalesInvoiceCatalogEnricher.WithEnrichedRolls(baseDto.Detailing, enrichedRolls);
+        }
+
+        return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(new SalesInvoiceOperationsCenterDto
+        {
+            Invoice = SalesInvoiceCatalogEnricher.WithEnrichedLines(baseDto.Invoice, enrichedLines),
+            Detailing = enrichedDetailing,
+            CanSendToWarehouse = baseDto.CanSendToWarehouse,
+            CanCompleteDetailing = baseDto.CanCompleteDetailing,
+            CanApprove = baseDto.CanApprove,
+            CanCancel = baseDto.CanCancel
+        });
     }
 }
 
 public sealed class GetWarehouseDetailingQueueHandler(
     ISalesInvoiceRepository invoiceRepository,
-    ICustomerRepository customerRepository)
+    ICustomerRepository customerRepository,
+    IFabricCatalogRepository fabricCatalogRepository)
     : IQueryHandler<GetWarehouseDetailingQueueQuery, ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>> HandleAsync(
@@ -179,23 +221,37 @@ public sealed class GetWarehouseDetailingQueueHandler(
         {
             var customer = await customerRepository.GetByIdAsync(invoice.CustomerId, cancellationToken);
             var customerName = customer?.Customer.NameAr ?? "";
-            dtos.Add(SalesInvoiceMapper.ToDetailingDto(invoice, customerName));
+            var baseDto = SalesInvoiceMapper.ToDetailingDto(invoice, customerName);
+            var enrichedRolls = await SalesInvoiceCatalogEnricher.EnrichRollsAsync(
+                invoice,
+                baseDto.Rolls,
+                fabricCatalogRepository,
+                cancellationToken);
+            dtos.Add(SalesInvoiceCatalogEnricher.WithEnrichedRolls(baseDto, enrichedRolls));
         }
 
         return ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>.Success(dtos);
     }
 }
 
-public sealed class GetReportPreviewHandler
+public sealed class GetReportPreviewHandler(
+    IInventoryRepository inventoryRepository,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetReportPreviewQuery, ApplicationResult<Dictionary<string, object>>>
 {
-    public Task<ApplicationResult<Dictionary<string, object>>> HandleAsync(
+    public async Task<ApplicationResult<Dictionary<string, object>>> HandleAsync(
         GetReportPreviewQuery query,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query.ReportCode))
-            return Task.FromResult(ApplicationResult<Dictionary<string, object>>.ValidationFailed(
-                nameof(query.ReportCode), "Report code is required."));
+            return ApplicationResult<Dictionary<string, object>>.ValidationFailed(
+                nameof(query.ReportCode), "Report code is required.");
+
+        if (query.ReportCode.Equals("ContainerInventory", StringComparison.OrdinalIgnoreCase) ||
+            query.ReportCode.Equals("Rep_Containers", StringComparison.OrdinalIgnoreCase))
+        {
+            return await BuildContainerInventoryReportAsync(query, cancellationToken);
+        }
 
         var preview = new Dictionary<string, object>
         {
@@ -204,6 +260,61 @@ public sealed class GetReportPreviewHandler
             ["Status"] = "PreviewNotImplemented"
         };
 
-        return Task.FromResult(ApplicationResult<Dictionary<string, object>>.Success(preview));
+        return ApplicationResult<Dictionary<string, object>>.Success(preview);
+    }
+
+    private async Task<ApplicationResult<Dictionary<string, object>>> BuildContainerInventoryReportAsync(
+        GetReportPreviewQuery query,
+        CancellationToken cancellationToken)
+    {
+        var containers = await containerRepository.GetListAsync(
+            query.CompanyId, query.BranchId, status: null, cancellationToken);
+
+        var rows = new List<Dictionary<string, object>>();
+        decimal totalImported = 0m;
+        decimal totalAvailable = 0m;
+        decimal totalReserved = 0m;
+        decimal totalSold = 0m;
+        decimal totalValuation = 0m;
+
+        foreach (var container in containers)
+        {
+            var metrics = await inventoryRepository.GetContainerMetricsAsync(container.Id, cancellationToken);
+            if (metrics is null)
+                continue;
+
+            totalImported += metrics.TotalMeters;
+            totalAvailable += metrics.AvailableMeters;
+            totalReserved += metrics.ReservedMeters;
+            totalSold += metrics.SoldMeters;
+            totalValuation += metrics.InventoryValuation;
+
+            rows.Add(new Dictionary<string, object>
+            {
+                ["ContainerNumber"] = container.ContainerNumber.Value,
+                ["TotalMeters"] = metrics.TotalMeters,
+                ["AvailableMeters"] = metrics.AvailableMeters,
+                ["ReservedMeters"] = metrics.ReservedMeters,
+                ["SoldMeters"] = metrics.SoldMeters,
+                ["CostPerMeter"] = metrics.CostPerMeter,
+                ["InventoryValuation"] = metrics.InventoryValuation
+            });
+        }
+
+        var avgCost = totalImported > 0 ? totalValuation / Math.Max(totalAvailable, 1m) : 0m;
+
+        return ApplicationResult<Dictionary<string, object>>.Success(new Dictionary<string, object>
+        {
+            ["ReportCode"] = query.ReportCode,
+            ["GeneratedAt"] = DateTime.UtcNow,
+            ["ImportedMeters"] = totalImported,
+            ["AvailableMeters"] = totalAvailable,
+            ["ReservedMeters"] = totalReserved,
+            ["SoldMeters"] = totalSold,
+            ["RemainingMeters"] = totalAvailable,
+            ["AverageCostPerMeter"] = avgCost,
+            ["InventoryValuation"] = totalValuation,
+            ["Containers"] = rows
+        });
     }
 }

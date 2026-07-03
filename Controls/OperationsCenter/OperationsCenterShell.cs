@@ -3,6 +3,12 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Services.Customers;
+using ERPSystem.Services.China;
+using ERPSystem.Services.Capital;
+using ERPSystem.Services.Expenses;
+using ERPSystem.Application.DTOs.Capital;
+using ERPSystem.Application.DTOs.Expenses;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -228,6 +234,24 @@ namespace ERPSystem.Controls.OperationsCenter
 
                     if (!string.IsNullOrEmpty(action.ActionKey))
                     {
+                        if (spec.Context?.EntityType == EntityType.ImportContainer &&
+                            ChinaContainerQuickActionRouter.TryHandle(action.ActionKey, spec.Context, tabs))
+                            return;
+
+                        if (spec.Context is not null &&
+                            CustomerActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
+                            return;
+
+                        if (spec.Context?.EntityType == EntityType.Expense &&
+                            spec.Context.EntityRow is ExpenseDetailsDto expenseDetails &&
+                            ExpenseQuickActionRouter.TryHandle(action.ActionKey!, expenseDetails))
+                            return;
+
+                        if (spec.Context?.EntityType == EntityType.CapitalPartner &&
+                            spec.Context.EntityRow is CapitalPartnerDetailsDto capitalDetails &&
+                            CapitalPartnerQuickActionRouter.TryHandle(action.ActionKey, capitalDetails))
+                            return;
+
                         MockQuickActionRouter.Execute(action.ActionKey, spec.Context ?? new OperationsCenterContext
                         {
                             EntityType = EntityType.Customer,

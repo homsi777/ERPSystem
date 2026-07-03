@@ -1,9 +1,9 @@
 using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Queries.Containers;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Core;
-using ERPSystem.Core.ChinaImport;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Seed;
 using ERPSystem.Services;
@@ -40,13 +40,37 @@ namespace ERPSystem.Controls.Sales
 
     public class SalesInvoiceLineRow : INotifyPropertyChanged
     {
-        private string _goodsType = "قماش قطن";
-        private string _boltCode = "FAB-001";
-        private string _color = "أبيض";
-        private int _rollCount = 1;
-        private string _lengthStatus = "بانتظار التفصيل";
+        private string _goodsType = "";
+        private string _boltCode = "";
+        private string _color = "";
+        private int _rollCount;
+        private string _lengthStatus = "—";
         private string _unit = "متر";
-        private decimal _unitPrice = 12.5m;
+        private decimal _unitPrice;
+        private SalesWarehouseStockOptionDto? _selectedStock;
+        private bool _missingSalePrice;
+
+        public Guid FabricItemId { get; set; }
+        public Guid FabricColorId { get; set; }
+        public int AvailableRollCount { get; set; }
+        public decimal AvailableMeters { get; set; }
+
+        public bool MissingSalePrice
+        {
+            get => _missingSalePrice;
+            set => SetField(ref _missingSalePrice, value);
+        }
+
+        public SalesWarehouseStockOptionDto? SelectedStock
+        {
+            get => _selectedStock;
+            set
+            {
+                if (!SetField(ref _selectedStock, value) || value is null)
+                    return;
+                ApplyStockSelection(value);
+            }
+        }
 
         public string GoodsType
         {
@@ -92,18 +116,42 @@ namespace ERPSystem.Controls.Sales
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        private void ApplyStockSelection(SalesWarehouseStockOptionDto stock)
+        {
+            FabricItemId = stock.FabricItemId;
+            FabricColorId = stock.FabricColorId;
+            GoodsType = stock.FabricDisplayName;
+            BoltCode = stock.FabricCode;
+            Color = stock.ColorDisplayName;
+            AvailableRollCount = stock.AvailableRollCount;
+            AvailableMeters = stock.AvailableMeters;
+
+            if (stock.SalePricePerMeter is > 0)
+            {
+                UnitPrice = stock.SalePricePerMeter.Value;
+                MissingSalePrice = false;
+            }
+            else
+            {
+                UnitPrice = 0;
+                MissingSalePrice = true;
+            }
+        }
+
+        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value))
-                return;
+                return false;
             field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return true;
         }
     }
 
     public partial class NewSalesInvoiceControl : UserControl
     {
         private readonly ObservableCollection<SalesInvoiceLineRow> _lines = new();
+        public ObservableCollection<SalesWarehouseStockOptionDto> StockOptions { get; } = new();
         private Guid? _invoiceId;
         private SalesInvoiceStatus _domainStatus = SalesInvoiceStatus.Draft;
         private bool _cellEditFailed;
@@ -112,7 +160,10 @@ namespace ERPSystem.Controls.Sales
         public NewSalesInvoiceControl()
         {
             InitializeComponent();
+            DataContext = this;
             Loaded += OnLoaded;
+            CmbContainer.SelectionChanged += (_, _) => _ = ReloadStockOptionsAsync();
+            CmbWarehouse.SelectionChanged += (_, _) => _ = ReloadStockOptionsAsync();
         }
 
         public Guid? SelectedContainerId =>
@@ -126,6 +177,7 @@ namespace ERPSystem.Controls.Sales
             ItemsGrid.ItemsSource = _lines;
 
             await LoadLookupsAsync();
+            await ReloadStockOptionsAsync();
 
             var editId = SalesNavigationContext.EditInvoiceId;
             if (editId.HasValue)
@@ -221,6 +273,7 @@ namespace ERPSystem.Controls.Sales
                     {
                         CompanyId = DatabaseSeeder.DefaultCompanyId,
                         BranchId = DatabaseSeeder.DefaultBranchId,
+                        Status = ChinaContainerStatus.InWarehouse,
                         Page = 1,
                         PageSize = 100
                     });
@@ -238,19 +291,8 @@ namespace ERPSystem.Controls.Sales
                 }
                 catch
                 {
-                    // Fall back to sample data below.
+                    // Keep empty list when database query fails.
                 }
-            }
-
-            if (items.Count == 0)
-            {
-                items.AddRange(ChinaImportSampleData.Generate(20).Select(c => new ContainerPickItem
-                {
-                    Id = Guid.Empty,
-                    Display = string.IsNullOrWhiteSpace(c.SupplierName)
-                        ? c.ContainerNumber
-                        : $"{c.ContainerNumber} — {c.SupplierName}"
-                }));
             }
 
             CmbContainer.ItemsSource = items;
@@ -284,11 +326,14 @@ namespace ERPSystem.Controls.Sales
             {
                 _lines.Add(new SalesInvoiceLineRow
                 {
-                    GoodsType = "قماش قطن",
-                    BoltCode = "FAB-001",
-                    Color = "أبيض",
+                    FabricItemId = line.FabricItemId,
+                    FabricColorId = line.FabricColorId,
+                    GoodsType = line.FabricDisplayName,
+                    BoltCode = line.FabricCode,
+                    Color = line.ColorDisplayName,
                     RollCount = line.RollCount,
                     UnitPrice = line.UnitPrice,
+                    MissingSalePrice = line.UnitPrice <= 0,
                     LengthStatus = _domainStatus switch
                     {
                         SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval or SalesInvoiceStatus.Approved
@@ -305,6 +350,24 @@ namespace ERPSystem.Controls.Sales
                 RefreshSummary();
 
             UpdateStatusBadge();
+        }
+
+        private async Task ReloadStockOptionsAsync()
+        {
+            StockOptions.Clear();
+            if (!AppServices.IsInitialized)
+                return;
+
+            if (CmbContainer.SelectedItem is not ContainerPickItem container ||
+                CmbWarehouse.SelectedItem is not WarehousePickItem warehouse)
+                return;
+
+            var result = await SalesUiService.Instance.GetWarehouseStockAsync(container.Id, warehouse.Id);
+            if (!result.IsSuccess || result.Value is null)
+                return;
+
+            foreach (var option in result.Value)
+                StockOptions.Add(option);
         }
 
         private void SelectCustomer(Guid customerId)
@@ -358,6 +421,29 @@ namespace ERPSystem.Controls.Sales
             {
                 MockInteractionService.ShowWarning("أضف صنفاً واحداً على الأقل قبل الحفظ.");
                 return;
+            }
+
+            foreach (var row in _lines.Where(l => l.RollCount > 0))
+            {
+                if (row.FabricItemId == Guid.Empty)
+                {
+                    MockInteractionService.ShowWarning("اختر صنفاً من المخزون لكل سطر قبل الحفظ.");
+                    return;
+                }
+
+                if (row.RollCount > row.AvailableRollCount)
+                {
+                    MockInteractionService.ShowWarning(
+                        $"عدد الأثواب المطلوب ({row.RollCount}) يتجاوز المتاح ({row.AvailableRollCount}) لـ {row.GoodsType}.");
+                    return;
+                }
+
+                if (row.MissingSalePrice && row.UnitPrice <= 0)
+                {
+                    MockInteractionService.ShowWarning(
+                        $"أدخل سعر البيع لـ {row.GoodsType} — {row.Color}.");
+                    return;
+                }
             }
 
             _isSaving = true;
@@ -533,8 +619,8 @@ namespace ERPSystem.Controls.Sales
                 commands.Add(new SalesInvoiceLineCommand
                 {
                     LineNumber = lineNumber++,
-                    FabricItemId = SalesCatalogDefaults.FabricItemId,
-                    FabricColorId = SalesCatalogDefaults.FabricColorId,
+                    FabricItemId = row.FabricItemId,
+                    FabricColorId = row.FabricColorId,
                     RollCount = row.RollCount,
                     UnitPrice = row.UnitPrice
                 });
@@ -599,7 +685,12 @@ namespace ERPSystem.Controls.Sales
                 return;
             }
 
-            if (e.Column is DataGridTemplateColumn)
+            if (e.Column is DataGridTemplateColumn or DataGridComboBoxColumn)
+                e.Cancel = true;
+
+            if (e.Row.Item is SalesInvoiceLineRow row &&
+                e.Column?.Header?.ToString() == "سعر الوحدة" &&
+                !row.MissingSalePrice)
                 e.Cancel = true;
         }
 
@@ -701,6 +792,7 @@ namespace ERPSystem.Controls.Sales
                         return;
                     }
                     row.UnitPrice = price;
+                    row.MissingSalePrice = price <= 0;
                     break;
             }
 
@@ -710,7 +802,10 @@ namespace ERPSystem.Controls.Sales
         private void RefreshSummary()
         {
             SummaryPills.Children.Clear();
-            var groups = _lines.GroupBy(l => l.GoodsType).ToList();
+            var groups = _lines
+                .Where(l => !string.IsNullOrWhiteSpace(l.GoodsType))
+                .GroupBy(l => l.GoodsType)
+                .ToList();
 
             foreach (var g in groups)
             {
@@ -723,6 +818,9 @@ namespace ERPSystem.Controls.Sales
             SummaryPills.Children.Add(CreatePill(
                 $"إجمالي الأثواب: {total} ثوب",
                 Br("PrimaryVeryLightBrush"), Br("PrimaryBrush"), bold: true));
+
+            var showWarning = _lines.Any(l => l.MissingSalePrice && l.FabricItemId != Guid.Empty);
+            SalePriceWarningBanner.Visibility = showWarning ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private static Border CreatePill(string text, System.Windows.Media.Brush bg, System.Windows.Media.Brush fg, bool bold = false)

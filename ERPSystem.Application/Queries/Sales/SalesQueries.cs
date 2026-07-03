@@ -21,3 +21,9 @@ public sealed class GetWarehouseDetailingQueueQuery
 {
     public Guid WarehouseId { get; init; }
 }
+
+public sealed class GetSalesWarehouseStockQuery
+{
+    public Guid ContainerId { get; init; }
+    public Guid WarehouseId { get; init; }
+}

@@ -1,10 +1,13 @@
+using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Controls.Sales;
 using ERPSystem.Controls.Customers;
+using ERPSystem.Controls.China;
+using ERPSystem.Controls.Expenses;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Controls.Workspace;
 using ERPSystem.Core;
 using ERPSystem.Core.Accounting;
 using ERPSystem.Core.Actions;
-using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Domain;
 using ERPSystem.Core.HR;
@@ -48,6 +51,7 @@ namespace ERPSystem.Views.OperationsCenters
                     EntityType.Employee => BuildEmployee(request, tab ?? "Overview"),
                     EntityType.JournalEntry => BuildJournal(request, tab ?? "Overview"),
                     EntityType.Cashbox => BuildCashbox(request, tab ?? "Overview"),
+                    EntityType.Expense => BuildExpense(request, tab ?? "Overview"),
                     _ => null
                 };
             }
@@ -69,7 +73,8 @@ namespace ERPSystem.Views.OperationsCenters
             EntityActionId.CustomerDetails or EntityActionId.SupplierDetails or
             EntityActionId.ContainerDetails or EntityActionId.FabricCard or
             EntityActionId.InvoiceView or EntityActionId.PurchaseView or
-            EntityActionId.EmployeeProfile or EntityActionId.JournalView => true,
+            EntityActionId.EmployeeProfile or EntityActionId.JournalView or
+            EntityActionId.ExpenseDetails => true,
             _ => false
         };
 
@@ -172,84 +177,22 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildContainer(WorkspaceOpenRequest req, string initialTab)
         {
-            var c = req.EntityRow as ImportContainerModel ?? ChinaImportSampleData.Generate(1).First();
-            var cost = new ContainerLandingCost
+            if (req.EntityRow is ContainerListRow row)
             {
-                TotalLengthFromInvoice = c.TotalMeters,
-                ContainerWeightKg = c.TotalWeightKg,
-                CustomsAmountPaid = c.ImportCost * 0.4m,
-                Shipping = 15000, Clearance = 8500, OtherExpenses = 3200
-            };
-            var accent = new SolidColorBrush(Color.FromRgb(124, 58, 237));
-            return OperationsCenterShell.Build(new OperationsCenterSpec
+                var ctrl = new ChinaContainerOperationsCenterControl();
+                ctrl.Initialize(row.Id, initialTab);
+                return ctrl;
+            }
+
+            return new UserControl
             {
-                Title = c.ContainerNumber,
-                Subtitle = "مركز عمليات الحاوية — استيراد الصين",
-                Breadcrumb = "ERP PRO › طلبات الصين › مركز العمليات",
-                IconGlyph = "\uE7BF",
-                Accent = accent,
-                AccentLight = Br("PrimaryVeryLightBrush"),
-                StatusBadge = c.StatusDisplay,
-                HeaderFields =
-                [
-                    ("المورد", c.SupplierName),
-                    ("تاريخ الشحن", c.ShipmentDate.ToString("yyyy/MM/dd")),
-                    ("الوصول المتوقع", c.ExpectedArrival?.ToString("yyyy/MM/dd") ?? "—"),
-                    ("رقم الطلب", c.OrderNumber),
-                ],
-                Kpis =
-                [
-                    ("أنواع الأقمشة", c.CodeCount.ToString(), "\uECA5"),
-                    ("الألوان", c.ColorCount.ToString(), "\uE790"),
-                    ("الأثواب", c.TotalRolls.ToString("N0"), "\uE7C3"),
-                    ("الأطوال", $"{c.TotalMeters:N0} م", "\uE821"),
-                    ("الوزن", $"{c.TotalWeightKg:N0} كغ", "\uE8A5"),
-                    ("محجوز", "120", "\uE823"),
-                    ("مباع", "85", "\uE8F1"),
-                    ("متبقي", $"{c.TotalRolls - 205}", "\uE8FD"),
-                ],
-                Workflow =
-                [
-                    ("وصول", true, true), ("Excel", true, true), ("مراجعة", true, false),
-                    ("Landing Cost", initialTab == "LandingCost", false), ("اعتماد", false, false),
-                    ("مخزن", false, false), ("بيع", false, false),
-                ],
-                Tabs =
-                [
-                    Tab("Overview", "نظرة عامة", ContainerOverview(c, cost)),
-                    Tab("Items", "أصناف الحاوية", PlaceholderUi.MockGrid(
-                        ChinaImportSampleData.GetContainerLines(c.ContainerNumber).Select(x => (object)x).ToArray())),
-                    Tab("Customers", "العملاء", PlaceholderUi.MockGrid(new[] {
-                        new { عميل = "أحمد الحمصي", أثواب = 12, أمتار = 720 },
-                    })),
-                    Tab("Reservations", "الحجوزات", PlaceholderUi.MockGrid(new[] {
-                        new { عميل = "مؤسسة النسيج", أثواب = 8, الحالة = "محجوز" },
-                    })),
-                    Tab("Distribution", "توزيع المستودع", PlaceholderUi.MockGrid(new[] {
-                        new { مستودع = "الرئيسي", أثواب = 280, أمتار = 16800 },
-                    })),
-                    Tab("LandingCost", "Landing Cost", LandingCostTab(cost)),
-                    Tab("Documents", "المستندات", PlaceholderUi.DatabasePhase("مستندات الحاوية")),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("حاوية")),
-                ],
-                QuickActions =
-                [
-                    Q("مراجعة الاستيراد", true, "Items"),
-                    Q("استيراد Excel", false, null, actionKey: "nav:ChinaImport:NewImport"),
-                    Q("Landing Cost", false, "LandingCost", actionKey: "ws:LandingCost"),
-                    Q("مخزون", false, "Distribution"),
-                    Q("طباعة ملخص", false, null, actionKey: "preview:ملخص الحاوية"),
-                    Q("أرشفة", false, null, destructive: true, confirm: true, actionKey: "success:تم أرشفة الحاوية (تجريبي)"),
-                ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Items", "Customers", "Reservations", "Distribution", "LandingCost", "Documents", "Timeline"),
-                Context = new OperationsCenterContext
+                Content = new TextBlock
                 {
-                    EntityType = EntityType.ImportContainer,
-                    EntityRow = c,
-                    SourceModule = AppModule.ChinaImport,
-                    Title = c.ContainerNumber
+                    Text = "لم يتم تحديد حاوية.",
+                    Margin = new Thickness(24),
+                    FontSize = 14
                 }
-            });
+            };
         }
 
         private static UserControl BuildFabric(WorkspaceOpenRequest req, string initialTab)
@@ -367,84 +310,41 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildSalesInvoice(WorkspaceOpenRequest req, string initialTab)
         {
-            SalesInvoice? si = null;
-            FabricSalesInvoiceRow? fr = null;
-            if (req.EntityRow is SalesInvoice s) si = s;
-            else if (req.EntityRow is FabricSalesInvoiceRow f) { fr = f; si = f.Source; }
+            if (req.EntityRow is SalesInvoiceListRow listRow)
+            {
+                var ctrl = new SalesInvoiceOperationsCenterControl();
+                ctrl.Initialize(listRow.Id, initialTab);
+                return ctrl;
+            }
 
-            var invNum = si?.InvoiceNumber ?? fr?.InvoiceNumber ?? "INV-000";
-            var customer = si?.CustomerNameAr ?? fr?.CustomerName ?? "—";
-            var status = fr?.StatusDisplay ?? si?.StatusDisplayAr ?? "مسودة";
-            int rolls = fr?.RollCount ?? 5;
-
-            var detailing = new WarehouseDetailingWorkspaceControl();
-            detailing.LoadInvoice(invNum, customer, fr?.Container ?? "CN-2026-001", rolls);
+            if (req.EntityRow is Guid invoiceId && invoiceId != Guid.Empty)
+            {
+                var ctrl = new SalesInvoiceOperationsCenterControl();
+                ctrl.Initialize(invoiceId, initialTab);
+                return ctrl;
+            }
 
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
-                Title = invNum,
-                Subtitle = "مركز عمليات فاتورة البيع — سير عمل الأقمشة",
+                Title = "فاتورة بيع",
+                Subtitle = "مركز عمليات فاتورة البيع",
                 Breadcrumb = "ERP PRO › المبيعات › فاتورة",
                 IconGlyph = "\uE9F9",
                 Accent = Br("AccentSalesBrush"),
                 AccentLight = Br("PrimaryVeryLightBrush"),
-                StatusBadge = status,
-                StatusBadgeBackground = status.Contains("تفصيل") ? Br("WarningBgBrush") : Br("SuccessBgBrush"),
-                StatusBadgeForeground = status.Contains("تفصيل") ? Br("WarningBrush") : Br("SuccessBrush"),
-                HeaderFields =
-                [
-                    ("العميل", customer),
-                    ("المستودع", fr?.Warehouse ?? "المستودع الرئيسي"),
-                    ("الحاوية", fr?.Container ?? "CN-2026-001"),
-                    ("نوع الدفع", "آجل"),
-                ],
-                Kpis =
-                [
-                    ("الأثواب", rolls.ToString(), "\uE7C3"),
-                    ("أطوال مدخلة", "—", "\uE821"),
-                    ("متبقي", "—", "\uE8FD"),
-                    ("إجمالي", si != null ? $"{si.GrandTotal:N0} ر.س" : "—", "\uE8C1"),
-                    ("متبقي مالي", si != null ? $"{si.RemainingAmount:N0} ر.س" : "—", "\uE719"),
-                ],
-                Workflow =
-                [
-                    ("مسودة", true, true),
-                    ("بانتظار التفصيل", true, status.Contains("تفصيل")),
-                    ("اكتمل التفصيل", false, false),
-                    ("معتمدة", false, false),
-                    ("مطبوعة", false, false),
-                    ("مسلمة", false, false),
-                ],
+                StatusBadge = "—",
                 Tabs =
                 [
-                    Tab("Overview", "تفاصيل الفاتورة", PlaceholderUi.MockGrid(new[] {
-                        new { قماش = "كولومبيا", توب = "COL-01", أثواب = 5, الطول = "بانتظار التفصيل", الإجمالي = "—" },
-                    })),
-                    Tab("Detailing", "تفصيل المستودع", WrapDetailing(detailing)),
-                    Tab("Attachments", "مرفقات", PlaceholderUi.DatabasePhase("مرفقات الفاتورة")),
-                    Tab("Notes", "ملاحظات", NotesEditor("")),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("فاتورة")),
-                    Tab("Accounting", "المحاسبة", PlaceholderUi.TabContent("قيد الفاتورة")),
-                    Tab("Printing", "الطباعة", PrintPreview()),
+                    Tab("Overview", "نظرة عامة", new TextBlock
+                    {
+                        Text = "يرجى فتح مركز العمليات من قائمة الفواتير",
+                        Margin = new Thickness(24),
+                        FontSize = 14,
+                        TextWrapping = TextWrapping.Wrap,
+                        FontFamily = new FontFamily("Segoe UI, Tahoma, Arial")
+                    }),
                 ],
-                QuickActions =
-                [
-                    Q("تعديل", false, "Overview", actionKey: "nav:Sales:NewInvoice"),
-                    Q("إرسال للمستودع", false, "Detailing", actionKey: "ws:SendToWarehouse"),
-                    Q("اعتماد", false, null, actionKey: "ws:ApproveInvoice"),
-                    Q("طباعة", false, null, actionKey: "preview:فاتورة البيع"),
-                    Q("PDF", false, null, actionKey: "preview:فاتورة البيع"),
-                    Q("إلغاء", false, null, destructive: true, confirm: true, actionKey: "nav:Sales:Invoices"),
-                    Q("نسخ", false, null, actionKey: "ws:NewInvoice"),
-                ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Detailing", "Attachments", "Notes", "Timeline", "Accounting", "Printing"),
-                Context = new OperationsCenterContext
-                {
-                    EntityType = EntityType.SalesInvoice,
-                    EntityRow = fr ?? (object?)si ?? invNum,
-                    SourceModule = AppModule.Sales,
-                    Title = invNum
-                }
+                InitialTabIndex = 0
             });
         }
 
@@ -577,6 +477,28 @@ namespace ERPSystem.Views.OperationsCenters
             });
         }
 
+        private static UserControl BuildExpense(WorkspaceOpenRequest req, string initialTab)
+        {
+            if (req.EntityRow is ExpenseListDto row)
+            {
+                var ctrl = new ExpenseOperationsCenterControl();
+                ctrl.Initialize(row.Id, initialTab);
+                return ctrl;
+            }
+
+            if (req.EntityRow is ExpenseDetailsDto details)
+            {
+                var ctrl = new ExpenseOperationsCenterControl();
+                ctrl.Initialize(details.Id, initialTab);
+                return ctrl;
+            }
+
+            return new UserControl
+            {
+                Content = new TextBlock { Text = "لم يتم تحديد مصروف.", Margin = new Thickness(24) }
+            };
+        }
+
         private static UserControl BuildCashbox(WorkspaceOpenRequest req, string initialTab)
         {
             var cb = req.EntityRow as Cashbox ?? new Cashbox { Code = "CB-01", Name = "الصندوق الرئيسي", Balance = 125000 };
@@ -629,23 +551,21 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UIElement BuildDetailingPanel(WorkspaceOpenRequest req)
         {
-            var ctrl = new WarehouseDetailingWorkspaceControl();
-            string inv = "INV-000", cust = "—", cont = "CN-2026-001";
-            int rolls = 5;
-            if (req.EntityRow is SalesInvoice si)
+            if (req.EntityRow is SalesInvoiceListRow listRow)
             {
-                inv = si.InvoiceNumber; cust = si.CustomerNameAr;
-                rolls = Math.Max(3, (int)(si.GrandTotal / 5000));
+                var ctrl = new SalesInvoiceOperationsCenterControl();
+                ctrl.Initialize(listRow.Id, "Detailing");
+                return ctrl;
             }
-            else if (req.EntityRow is FabricSalesInvoiceRow fr)
+
+            return new TextBlock
             {
-                inv = fr.InvoiceNumber; cust = fr.CustomerName; cont = fr.Container; rolls = fr.RollCount;
-            }
-            ctrl.LoadInvoice(inv, cust, cont, rolls);
-            var stack = new StackPanel();
-            stack.Children.Add(ErpUxFactory.InfoBanner("أدخل الطول الفعلي لكل توب. لا يُعتمد إجمالي الفاتورة قبل إكمال التفصيل.", "warning"));
-            stack.Children.Add(ctrl);
-            return stack;
+                Text = "يرجى فتح مركز العمليات من قائمة الفواتير",
+                Margin = new Thickness(24),
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new FontFamily("Segoe UI, Tahoma, Arial")
+            };
         }
 
         // --- Tab content helpers ---
@@ -663,37 +583,9 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UIElement OverviewSupplier(SupplierModel s) =>
             PlaceholderUi.MockGrid(new[] {
-                new { المؤشر = "آخر حاوية", القيمة = "CN-2026-001" },
-                new { المؤشر = "متوسط lead time", القيمة = "22 يوم" },
+                new { المؤشر = "آخر حاوية", القيمة = "—" },
+                new { المؤشر = "متوسط lead time", القيمة = "—" },
             });
-
-        private static UIElement ContainerOverview(ImportContainerModel c, ContainerLandingCost cost)
-        {
-            var s = new StackPanel();
-            s.Children.Add(ErpUxFactory.KpiStrip(
-                ("تكلفة/م", $"{cost.CustomsCostPerMeter:N4} ر.س"),
-                ("غرام/م", $"{cost.AvgGramPerMeter:N2}"),
-                ("هالك", $"{c.WastePercent}%"),
-                ("ربح تقديري", "18%")));
-            s.Children.Add(PlaceholderUi.MockGrid(new[] {
-                new { البند = "إجمالي Landing Cost", القيمة = $"{cost.TotalImportExpenses:N0} ر.س" },
-            }));
-            return s;
-        }
-
-        private static UIElement LandingCostTab(ContainerLandingCost cost)
-        {
-            var s = new StackPanel();
-            s.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-                ("إجمالي الطول من فاتورة الصين", ErpUiFactory.FormField($"{cost.TotalLengthFromInvoice:N0} م")),
-                ("وزن الحاوية", ErpUiFactory.FormField($"{cost.ContainerWeightKg:N0} كغ")),
-                ("مبلغ الجمارك", ErpUiFactory.FormField($"{cost.CustomsAmountPaid:N0} ر.س")),
-                ("تكلفة الجمارك/م", ErpUiFactory.FormField($"{cost.CustomsCostPerMeter:N4} ر.س")),
-                ("متوسط وزن المتر", ErpUiFactory.FormField($"{cost.AvgGramPerMeter:N2} غرام")),
-                ("الشحن", ErpUiFactory.FormField($"{cost.Shipping:N0} ر.س")),
-                ("التخليص", ErpUiFactory.FormField($"{cost.Clearance:N0} ر.س")))));
-            return s;
-        }
 
         private static UIElement StatementTabContent(string name)
         {

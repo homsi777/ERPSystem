@@ -59,6 +59,8 @@ namespace ERPSystem.Core
             ["Nav_Customers"] = new() { ["ar"] = "العملاء", ["en"] = "Customers" },
             ["Nav_Suppliers"] = new() { ["ar"] = "الموردون", ["en"] = "Suppliers" },
             ["Nav_Accounting"] = new() { ["ar"] = "المالية", ["en"] = "Finance" },
+            ["Nav_Expenses"] = new() { ["ar"] = "المصاريف", ["en"] = "Expenses" },
+            ["Nav_CapitalPartners"] = new() { ["ar"] = "رأس المال والشركاء", ["en"] = "Capital & Partners" },
             ["Nav_Reports"] = new() { ["ar"] = "التقارير", ["en"] = "Reports" },
             ["Nav_HR"] = new() { ["ar"] = "الموارد البشرية", ["en"] = "HR" },
             ["Nav_Settings"] = new() { ["ar"] = "الإعدادات", ["en"] = "Settings" },

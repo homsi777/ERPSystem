@@ -16,7 +16,7 @@ public sealed class ErpDbContextFactory : IDesignTimeDbContextFactory<ErpDbConte
             .Build();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=erp_pro;Username=postgres;Password=postgres";
+            ?? "Host=localhost;Port=5432;Database=erp_pro;Username=postgres;Password=12345678";
 
         var optionsBuilder = new DbContextOptionsBuilder<ErpDbContext>();
         optionsBuilder.UseNpgsql(connectionString, npgsql =>

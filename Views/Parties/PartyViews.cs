@@ -5,6 +5,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Core.Suppliers;
 using ERPSystem.Helpers;
 using ERPSystem.Services.Customers;
+using ERPSystem.Views.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -20,6 +21,7 @@ namespace ERPSystem.Views.Parties
             "Opening" => OpeningBalances("عملاء"),
             "Statement" => CreateCustomerStatementView(),
             "Invoices" => InvoicesPage("عميل"),
+            "Reports" => ModuleReportsViews.CreateHub(AppModule.Customers),
             _ => Wrap(new CustomerListPageControl())
         };
 
@@ -28,6 +30,7 @@ namespace ERPSystem.Views.Parties
             "Form" => PartyForm("مورد", false),
             "Statement" => StatementPage("مورد"),
             "Invoices" => InvoicesPage("مورد"),
+            "Reports" => ModuleReportsViews.CreateHub(AppModule.Suppliers),
             _ => SupplierList()
         };
 

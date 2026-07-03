@@ -1,0 +1,58 @@
+<Window x:Class="ERPSystem.Dialogs.ErpModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ERP PRO"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        FlowDirection="RightToLeft"
+        Background="Transparent"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI, Tahoma, Arial">
+
+    <Border Background="{StaticResource AppBgBrush}" CornerRadius="12" Padding="1"
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+            Effect="{StaticResource CardShadow}">
+        <Border Background="White" CornerRadius="11" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="{StaticResource InfoBgBrush}"
+                        CornerRadius="11,11,0,0" Padding="20,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" x:Name="IconBadge" Width="44" Height="44"
+                                CornerRadius="10" Background="White" Margin="0,0,14,0">
+                            <TextBlock x:Name="TxtIcon" Text="&#xE8F1;"
+                                       FontFamily="Segoe MDL2 Assets" FontSize="20"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtTitle" FontSize="17" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock x:Name="TxtSubtitle" FontSize="12" Margin="0,4,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" x:Name="BtnClose" Content="&#xE711;"
+                                FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                Width="32" Height="32" VerticalAlignment="Top"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Click="BtnClose_Click" ToolTip="إغلاق"/>
+                    </Grid>
+                </Border>
+
+                <ContentPresenter Grid.Row="1" x:Name="BodyHost" Margin="0"/>
+            </Grid>
+        </Border>
+    </Border>
+</Window>

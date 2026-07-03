@@ -6,8 +6,10 @@ using ERPSystem.Infrastructure.Notifications;
 using ERPSystem.Infrastructure.Numbering;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Repositories;
+using ERPSystem.Infrastructure.Services;
 using ERPSystem.Infrastructure.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,15 +34,24 @@ public static class InfrastructureServiceCollectionExtensions
                 npgsql.MigrationsAssembly(typeof(ErpDbContext).Assembly.FullName);
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", Schemas.Settings);
             });
-            options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
+            options.ConfigureWarnings(w =>
+                w.Ignore(RelationalEventId.PendingModelChangesWarning));
+            options.AddInterceptors(
+                sp.GetRequiredService<UtcDateTimeSaveChangesInterceptor>(),
+                sp.GetRequiredService<AuditSaveChangesInterceptor>());
         });
 
+        services.AddSingleton<UtcDateTimeSaveChangesInterceptor>();
         services.AddSingleton<AuditSaveChangesInterceptor>();
 
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IExpenseRepository, ExpenseRepository>();
+        services.AddScoped<ICapitalPartnerRepository, CapitalPartnerRepository>();
+        services.AddScoped<ICostCenterRepository, CostCenterRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IChinaContainerRepository, ChinaContainerRepository>();
+        services.AddScoped<IFabricTypeAliasRepository, FabricTypeAliasRepository>();
         services.AddScoped<IFabricCatalogRepository, FabricCatalogRepository>();
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
@@ -49,8 +60,17 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPaymentVoucherRepository, PaymentVoucherRepository>();
         services.AddScoped<ICashboxRepository, CashboxRepository>();
         services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<IJournalBookRepository, JournalBookRepository>();
+        services.AddScoped<IAccountingReportRepository, AccountingReportRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IInventoryRepository, InventoryRepository>();
+        services.AddScoped<IModuleReportRepository, ModuleReportRepository>();
+
+        services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
+        services.AddScoped<IIntegratedAccountingService, IntegratedAccountingService>();
+        services.AddScoped<IContainerWarehouseImportService, ContainerWarehouseImportService>();
 
         services.AddScoped<INumberingService, PostgreSqlNumberingService>();
         services.AddSingleton<INotificationService, InMemoryNotificationService>();

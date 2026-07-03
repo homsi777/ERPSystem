@@ -63,7 +63,8 @@ public sealed class ChinaImportWarehouseTransferControl : UserControl
             HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 16, 8, 0)
         };
-        backButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "LandingCost");
+        backButton.Click += (_, _) =>
+            ChinaImportNavigation.Navigate("LandingCost", _loaded?.Container.Status);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal };
         actions.Children.Add(backButton);
@@ -104,7 +105,7 @@ public sealed class ChinaImportWarehouseTransferControl : UserControl
         if (c.Status == ChinaContainerStatus.InWarehouse)
         {
             _detailsHost.Children.Add(ErpUxFactory.InfoBanner("تم ترحيل الحاوية للمخزن مسبقاً.", "success"));
-            MockInteractionService.Navigate(AppModule.ChinaImport, "ReadyForSale");
+            ChinaImportNavigation.Navigate("ReadyForSale", c.Status);
             return;
         }
 
@@ -164,7 +165,7 @@ public sealed class ChinaImportWarehouseTransferControl : UserControl
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
 
-            MockInteractionService.Navigate(AppModule.ChinaImport, "ReadyForSale");
+            ChinaImportNavigation.Navigate("ReadyForSale", ChinaContainerStatus.InWarehouse);
         }
         catch (Exception ex)
         {

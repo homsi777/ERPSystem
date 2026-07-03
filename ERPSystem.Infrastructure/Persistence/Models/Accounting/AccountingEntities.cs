@@ -15,6 +15,7 @@ public class JournalEntryEntity : CancellablePersistenceEntity
 {
     public Guid CompanyId { get; set; }
     public Guid BranchId { get; set; }
+    public Guid? JournalBookId { get; set; }
     public string EntryNumber { get; set; } = "";
     public DateTime EntryDate { get; set; }
     public string Description { get; set; } = "";
@@ -34,4 +35,13 @@ public class JournalEntryLineEntity : PersistenceEntity
     public decimal Credit { get; set; }
     public string Narrative { get; set; } = "";
     public Guid? PartyId { get; set; }
+}
+
+public class JournalBookEntity : PersistenceEntity
+{
+    public Guid CompanyId { get; set; }
+    public string Code { get; set; } = "";
+    public string NameAr { get; set; } = "";
+    public string NameEn { get; set; } = "";
+    public int BookType { get; set; }
 }

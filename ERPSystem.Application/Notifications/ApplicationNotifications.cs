@@ -56,6 +56,14 @@ public sealed class WarehouseStockLowNotification
     public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
 }
 
+public sealed class InventoryChangedNotification
+{
+    public Guid? ContainerId { get; init; }
+    public Guid? WarehouseId { get; init; }
+    public Guid? FabricItemId { get; init; }
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
 public sealed class CustomerCreatedNotification
 {
     public Guid CustomerId { get; init; }
@@ -75,5 +83,71 @@ public sealed class CustomerDeactivatedNotification
 {
     public Guid CustomerId { get; init; }
     public string CustomerName { get; init; } = "";
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class ExpenseAwaitingApprovalNotification
+{
+    public Guid ExpenseId { get; init; }
+    public string ExpenseCode { get; init; } = "";
+    public string ExpenseName { get; init; } = "";
+    public decimal AmountBase { get; init; }
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class ExpensePaymentDueSoonNotification
+{
+    public Guid ExpenseId { get; init; }
+    public string ExpenseCode { get; init; } = "";
+    public DateTime DueDate { get; init; }
+    public decimal AmountBase { get; init; }
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class ExpensePaymentOverdueNotification
+{
+    public Guid ExpenseId { get; init; }
+    public string ExpenseCode { get; init; } = "";
+    public DateTime DueDate { get; init; }
+    public decimal AmountBase { get; init; }
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class ExpenseCancelledNotification
+{
+    public Guid ExpenseId { get; init; }
+    public string ExpenseCode { get; init; } = "";
+    public string? Reason { get; init; }
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class ExpenseArchivedNotification
+{
+    public Guid ExpenseId { get; init; }
+    public string ExpenseCode { get; init; } = "";
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class RecurringExpenseDueNotification
+{
+    public Guid ExpenseId { get; init; }
+    public string ExpenseCode { get; init; } = "";
+    public DateTime DueDate { get; init; }
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class CapitalPartnerCreatedNotification
+{
+    public Guid PartnerId { get; init; }
+    public string PartnerCode { get; init; } = "";
+    public string PartnerName { get; init; } = "";
+    public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
+}
+
+public sealed class CapitalDistributionAwaitingApprovalNotification
+{
+    public Guid DistributionId { get; init; }
+    public string DistributionCode { get; init; } = "";
+    public decimal NetAmount { get; init; }
     public DateTime OccurredAt { get; init; } = DateTime.UtcNow;
 }

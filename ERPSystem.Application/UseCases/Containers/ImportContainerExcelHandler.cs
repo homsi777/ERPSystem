@@ -84,8 +84,11 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 var colorResolved = false;
                 var issues = new List<PackingListResolutionIssueDto>();
 
+                var fabricCode = PackingListCatalogNormalizer.NormalizeFabricCode(group.FabricCode);
+                var colorKey = PackingListCatalogNormalizer.NormalizeColor(group.Color);
+
                 var fabricItem = await fabricCatalogRepository.GetItemByCodeAsync(
-                    query.CompanyId, group.FabricCode, cancellationToken);
+                    query.CompanyId, fabricCode, cancellationToken);
                 if (fabricItem is null)
                 {
                     resolutionError = "كود القماش غير موجود";
@@ -93,8 +96,8 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                     issues.Add(new PackingListResolutionIssueDto
                     {
                         GroupIndex = group.GroupIndex,
-                        FabricCode = group.FabricCode,
-                        Color = group.Color,
+                        FabricCode = fabricCode,
+                        Color = colorKey,
                         Reason = resolutionError
                     });
                 }
@@ -103,7 +106,7 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                     fabricResolved = true;
                     fabricItemId = fabricItem.Id;
                     var fabricColor = await fabricCatalogRepository.GetColorForItemAsync(
-                        fabricItem.Id, group.Color, cancellationToken);
+                        fabricItem.Id, colorKey, cancellationToken);
                     if (fabricColor is null)
                     {
                         resolutionError = "اللون غير موجود";
@@ -111,8 +114,8 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                         issues.Add(new PackingListResolutionIssueDto
                         {
                             GroupIndex = group.GroupIndex,
-                            FabricCode = group.FabricCode,
-                            Color = group.Color,
+                            FabricCode = fabricCode,
+                            Color = colorKey,
                             Reason = resolutionError
                         });
                     }
@@ -128,8 +131,8 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                     issues.Add(new PackingListResolutionIssueDto
                     {
                         GroupIndex = group.GroupIndex,
-                        FabricCode = group.FabricCode,
-                        Color = group.Color,
+                        FabricCode = fabricCode,
+                        Color = colorKey,
                         RollNumber = roll.RollNumber,
                         Reason = roll.InvalidReason ?? "صف غير صالح"
                     });
@@ -141,8 +144,8 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 groups.Add(new PackingListGroupDto
                 {
                     GroupIndex = group.GroupIndex,
-                    FabricCode = group.FabricCode,
-                    Color = group.Color,
+                    FabricCode = fabricCode,
+                    Color = colorKey,
                     DeclaredTotalMeters = group.DeclaredTotalMeters,
                     DeclaredTotalRolls = group.DeclaredTotalRolls,
                     ParsedTotalMeters = parsedMeters,

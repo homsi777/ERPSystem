@@ -5,6 +5,11 @@ using ERPSystem.Services;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Sales;
 using ERPSystem.Services.China;
+using ERPSystem.Services.Expenses;
+using ERPSystem.Services.Capital;
+using ERPSystem.Services.Accounting;
+using ERPSystem.Services.Finance;
+using ERPSystem.Services.Reports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -47,6 +52,11 @@ public partial class App : System.Windows.Application
             services.AddSingleton<CustomerUiService>();
             services.AddSingleton<SalesUiService>();
             services.AddSingleton<ContainerUiService>();
+            services.AddSingleton<ExpenseUiService>();
+            services.AddSingleton<CapitalPartnerUiService>();
+            services.AddSingleton<AccountingUiService>();
+            services.AddSingleton<FinanceUiService>();
+            services.AddSingleton<ModuleReportUiService>();
 
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);

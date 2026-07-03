@@ -19,6 +19,7 @@ public sealed class AccountingAggregate : AggregateRoot
     public DateTime? PostedAt { get; private set; }
     public Guid? PostedByUserId { get; private set; }
     public Guid? ReversalOfEntryId { get; private set; }
+    public Guid? JournalBookId { get; private set; }
     public DateTime? CancelledAt { get; private set; }
 
     private readonly List<JournalEntryLine> _lines = [];
@@ -36,7 +37,8 @@ public sealed class AccountingAggregate : AggregateRoot
         string description,
         Guid createdByUserId,
         DocumentType? sourceType = null,
-        Guid? sourceId = null) => new()
+        Guid? sourceId = null,
+        Guid? journalBookId = null) => new()
     {
         EntryNumber = entryNumber,
         EntryDate = entryDate,
@@ -44,6 +46,7 @@ public sealed class AccountingAggregate : AggregateRoot
         CreatedByUserId = createdByUserId,
         SourceType = sourceType,
         SourceId = sourceId,
+        JournalBookId = journalBookId,
         Status = JournalEntryStatus.Draft
     };
 
@@ -76,7 +79,8 @@ public sealed class AccountingAggregate : AggregateRoot
         if (Status != JournalEntryStatus.Posted)
             throw new AccountingException("Only posted entries can be reversed.");
 
-        var reversal = CreateDraft(reversalEntryNumber, DateTime.UtcNow, $"Reversal of {EntryNumber}", userId);
+        var reversal = CreateDraft(reversalEntryNumber, DateTime.UtcNow, $"Reversal of {EntryNumber}", userId,
+            SourceType, SourceId, JournalBookId);
         reversal.ReversalOfEntryId = Id;
         foreach (var line in _lines)
             reversal.AddLine(JournalEntryLine.Create(

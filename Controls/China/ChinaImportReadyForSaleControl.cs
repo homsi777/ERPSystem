@@ -41,7 +41,7 @@ public sealed class ChinaImportReadyForSaleControl : UserControl
             Style = (Style)WpfApplication.Current.Resources["SecondaryButtonStyle"]!,
             Margin = new Thickness(0, 0, 8, 0)
         };
-        listButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "Containers");
+        listButton.Click += (_, _) => ChinaImportNavigation.Navigate("Containers");
 
         var newImportButton = new Button
         {
@@ -51,7 +51,7 @@ public sealed class ChinaImportReadyForSaleControl : UserControl
         newImportButton.Click += (_, _) =>
         {
             ChinaImportNavigationContext.Clear();
-            MockInteractionService.Navigate(AppModule.ChinaImport, "NewImport");
+            ChinaImportNavigation.Navigate("NewImport");
         };
 
         actions.Children.Add(listButton);

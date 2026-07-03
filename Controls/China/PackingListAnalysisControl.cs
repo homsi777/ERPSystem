@@ -6,6 +6,7 @@ using ERPSystem.Services;
 using ERPSystem.Services.China;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using WpfApplication = System.Windows.Application;
 
@@ -61,15 +62,54 @@ public sealed class PackingListIssueRow
             }));
 }
 
+public sealed class PackingListRollAnalysisRow
+{
+    public int GroupIndex { get; init; }
+    public string FabricCode { get; init; } = "";
+    public string Color { get; init; } = "";
+    public int RollNumber { get; init; }
+    public decimal Meters { get; init; }
+    public string YardOrLot { get; init; } = "";
+    public string StatusDisplay { get; init; } = "";
+
+    public static IEnumerable<PackingListRollAnalysisRow> FromParseResult(ContainerExcelParseResultDto result) =>
+        result.Groups.SelectMany(g => g.Rolls.Select(r => new PackingListRollAnalysisRow
+        {
+            GroupIndex = g.GroupIndex,
+            FabricCode = g.FabricCode,
+            Color = g.Color,
+            RollNumber = r.RollNumber,
+            Meters = r.QuantityMeters,
+            YardOrLot = string.IsNullOrWhiteSpace(r.LotCode) ? "—" : r.LotCode,
+            StatusDisplay = r.IsValid ? "صحيح" : (r.InvalidReason ?? "خطأ")
+        }));
+}
+
 public sealed class PackingListAnalysisControl : UserControl
 {
+    private readonly StackPanel _stack = new();
+    private Button? _continueButton;
+
     public PackingListAnalysisControl()
     {
-        var root = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(16) };
-        var stack = new StackPanel();
+        var root = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Padding = new Thickness(16),
+            Content = _stack
+        };
+        Content = root;
+        Background = (SolidColorBrush)WpfApplication.Current.Resources["AppBgBrush"]!;
+        Loaded += async (_, _) => await RefreshAsync();
+    }
 
-        stack.Children.Add(ErpUiFactory.SectionTitle("الخطوة 2: تحليل الملف"));
-        stack.Children.Add(ErpUxFactory.WorkflowStepper(
+    private async Task RefreshAsync()
+    {
+        _stack.Children.Clear();
+        _continueButton = null;
+
+        _stack.Children.Add(ErpUiFactory.SectionTitle("الخطوة 2: تحليل الملف"));
+        _stack.Children.Add(ErpUxFactory.WorkflowStepper(
             ("وصول الحاوية", true, true),
             ("تحليل الملف", true, true),
             ("إدخال التكلفة", false, false),
@@ -81,7 +121,8 @@ public sealed class PackingListAnalysisControl : UserControl
         var parseResult = ChinaImportNavigationContext.GetParseResult();
         if (parseResult is null)
         {
-            stack.Children.Add(ErpUxFactory.InfoBanner("لم يتم تحميل ملف للتحليل. ارجع إلى شاشة الاستيراد وارفع ملف Packing List.", "warning"));
+            _stack.Children.Add(ErpUxFactory.InfoBanner(
+                "لم يتم تحميل ملف للتحليل. ارجع إلى شاشة الاستيراد وارفع ملف DPL.", "warning"));
             var backOnly = new Button
             {
                 Content = "العودة إلى الاستيراد",
@@ -89,15 +130,17 @@ public sealed class PackingListAnalysisControl : UserControl
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Margin = new Thickness(0, 12, 0, 0)
             };
-            backOnly.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "NewImport");
-            stack.Children.Add(backOnly);
-            root.Content = stack;
-            Content = root;
-            Background = (SolidColorBrush)WpfApplication.Current.Resources["AppBgBrush"]!;
+            backOnly.Click += (_, _) => ChinaImportNavigation.Navigate("NewImport");
+            _stack.Children.Add(backOnly);
             return;
         }
 
-        stack.Children.Add(new TextBlock
+        if (AppServices.IsInitialized)
+            await ContainerUiService.Instance.RefreshMultiFileSessionAsync();
+
+        var session = ChinaImportNavigationContext.GetMultiFileSession();
+
+        _stack.Children.Add(new TextBlock
         {
             Text = $"الملف: {parseResult.FileName}",
             Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!,
@@ -106,7 +149,7 @@ public sealed class PackingListAnalysisControl : UserControl
 
         if (!string.IsNullOrWhiteSpace(parseResult.SupplierNameFromFile))
         {
-            stack.Children.Add(new TextBlock
+            _stack.Children.Add(new TextBlock
             {
                 Text = $"المورد (من الملف): {parseResult.SupplierNameFromFile}",
                 Foreground = (Brush)WpfApplication.Current.Resources["TextMutedBrush"]!,
@@ -114,25 +157,46 @@ public sealed class PackingListAnalysisControl : UserControl
             });
         }
 
-        stack.Children.Add(ErpUiFactory.SectionTitle("الإجمالي الكلي للملف"));
-        stack.Children.Add(ErpUiFactory.Card(BuildGrandTotalPanel(parseResult.GrandTotal)));
+        _stack.Children.Add(ErpUiFactory.SectionTitle("الإجمالي الكلي للملف"));
+        _stack.Children.Add(ErpUiFactory.Card(BuildGrandTotalPanel(parseResult.GrandTotal)));
 
-        stack.Children.Add(ErpUiFactory.SectionTitle("تحليل المجموعات (كود + لون)"));
-        stack.Children.Add(ErpUiFactory.Card(BuildGroupsGrid(parseResult)));
+        if (session is not null)
+        {
+            _stack.Children.Add(ErpUiFactory.SectionTitle("مطابقة الملفات الثلاثة (فاتورة + PL + DPL)"));
+            _stack.Children.Add(ErpUxFactory.InfoBanner(session.CostingModeDisplay,
+                session.UsesWeightedAllocation ? "success" : "warning"));
+
+            if (session.Invoice?.TotalValidationWarning is not null)
+                _stack.Children.Add(ErpUxFactory.InfoBanner(session.Invoice.TotalValidationWarning, "warning"));
+
+            if (session.UnmatchedDplGroups.Count > 0)
+            {
+                _stack.Children.Add(ErpUxFactory.InfoBanner(
+                    $"يوجد {session.UnmatchedDplGroups.Count} مجموعة DPL غير مربوطة ببنود الفاتورة/PL. اختر الربط الصحيح لكل مجموعة — سيتم حفظه لهذا المورد للشحنات القادمة.",
+                    "warning"));
+                _stack.Children.Add(ErpUiFactory.Card(BuildDplLinkPanel(session)));
+            }
+
+            if (session.TypeLines.Count > 0)
+                _stack.Children.Add(ErpUiFactory.Card(BuildTypeLinesGrid(session.TypeLines)));
+        }
+
+        _stack.Children.Add(ErpUiFactory.SectionTitle("تحليل المجموعات (كود + لون)"));
+        _stack.Children.Add(ErpUiFactory.Card(BuildGroupsGrid(parseResult)));
+
+        var rollRows = PackingListRollAnalysisRow.FromParseResult(parseResult).ToList();
+        _stack.Children.Add(ErpUiFactory.SectionTitle($"تفاصيل الأثواب المحلّلة ({rollRows.Count:N0})"));
+        _stack.Children.Add(ErpUiFactory.Card(BuildRollsGrid(rollRows)));
 
         var issues = PackingListIssueRow.FromParseResult(parseResult).ToList();
-        stack.Children.Add(ErpUiFactory.SectionTitle("مشاكل التحليل وربط الأكواد"));
+        _stack.Children.Add(ErpUiFactory.SectionTitle("مشاكل التحليل وربط الأكواد"));
         if (issues.Count == 0)
-        {
-            stack.Children.Add(ErpUxFactory.InfoBanner("لا توجد مشاكل في ربط الأكواد أو تحليل الصفوف.", "success"));
-        }
+            _stack.Children.Add(ErpUxFactory.InfoBanner("لا توجد مشاكل في ربط الأكواد أو تحليل الصفوف.", "success"));
         else
-        {
-            stack.Children.Add(ErpUiFactory.Card(BuildIssuesGrid(issues)));
-        }
+            _stack.Children.Add(ErpUiFactory.Card(BuildIssuesGrid(issues)));
 
-        stack.Children.Add(ErpUxFactory.InfoBanner(
-            "هذه الشاشة للمراجعة فقط — الحفظ في قاعدة البيانات سيتم في الخطوة التالية (إدخال التكلفة ثم التأكيد).",
+        _stack.Children.Add(ErpUxFactory.InfoBanner(
+            "بعد إكمال ربط DPL (إن وُجد)، تابع إلى إدخال التكلفة.",
             "info"));
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
@@ -142,36 +206,125 @@ public sealed class PackingListAnalysisControl : UserControl
             Style = (Style)WpfApplication.Current.Resources["SecondaryButtonStyle"]!,
             Margin = new Thickness(0, 0, 8, 0)
         };
-        backButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "NewImport");
+        backButton.Click += (_, _) => ChinaImportNavigation.Navigate("NewImport");
         actions.Children.Add(backButton);
 
         var grand = parseResult.GrandTotal;
-        var canContinue = grand.RollsMatch && grand.MetersMatch && !parseResult.HasUnresolvedGroups;
-        var continueButton = new Button
+        var needsDplLink = session?.RequiresDplLinking == true;
+        var canContinue = grand.RollsMatch && grand.MetersMatch && !parseResult.HasUnresolvedGroups && !needsDplLink;
+
+        _continueButton = new Button
         {
             Content = "التالي — إدخال التكلفة",
             Style = (Style)WpfApplication.Current.Resources["PrimaryButtonStyle"]!,
             IsEnabled = canContinue
         };
-        if (!canContinue && grand.DeclaredTotalRolls.HasValue && !grand.RollsMatch)
-        {
-            continueButton.ToolTip =
-                $"تحذير: تم تحليل {grand.ParsedTotalRolls} توب فقط من أصل {grand.DeclaredTotalRolls.Value} المعلن في الملف. لا يمكن المتابعة.";
-        }
-        else if (!canContinue && parseResult.HasUnresolvedGroups)
-        {
-            continueButton.ToolTip = "يوجد أكواد غير مربوطة. صحّح الملف أو سجّل الأكواد في الكتالوج قبل المتابعة.";
-        }
-        else
-        {
-            continueButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "CostEntry");
-        }
-        actions.Children.Add(continueButton);
-        stack.Children.Add(actions);
 
-        root.Content = stack;
-        Content = root;
-        Background = (SolidColorBrush)WpfApplication.Current.Resources["AppBgBrush"]!;
+        if (needsDplLink)
+            _continueButton.ToolTip = "أكمل ربط جميع مجموعات DPL ببنود الفاتورة قبل المتابعة.";
+        else if (!canContinue && grand.DeclaredTotalRolls.HasValue && !grand.RollsMatch)
+            _continueButton.ToolTip =
+                $"تحذير: تم تحليل {grand.ParsedTotalRolls} توب فقط من أصل {grand.DeclaredTotalRolls.Value} المعلن في الملف.";
+        else if (!canContinue && parseResult.HasUnresolvedGroups)
+            _continueButton.ToolTip = "يوجد أكواد غير مربوطة في الكتالوج.";
+        else
+            _continueButton.Click += (_, _) => ChinaImportNavigation.Navigate("CostEntry");
+
+        actions.Children.Add(_continueButton);
+        _stack.Children.Add(actions);
+    }
+
+    private UIElement BuildDplLinkPanel(ChinaImportMultiFileSessionDto session)
+    {
+        var panel = new StackPanel { Margin = new Thickness(4) };
+
+        foreach (var unmatched in session.UnmatchedDplGroups)
+        {
+            var row = new Grid { Margin = new Thickness(0, 6, 0, 6) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var label = new TextBlock
+            {
+                Text = unmatched.DisplayLabel,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.Wrap
+            };
+            if (unmatched.HasSuggestion)
+            {
+                label.ToolTip = $"اقتراح تلقائي: {unmatched.SuggestedInvoiceDescription} (درجة {unmatched.SuggestionScore})";
+            }
+
+            Grid.SetColumn(label, 0);
+            row.Children.Add(label);
+
+            var combo = new ComboBox
+            {
+                MinWidth = 280,
+                DisplayMemberPath = nameof(ChinaImportInvoiceLinkOptionDto.Display),
+                SelectedValuePath = nameof(ChinaImportInvoiceLinkOptionDto.MatchKey),
+                ItemsSource = session.InvoiceLinkOptions
+            };
+
+            if (!string.IsNullOrWhiteSpace(unmatched.SuggestedInvoiceMatchKey))
+                combo.SelectedValue = unmatched.SuggestedInvoiceMatchKey;
+            else if (session.InvoiceLinkOptions.Count > 0)
+                combo.SelectedIndex = 0;
+
+            Grid.SetColumn(combo, 1);
+            row.Children.Add(combo);
+
+            var confirm = new Button
+            {
+                Content = "تأكيد الربط",
+                Style = (Style)WpfApplication.Current.Resources["SecondaryButtonStyle"]!,
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var captured = unmatched;
+            confirm.Click += async (_, _) =>
+            {
+                if (combo.SelectedItem is not ChinaImportInvoiceLinkOptionDto selected)
+                {
+                    MessageBox.Show("يرجى اختيار بند من الفاتورة/PL.", "ربط DPL",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (!AppServices.IsInitialized)
+                    return;
+
+                confirm.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+                try
+                {
+                    var result = await ContainerUiService.Instance.ConfirmDplLinkAsync(
+                        captured.DplMatchKey,
+                        selected.MatchKey,
+                        selected.Description,
+                        captured.FabricItemId ?? Guid.Empty,
+                        captured.FabricColorId ?? Guid.Empty);
+
+                    if (!ApplicationResultPresenter.Present(result))
+                        return;
+
+                    await RefreshAsync();
+                }
+                finally
+                {
+                    Mouse.OverrideCursor = null;
+                    confirm.IsEnabled = true;
+                }
+            };
+
+            Grid.SetColumn(confirm, 2);
+            row.Children.Add(confirm);
+            panel.Children.Add(row);
+        }
+
+        return panel;
     }
 
     private static UIElement BuildGrandTotalPanel(PackingListGrandTotalDto grand)
@@ -235,6 +388,40 @@ public sealed class PackingListAnalysisControl : UserControl
         return g;
     }
 
+    private static DataGrid BuildRollsGrid(IReadOnlyList<PackingListRollAnalysisRow> rolls)
+    {
+        if (rolls.Count == 0)
+        {
+            return new DataGrid
+            {
+                IsReadOnly = true,
+                Height = 48,
+                ItemsSource = Array.Empty<object>()
+            };
+        }
+
+        var g = ErpUiFactory.BuildGrid(rolls, false);
+        g.AutoGenerateColumns = false;
+        g.IsReadOnly = true;
+        g.MaxHeight = 420;
+        g.CanUserSortColumns = true;
+        foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
+        {
+            ("المجموعة", nameof(PackingListRollAnalysisRow.GroupIndex), 70, null),
+            ("كود القماش", nameof(PackingListRollAnalysisRow.FabricCode), 100, null),
+            ("اللون", nameof(PackingListRollAnalysisRow.Color), 90, null),
+            ("رقم التوب", nameof(PackingListRollAnalysisRow.RollNumber), 80, null),
+            ("المتر (M)", nameof(PackingListRollAnalysisRow.Meters), 90, "N2"),
+            ("يارد / لوت (Y)", nameof(PackingListRollAnalysisRow.YardOrLot), 100, null),
+            ("الحالة", nameof(PackingListRollAnalysisRow.StatusDisplay), 120, null)
+        })
+        {
+            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
+        }
+
+        return g;
+    }
+
     private static DataGrid BuildIssuesGrid(IReadOnlyList<PackingListIssueRow> issues)
     {
         var g = ErpUiFactory.BuildGrid(issues, false);
@@ -250,6 +437,30 @@ public sealed class PackingListAnalysisControl : UserControl
         })
         {
             ErpUiFactory.AddGridColumn(g, h, p, w, null);
+        }
+        return g;
+    }
+
+    private static DataGrid BuildTypeLinesGrid(IReadOnlyList<ChinaImportTypeLineDto> lines)
+    {
+        var g = ErpUiFactory.BuildGrid(lines, false);
+        g.AutoGenerateColumns = false;
+        g.IsReadOnly = true;
+        g.MaxHeight = 360;
+        foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
+        {
+            ("النوع / اللون", nameof(ChinaImportTypeLineDto.TypeDisplayName), 180, null),
+            ("فاتورة", nameof(ChinaImportTypeLineDto.HasInvoice), 55, null),
+            ("PL", nameof(ChinaImportTypeLineDto.HasPackingSummary), 45, null),
+            ("DPL", nameof(ChinaImportTypeLineDto.HasDpl), 45, null),
+            ("الحالة", nameof(ChinaImportTypeLineDto.MatchStatusDisplay), 220, null),
+            ("الأمتار", nameof(ChinaImportTypeLineDto.LengthMeters), 90, "N0"),
+            ("الوزن (كغ)", nameof(ChinaImportTypeLineDto.NetWeightKg), 90, "N0"),
+            ("سعر/م ($)", nameof(ChinaImportTypeLineDto.ChinaUnitPriceUsd), 90, "N4"),
+            ("الأثواب", nameof(ChinaImportTypeLineDto.RollCount), 70, null)
+        })
+        {
+            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
         }
         return g;
     }

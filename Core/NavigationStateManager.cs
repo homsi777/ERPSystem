@@ -12,6 +12,8 @@ namespace ERPSystem.Core
         Customers,
         Suppliers,
         Accounting,
+        Expenses,
+        CapitalPartners,
         Reports,
         HR,
         Settings
@@ -106,6 +108,8 @@ namespace ERPSystem.Core
             AppModule.Customers   => "\uE716",
             AppModule.Suppliers   => "\uE779",
             AppModule.Accounting  => "\uE8C1",
+            AppModule.Expenses    => "\uE9D9",
+            AppModule.CapitalPartners => "\uE8F1",
             AppModule.Reports     => "\uE9D2",
             AppModule.HR          => "\uE716",
             AppModule.Settings    => "\uE713",

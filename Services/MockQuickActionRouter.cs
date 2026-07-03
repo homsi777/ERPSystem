@@ -1,11 +1,12 @@
 using ERPSystem.Controls.OperationsCenter;
+using ERPSystem.Controls.China;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
-using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Suppliers;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.China;
 using System.Windows.Controls;
 
 namespace ERPSystem.Services
@@ -91,8 +92,10 @@ namespace ERPSystem.Services
                     MockInteractionService.OpenDetailingWorkspace();
                     break;
                 case "ws:LandingCost":
-                    if (ctx.EntityRow is ImportContainerModel cont)
-                        MockInteractionService.OpenLandingCostWorkspace(cont);
+                    if (ctx.EntityRow is ContainerListRow cont)
+                        ChinaImportNavigation.OpenLandingCostWorkspace(cont);
+                    else if (tabs != null)
+                        SelectTab(tabs, "LandingCost");
                     break;
                 case "form:EditCustomer":
                     MockInteractionService.Navigate(AppModule.Customers, "Form");

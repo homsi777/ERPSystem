@@ -1,16 +1,17 @@
+using ERPSystem.Controls.China;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
-using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Sales;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Dialogs;
+using ERPSystem.Services.China;
 using ERPSystem.Services.Sales;
 using ERPSystem.Views.Sales;
 
 namespace ERPSystem.Services
 {
-    /// <summary>Unified mock interaction layer — no DB, consistent UX responses.</summary>
+    /// <summary>Unified interaction layer for navigation, confirmations, and workspace actions.</summary>
     public static class MockInteractionService
     {
         public static void Navigate(AppModule module, string subPage = "") =>
@@ -64,21 +65,30 @@ namespace ERPSystem.Services
                 OpenDetailingWorkspace(invoiceNumber);
         }
 
-        public static void OpenInvoiceOperationsCenter(string invoiceNumber)
+        public static void OpenInvoiceOperationsCenter(string invoiceNumber) =>
+            _ = OpenInvoiceOperationsCenterAsync(invoiceNumber);
+
+        private static async Task OpenInvoiceOperationsCenterAsync(string invoiceNumber)
         {
-            var si = SalesSampleData.Generate(20)
-                .FirstOrDefault(i => i.InvoiceNumber == invoiceNumber)
-                ?? SalesSampleData.Generate(1).First();
-            var row = new FabricSalesInvoiceRow
+            if (!AppServices.IsInitialized)
             {
-                Source = si,
-                InvoiceNumber = si.InvoiceNumber,
-                CustomerName = si.CustomerNameAr,
-                RollCount = 5,
-                Amount = si.GrandTotal,
-                Date = si.Date,
-                WorkflowStatus = FabricInvoiceWorkflowStatus.Approved
-            };
+                ShowWarning("قاعدة البيانات غير متصلة.", "مركز العمليات");
+                return;
+            }
+
+            var result = await SalesUiService.Instance.GetListAsync(invoiceNumber, null, 1, 50);
+            var items = result.Value?.Items;
+            if (items is null || items.Count == 0)
+            {
+                ShowWarning($"لم يتم العثور على الفاتورة {invoiceNumber}.", "مركز العمليات");
+                return;
+            }
+
+            var invoice = items.FirstOrDefault(i =>
+                i.InvoiceNumber.Equals(invoiceNumber, StringComparison.OrdinalIgnoreCase))
+                ?? items[0];
+
+            var row = SalesInvoiceListRow.FromDto(invoice, "—", "—");
             WorkspaceWindowManager.Instance.OpenAction(
                 EntityActionId.InvoiceView, EntityType.SalesInvoice, row, AppModule.Sales);
         }
@@ -109,18 +119,27 @@ namespace ERPSystem.Services
                 EntityActionId.OpenOperationsCenter, EntityType.Customer, customer, AppModule.Customers);
         }
 
-        public static void OpenContainerOperationsCenter(ImportContainerModel? container = null)
+        public static void OpenContainerOperationsCenter(ContainerListRow? container = null)
         {
-            container ??= ChinaImportSampleData.Generate(1).First();
-            WorkspaceWindowManager.Instance.OpenAction(
-                EntityActionId.OpenOperationsCenter, EntityType.ImportContainer, container, AppModule.ChinaImport);
+            if (container is null)
+            {
+                ShowWarning("اختر حاوية من القائمة أولاً.", "مركز العمليات");
+                Navigate(AppModule.ChinaImport, "Containers");
+                return;
+            }
+
+            ChinaImportNavigation.OpenOperationsCenter(container);
         }
 
-        public static void OpenLandingCostWorkspace(ImportContainerModel? container = null)
+        public static void OpenLandingCostWorkspace(ContainerListRow? container = null)
         {
-            container ??= ChinaImportSampleData.Generate(1).First();
-            WorkspaceWindowManager.Instance.OpenAction(
-                EntityActionId.ContainerCosts, EntityType.ImportContainer, container, AppModule.ChinaImport);
+            if (container is null)
+            {
+                Navigate(AppModule.ChinaImport, "Containers");
+                return;
+            }
+
+            ChinaImportNavigation.OpenLandingCostWorkspace(container);
         }
 
         public static void OpenMockForm(string title) =>

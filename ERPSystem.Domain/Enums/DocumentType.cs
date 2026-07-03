@@ -11,5 +11,6 @@ public enum DocumentType
     JournalEntry = 6,
     StockMovement = 7,
     DeliveryNote = 8,
-    ChinaContainer = 9
+    ChinaContainer = 9,
+    ExpensePayment = 10
 }

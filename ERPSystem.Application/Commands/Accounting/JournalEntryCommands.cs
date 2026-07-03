@@ -4,8 +4,9 @@ namespace ERPSystem.Application.Commands.Accounting;
 
 public sealed class CreateJournalEntryCommand
 {
-    public Guid CompanyId { get; init; }
-    public Guid BranchId { get; init; }
+    public Guid CompanyId { get; set; }
+    public Guid BranchId { get; set; }
+    public Guid? JournalBookId { get; set; }
     public string Description { get; init; } = "";
     public DateTime EntryDate { get; init; }
     public DocumentType? SourceType { get; init; }
@@ -33,6 +34,11 @@ public sealed class PostJournalEntryCommand
 }
 
 public sealed class ReverseJournalEntryCommand
+{
+    public Guid EntryId { get; init; }
+}
+
+public sealed class CancelJournalEntryCommand
 {
     public Guid EntryId { get; init; }
 }

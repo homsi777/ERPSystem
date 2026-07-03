@@ -2,13 +2,17 @@ using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Domain.Exceptions;
+using ERPSystem.Domain.ValueObjects;
 using ERPSystem.Infrastructure.Persistence;
+using ERPSystem.Infrastructure.Persistence.Models.Catalog;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERPSystem.Infrastructure.Services;
 
-internal sealed class ContainerWarehouseImportService(ErpDbContext context) : IContainerWarehouseImportService
+internal sealed class ContainerWarehouseImportService(
+    ErpDbContext context,
+    IIntegratedAccountingService accountingService) : IContainerWarehouseImportService
 {
     public async Task PostContainerStockAsync(
         Guid warehouseId,
@@ -29,6 +33,10 @@ internal sealed class ContainerWarehouseImportService(ErpDbContext context) : IC
         if (validItems.Count == 0)
             throw new ValidationException("Container has no valid items to post.");
 
+        var costPerMeter = CalculateCostPerMeter(container);
+        var typeLineCosts = container.FabricTypeLines
+            .Where(t => t.FabricItemId.HasValue && t.FabricColorId.HasValue)
+            .ToDictionary(t => (t.FabricItemId!.Value, t.FabricColorId!.Value));
         var stockGroups = validItems
             .GroupBy(i => (i.FabricItemId, i.FabricColorId))
             .Select(g => new
@@ -45,6 +53,53 @@ internal sealed class ContainerWarehouseImportService(ErpDbContext context) : IC
             throw new ValidationException("Container has no meter quantity to post.");
 
         var now = DateTime.UtcNow;
+        var rollSequence = 0;
+
+        foreach (var item in validItems)
+        {
+            var perRollMeters = item.RollCount > 0
+                ? item.LengthMeters.Value / item.RollCount
+                : item.LengthMeters.Value;
+            var rollsToCreate = Math.Max(1, item.RollCount);
+
+            for (var i = 0; i < rollsToCreate; i++)
+            {
+                rollSequence++;
+                var length = rollsToCreate == 1
+                    ? item.LengthMeters.Value
+                    : (i == rollsToCreate - 1
+                        ? item.LengthMeters.Value - perRollMeters * (rollsToCreate - 1)
+                        : perRollMeters);
+
+                var key = (item.FabricItemId, item.FabricColorId);
+                var rollCost = typeLineCosts.TryGetValue(key, out var typeLine) && typeLine.LandedCostPerMeterUsd > 0
+                    ? typeLine.LandedCostPerMeterUsd * container.ExchangeRateToLocalCurrency
+                    : costPerMeter;
+                var rollSalePrice = typeLine is not null && typeLine.SalePricePerMeterUsd > 0
+                    ? typeLine.SalePricePerMeterUsd * container.ExchangeRateToLocalCurrency
+                    : (decimal?)null;
+
+                await context.FabricRolls.AddAsync(new FabricRollEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ContainerId = container.Id,
+                    ContainerItemId = item.Id,
+                    FabricItemId = item.FabricItemId,
+                    FabricColorId = item.FabricColorId,
+                    WarehouseId = warehouseId,
+                    RollNumber = item.LineNumber * 1000 + i + 1,
+                    LengthMeters = length,
+                    RemainingLengthMeters = length,
+                    CostPerMeter = rollCost,
+                    SalePricePerMeter = rollSalePrice,
+                    WeightKg = item.WeightKg?.Value,
+                    LotCode = item.LotCode,
+                    Status = (int)FabricRollStatus.Available,
+                    CreatedAt = now
+                }, cancellationToken);
+            }
+        }
+
         foreach (var group in stockGroups)
         {
             await context.WarehouseStocks.AddAsync(new WarehouseStockEntity
@@ -75,6 +130,19 @@ internal sealed class ContainerWarehouseImportService(ErpDbContext context) : IC
             PostedAt = now,
             CreatedAt = now
         }, cancellationToken);
+
+        var inventoryValue = stockGroups.Sum(g => g.TotalMeters) * costPerMeter;
+        await accountingService.PostInventoryActivationAsync(container, warehouseId, inventoryValue, cancellationToken);
+    }
+
+    private static decimal CalculateCostPerMeter(ContainerAggregate container)
+    {
+        if (container.LandingCost is null || container.TotalMeters.Value <= 0)
+            return 0m;
+
+        var landing = container.LandingCost;
+        var perMeter = landing.TotalSharedExpenses.Amount / container.TotalMeters.Value;
+        return perMeter * container.ExchangeRateToLocalCurrency;
     }
 
     private static string BuildMovementNumber(string containerNumber, DateTime utcNow)

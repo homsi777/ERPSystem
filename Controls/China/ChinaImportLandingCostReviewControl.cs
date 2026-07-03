@@ -17,6 +17,7 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
 {
     private readonly StackPanel _detailsHost = new();
     private readonly Button _approveButton;
+    private readonly Button _salePriceButton;
     private readonly Button _warehouseButton;
     private ContainerOperationsCenterDto? _loaded;
 
@@ -51,6 +52,17 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
         };
         _approveButton.Click += async (_, _) => await ApproveAsync();
 
+        _salePriceButton = new Button
+        {
+            Content = "إدخال أسعار البيع",
+            Style = (Style)WpfApplication.Current.Resources["SecondaryButtonStyle"]!,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(8, 16, 0, 0),
+            Visibility = Visibility.Collapsed
+        };
+        _salePriceButton.Click += (_, _) =>
+            ChinaImportNavigation.Navigate("SalePrice", _loaded?.Container.Status);
+
         _warehouseButton = new Button
         {
             Content = "التالي — تحويل للمخزن",
@@ -62,9 +74,9 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
         _warehouseButton.Click += (_, _) =>
         {
             if (_loaded?.Container.Status == ChinaContainerStatus.InWarehouse)
-                MockInteractionService.Navigate(AppModule.ChinaImport, "ReadyForSale");
+                ChinaImportNavigation.Navigate("ReadyForSale", _loaded.Container.Status);
             else
-                MockInteractionService.Navigate(AppModule.ChinaImport, "MoveToWarehouse");
+                ChinaImportNavigation.Navigate("MoveToWarehouse", _loaded?.Container.Status);
         };
 
         var backButton = new Button
@@ -74,10 +86,11 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(0, 16, 8, 0)
         };
-        backButton.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "Containers");
+        backButton.Click += (_, _) => ChinaImportNavigation.Navigate("Containers");
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal };
         actions.Children.Add(backButton);
+        actions.Children.Add(_salePriceButton);
         actions.Children.Add(_approveButton);
         actions.Children.Add(_warehouseButton);
         stack.Children.Add(actions);
@@ -154,17 +167,27 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ("وزن الحاوية (كغ)", ErpUiFactory.FormField($"{lc.ContainerWeightKg:N0}")),
             ("فاتورة الصين ($)", ErpUiFactory.FormField($"{c.ChinaInvoiceAmountUsd:N2}")),
             ("سعر الصرف", ErpUiFactory.FormField($"{c.ExchangeRateToLocalCurrency:N4}")),
-            ("الجمارك ($)", ErpUiFactory.FormField($"{lc.CustomsAmount:N2}")),
-            ("تكلفة الجمارك/م ($)", ErpUiFactory.FormField($"{lc.CustomsCostPerMeter:N4}")),
+            ("وضع التخصيص", ErpUiFactory.FormField(lc.UsesWeightedAllocation ? "بالوزن (حسب النوع)" : "مسطح (DPL)")),
+            ("جمارك / تخليص ($)", ErpUiFactory.FormField($"{lc.CustomsAmount:N2}")),
             ("الشحن ($)", ErpUiFactory.FormField($"{lc.Shipping:N2}")),
-            ("التخليص ($)", ErpUiFactory.FormField($"{lc.Clearance:N2}")),
-            ("مصاريف أخرى ($)", ErpUiFactory.FormField($"{lc.OtherExpenses:N2}")),
-            ("إجمالي تكاليف الوصول ($)", ErpUiFactory.FormField($"{lc.TotalImportExpenses:N2}")),
+            ("التأمين ($)", ErpUiFactory.FormField($"{lc.Insurance:N2}")),
+            ("مصاريف أخرى 1 ($)", ErpUiFactory.FormField($"{lc.OtherExpense1:N2}")),
+            ("مصاريف أخرى 2 ($)", ErpUiFactory.FormField($"{lc.OtherExpense2:N2}")),
+            ("مصاريف أخرى 3 ($)", ErpUiFactory.FormField($"{lc.OtherExpense3:N2}")),
+            ("مصاريف أخرى 4 ($)", ErpUiFactory.FormField($"{lc.OtherExpense4:N2}")),
+            ("إجمالي المصاريف المشتركة ($)", ErpUiFactory.FormField($"{lc.TotalImportExpenses:N2}")),
             ("تكلفة الوصول/م ($)", ErpUiFactory.FormField($"{lc.ExpenseCostPerMeter:N4}")),
             ("احتياطي 2% ($)", ErpUiFactory.FormField($"{reserveUsd:N2}")),
             ("احتياطي 2% (محلي)", ErpUiFactory.FormField($"{reserveLocal:N2}")));
 
         _detailsHost.Children.Add(ErpUiFactory.Card(form));
+
+        if (c.FabricTypeLines.Count > 0)
+        {
+            _detailsHost.Children.Add(ErpUiFactory.SectionTitle("تكلفة كل نوع قماش"));
+            _detailsHost.Children.Add(ErpUiFactory.Card(BuildTypeLinesGrid(c.FabricTypeLines)));
+        }
+
         _detailsHost.Children.Add(ErpUxFactory.KpiStrip(
             ("تكلفة الجمارك/م", $"{lc.CustomsCostPerMeter:N4} $"),
             ("تكلفة الوصول/م", $"{lc.ExpenseCostPerMeter:N4} $"),
@@ -178,7 +201,17 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ChinaContainerStatus.InWarehouse => "معتمدة ✓",
             _ => "اعتماد الحاوية"
         };
-        _approveButton.Visibility = ops.CanApprove ? Visibility.Visible : Visibility.Collapsed;
+        _approveButton.Visibility = ops.CanApprove || c.Status is ChinaContainerStatus.Approved or ChinaContainerStatus.InWarehouse
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        _salePriceButton.Visibility = ops.CanSetSalePrices ? Visibility.Visible : Visibility.Collapsed;
+        if (ops.CanSetSalePrices && !ops.CanApprove)
+            _salePriceButton.Content = "إدخال أسعار البيع (مطلوب قبل الاعتماد)";
+        else if (c.FabricTypeLines.All(l => l.HasSalePrice))
+            _salePriceButton.Content = "تعديل أسعار البيع";
+        else
+            _salePriceButton.Content = "إدخال أسعار البيع";
 
         var showWarehouse = c.Status == ChinaContainerStatus.Approved && ops.CanMoveToWarehouse;
         var showReady = c.Status == ChinaContainerStatus.InWarehouse;
@@ -208,7 +241,7 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ChinaImportNavigationContext.SetActiveContainer(_loaded.Container.Id);
             await LoadAsync();
             if (_loaded.Container.Status == ChinaContainerStatus.Approved)
-                MockInteractionService.Navigate(AppModule.ChinaImport, "MoveToWarehouse");
+                ChinaImportNavigation.Navigate("MoveToWarehouse", _loaded?.Container.Status);
         }
         catch (Exception ex)
         {
@@ -228,5 +261,26 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
                 _approveButton.IsEnabled = _loaded?.CanApprove ?? false;
             }
         }
+    }
+
+    private static DataGrid BuildTypeLinesGrid(IReadOnlyList<ContainerFabricTypeLineDto> lines)
+    {
+        var g = ErpUiFactory.BuildGrid(lines.OrderBy(l => l.LineNumber).ToList(), false);
+        g.AutoGenerateColumns = false;
+        g.IsReadOnly = true;
+        foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
+        {
+            ("النوع", nameof(ContainerFabricTypeLineDto.TypeDisplayName), 160, null),
+            ("أمتار", nameof(ContainerFabricTypeLineDto.LengthMeters), 80, "N0"),
+            ("وزن (كغ)", nameof(ContainerFabricTypeLineDto.NetWeightKg), 80, "N0"),
+            ("سعر الصين/م", nameof(ContainerFabricTypeLineDto.ChinaUnitPriceUsd), 90, "N4"),
+            ("حصة المصاريف", nameof(ContainerFabricTypeLineDto.ExpenseShareUsd), 90, "N2"),
+            ("تكلفة/م", nameof(ContainerFabricTypeLineDto.LandedCostPerMeterUsd), 90, "N4"),
+            ("سعر البيع/م", nameof(ContainerFabricTypeLineDto.SalePricePerMeterUsd), 90, "N4")
+        })
+        {
+            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
+        }
+        return g;
     }
 }

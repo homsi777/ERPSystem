@@ -18,7 +18,8 @@ public sealed class CreateSalesInvoiceDraftHandler(
     IUnitOfWork unitOfWork,
     INumberingService numberingService,
     IPermissionService permissionService,
-    ICurrentUserService currentUserService)
+    ICurrentUserService currentUserService,
+    IInventoryOperationsService inventoryOperations)
     : ICommandHandler<CreateSalesInvoiceDraftCommand, ApplicationResult<Guid>>
 {
     public async Task<ApplicationResult<Guid>> HandleAsync(
@@ -34,6 +35,13 @@ public sealed class CreateSalesInvoiceDraftHandler(
 
         try
         {
+            await inventoryOperations.ValidateContainerForSaleAsync(command.ChinaContainerId, cancellationToken);
+            await inventoryOperations.ValidateInvoiceLinesAsync(
+                command.WarehouseId,
+                command.ChinaContainerId,
+                command.Lines.Select(l => (l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
+                cancellationToken);
+
             var invoiceNumber = new InvoiceNumber(
                 await numberingService.NextInvoiceNumberAsync(command.BranchId, cancellationToken));
 
@@ -76,7 +84,8 @@ public sealed class CreateSalesInvoiceDraftHandler(
 public sealed class UpdateSalesInvoiceDraftHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
-    IPermissionService permissionService)
+    IPermissionService permissionService,
+    IInventoryOperationsService inventoryOperations)
     : ICommandHandler<UpdateSalesInvoiceDraftCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -96,6 +105,13 @@ public sealed class UpdateSalesInvoiceDraftHandler(
 
         try
         {
+            await inventoryOperations.ValidateContainerForSaleAsync(command.ChinaContainerId, cancellationToken);
+            await inventoryOperations.ValidateInvoiceLinesAsync(
+                command.WarehouseId,
+                command.ChinaContainerId,
+                command.Lines.Select(l => (l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
+                cancellationToken);
+
             aggregate.UpdateDraftHeader(
                 command.CustomerId,
                 command.WarehouseId,
@@ -128,7 +144,10 @@ public sealed class UpdateSalesInvoiceDraftHandler(
 public sealed class SendSalesInvoiceToWarehouseHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
-    IPermissionService permissionService)
+    IPermissionService permissionService,
+    IInventoryOperationsService inventoryOperations,
+    IDomainEventDispatcher domainEventDispatcher,
+    INotificationService notificationService)
     : ICommandHandler<SendSalesInvoiceToWarehouseCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -148,8 +167,14 @@ public sealed class SendSalesInvoiceToWarehouseHandler(
         try
         {
             aggregate.SendToWarehouse();
+            await inventoryOperations.ReserveForInvoiceAsync(aggregate, cancellationToken);
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
+            await notificationService.PublishAsync(new InventoryChangedNotification
+            {
+                ContainerId = aggregate.ChinaContainerId,
+                WarehouseId = aggregate.WarehouseId
+            }, cancellationToken);
             return ApplicationResult.Success();
         }
         catch (Exception ex)
@@ -164,7 +189,9 @@ public sealed class CompleteWarehouseDetailingHandler(
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     INotificationService notificationService,
-    ICurrentUserService currentUserService)
+    ICurrentUserService currentUserService,
+    IInventoryOperationsService inventoryOperations,
+    IDomainEventDispatcher domainEventDispatcher)
     : ICommandHandler<CompleteWarehouseDetailingCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -196,9 +223,10 @@ public sealed class CompleteWarehouseDetailingHandler(
                 return ApplicationResult.Conflict("All roll lengths must be entered before completing detailing.");
 
             aggregate.CompleteDetailing();
+            await inventoryOperations.AssignFabricRollsOnDetailingAsync(aggregate, cancellationToken);
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
 
             await notificationService.PublishAsync(new SalesInvoiceDetailedNotification
             {
@@ -222,7 +250,10 @@ public sealed class ApproveSalesInvoiceHandler(
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     INotificationService notificationService,
-    ICurrentUserService currentUserService)
+    ICurrentUserService currentUserService,
+    IInventoryOperationsService inventoryOperations,
+    IIntegratedAccountingService accountingService,
+    IDomainEventDispatcher domainEventDispatcher)
     : ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -249,15 +280,21 @@ public sealed class ApproveSalesInvoiceHandler(
 
         try
         {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
             CreditLimitChecker.EnsureWithinLimit(customerAggregate, aggregate.GrandTotal);
 
             var userId = currentUserService.UserId ?? Guid.Empty;
             aggregate.Approve(userId);
             customerAggregate.RecordPostedInvoice(aggregate.GrandTotal.Amount);
 
+            var cogs = await inventoryOperations.DeductForInvoiceAsync(aggregate, cancellationToken);
+            await accountingService.PostSalesInvoiceApprovalAsync(aggregate, cogs, cancellationToken);
+
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await customerRepository.UpdateAsync(customerAggregate, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
 
             await notificationService.PublishAsync(new SalesInvoiceApprovedNotification
             {
@@ -271,6 +308,8 @@ public sealed class ApproveSalesInvoiceHandler(
         }
         catch (Exception ex)
         {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
+
             var exceeded = CreditLimitChecker.TryCreateExceededEvent(
                 customerAggregate.Customer,
                 aggregate.GrandTotal);
@@ -290,7 +329,9 @@ public sealed class ApproveSalesInvoiceHandler(
 public sealed class CancelSalesInvoiceHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
-    IPermissionService permissionService)
+    IPermissionService permissionService,
+    IInventoryOperationsService inventoryOperations,
+    INotificationService notificationService)
     : ICommandHandler<CancelSalesInvoiceCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -311,9 +352,15 @@ public sealed class CancelSalesInvoiceHandler(
 
         try
         {
+            await inventoryOperations.ReleaseForInvoiceAsync(aggregate, cancellationToken);
             aggregate.Cancel(command.Reason);
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
+            await notificationService.PublishAsync(new InventoryChangedNotification
+            {
+                ContainerId = aggregate.ChinaContainerId,
+                WarehouseId = aggregate.WarehouseId
+            }, cancellationToken);
             return ApplicationResult.Success();
         }
         catch (Exception ex)

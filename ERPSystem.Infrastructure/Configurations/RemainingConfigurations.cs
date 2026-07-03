@@ -150,6 +150,17 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
         builder.HasKey(x => x.Id);
         builder.Property(x => x.EntryNumber).HasMaxLength(50).IsRequired();
         builder.HasIndex(x => new { x.CompanyId, x.EntryNumber }).IsUnique();
+        builder.HasIndex(x => x.JournalBookId);
+    }
+}
+
+internal sealed class JournalBookConfiguration : IEntityTypeConfiguration<JournalBookEntity>
+{
+    public void Configure(EntityTypeBuilder<JournalBookEntity> builder)
+    {
+        builder.ToTable("journal_books", Schemas.Accounting);
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
     }
 }
 

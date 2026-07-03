@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.China;
@@ -16,17 +17,22 @@ public sealed class ChinaImportCostEntryControl : UserControl
 {
     private readonly TextBox _invoiceUsd = ErpUiFactory.FormField("");
     private readonly TextBox _weightKg = ErpUiFactory.FormField("");
-    private readonly TextBox _customsUsd = ErpUiFactory.FormField("");
     private readonly TextBox _shippingUsd = ErpUiFactory.FormField("");
-    private readonly TextBox _clearanceUsd = ErpUiFactory.FormField("");
-    private readonly TextBox _otherUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _insuranceUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _customsClearanceUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _other1Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other2Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other3Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other4Usd = ErpUiFactory.FormField("0");
     private readonly TextBlock _preview = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
     private readonly Button? _saveButton;
     private readonly ContainerExcelParseResultDto? _parse;
     private readonly ChinaImportHeaderDraft? _header;
+    private readonly ChinaImportMultiFileSessionDto? _session;
     private readonly string? _fileName;
     private readonly decimal _exchangeRate;
     private readonly decimal _totalMeters;
+    private readonly bool _usesWeighted;
 
     public ChinaImportCostEntryControl()
     {
@@ -39,19 +45,21 @@ public sealed class ChinaImportCostEntryControl : UserControl
             ("تحليل الملف", true, true),
             ("إدخال التكلفة", true, true),
             ("Landing Cost", false, false),
+            ("أسعار البيع", false, false),
             ("اعتماد", false, false),
-            ("تحويل للمخزن", false, false),
             ("جاهز للبيع", false, false)));
 
         _parse = ChinaImportNavigationContext.GetParseResult();
         _header = ChinaImportNavigationContext.HeaderDraft;
-        _fileName = ChinaImportNavigationContext.LastFileName;
+        _session = ChinaImportNavigationContext.GetMultiFileSession();
+        _fileName = ChinaImportNavigationContext.LastRollDetailFileName;
         _exchangeRate = _header?.ExchangeRateToLocalCurrency ?? 1m;
         _totalMeters = _parse?.GrandTotal.ParsedTotalMeters ?? 0m;
+        _usesWeighted = _session?.UsesWeightedAllocation == true;
 
         if (_parse is null || _header is null)
         {
-            stack.Children.Add(ErpUxFactory.InfoBanner("لا توجد بيانات استيراد. ابدأ من رفع ملف Packing List.", "warning"));
+            stack.Children.Add(ErpUxFactory.InfoBanner("لا توجد بيانات استيراد. ابدأ من رفع ملف DPL.", "warning"));
             stack.Children.Add(MakeBackButton());
             root.Content = stack;
             Content = root;
@@ -59,13 +67,17 @@ public sealed class ChinaImportCostEntryControl : UserControl
             return;
         }
 
+        PrefillFromParsedFiles();
+
         stack.Children.Add(ErpUxFactory.InfoBanner(
-            "جميع المبالغ بالدولار ($). احتياطي 2% ضريبة مالية يُحسب من فاتورة الصين فقط — لا يدخل سعر المتر.",
-            "info"));
+            _usesWeighted
+                ? "وضع التكلفة حسب النوع: المصاريف المشتركة تُوزَّع بالوزن. جميع المبالغ بالدولار ($)."
+                : "وضع معدّل مسطح (DPL فقط): المصاريف تُوزَّع على إجمالي الأمتار. لإتاحة التكلفة حسب النوع ارفع الفاتورة + PL.",
+            _usesWeighted ? "success" : "warning"));
 
         stack.Children.Add(new TextBlock
         {
-            Text = $"إجمالي الأمتار من التحليل: {_totalMeters:N2} م | سعر الصرف: {_exchangeRate:N4}",
+            Text = $"إجمالي الأمتار: {_totalMeters:N2} م | سعر الصرف: {_exchangeRate:N4}",
             Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!,
             Margin = new Thickness(0, 0, 0, 12)
         });
@@ -73,10 +85,13 @@ public sealed class ChinaImportCostEntryControl : UserControl
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("إجمالي فاتورة الصين ($)", _invoiceUsd),
             ("وزن الحاوية (كغ)", _weightKg),
-            ("الجمارك ($)", _customsUsd),
-            ("الشحن ($)", _shippingUsd),
-            ("التخليص ($)", _clearanceUsd),
-            ("مصاريف أخرى ($)", _otherUsd))));
+            ("الشحن ($) *", _shippingUsd),
+            ("التأمين ($) *", _insuranceUsd),
+            ("جمارك / تخليص جمركي ($) *", _customsClearanceUsd),
+            ("مصاريف أخرى 1 ($)", _other1Usd),
+            ("مصاريف أخرى 2 ($)", _other2Usd),
+            ("مصاريف أخرى 3 ($)", _other3Usd),
+            ("مصاريف أخرى 4 ($)", _other4Usd))));
 
         _preview.Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!;
         stack.Children.Add(ErpUiFactory.Card(_preview));
@@ -94,7 +109,8 @@ public sealed class ChinaImportCostEntryControl : UserControl
         actions.Children.Add(_saveButton);
         stack.Children.Add(actions);
 
-        foreach (var box in new[] { _invoiceUsd, _weightKg, _customsUsd, _shippingUsd, _clearanceUsd, _otherUsd })
+        foreach (var box in new[] { _invoiceUsd, _weightKg, _shippingUsd, _insuranceUsd, _customsClearanceUsd,
+                     _other1Usd, _other2Usd, _other3Usd, _other4Usd })
             box.TextChanged += (_, _) => RefreshPreview();
 
         RefreshPreview();
@@ -104,6 +120,24 @@ public sealed class ChinaImportCostEntryControl : UserControl
         Background = (SolidColorBrush)WpfApplication.Current.Resources["AppBgBrush"]!;
     }
 
+    private void PrefillFromParsedFiles()
+    {
+        var invoice = _session?.Invoice;
+        if (invoice is not null)
+        {
+            if (invoice.GrandTotalUsd > 0)
+                _invoiceUsd.Text = invoice.GrandTotalUsd.ToString("N2", CultureInfo.InvariantCulture);
+            if (invoice.SeaFreightUsd > 0)
+                _shippingUsd.Text = invoice.SeaFreightUsd.ToString("N2", CultureInfo.InvariantCulture);
+            if (invoice.InsuranceUsd > 0)
+                _insuranceUsd.Text = invoice.InsuranceUsd.ToString("N2", CultureInfo.InvariantCulture);
+        }
+
+        var pl = _session?.PackingSummary;
+        if (pl is not null && pl.TotalNetWeightKg > 0)
+            _weightKg.Text = pl.TotalNetWeightKg.ToString("N0", CultureInfo.InvariantCulture);
+    }
+
     private Button MakeBackButton()
     {
         var back = new Button
@@ -111,7 +145,7 @@ public sealed class ChinaImportCostEntryControl : UserControl
             Content = "العودة — تحليل الملف",
             Style = (Style)WpfApplication.Current.Resources["SecondaryButtonStyle"]!
         };
-        back.Click += (_, _) => MockInteractionService.Navigate(AppModule.ChinaImport, "FileAnalysis");
+        back.Click += (_, _) => ChinaImportNavigation.Navigate("FileAnalysis");
         return back;
     }
 
@@ -119,25 +153,21 @@ public sealed class ChinaImportCostEntryControl : UserControl
     {
         if (!TryReadCostInput(out var input))
         {
-            _preview.Text = "أدخل فاتورة الصين ($) وباقي التكاليف لعرض المعاينة.";
+            _preview.Text = "أدخل فاتورة الصين ($) والشحن والتأمين والجمارك/التخليص ووزن الحاوية لعرض المعاينة.";
             return;
         }
 
-        var preview = ChinaImportCostPreviewDto.Create(
-            input.ChinaInvoiceAmountUsd,
-            _exchangeRate,
-            input.ContainerWeightKg,
-            input.CustomsAmountUsd,
-            input.ShippingUsd,
-            input.ClearanceUsd,
-            input.OtherExpensesUsd,
-            _totalMeters);
+        var shared = input.ShippingUsd + input.InsuranceUsd + input.CustomsClearanceUsd
+            + input.OtherExpense1Usd + input.OtherExpense2Usd + input.OtherExpense3Usd + input.OtherExpense4Usd;
+        var reserve = input.ChinaInvoiceAmountUsd * 0.02m;
 
         _preview.Text =
-            $"المكافئ المحلي للفاتورة: {preview.InvoiceLocalEquivalent:N2}\n" +
-            $"احتياطي ضريبة مالية (2%): {preview.FinancialTaxReserveUsd:N2} $ (≈ {preview.FinancialTaxReserveLocal:N2} محلي)\n" +
-            $"إجمالي تكاليف الوصول: {preview.TotalImportExpensesUsd:N2} $\n" +
-            $"تكلفة الوصول/متر (لا تشمل الفاتورة ولا الـ 2%): {preview.ExpenseCostPerMeterUsd:N4} $/م";
+            $"المكافئ المحلي للفاتورة: {input.ChinaInvoiceAmountUsd * _exchangeRate:N2}\n" +
+            $"احتياطي ضريبة مالية (2%): {reserve:N2} $ (لا يدخل سعر المتر)\n" +
+            $"إجمالي المصاريف المشتركة: {shared:N2} $\n" +
+            (_usesWeighted
+                ? $"التخصيص: بالوزن عبر {_session?.TypeLines.Count ?? 0} نوع قماش"
+                : $"تكلفة الوصول/م (مسطح): {( _totalMeters > 0 ? shared / _totalMeters : 0):N4} $/م");
     }
 
     private async Task SaveAsync()
@@ -147,8 +177,8 @@ public sealed class ChinaImportCostEntryControl : UserControl
 
         if (!TryReadCostInput(out var input))
         {
-            MessageBox.Show("يرجى إدخال فاتورة الصين ($) ووزن الحاوية بشكل صحيح.", "إدخال التكلفة",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("يرجى إدخال فاتورة الصين والشحن والتأمين والجمارك/التخليص ووزن الحاوية بشكل صحيح.",
+                "إدخال التكلفة", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -169,19 +199,9 @@ public sealed class ChinaImportCostEntryControl : UserControl
             if (!ApplicationResultPresenter.Present(result) || result.Value == Guid.Empty)
                 return;
 
-            var preview = ChinaImportCostPreviewDto.Create(
-                input.ChinaInvoiceAmountUsd,
-                _exchangeRate,
-                input.ContainerWeightKg,
-                input.CustomsAmountUsd,
-                input.ShippingUsd,
-                input.ClearanceUsd,
-                input.OtherExpensesUsd,
-                _totalMeters);
-            ChinaImportNavigationContext.SetCostPreview(preview);
             ChinaImportNavigationContext.SetCreatedContainer(result.Value);
             ChinaImportNavigationContext.SetActiveContainer(result.Value);
-            MockInteractionService.Navigate(AppModule.ChinaImport, "LandingCost");
+            ChinaImportNavigation.Navigate("LandingCost", ChinaContainerStatus.LandingCostReviewed);
         }
         catch (Exception ex)
         {
@@ -202,20 +222,30 @@ public sealed class ChinaImportCostEntryControl : UserControl
             return false;
         if (!TryParseDecimal(_weightKg.Text, out var weight) || weight <= 0)
             return false;
+        if (!TryParseDecimal(_shippingUsd.Text, out var shipping))
+            return false;
+        if (!TryParseDecimal(_insuranceUsd.Text, out var insurance))
+            return false;
+        if (!TryParseDecimal(_customsClearanceUsd.Text, out var customsClearance))
+            return false;
 
-        TryParseDecimal(_customsUsd.Text, out var customs);
-        TryParseDecimal(_shippingUsd.Text, out var shipping);
-        TryParseDecimal(_clearanceUsd.Text, out var clearance);
-        TryParseDecimal(_otherUsd.Text, out var other);
+        TryParseDecimal(_other1Usd.Text, out var other1);
+        TryParseDecimal(_other2Usd.Text, out var other2);
+        TryParseDecimal(_other3Usd.Text, out var other3);
+        TryParseDecimal(_other4Usd.Text, out var other4);
 
         input = new ChinaImportCostEntryInput
         {
             ChinaInvoiceAmountUsd = invoice,
             ContainerWeightKg = weight,
-            CustomsAmountUsd = customs,
             ShippingUsd = shipping,
-            ClearanceUsd = clearance,
-            OtherExpensesUsd = other
+            InsuranceUsd = insurance,
+            CustomsClearanceUsd = customsClearance,
+            OtherExpense1Usd = other1,
+            OtherExpense2Usd = other2,
+            OtherExpense3Usd = other3,
+            OtherExpense4Usd = other4,
+            UsesWeightedAllocation = _usesWeighted
         };
         return true;
     }

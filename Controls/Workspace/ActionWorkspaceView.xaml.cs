@@ -1,5 +1,5 @@
+using ERPSystem.Controls.China;
 using ERPSystem.Core.Actions;
-using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Domain;
 using ERPSystem.Core.HR;
@@ -77,6 +77,7 @@ namespace ERPSystem.Controls.Workspace
             EntityType.JournalEntry => "سند مالي — محاسبة",
             EntityType.Warehouse => "مركز عمليات المستودع",
             EntityType.Cashbox => "مركز عمليات الصندوق",
+            EntityType.Expense => "مركز عمل المصروف — إدارة مالية",
             _ => "ERP PRO"
         };
 
@@ -168,7 +169,7 @@ namespace ERPSystem.Controls.Workspace
                     ("رقم الفاتورة", p.InvoiceNumber), ("المورد", p.SupplierName),
                     ("الإجمالي", $"{p.TotalAmount:N2} ر.س"), ("الحالة", p.StatusDisplay),
                 },
-                EntityType.ImportContainer when row is ImportContainerModel c => new()
+                EntityType.ImportContainer when row is ContainerListRow c => new()
                 {
                     ("رقم الحاوية", c.ContainerNumber), ("المورد", c.SupplierName),
                     ("الحالة", c.StatusDisplay), ("الأثواب", c.TotalRolls.ToString()),
@@ -210,10 +211,16 @@ namespace ERPSystem.Controls.Workspace
             }
             else if (_request.ActionId is EntityActionId.ContainerItems or EntityActionId.ContainerImportReview)
             {
-                var lines = _request.EntityRow is ImportContainerModel c
-                    ? ChinaImportSampleData.GetContainerLines(c.ContainerNumber)
-                    : ChinaImportSampleData.GetContainerLines("CN-2026-001");
-                stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildGrid(lines)));
+                if (_request.EntityRow is ContainerListRow row)
+                {
+                    var items = new ContainerItemsWorkspaceControl();
+                    items.Initialize(row.Id);
+                    stack.Children.Add(items);
+                }
+                else
+                {
+                    stack.Children.Add(ErpUxFactory.InfoBanner("لم يتم تحديد حاوية.", "warning"));
+                }
             }
             else
                 stack.Children.Add(BuildDataGrid());

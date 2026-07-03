@@ -19,6 +19,8 @@ namespace ERPSystem.Core.Navigation
             new("Nav_Customers", "\uE716", AppModule.Customers),
             new("Nav_Suppliers", "\uE779", AppModule.Suppliers),
             new("Nav_Accounting", "\uE8C1", AppModule.Accounting),
+            new("Nav_Expenses", "\uE9D9", AppModule.Expenses),
+            new("Nav_CapitalPartners", "\uE8F1", AppModule.CapitalPartners),
             new("Nav_Reports", "\uE9D2", AppModule.Reports),
             new("Nav_HR", "\uE716", AppModule.HR),
             new("Nav_Settings", "\uE713", AppModule.Settings),

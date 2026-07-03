@@ -12,6 +12,9 @@ namespace ERPSystem.Core.Actions
         Employee,
         Warehouse,
         Cashbox,
-        JournalEntry
+        JournalEntry,
+        Account,
+        Expense,
+        CapitalPartner
     }
 }

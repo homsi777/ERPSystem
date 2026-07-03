@@ -41,3 +41,13 @@ public sealed class AccountingException : DomainException
 {
     public AccountingException(string message) : base(message) { }
 }
+
+public sealed class ExpenseLifecycleException : DomainException
+{
+    public ExpenseLifecycleException(string message) : base(message) { }
+}
+
+public sealed class ExpensePaymentException : DomainException
+{
+    public ExpensePaymentException(string message) : base(message) { }
+}

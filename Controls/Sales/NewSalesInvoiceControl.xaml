@@ -1,4 +1,5 @@
 <UserControl x:Class="ERPSystem.Controls.Sales.NewSalesInvoiceControl"
+             x:Name="InvoiceRoot"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FlowDirection="RightToLeft"
@@ -396,12 +397,17 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid Grid.Row="0" Margin="12,10,12,8">
-                        <TextBlock Text="أصناف الفاتورة" Style="{StaticResource SectionTitleTextStyle}"
-                                   VerticalAlignment="Center"/>
-                        <Button HorizontalAlignment="Left" Style="{StaticResource SecondaryButtonStyle}"
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="أصناف الفاتورة" Style="{StaticResource SectionTitleTextStyle}"
+                                   VerticalAlignment="Center" Margin="0,0,0,8"/>
+                        <Button Grid.Row="1" HorizontalAlignment="Left" Style="{StaticResource SecondaryButtonStyle}"
                                 Click="BtnAddLine_Click">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12"
@@ -410,7 +416,14 @@
                             </StackPanel>
                         </Button>
                     </Grid>
-                    <DataGrid Grid.Row="1" x:Name="ItemsGrid"
+                    <Border Grid.Row="1" x:Name="SalePriceWarningBanner" Visibility="Collapsed"
+                            Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1"
+                            CornerRadius="8" Padding="12,8" Margin="12,0,12,8">
+                        <TextBlock Text="سعر البيع غير محدد لهذا التوب — يرجى إدخاله يدوياً"
+                                   FontSize="12" Foreground="#92400E" FontWeight="SemiBold"
+                                   FontFamily="Segoe UI, Tahoma, Arial"/>
+                    </Border>
+                    <DataGrid Grid.Row="2" x:Name="ItemsGrid"
                               AutoGenerateColumns="False" IsReadOnly="False"
                               CanUserAddRows="False" CanUserDeleteRows="False"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
@@ -423,15 +436,20 @@
                               BeginningEdit="ItemsGrid_BeginningEdit"
                               PreparingCellForEdit="ItemsGrid_PreparingCellForEdit">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding GoodsType, UpdateSourceTrigger=LostFocus}" Width="*"
-                                                ElementStyle="{StaticResource InvoiceGridCellText}"
-                                                EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
-                            <DataGridTextColumn Header="كود الثوب" Binding="{Binding BoltCode, UpdateSourceTrigger=LostFocus}" Width="90"
-                                                ElementStyle="{StaticResource InvoiceGridCellText}"
-                                                EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
-                            <DataGridTextColumn Header="اللون" Binding="{Binding Color, UpdateSourceTrigger=LostFocus}" Width="80"
-                                                ElementStyle="{StaticResource InvoiceGridCellText}"
-                                                EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
+                            <DataGridComboBoxColumn Header="اختيار من المخزون"
+                                                    Width="240"
+                                                    ItemsSource="{Binding StockOptions, ElementName=InvoiceRoot}"
+                                                    SelectedItemBinding="{Binding SelectedStock, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    DisplayMemberPath="Display"/>
+                            <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding GoodsType}" Width="*"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
+                            <DataGridTextColumn Header="كود الثوب" Binding="{Binding BoltCode}" Width="90"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
+                            <DataGridTextColumn Header="اللون" Binding="{Binding Color}" Width="80"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
                             <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCount, UpdateSourceTrigger=LostFocus}" Width="90"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
@@ -446,9 +464,9 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="الوحدة" Binding="{Binding Unit, UpdateSourceTrigger=LostFocus}" Width="70"
-                                                ElementStyle="{StaticResource InvoiceGridCellText}"
-                                                EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
+                            <DataGridTextColumn Header="الوحدة" Binding="{Binding Unit}" Width="70"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
                             <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPrice, UpdateSourceTrigger=LostFocus}" Width="90"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>

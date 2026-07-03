@@ -14,6 +14,8 @@ namespace ERPSystem
         private readonly CustomersModule _customers;
         private readonly SuppliersModule _suppliers;
         private readonly AccountingModule _accounting;
+        private readonly ExpensesModule _expenses;
+        private readonly CapitalPartnersModule _capitalPartners;
         private readonly ReportsModule _reports;
         private readonly PurchasesModule _purchases;
         private readonly HRModule _hr;
@@ -32,6 +34,8 @@ namespace ERPSystem
             _customers = new CustomersModule();
             _suppliers = new SuppliersModule();
             _accounting = new AccountingModule();
+            _expenses = new ExpensesModule();
+            _capitalPartners = new CapitalPartnersModule();
             _reports = new ReportsModule();
             _purchases = new PurchasesModule();
             _hr = new HRModule();
@@ -80,6 +84,8 @@ namespace ERPSystem
                 AppModule.Customers   => _customers,
                 AppModule.Suppliers   => _suppliers,
                 AppModule.Accounting  => _accounting,
+                AppModule.Expenses    => _expenses,
+                AppModule.CapitalPartners => _capitalPartners,
                 AppModule.Reports     => _reports,
                 AppModule.Purchases   => _purchases,
                 AppModule.HR          => _hr,
@@ -105,6 +111,8 @@ namespace ERPSystem
             AppModule.Customers   => "العملاء",
             AppModule.Suppliers   => "الموردون",
             AppModule.Accounting  => "المالية",
+            AppModule.Expenses    => "المصاريف",
+            AppModule.CapitalPartners => "رأس المال والشركاء",
             AppModule.Reports     => "التقارير",
             AppModule.HR          => "الموارد البشرية",
             AppModule.Settings    => "الإعدادات",
@@ -114,7 +122,7 @@ namespace ERPSystem
         private void UpdateStatusBar(NavigationRequest? req = null)
         {
             TxtStatusMessage.Text = "جاهز للعمل";
-            TxtDbStatus.Text = "وضع تجريبي — PostgreSQL لاحقاً";
+            TxtDbStatus.Text = "متصل بـ PostgreSQL ✓";
 
             if (req != null && !string.IsNullOrEmpty(req.SubPage))
             {

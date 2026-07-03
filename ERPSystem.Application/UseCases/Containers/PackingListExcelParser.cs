@@ -270,10 +270,6 @@ internal sealed class PackingListExcelParser
         if (TryParseInt(fabricCode, out _) && TryParseDecimal(color, out _))
             return false;
 
-        // Fabric codes contain at least one letter (TR3663, S30061, etc.).
-        if (!fabricCode.Any(char.IsLetter))
-            return false;
-
         var lastCol = sheet.GetLastColumnUsed(rowNumber);
         var hasMtsMarker = false;
         var hasRollsMarker = false;

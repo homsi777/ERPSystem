@@ -10,6 +10,7 @@ using ERPSystem.Application.Queries.Warehouses;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Containers;
 using ERPSystem.Application.UseCases.Queries;
+using ERPSystem.Domain.Entities.System;
 using ERPSystem.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -100,6 +101,34 @@ public sealed class ContainerUiService
         }, cancellationToken);
     }
 
+    public async Task<ApplicationResult<ChinaInvoiceParseResultDto>> ParseInvoiceAsync(
+        string fileName,
+        byte[] fileContent,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ParseChinaInvoiceExcelHandler>();
+        return await handler.HandleAsync(new ParseChinaInvoiceExcelQuery
+        {
+            FileName = fileName,
+            FileContent = fileContent
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<ChinaPackingSummaryParseResultDto>> ParsePackingSummaryAsync(
+        string fileName,
+        byte[] fileContent,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ParseChinaPackingSummaryExcelHandler>();
+        return await handler.HandleAsync(new ParseChinaPackingSummaryExcelQuery
+        {
+            FileName = fileName,
+            FileContent = fileContent
+        }, cancellationToken);
+    }
+
     public async Task<ApplicationResult<Guid>> CreateContainerAsync(
         CreateChinaContainerCommand command,
         CancellationToken cancellationToken = default)
@@ -150,39 +179,211 @@ public sealed class ContainerUiService
         if (lines.Count == 0)
             return ApplicationResult<Guid>.ValidationFailed("Lines", "لا توجد بنود صالحة للاستيراد بعد ربط الأكواد.");
 
-        var createResult = await CreateContainerAsync(new CreateChinaContainerCommand
-        {
-            SupplierId = header.SupplierId,
-            ContainerNumber = header.ContainerNumber,
-            ShipmentDate = header.ShipmentDate,
-            ExpectedArrival = header.ExpectedArrival,
-            Notes = header.Notes,
-            ExchangeRateToLocalCurrency = header.ExchangeRateToLocalCurrency,
-            ImportFileName = fileName,
-            Lines = lines
-        }, cancellationToken);
-
-        if (!createResult.IsSuccess || createResult.Value == Guid.Empty)
-            return createResult;
-
         using var scope = _scopeFactory.CreateScope();
-        var landingHandler = scope.ServiceProvider
+        var services = scope.ServiceProvider;
+        var unitOfWork = services.GetRequiredService<IUnitOfWork>();
+        var containerRepository = services.GetRequiredService<IChinaContainerRepository>();
+        var createHandler = services
+            .GetRequiredService<ICommandHandler<CreateChinaContainerCommand, ApplicationResult<Guid>>>();
+        var landingHandler = services
             .GetRequiredService<ICommandHandler<CalculateLandingCostCommand, ApplicationResult>>();
 
-        var landingResult = await landingHandler.HandleAsync(new CalculateLandingCostCommand
+        var containerNumber = header.ContainerNumber.Trim();
+        Guid containerId;
+
+        try
         {
-            ContainerId = createResult.Value,
-            TotalLengthMeters = parse.GrandTotal.ParsedTotalMeters,
-            ContainerWeightKg = input.ContainerWeightKg,
-            CustomsAmount = input.CustomsAmountUsd,
-            Shipping = input.ShippingUsd,
-            Clearance = input.ClearanceUsd,
-            OtherExpenses = input.OtherExpensesUsd
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            var existing = !string.IsNullOrWhiteSpace(containerNumber)
+                ? await containerRepository.GetByNumberAsync(containerNumber, cancellationToken)
+                : null;
+
+            if (existing is not null)
+            {
+                if (existing.LandingCost is not null)
+                {
+                    await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return ApplicationResult<Guid>.Conflict(
+                        $"الحاوية «{containerNumber}» مسجّلة مسبقاً. افتحها من قائمة الحاويات للمتابعة.");
+                }
+
+                existing.SetChinaInvoiceFinancials(input.ChinaInvoiceAmountUsd, header.ExchangeRateToLocalCurrency);
+                await containerRepository.UpdateAsync(existing, cancellationToken);
+                containerId = existing.Id;
+            }
+            else
+            {
+                var createResult = await createHandler.HandleAsync(new CreateChinaContainerCommand
+                {
+                    CompanyId = CompanyId,
+                    BranchId = BranchId,
+                    SupplierId = header.SupplierId,
+                    ContainerNumber = containerNumber,
+                    ShipmentDate = header.ShipmentDate,
+                    ExpectedArrival = header.ExpectedArrival,
+                    Notes = header.Notes,
+                    ExchangeRateToLocalCurrency = header.ExchangeRateToLocalCurrency,
+                    ChinaInvoiceAmountUsd = input.ChinaInvoiceAmountUsd,
+                    ImportFileName = fileName,
+                    Lines = lines
+                }, cancellationToken);
+
+                if (!createResult.IsSuccess || createResult.Value == Guid.Empty)
+                {
+                    await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return createResult;
+                }
+
+                containerId = createResult.Value;
+            }
+
+            var session = ChinaImportNavigationContext.GetMultiFileSession();
+            var usesWeighted = input.UsesWeightedAllocation && session?.UsesWeightedAllocation == true;
+            var typeLineCommands = BuildTypeLineCommands(session, usesWeighted);
+
+            var landingResult = await landingHandler.HandleAsync(new CalculateLandingCostCommand
+            {
+                ContainerId = containerId,
+                TotalLengthMeters = parse.GrandTotal.ParsedTotalMeters,
+                ContainerWeightKg = input.ContainerWeightKg,
+                CustomsClearanceAmount = input.CustomsClearanceUsd > 0
+                    ? input.CustomsClearanceUsd
+                    : input.CustomsAmountUsd + input.ClearanceUsd,
+                Shipping = input.ShippingUsd,
+                Insurance = input.InsuranceUsd,
+                OtherExpense1 = input.OtherExpense1Usd,
+                OtherExpense2 = input.OtherExpense2Usd,
+                OtherExpense3 = input.OtherExpense3Usd,
+                OtherExpense4 = input.OtherExpense4Usd,
+                UsesWeightedAllocation = usesWeighted,
+                TypeLines = typeLineCommands,
+                CustomsAmount = input.CustomsAmountUsd,
+                Clearance = input.ClearanceUsd,
+                OtherExpenses = input.OtherExpensesUsd
+            }, cancellationToken);
+
+            if (!landingResult.IsSuccess)
+            {
+                await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ApplicationResult<Guid>.Failure(
+                    landingResult.ErrorMessage ?? "تعذّر حفظ تكاليف الوصول.");
+            }
+
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
+            ContainerListRefreshHub.RequestRefresh();
+            return ApplicationResult<Guid>.Success(containerId);
+        }
+        catch (Exception ex)
+        {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
+            return ex.ToFailureResult<Guid>();
+        }
+    }
+
+    public async Task<ApplicationResult> SetTypeSalePricesAsync(
+        Guid containerId,
+        IReadOnlyList<ContainerTypeSalePriceCommand> lines,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider
+            .GetRequiredService<ICommandHandler<SetContainerTypeSalePricesCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new SetContainerTypeSalePricesCommand
+        {
+            ContainerId = containerId,
+            Lines = lines
+        }, cancellationToken);
+    }
+
+    private static IReadOnlyList<ContainerFabricTypeLineCommand> BuildTypeLineCommands(
+        ChinaImportMultiFileSessionDto? session,
+        bool usesWeighted)
+    {
+        if (session is null || session.TypeLines.Count == 0)
+            return [];
+
+        return session.TypeLines.Select(t => new ContainerFabricTypeLineCommand
+        {
+            LineNumber = t.LineIndex,
+            TypeDisplayName = t.TypeDisplayName,
+            MatchKey = t.MatchKey,
+            FabricItemId = t.FabricItemId,
+            FabricColorId = t.FabricColorId,
+            LengthMeters = t.LengthMeters,
+            RollCount = t.RollCount,
+            NetWeightKg = t.NetWeightKg,
+            Cbm = t.Cbm,
+            ChinaUnitPriceUsd = t.ChinaUnitPriceUsd,
+            InvoiceLineAmountUsd = t.InvoiceLineAmountUsd,
+            HasInvoiceMatch = t.HasInvoice,
+            HasPlMatch = t.HasPackingSummary,
+            HasDplMatch = t.HasDpl,
+            MatchWarnings = t.MismatchWarnings.Count > 0
+                ? string.Join("؛ ", t.MismatchWarnings)
+                : (t.MissingSources.Count > 0 ? $"ناقص: {string.Join("، ", t.MissingSources)}" : null)
+        }).ToList();
+    }
+
+    public async Task<ChinaImportMultiFileSessionDto?> RefreshMultiFileSessionAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var header = ChinaImportNavigationContext.HeaderDraft;
+        if (header is null)
+            return ChinaImportNavigationContext.GetMultiFileSession();
+
+        using var scope = _scopeFactory.CreateScope();
+        var aliasRepo = scope.ServiceProvider.GetRequiredService<IFabricTypeAliasRepository>();
+        var aliases = await aliasRepo.GetBySupplierAsync(CompanyId, header.SupplierId, cancellationToken);
+
+        var session = ChinaImportCrossFileMatcher.BuildSession(
+            ChinaImportNavigationContext.GetParseResult(),
+            ChinaImportNavigationContext.LastInvoiceParse,
+            ChinaImportNavigationContext.LastPackingSummaryParse,
+            new ChinaImportMatchContext
+            {
+                SupplierId = header.SupplierId,
+                PersistedAliases = aliases,
+                SessionDplToInvoiceKeys = ChinaImportNavigationContext.GetSessionDplLinks()
+            });
+
+        ChinaImportNavigationContext.SetMultiFileSession(session);
+        return session;
+    }
+
+    public async Task<ApplicationResult> ConfirmDplLinkAsync(
+        string dplMatchKey,
+        string invoiceDescriptionMatchKey,
+        string invoiceDescription,
+        Guid fabricItemId,
+        Guid fabricColorId,
+        CancellationToken cancellationToken = default)
+    {
+        var header = ChinaImportNavigationContext.HeaderDraft;
+        if (header is null)
+            return ApplicationResult.ValidationFailed("Header", "لا توجد بيانات استيراد.");
+
+        ChinaImportNavigationContext.SetSessionDplLink(dplMatchKey, invoiceDescriptionMatchKey);
+
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider
+            .GetRequiredService<ICommandHandler<SaveFabricTypeAliasCommand, ApplicationResult>>();
+        var result = await handler.HandleAsync(new SaveFabricTypeAliasCommand
+        {
+            CompanyId = CompanyId,
+            SupplierId = header.SupplierId,
+            FabricItemId = fabricItemId,
+            FabricColorId = fabricColorId,
+            DplMatchKey = dplMatchKey,
+            InvoiceDescriptionMatchKey = invoiceDescriptionMatchKey,
+            InvoiceDescription = invoiceDescription
         }, cancellationToken);
 
-        return landingResult.IsSuccess
-            ? createResult
-            : ApplicationResult<Guid>.ValidationFailed("LandingCost", "تعذّر حفظ تكاليف الوصول.");
+        if (!result.IsSuccess)
+            return result;
+
+        await RefreshMultiFileSessionAsync(cancellationToken);
+        return ApplicationResult.Success();
     }
 
     public async Task<ApplicationResult<ContainerOperationsCenterDto>> GetOperationsCenterAsync(
@@ -229,5 +430,27 @@ public sealed class ContainerUiService
             ContainerId = containerId,
             WarehouseId = warehouseId
         }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult> ArchiveContainerAsync(
+        Guid containerId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider
+            .GetRequiredService<ICommandHandler<ArchiveContainerCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new ArchiveContainerCommand { ContainerId = containerId }, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AuditLog>> GetAuditTrailAsync(
+        Guid containerId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
+        return await repository.GetByEntityAsync(
+            ContainerAuditRecorder.EntityTypeName,
+            containerId,
+            cancellationToken);
     }
 }

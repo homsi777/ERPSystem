@@ -22,3 +22,15 @@ public sealed class ParseContainerExcelQuery
     public string FileName { get; init; } = "";
     public byte[] FileContent { get; init; } = [];
 }
+
+public sealed class ParseChinaInvoiceExcelQuery
+{
+    public string FileName { get; init; } = "";
+    public byte[] FileContent { get; init; } = [];
+}
+
+public sealed class ParseChinaPackingSummaryExcelQuery
+{
+    public string FileName { get; init; } = "";
+    public byte[] FileContent { get; init; } = [];
+}

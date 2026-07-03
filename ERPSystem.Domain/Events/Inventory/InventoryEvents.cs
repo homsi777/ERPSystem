@@ -19,3 +19,9 @@ public sealed record WarehouseStockLow(
     Guid FabricItemId,
     Guid FabricColorId,
     decimal AvailableMeters) : DomainEvent;
+
+public sealed record InventoryCreated(
+    Guid ContainerId,
+    Guid WarehouseId,
+    int RollCount,
+    decimal TotalMeters) : DomainEvent;

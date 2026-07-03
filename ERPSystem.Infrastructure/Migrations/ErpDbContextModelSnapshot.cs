@@ -121,6 +121,9 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("JournalBookId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("PostedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -150,7 +153,59 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.HasIndex("CompanyId", "EntryNumber")
                         .IsUnique();
 
+                    b.HasIndex("JournalBookId");
+
                     b.ToTable("journal_entries", "accounting");
+                });
+
+            modelBuilder.Entity("ERPSystem.Infrastructure.Persistence.Models.Accounting.JournalBookEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BookType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("journal_books", "accounting");
                 });
 
             modelBuilder.Entity("ERPSystem.Infrastructure.Persistence.Models.Accounting.JournalEntryLineEntity", b =>
@@ -403,6 +458,12 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid>("ContainerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ContainerItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CostPerMeter")
+                        .HasColumnType("numeric");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -424,8 +485,17 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<decimal>("LengthMeters")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("LotCode")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("RemainingLengthMeters")
+                        .HasColumnType("numeric");
+
                     b.Property<int>("RollNumber")
                         .HasColumnType("integer");
+
+                    b.Property<decimal?>("SalePricePerMeter")
+                        .HasColumnType("numeric");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -518,6 +588,10 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("ChinaInvoiceAmountUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("ContainerNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -535,6 +609,10 @@ namespace ERPSystem.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ExpectedArrival")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("FinancialTaxReservePostedLocal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -731,11 +809,31 @@ namespace ERPSystem.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("Insurance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
+
+                    b.Property<decimal>("OtherExpense1")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OtherExpense2")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OtherExpense3")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OtherExpense4")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("OtherExpenses")
                         .HasPrecision(18, 2)
@@ -757,12 +855,123 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("UsesWeightedAllocation")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ContainerId")
                         .IsUnique();
 
                     b.ToTable("landing_costs", "china_import");
+                });
+
+            modelBuilder.Entity("ERPSystem.Infrastructure.Persistence.Models.ChinaImport.ContainerFabricTypeLineEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Cbm")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("ChinaUnitPriceUsd")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("ContainerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ExpenseShareUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("FabricColorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FabricItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("HasDplMatch")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("HasInvoiceMatch")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("HasPlMatch")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("InvoiceLineAmountUsd")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("LandedCostPerMeterUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal>("LengthMeters")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MarginPerMeterUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("MatchKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("MatchWarnings")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("NetWeightKg")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("RollCount")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SalePricePerMeterUsd")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("TypeDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("UsesWeightedAllocation")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContainerId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("container_fabric_type_lines", "china_import");
                 });
 
             modelBuilder.Entity("ERPSystem.Infrastructure.Persistence.Models.ChinaImport.LandingCostExpenseEntity", b =>

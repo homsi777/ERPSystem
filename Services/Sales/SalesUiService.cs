@@ -223,6 +223,20 @@ public sealed class SalesUiService
     public async Task<bool> CanSendToWarehouseAsync(CancellationToken cancellationToken = default) =>
         await CanAsync("sales.send-to-warehouse", cancellationToken);
 
+    public async Task<ApplicationResult<IReadOnlyList<SalesWarehouseStockOptionDto>>> GetWarehouseStockAsync(
+        Guid containerId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetSalesWarehouseStockHandler>();
+        return await handler.HandleAsync(new GetSalesWarehouseStockQuery
+        {
+            ContainerId = containerId,
+            WarehouseId = warehouseId
+        }, cancellationToken);
+    }
+
     public async Task<ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>> GetDetailingQueueAsync(
         Guid warehouseId,
         CancellationToken cancellationToken = default)

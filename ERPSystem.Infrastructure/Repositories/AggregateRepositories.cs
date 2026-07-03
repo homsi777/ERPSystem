@@ -42,6 +42,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
         await SyncItemsAsync(aggregate, cancellationToken);
         await SyncImportBatchesAsync(aggregate, cancellationToken);
         await SyncLandingCostAsync(aggregate, cancellationToken);
+        await SyncFabricTypeLinesAsync(aggregate, cancellationToken);
     }
 
     public async Task UpdateAsync(ContainerAggregate aggregate, CancellationToken cancellationToken = default)
@@ -57,6 +58,8 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
         header.ApprovedAt = mapped.ApprovedAt;
         header.ApprovedByUserId = mapped.ApprovedByUserId;
         header.ExchangeRateToLocalCurrency = mapped.ExchangeRateToLocalCurrency;
+        header.ChinaInvoiceAmountUsd = mapped.ChinaInvoiceAmountUsd;
+        header.FinancialTaxReservePostedLocal = mapped.FinancialTaxReservePostedLocal;
         header.ExpectedArrival = mapped.ExpectedArrival;
         header.Notes = mapped.Notes;
         header.IsArchived = mapped.IsArchived;
@@ -64,6 +67,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
 
         await SyncItemsAsync(aggregate, cancellationToken);
         await SyncLandingCostAsync(aggregate, cancellationToken);
+        await SyncFabricTypeLinesAsync(aggregate, cancellationToken);
     }
 
     private async Task<ContainerAggregate?> LoadAggregateAsync(Guid? id, string? number, CancellationToken ct)
@@ -80,7 +84,9 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             .Where(i => i.ContainerId == header.Id).OrderBy(i => i.LineNumber).ToListAsync(ct);
         var landingCost = await context.LandingCosts.AsNoTracking()
             .FirstOrDefaultAsync(l => l.ContainerId == header.Id, ct);
-        return ContainerMapper.ToAggregate(header, items, landingCost);
+        var typeLines = await context.ContainerFabricTypeLines.AsNoTracking()
+            .Where(t => t.ContainerId == header.Id).OrderBy(t => t.LineNumber).ToListAsync(ct);
+        return ContainerMapper.ToAggregate(header, items, landingCost, typeLines);
     }
 
     private async Task SyncItemsAsync(ContainerAggregate aggregate, CancellationToken ct)
@@ -138,8 +144,14 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
                 ContainerWeightKg = lc.ContainerWeight.Value,
                 CustomsAmount = lc.CustomsAmountPaid.Amount,
                 Shipping = lc.Shipping.Amount,
+                Insurance = lc.Insurance.Amount,
                 Clearance = lc.Clearance.Amount,
                 OtherExpenses = lc.OtherExpenses.Amount,
+                OtherExpense1 = lc.OtherExpense1.Amount,
+                OtherExpense2 = lc.OtherExpense2.Amount,
+                OtherExpense3 = lc.OtherExpense3.Amount,
+                OtherExpense4 = lc.OtherExpense4.Amount,
+                UsesWeightedAllocation = lc.UsesWeightedAllocation,
                 Status = (int)lc.Status,
                 CalculatedAt = lc.CalculatedAt,
                 CalculatedByUserId = lc.CalculatedByUserId
@@ -147,11 +159,60 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
         }
         else
         {
+            existing.TotalLengthMeters = lc.TotalLengthFromInvoice.Value;
+            existing.ContainerWeightKg = lc.ContainerWeight.Value;
+            existing.CustomsAmount = lc.CustomsAmountPaid.Amount;
+            existing.Shipping = lc.Shipping.Amount;
+            existing.Insurance = lc.Insurance.Amount;
+            existing.Clearance = lc.Clearance.Amount;
+            existing.OtherExpenses = lc.OtherExpenses.Amount;
+            existing.OtherExpense1 = lc.OtherExpense1.Amount;
+            existing.OtherExpense2 = lc.OtherExpense2.Amount;
+            existing.OtherExpense3 = lc.OtherExpense3.Amount;
+            existing.OtherExpense4 = lc.OtherExpense4.Amount;
+            existing.UsesWeightedAllocation = lc.UsesWeightedAllocation;
             existing.Status = (int)lc.Status;
             existing.CalculatedAt = lc.CalculatedAt;
             existing.CalculatedByUserId = lc.CalculatedByUserId;
             existing.UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    private async Task SyncFabricTypeLinesAsync(ContainerAggregate aggregate, CancellationToken ct)
+    {
+        var existing = await context.ContainerFabricTypeLines
+            .Where(t => t.ContainerId == aggregate.Id).ToListAsync(ct);
+        context.ContainerFabricTypeLines.RemoveRange(existing);
+
+        if (aggregate.FabricTypeLines.Count == 0)
+            return;
+
+        await context.ContainerFabricTypeLines.AddRangeAsync(aggregate.FabricTypeLines.Select(t =>
+            new ContainerFabricTypeLineEntity
+            {
+                Id = t.Id,
+                ContainerId = aggregate.Id,
+                LineNumber = t.LineNumber,
+                TypeDisplayName = t.TypeDisplayName,
+                MatchKey = t.MatchKey,
+                FabricItemId = t.FabricItemId,
+                FabricColorId = t.FabricColorId,
+                LengthMeters = t.LengthMeters,
+                RollCount = t.RollCount,
+                NetWeightKg = t.NetWeightKg,
+                Cbm = t.Cbm,
+                ChinaUnitPriceUsd = t.ChinaUnitPriceUsd,
+                InvoiceLineAmountUsd = t.InvoiceLineAmountUsd,
+                ExpenseShareUsd = t.ExpenseShareUsd,
+                LandedCostPerMeterUsd = t.LandedCostPerMeterUsd,
+                MarginPerMeterUsd = t.MarginPerMeterUsd,
+                SalePricePerMeterUsd = t.SalePricePerMeterUsd,
+                HasInvoiceMatch = t.HasInvoiceMatch,
+                HasPlMatch = t.HasPlMatch,
+                HasDplMatch = t.HasDplMatch,
+                MatchWarnings = t.MatchWarnings,
+                UsesWeightedAllocation = t.UsesWeightedAllocation
+            }), ct);
     }
 }
 

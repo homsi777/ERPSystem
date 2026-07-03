@@ -17,6 +17,8 @@ public class ContainerEntity : PersistenceEntity
     public string? Port { get; set; }
     public string? Notes { get; set; }
     public decimal ExchangeRateToLocalCurrency { get; set; } = 1m;
+    public decimal ChinaInvoiceAmountUsd { get; set; }
+    public decimal? FinancialTaxReservePostedLocal { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public Guid? ApprovedByUserId { get; set; }
 }
@@ -42,11 +44,53 @@ public class LandingCostEntity : PersistenceEntity
     public decimal ContainerWeightKg { get; set; }
     public decimal CustomsAmount { get; set; }
     public decimal Shipping { get; set; }
+    public decimal Insurance { get; set; }
     public decimal Clearance { get; set; }
     public decimal OtherExpenses { get; set; }
+    public decimal OtherExpense1 { get; set; }
+    public decimal OtherExpense2 { get; set; }
+    public decimal OtherExpense3 { get; set; }
+    public decimal OtherExpense4 { get; set; }
+    public bool UsesWeightedAllocation { get; set; }
     public int Status { get; set; }
     public DateTime? CalculatedAt { get; set; }
     public Guid? CalculatedByUserId { get; set; }
+}
+
+public class ContainerFabricTypeLineEntity : PersistenceEntity
+{
+    public Guid ContainerId { get; set; }
+    public int LineNumber { get; set; }
+    public string TypeDisplayName { get; set; } = "";
+    public string MatchKey { get; set; } = "";
+    public Guid? FabricItemId { get; set; }
+    public Guid? FabricColorId { get; set; }
+    public decimal LengthMeters { get; set; }
+    public int RollCount { get; set; }
+    public decimal NetWeightKg { get; set; }
+    public decimal Cbm { get; set; }
+    public decimal ChinaUnitPriceUsd { get; set; }
+    public decimal InvoiceLineAmountUsd { get; set; }
+    public decimal ExpenseShareUsd { get; set; }
+    public decimal LandedCostPerMeterUsd { get; set; }
+    public decimal MarginPerMeterUsd { get; set; }
+    public decimal SalePricePerMeterUsd { get; set; }
+    public bool HasInvoiceMatch { get; set; }
+    public bool HasPlMatch { get; set; }
+    public bool HasDplMatch { get; set; }
+    public string? MatchWarnings { get; set; }
+    public bool UsesWeightedAllocation { get; set; }
+}
+
+public class FabricTypeAliasEntity : PersistenceEntity
+{
+    public Guid CompanyId { get; set; }
+    public Guid SupplierId { get; set; }
+    public Guid FabricItemId { get; set; }
+    public Guid FabricColorId { get; set; }
+    public string DplMatchKey { get; set; } = "";
+    public string InvoiceDescriptionMatchKey { get; set; } = "";
+    public string InvoiceDescription { get; set; } = "";
 }
 
 public class LandingCostExpenseEntity : PersistenceEntity

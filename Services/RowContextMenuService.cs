@@ -2,6 +2,8 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Capital;
+using ERPSystem.Services.Expenses;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -68,11 +70,21 @@ namespace ERPSystem.Services
 
         public static void ShowContextMenu(DataGrid grid, EntityType entityType, object rowItem, Point position)
         {
+            var entity = UnwrapEntity(rowItem, entityType) ?? rowItem;
+            ShowEntityContextMenu(grid, entityType, entity, GetSourceModule(grid), position);
+        }
+
+        public static void ShowEntityContextMenu(
+            UIElement placementTarget,
+            EntityType entityType,
+            object entity,
+            AppModule sourceModule,
+            Point? position = null)
+        {
             var actions = EntityActionRegistry.GetActions(entityType);
             if (actions.Count == 0) return;
 
             var menu = new ContextMenu { FlowDirection = FlowDirection.RightToLeft };
-            var sourceModule = GetSourceModule(grid);
             string? currentGroup = null;
 
             foreach (var action in actions)
@@ -109,29 +121,41 @@ namespace ERPSystem.Services
                 if (captured.IsDestructive)
                     mi.Foreground = (System.Windows.Media.Brush)System.Windows.Application.Current.Resources["DangerBrush"]!;
 
-                mi.Click += (_, _) =>
-                {
-                    var entity = UnwrapEntity(rowItem, entityType);
-                    if (entity is null) return;
-                    var displayName = EntityDisplayNameResolver.Resolve(entity, entityType);
-
-                    if (captured.RequiresConfirmation &&
-                        !ConfirmationDialogService.ConfirmDangerous(captured.LabelAr, displayName))
-                        return;
-
-                    if (CustomerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
-                        return;
-
-                    WorkspaceWindowManager.Instance.OpenAction(
-                        captured.Id, entityType, entity, sourceModule);
-                };
+                mi.Click += (_, _) => HandleActionClick(captured, entityType, entity, sourceModule);
 
                 menu.Items.Add(mi);
             }
 
-            menu.PlacementTarget = grid;
+            menu.PlacementTarget = placementTarget;
             menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+            if (position is Point p)
+                menu.HorizontalOffset = p.X;
             menu.IsOpen = true;
+        }
+
+        private static void HandleActionClick(
+            EntityActionDefinition captured,
+            EntityType entityType,
+            object entity,
+            AppModule sourceModule)
+        {
+            var displayName = EntityDisplayNameResolver.Resolve(entity, entityType);
+
+            if (captured.RequiresConfirmation &&
+                !ConfirmationDialogService.ConfirmDangerous(captured.LabelAr, displayName))
+                return;
+
+            if (CustomerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
+            if (ExpenseActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
+            if (CapitalPartnerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
+            WorkspaceWindowManager.Instance.OpenAction(
+                captured.Id, entityType, entity, sourceModule);
         }
 
         private static object BuildMenuHeader(EntityActionDefinition action)

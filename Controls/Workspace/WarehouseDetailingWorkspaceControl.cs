@@ -36,7 +36,7 @@ namespace ERPSystem.Controls.Workspace
         private readonly Button _btnComplete;
         private DataGrid? _grid;
         private int _currentIndex;
-        private decimal _pricePerMeter = 45m;
+        private decimal _pricePerMeter;
         private Guid? _invoiceId;
         private bool _isSubmitting;
 
@@ -151,30 +151,6 @@ namespace ERPSystem.Controls.Workspace
             Content = root;
         }
 
-        public void LoadInvoice(string invoiceNumber, string customer, string container, int rollCount, decimal pricePerMeter = 45m)
-        {
-            _invoiceId = null;
-            _pricePerMeter = pricePerMeter;
-            _rows.Clear();
-            var codes = new[] { "COL-01", "COL-02", "TRK-05", "LIN-08" };
-            var colors = new[] { "أبيض", "بيج", "أسود", "كحلي" };
-            int count = Math.Max(rollCount, 3);
-            for (int i = 1; i <= count; i++)
-            {
-                _rows.Add(new DetailingRollRow
-                {
-                    RollIndex = i,
-                    FabricCode = codes[(i - 1) % codes.Length],
-                    Color = colors[(i - 1) % colors.Length],
-                    IsCurrent = i == 1
-                });
-            }
-            _currentIndex = 0;
-            _txtCurrentRoll.Text = $"فاتورة {invoiceNumber} — {customer} — حاوية {container}";
-            UpdateTotals();
-            Loaded += (_, _) => FocusLengthBox(0);
-        }
-
         public void LoadFromDatabase(
             Guid invoiceId,
             string invoiceNumber,
@@ -193,8 +169,8 @@ namespace ERPSystem.Controls.Workspace
                 {
                     RollDetailId = roll.RollDetailId,
                     RollIndex = roll.RollSequence,
-                    FabricCode = "FAB-001",
-                    Color = "أبيض",
+                    FabricCode = string.IsNullOrWhiteSpace(roll.FabricCode) ? "—" : roll.FabricCode,
+                    Color = string.IsNullOrWhiteSpace(roll.ColorDisplayName) ? "—" : roll.ColorDisplayName,
                     LengthText = roll.HasValidLength && roll.LengthMeters > 0
                         ? roll.LengthMeters.ToString(CultureInfo.CurrentCulture)
                         : "",

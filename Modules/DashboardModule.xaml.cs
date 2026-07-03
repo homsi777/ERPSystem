@@ -3,13 +3,18 @@ using ERPSystem.Application.Queries.Dashboard;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
+using ERPSystem.Controls.China;
 using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Core.Sales;
 using ERPSystem.Services;
+using ERPSystem.Domain.Enums;
+using ERPSystem.Services.China;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Sales;
+using ERPSystem.Infrastructure.Seed;
 using ERPSystem.Views.Sales;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -27,11 +32,29 @@ namespace ERPSystem.Modules
 
         private bool _cardsWired;
         private bool _languageSubscribed;
+        private DashboardInsightSnapshot _salesInsights = DashboardInsightSnapshot.CreateMock();
 
         public DashboardModule()
         {
             InitializeComponent();
             Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
+            ErpDataRefreshHub.DataChanged += OnDataRefreshRequested;
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e) =>
+            ErpDataRefreshHub.DataChanged -= OnDataRefreshRequested;
+
+        private void OnDataRefreshRequested(ErpDataRefreshScope scope)
+        {
+            if ((scope & (ErpDataRefreshScope.Dashboard | ErpDataRefreshScope.All)) == 0)
+                return;
+
+            if (!IsLoaded)
+                return;
+
+            LoadOperationalTables();
+            _ = LoadKpiCardsAsync();
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -102,6 +125,7 @@ namespace ERPSystem.Modules
             ChartHeader.Subtitle = "حاويات قادمة — انقر لفتح مركز الحاوية";
             ProductsHeader.Title = "عملاء يحتاجون تحصيل";
 
+            LoadSalesInsightCards();
             LoadOperationalTables();
             WireCardClicks();
             _ = LoadKpiCardsAsync();
@@ -112,7 +136,7 @@ namespace ERPSystem.Modules
             if (_cardsWired) return;
             _cardsWired = true;
 
-            CardInventory.MouseLeftButtonUp += (_, _) => MockInteractionService.OpenLandingCostWorkspace();
+            CardInventory.MouseLeftButtonUp += async (_, _) => await OpenPendingLandingCostAsync();
             CardReceivables.MouseLeftButtonUp += (_, _) =>
                 MockInteractionService.Navigate(AppModule.Customers, "List");
             CardPayables.MouseLeftButtonUp += (_, _) =>
@@ -124,11 +148,51 @@ namespace ERPSystem.Modules
             CardOrders.MouseLeftButtonUp += (_, _) =>
                 MockInteractionService.NavigateToWarehouseDetailing();
             ContainersChartPanel.Cursor = Cursors.Hand;
-            ContainersChartPanel.MouseLeftButtonUp += (_, _) => MockInteractionService.OpenContainerOperationsCenter();
+            ContainersChartPanel.MouseLeftButtonUp += (_, _) =>
+                MockInteractionService.Navigate(AppModule.ChinaImport, "Containers");
+
+            CardTopCustomer.MouseLeftButtonUp += (_, _) =>
+                MockInteractionService.Navigate(AppModule.Customers, "List");
+            CardLeastCustomer.MouseLeftButtonUp += (_, _) =>
+                MockInteractionService.Navigate(AppModule.Customers, "List");
+            CardTopFabric.MouseLeftButtonUp += (_, _) =>
+                MockInteractionService.Navigate(AppModule.Sales, "Invoices");
+            CardLeastFabric.MouseLeftButtonUp += (_, _) =>
+                MockInteractionService.Navigate(AppModule.Sales, "Invoices");
         }
+
+        private void LoadSalesInsightCards()
+        {
+            _salesInsights = DashboardInsightSnapshot.CreateMock();
+
+            CardTopCustomer.CardTitle = "أكثر عميل يشتري";
+            CardTopCustomer.CardValue = _salesInsights.TopCustomer.Name;
+            CardTopCustomer.TrendValue = FormatUsd(_salesInsights.TopCustomer.AmountUsd);
+            CardTopCustomer.CardDescription = $"{_salesInsights.TopCustomer.InvoiceCount} فاتورة";
+
+            CardTopFabric.CardTitle = "أكثر توب مباع";
+            CardTopFabric.CardValue = _salesInsights.TopFabric.Label;
+            CardTopFabric.TrendValue = $"{_salesInsights.TopFabric.RollCount:N0} توب";
+            CardTopFabric.CardDescription = FormatUsd(_salesInsights.TopFabric.AmountUsd);
+
+            CardLeastCustomer.CardTitle = "أقل عميل يشتري";
+            CardLeastCustomer.CardValue = _salesInsights.LeastCustomer.Name;
+            CardLeastCustomer.TrendValue = FormatUsd(_salesInsights.LeastCustomer.AmountUsd);
+            CardLeastCustomer.CardDescription = $"{_salesInsights.LeastCustomer.InvoiceCount} فاتورة";
+            CardLeastCustomer.TrendDirection = Controls.MetricTrend.Down;
+
+            CardLeastFabric.CardTitle = "أقل توب مباع";
+            CardLeastFabric.CardValue = _salesInsights.LeastFabric.Label;
+            CardLeastFabric.TrendValue = $"{_salesInsights.LeastFabric.RollCount:N0} توب";
+            CardLeastFabric.CardDescription = FormatUsd(_salesInsights.LeastFabric.AmountUsd);
+            CardLeastFabric.TrendDirection = Controls.MetricTrend.Down;
+        }
+
+        private static string FormatUsd(decimal amount) => $"${amount:N0}";
 
         private void BtnHeaderRefresh_Click(object sender, RoutedEventArgs e)
         {
+            LoadSalesInsightCards();
             LoadOperationalTables();
             _ = LoadKpiCardsAsync();
             MockInteractionService.ShowSuccess("تم تحديث بيانات لوحة التحكم.", "تحديث");
@@ -177,8 +241,8 @@ namespace ERPSystem.Modules
         private void LoadOperationalTables()
         {
             _ = LoadDebtCustomersAsync();
-            LoadContainersChart();
-            LoadPendingWarehouseTasks();
+            _ = LoadContainersChartAsync();
+            _ = LoadPendingWarehouseTasksAsync();
         }
 
         private async Task LoadDebtCustomersAsync()
@@ -226,73 +290,144 @@ namespace ERPSystem.Modules
             }
         }
 
-        private void LoadContainersChart()
+        private async Task LoadContainersChartAsync()
         {
             ContainersChartPanel.Child = null;
             var stack = new StackPanel { Margin = new Thickness(12, 10, 12, 10) };
-            var containers = ChinaImportSampleData.Generate(5).Take(4).ToList();
-            foreach (var c in containers)
-            {
-                var row = new Grid { Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand };
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-                var dotColor = c.StatusDisplay switch
+            if (!AppServices.IsInitialized)
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = "لا توجد حاويات لعرضها.",
+                    FontSize = 12,
+                    Foreground = Br("TextSecondaryBrush"),
+                    FontFamily = Ff()
+                });
+                ContainersChartPanel.Child = stack;
+                return;
+            }
+
+            var result = await ContainerUiService.Instance.GetListAsync(null, null, 1, 4);
+            if (!result.IsSuccess || result.Value?.Items.Count == 0)
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = "لا توجد حاويات مستوردة.",
+                    FontSize = 12,
+                    Foreground = Br("TextSecondaryBrush"),
+                    FontFamily = Ff()
+                });
+                ContainersChartPanel.Child = stack;
+                return;
+            }
+
+            foreach (var dto in result.Value!.Items)
+            {
+                var row = ContainerListRow.FromDto(dto);
+                var grid = new Grid { Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand };
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var dotColor = row.StatusDisplay switch
                 {
                     "واصلة" => Br("PrimaryBrush"),
-                    "قيد المراجعة" => Br("AccentReceivableBrush"),
-                    "معتمدة" => Br("SuccessBrush"),
+                    "قيد المراجعة" or "مراجعة التكلفة" => Br("AccentReceivableBrush"),
+                    "معتمدة" or "في المخزن" => Br("SuccessBrush"),
                     _ => Br("AccentOrdersBrush")
                 };
-                row.Children.Add(new Border
+                grid.Children.Add(new Border
                 {
                     Width = 8, Height = 8, CornerRadius = new CornerRadius(4),
                     Background = dotColor, Margin = new Thickness(0, 0, 10, 0),
                     VerticalAlignment = VerticalAlignment.Center
                 });
-                row.Children.Add(new TextBlock
+                grid.Children.Add(new TextBlock
                 {
-                    Text = $"{c.ContainerNumber} — {c.SupplierName}",
+                    Text = $"{row.ContainerNumber} — {row.SupplierName}",
                     FontSize = 12, Foreground = Br("TextPrimaryBrush"), FontFamily = Ff()
                 });
-                Grid.SetColumn(row.Children[1], 1);
-                row.Children.Add(new TextBlock
+                Grid.SetColumn(grid.Children[1], 1);
+                grid.Children.Add(new TextBlock
                 {
-                    Text = c.StatusDisplay, FontSize = 11, Foreground = Br("TextSecondaryBrush"), FontFamily = Ff()
+                    Text = row.StatusDisplay, FontSize = 11, Foreground = Br("TextSecondaryBrush"), FontFamily = Ff()
                 });
-                Grid.SetColumn(row.Children[2], 2);
-                var captured = c;
-                row.MouseLeftButtonUp += (_, _) => MockInteractionService.OpenContainerOperationsCenter(captured);
-                stack.Children.Add(row);
+                Grid.SetColumn(grid.Children[2], 2);
+                var captured = row;
+                grid.MouseLeftButtonUp += (_, _) => ChinaImportNavigation.OpenOperationsCenter(captured);
+                stack.Children.Add(grid);
             }
+
             ContainersChartPanel.Child = stack;
         }
 
-        private void LoadPendingWarehouseTasks()
+        private static async Task OpenPendingLandingCostAsync()
         {
-            var data = new List<WarehouseTaskRow>
+            if (!AppServices.IsInitialized)
             {
-                new("INV-2026-0088", "أحمد الحمصي", "CN-2026-001", "5 أثواب", "بانتظار التفصيل"),
-                new("INV-2026-0085", "مؤسسة النسيج", "CN-2026-012", "12 توب", "بانتظار التفصيل"),
-                new("INV-2026-0082", "فهد الغامدي", "CN-2026-008", "3 أثواب", "بانتظار التفصيل"),
-            };
-            RecentGrid.ItemsSource = data;
+                MockInteractionService.Navigate(AppModule.ChinaImport, "Containers");
+                return;
+            }
+
+            var result = await ContainerUiService.Instance.GetListAsync(
+                null, ChinaContainerStatus.LandingCostReviewed, 1, 1);
+            if (result.IsSuccess && result.Value?.Items.Count > 0)
+            {
+                ChinaImportNavigation.OpenLandingCostWorkspace(ContainerListRow.FromDto(result.Value.Items[0]));
+                return;
+            }
+
+            MockInteractionService.Navigate(AppModule.ChinaImport, "Containers");
+        }
+
+        private async Task LoadPendingWarehouseTasksAsync()
+        {
             RecentGrid.Columns.Clear();
-            RecentGrid.Columns.Add(Col("رقم الفاتورة", nameof(WarehouseTaskRow.Invoice), 120));
-            RecentGrid.Columns.Add(Col("العميل", nameof(WarehouseTaskRow.Customer), "*"));
-            RecentGrid.Columns.Add(Col("الحاوية", nameof(WarehouseTaskRow.Container), 110));
-            RecentGrid.Columns.Add(Col("الأثواب", nameof(WarehouseTaskRow.Rolls), 80));
-            RecentGrid.Columns.Add(StatusCol("الحالة", nameof(WarehouseTaskRow.Status)));
-            TxtTableCount.Text = $"عرض 1 إلى {data.Count} من {data.Count} سجل";
+            RecentGrid.Columns.Add(Col("رقم الفاتورة", nameof(DashboardDetailingQueueRow.Invoice), 120));
+            RecentGrid.Columns.Add(Col("العميل", nameof(DashboardDetailingQueueRow.Customer), "*"));
+            RecentGrid.Columns.Add(Col("تاريخ الإرسال", nameof(DashboardDetailingQueueRow.SentDate), 110));
+            RecentGrid.Columns.Add(Col("الأثواب", nameof(DashboardDetailingQueueRow.Rolls), 80));
+            RecentGrid.Columns.Add(StatusCol("الحالة", nameof(DashboardDetailingQueueRow.Status)));
             RecentGrid.MouseDoubleClick -= RecentGrid_OnDoubleClick;
             RecentGrid.MouseDoubleClick += RecentGrid_OnDoubleClick;
+
+            if (!AppServices.IsInitialized)
+            {
+                RecentGrid.ItemsSource = Array.Empty<DashboardDetailingQueueRow>();
+                TxtTableCount.Text = "لا توجد فواتير بانتظار التفصيل";
+                return;
+            }
+
+            var result = await SalesUiService.Instance.GetDetailingQueueAsync(DatabaseSeeder.DefaultWarehouseId);
+            if (!result.IsSuccess || result.Value is null)
+            {
+                RecentGrid.ItemsSource = Array.Empty<DashboardDetailingQueueRow>();
+                TxtTableCount.Text = "لا توجد فواتير بانتظار التفصيل";
+                return;
+            }
+
+            var rows = result.Value.Select(dto => new DashboardDetailingQueueRow(
+                dto.InvoiceId,
+                dto.InvoiceNumber,
+                dto.CustomerName,
+                dto.SentToWarehouseAt?.ToString("yyyy/MM/dd") ?? "—",
+                $"{dto.Rolls.Count} توب",
+                "بانتظار التفصيل")).ToList();
+
+            RecentGrid.ItemsSource = rows;
+            TxtTableCount.Text = rows.Count == 0
+                ? "لا توجد فواتير بانتظار التفصيل"
+                : $"عرض 1 إلى {rows.Count} من {rows.Count} سجل";
         }
 
         private void RecentGrid_OnDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (RecentGrid.SelectedItem is WarehouseTaskRow task)
-                MockInteractionService.OpenDetailingWorkspace(task.Invoice);
+            if (RecentGrid.SelectedItem is DashboardDetailingQueueRow task)
+            {
+                SalesNavigationContext.BeginDetailing(task.InvoiceId, task.Invoice);
+                MockInteractionService.NavigateToWarehouseDetailing(task.Invoice);
+            }
         }
 
         private static DataGridTextColumn Col(string h, string p, object w) => new()
@@ -353,7 +488,30 @@ namespace ERPSystem.Modules
         private static FontFamily Ff() => ErpDesignTokens.UiFont;
 
         public record TransactionRow(string Number, string Name, string Date, string Amount, string Status);
-        public record WarehouseTaskRow(string Invoice, string Customer, string Container, string Rolls, string Status);
+        public record DashboardDetailingQueueRow(
+            Guid InvoiceId,
+            string Invoice,
+            string Customer,
+            string SentDate,
+            string Rolls,
+            string Status);
         public record DashboardActionRequest(AppModule Module, string SubPage);
+
+        private sealed record DashboardCustomerInsight(string Name, decimal AmountUsd, int InvoiceCount);
+
+        private sealed record DashboardFabricInsight(string Label, int RollCount, decimal AmountUsd);
+
+        private sealed record DashboardInsightSnapshot(
+            DashboardCustomerInsight TopCustomer,
+            DashboardCustomerInsight LeastCustomer,
+            DashboardFabricInsight TopFabric,
+            DashboardFabricInsight LeastFabric)
+        {
+            public static DashboardInsightSnapshot CreateMock() => new(
+                TopCustomer: new("مؤسسة النسيج الذهبي", 128_450m, 47),
+                LeastCustomer: new("محل الأمل للأقمشة", 1_280m, 2),
+                TopFabric: new("COL-8821 / بيج", 342, 89_600m),
+                LeastFabric: new("DPL-1102 / أسود", 3, 420m));
+        }
     }
 }

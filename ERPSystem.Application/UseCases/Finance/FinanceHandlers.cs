@@ -55,6 +55,7 @@ public sealed class PostReceiptVoucherHandler(
     IReceiptVoucherRepository voucherRepository,
     ICustomerRepository customerRepository,
     ICashboxRepository cashboxRepository,
+    IIntegratedAccountingService integratedAccounting,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     INotificationService notificationService)
@@ -94,6 +95,12 @@ public sealed class PostReceiptVoucherHandler(
             await voucherRepository.UpdateAsync(voucher, cancellationToken);
             await customerRepository.UpdateAsync(customer, cancellationToken);
             await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+            await integratedAccounting.PostReceiptVoucherAsync(
+                voucher.Id,
+                voucher.VoucherNumber,
+                voucher.CustomerId,
+                voucher.Amount.Amount,
+                cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             await notificationService.PublishAsync(new ReceiptVoucherPostedNotification
@@ -156,6 +163,7 @@ public sealed class CreatePaymentVoucherHandler(
 public sealed class PostPaymentVoucherHandler(
     IPaymentVoucherRepository voucherRepository,
     ICashboxRepository cashboxRepository,
+    IIntegratedAccountingService integratedAccounting,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService)
     : ICommandHandler<PostPaymentVoucherCommand, ApplicationResult>
@@ -186,6 +194,12 @@ public sealed class PostPaymentVoucherHandler(
 
             await voucherRepository.UpdateAsync(voucher, cancellationToken);
             await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+            await integratedAccounting.PostPaymentVoucherAsync(
+                voucher.Id,
+                voucher.VoucherNumber,
+                voucher.SupplierId,
+                voucher.Amount.Amount,
+                cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult.Success();

@@ -1,4 +1,5 @@
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Common;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Catalog;
 using ERPSystem.Domain.Entities.Finance;
@@ -117,15 +118,19 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         if (string.IsNullOrWhiteSpace(colorCodeOrName))
             return null;
 
-        var normalized = colorCodeOrName.Trim();
-        var entity = await context.FabricColors.AsNoTracking()
-            .FirstOrDefaultAsync(
-                c => c.FabricItemId == fabricItemId &&
-                     c.IsActive &&
-                     (c.Code.ToLower() == normalized.ToLower() ||
-                      c.NameAr.ToLower() == normalized.ToLower() ||
-                      (c.NameEn != null && c.NameEn.ToLower() == normalized.ToLower())),
-                cancellationToken);
+        var normalized = PackingListCatalogNormalizer.CollapseWhitespace(colorCodeOrName);
+        var colors = await context.FabricColors.AsNoTracking()
+            .Where(c => c.FabricItemId == fabricItemId && c.IsActive)
+            .ToListAsync(cancellationToken);
+
+        var entity = colors.FirstOrDefault(c =>
+            PackingListCatalogNormalizer.CollapseWhitespace(c.Code)
+                .Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+            PackingListCatalogNormalizer.CollapseWhitespace(c.NameAr)
+                .Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+            (c.NameEn != null && PackingListCatalogNormalizer.CollapseWhitespace(c.NameEn)
+                .Equals(normalized, StringComparison.OrdinalIgnoreCase)));
+
         return entity is null ? null : ToFabricColor(entity);
     }
 
@@ -363,22 +368,25 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
         return list;
     }
 
-    public async Task AddAsync(AccountingAggregate entry, CancellationToken cancellationToken = default)
+    public async Task AddAsync(AccountingAggregate entry, Guid companyId, Guid branchId, CancellationToken cancellationToken = default)
     {
         await context.JournalEntries.AddAsync(new JournalEntryEntity
         {
             Id = entry.Id,
+            CompanyId = companyId,
+            BranchId = branchId,
             EntryNumber = entry.EntryNumber,
-            EntryDate = entry.EntryDate,
+            EntryDate = UtcDateTimeNormalizer.ToUtc(entry.EntryDate),
             Description = entry.Description,
             Status = (int)entry.Status,
             SourceType = entry.SourceType.HasValue ? (int)entry.SourceType.Value : null,
             SourceId = entry.SourceId,
             CreatedByUserId = entry.CreatedByUserId,
-            PostedAt = entry.PostedAt,
+            PostedAt = entry.PostedAt.HasValue ? UtcDateTimeNormalizer.ToUtc(entry.PostedAt.Value) : null,
             PostedByUserId = entry.PostedByUserId,
             ReversalOfEntryId = entry.ReversalOfEntryId,
-            CancelledAt = entry.CancelledAt
+            CancelledAt = entry.CancelledAt.HasValue ? UtcDateTimeNormalizer.ToUtc(entry.CancelledAt.Value) : null,
+            JournalBookId = entry.JournalBookId
         }, cancellationToken);
 
         await context.JournalEntryLines.AddRangeAsync(entry.Lines.Select(l => new JournalEntryLineEntity
@@ -391,6 +399,76 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
             Narrative = l.Narrative,
             PartyId = l.PartyId
         }), cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<JournalEntryListRow> Items, int TotalCount)> GetPagedAsync(
+        Guid companyId,
+        JournalEntryListFilter filter,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.JournalEntries.AsNoTracking().Where(j => j.CompanyId == companyId);
+
+        if (filter.Status.HasValue)
+            query = query.Where(j => j.Status == (int)filter.Status.Value);
+        if (filter.FromDate.HasValue)
+            query = query.Where(j => j.EntryDate >= UtcDateTimeNormalizer.ToUtc(filter.FromDate.Value));
+        if (filter.ToDate.HasValue)
+        {
+            var endUtc = UtcDateTimeNormalizer.ToUtc(filter.ToDate.Value.Date.AddDays(1).AddTicks(-1));
+            query = query.Where(j => j.EntryDate <= endUtc);
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var term = filter.Search.Trim();
+            query = query.Where(j =>
+                j.EntryNumber.Contains(term) ||
+                j.Description.Contains(term));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var headers = await query
+            .OrderByDescending(j => j.EntryDate)
+            .ThenByDescending(j => j.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        if (headers.Count == 0)
+            return ([], total);
+
+        var ids = headers.Select(h => h.Id).ToList();
+        var lineStats = await context.JournalEntryLines.AsNoTracking()
+            .Where(l => ids.Contains(l.JournalEntryId))
+            .GroupBy(l => l.JournalEntryId)
+            .Select(g => new
+            {
+                JournalEntryId = g.Key,
+                DebitTotal = g.Sum(x => x.Debit),
+                CreditTotal = g.Sum(x => x.Credit),
+                LineCount = g.Count()
+            })
+            .ToDictionaryAsync(x => x.JournalEntryId, cancellationToken);
+
+        var rows = headers.Select(h =>
+        {
+            lineStats.TryGetValue(h.Id, out var stats);
+            return new JournalEntryListRow
+            {
+                Id = h.Id,
+                EntryNumber = h.EntryNumber,
+                EntryDate = h.EntryDate,
+                Description = h.Description,
+                Status = (JournalEntryStatus)h.Status,
+                DebitTotal = stats?.DebitTotal ?? 0m,
+                CreditTotal = stats?.CreditTotal ?? 0m,
+                LineCount = stats?.LineCount ?? 0,
+                SourceType = h.SourceType.HasValue ? (DocumentType)h.SourceType.Value : null
+            };
+        }).ToList();
+
+        return (rows, total);
     }
 
     public async Task UpdateAsync(AccountingAggregate entry, CancellationToken cancellationToken = default)

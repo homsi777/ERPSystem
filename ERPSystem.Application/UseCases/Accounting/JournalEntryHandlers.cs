@@ -40,11 +40,12 @@ public sealed class CreateJournalEntryHandler(
             var userId = currentUserService.UserId ?? Guid.Empty;
             var aggregate = AccountingAggregate.CreateDraft(
                 entryNumber,
-                command.EntryDate,
+                ApplicationDateNormalizer.ToUtcDate(command.EntryDate),
                 command.Description,
                 userId,
                 command.SourceType,
-                command.SourceId);
+                command.SourceId,
+                command.JournalBookId ?? JournalBookIds.General);
 
             foreach (var line in command.Lines)
             {
@@ -58,7 +59,7 @@ public sealed class CreateJournalEntryHandler(
 
             Domain.Validators.JournalValidator.ValidateDraft(aggregate);
 
-            await journalEntryRepository.AddAsync(aggregate, cancellationToken);
+            await journalEntryRepository.AddAsync(aggregate, command.CompanyId, command.BranchId, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult<Guid>.Success(aggregate.Id);
@@ -122,6 +123,40 @@ public sealed class PostJournalEntryHandler(
     }
 }
 
+public sealed class ApproveJournalEntryHandler(
+    IJournalEntryRepository journalEntryRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
+    : ICommandHandler<ApproveJournalEntryCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        ApproveJournalEntryCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.EntryId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.EntryId), "Entry is required.");
+
+        if (!await permissionService.CanAsync("accounting.journal.post", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to approve journal entries.");
+
+        var aggregate = await journalEntryRepository.GetByIdAsync(command.EntryId, cancellationToken);
+        if (aggregate is null)
+            return ApplicationResult.NotFound("Journal entry not found.");
+
+        try
+        {
+            aggregate.Approve();
+            await journalEntryRepository.UpdateAsync(aggregate, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult();
+        }
+    }
+}
+
 public sealed class ReverseJournalEntryHandler(
     IJournalEntryRepository journalEntryRepository,
     IUnitOfWork unitOfWork,
@@ -148,13 +183,14 @@ public sealed class ReverseJournalEntryHandler(
         try
         {
             var branchId = currentBranchService.BranchId ?? Guid.Empty;
+            var companyId = currentBranchService.CompanyId ?? Guid.Empty;
             var reversalNumber = await numberingService.NextJournalEntryNumberAsync(branchId, cancellationToken);
             var userId = currentUserService.UserId ?? Guid.Empty;
 
             var reversal = aggregate.CreateReversal(reversalNumber, userId);
 
             await journalEntryRepository.UpdateAsync(aggregate, cancellationToken);
-            await journalEntryRepository.AddAsync(reversal, cancellationToken);
+            await journalEntryRepository.AddAsync(reversal, companyId, branchId, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult<Guid>.Success(reversal.Id);
@@ -162,6 +198,40 @@ public sealed class ReverseJournalEntryHandler(
         catch (Exception ex)
         {
             return ex.ToFailureResult<Guid>();
+        }
+    }
+}
+
+public sealed class CancelJournalEntryHandler(
+    IJournalEntryRepository journalEntryRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
+    : ICommandHandler<CancelJournalEntryCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        CancelJournalEntryCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.EntryId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.EntryId), "Entry is required.");
+
+        if (!await permissionService.CanAsync("accounting.journal.create", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to cancel journal entries.");
+
+        var aggregate = await journalEntryRepository.GetByIdAsync(command.EntryId, cancellationToken);
+        if (aggregate is null)
+            return ApplicationResult.NotFound("Journal entry not found.");
+
+        try
+        {
+            aggregate.Cancel();
+            await journalEntryRepository.UpdateAsync(aggregate, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult();
         }
     }
 }

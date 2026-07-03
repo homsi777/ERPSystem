@@ -212,6 +212,13 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     public LengthInMeters TotalSoldMeters() =>
         _rollDetails.Aggregate(LengthInMeters.Zero, (sum, d) => sum.Add(d.LengthMeters));
 
+    public void AssignFabricRollToDetail(Guid rollDetailId, Guid fabricRollId)
+    {
+        var detail = _rollDetails.FirstOrDefault(d => d.Id == rollDetailId)
+            ?? throw new WarehouseDetailingException("Roll detail not found.");
+        detail.AssignFabricRoll(fabricRollId);
+    }
+
     private void EnsureEditable()
     {
         if (Status != SalesInvoiceStatus.Draft)

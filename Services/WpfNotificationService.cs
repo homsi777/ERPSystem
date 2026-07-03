@@ -10,20 +10,30 @@ public sealed class WpfNotificationService : INotificationService
     public Task PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
         where TNotification : class
     {
-        var message = notification switch
+        switch (notification)
         {
-            CustomerCreatedNotification c => ($"تم إنشاء العميل «{c.CustomerName}» ({c.CustomerCode}).", "عميل جديد"),
-            CustomerUpdatedNotification u => ($"تم تحديث بيانات العميل «{u.CustomerName}».", "تحديث عميل"),
-            CustomerDeactivatedNotification d => ($"تم تعطيل العميل «{d.CustomerName}».", "تعطيل عميل"),
-            _ => (null, null)
-        };
-
-        if (message.Item1 is not null)
-        {
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                MockFeedbackDialog.Show(MockFeedbackKind.Success, message.Item1, message.Item2 ?? "ERP PRO"));
+            case CustomerCreatedNotification c:
+                ShowSuccess($"تم إنشاء العميل «{c.CustomerName}» ({c.CustomerCode}).", "عميل جديد");
+                break;
+            case CustomerUpdatedNotification u:
+                ShowSuccess($"تم تحديث بيانات العميل «{u.CustomerName}».", "تحديث عميل");
+                break;
+            case CustomerDeactivatedNotification d:
+                ShowSuccess($"تم تعطيل العميل «{d.CustomerName}».", "تعطيل عميل");
+                break;
+            case InventoryChangedNotification:
+            case SalesInvoiceApprovedNotification:
+            case ContainerApprovedNotification:
+                ErpDataRefreshHub.RequestRefresh();
+                break;
         }
 
         return Task.CompletedTask;
+    }
+
+    private static void ShowSuccess(string message, string title)
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            MockFeedbackDialog.Show(MockFeedbackKind.Success, message, title));
     }
 }

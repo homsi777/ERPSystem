@@ -29,11 +29,16 @@ public class FabricColorEntity : PersistenceEntity
 public class FabricRollEntity : PersistenceEntity
 {
     public Guid ContainerId { get; set; }
+    public Guid? ContainerItemId { get; set; }
     public Guid FabricItemId { get; set; }
     public Guid FabricColorId { get; set; }
     public Guid WarehouseId { get; set; }
     public int RollNumber { get; set; }
     public decimal LengthMeters { get; set; }
+    public decimal RemainingLengthMeters { get; set; }
+    public decimal CostPerMeter { get; set; }
+    public decimal? SalePricePerMeter { get; set; }
     public decimal? WeightKg { get; set; }
+    public string? LotCode { get; set; }
     public int Status { get; set; }
 }

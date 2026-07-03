@@ -74,6 +74,8 @@ public class FabricRoll
     public Guid FabricItemId { get; private set; }
     public Guid FabricColorId { get; private set; }
     public LengthInMeters LengthMeters { get; private set; } = null!;
+    public LengthInMeters RemainingLengthMeters { get; private set; } = null!;
+    public decimal CostPerMeter { get; private set; }
     public WeightInKg? WeightKg { get; private set; }
     public Guid? WarehouseId { get; private set; }
     public Guid? LocationId { get; private set; }
@@ -86,7 +88,8 @@ public class FabricRoll
         RollNumber rollNumber,
         Guid fabricItemId,
         Guid fabricColorId,
-        LengthInMeters lengthMeters) => new()
+        LengthInMeters lengthMeters,
+        decimal costPerMeter = 0m) => new()
     {
         Id = Guid.NewGuid(),
         ContainerId = containerId,
@@ -94,6 +97,8 @@ public class FabricRoll
         FabricItemId = fabricItemId,
         FabricColorId = fabricColorId,
         LengthMeters = lengthMeters,
+        RemainingLengthMeters = lengthMeters,
+        CostPerMeter = costPerMeter,
         Status = FabricRollStatus.Available
     };
 
@@ -106,4 +111,22 @@ public class FabricRoll
 
     public void Reserve() => Status = FabricRollStatus.Reserved;
     public void MarkSold() => Status = FabricRollStatus.Sold;
+
+    public void DeductLength(LengthInMeters soldLength)
+    {
+        if (soldLength.Value <= 0)
+            throw new Exceptions.InventoryException("Sold length must be greater than zero.");
+        if (soldLength.Value > RemainingLengthMeters.Value)
+            throw new Exceptions.InventoryException("Cannot sell more than remaining roll length.");
+
+        RemainingLengthMeters = RemainingLengthMeters.Subtract(soldLength);
+        if (RemainingLengthMeters.Value <= 0)
+            MarkSold();
+    }
+
+    public void ReleaseReservation()
+    {
+        if (Status == FabricRollStatus.Reserved)
+            Status = FabricRollStatus.Available;
+    }
 }

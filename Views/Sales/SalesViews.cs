@@ -6,7 +6,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Core.Sales;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
-using ERPSystem.Services;
+using ERPSystem.Views.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -54,6 +54,7 @@ namespace ERPSystem.Views.Sales
             "Returns" => BuildReturnsList(),
             "Delivery" => BuildDelivery(),
             "Detailing" => BuildDetailing(),
+            "Reports" => ModuleReportsViews.CreateHub(AppModule.Sales),
             _ => BuildInvoiceList()
         };
 

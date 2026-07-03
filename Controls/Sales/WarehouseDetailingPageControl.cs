@@ -110,15 +110,8 @@ public sealed class WarehouseDetailingPageControl : UserControl
             _queue = [];
             foreach (var dto in result.Value ?? [])
             {
-                var ops = await SalesUiService.Instance.GetOperationsCenterAsync(dto.InvoiceId);
-                var unitPrice = ops.IsSuccess && ops.Value?.Invoice.Lines.Count > 0
-                    ? ops.Value.Invoice.Lines.First().UnitPrice
-                    : 12.5m;
-                var containerId = ops.IsSuccess ? ops.Value?.Invoice.ChinaContainerId : null;
-                var containerLabel = containerId.HasValue
-                    ? _containerNames.GetValueOrDefault(containerId.Value, "—")
-                    : "—";
-
+                var unitPrice = dto.RepresentativeUnitPrice ?? 0m;
+                var containerLabel = _containerNames.GetValueOrDefault(dto.ChinaContainerId, "—");
                 _queue.Add(DetailingQueueRow.FromDto(dto, containerLabel, unitPrice));
             }
 

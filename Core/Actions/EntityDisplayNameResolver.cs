@@ -1,5 +1,8 @@
+using ERPSystem.Application.DTOs.Accounting;
+using ERPSystem.Application.DTOs.Capital;
+using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Controls.China;
 using ERPSystem.Core.Accounting;
-using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Customers;
 using ERPSystem.Core.Domain;
 using ERPSystem.Core.HR;
@@ -39,7 +42,7 @@ namespace ERPSystem.Core.Actions
                 EntityType.PurchaseInvoice when row is PurchaseInvoiceModel p =>
                     p.SupplierName,
 
-                EntityType.ImportContainer when row is ImportContainerModel c =>
+                EntityType.ImportContainer when row is ContainerListRow c =>
                     c.ContainerNumber,
 
                 EntityType.Employee when row is EmployeeModel e =>
@@ -53,6 +56,18 @@ namespace ERPSystem.Core.Actions
 
                 EntityType.Cashbox when row is Cashbox cb =>
                     cb.Name,
+
+                EntityType.Expense when row is ExpenseListDto ex =>
+                    ex.Name,
+
+                EntityType.CapitalPartner when row is CapitalPartnerListDto p =>
+                    p.FullName,
+
+                EntityType.Account when row is AccountListDto a =>
+                    string.IsNullOrWhiteSpace(a.NameAr) ? a.Code : a.NameAr,
+
+                EntityType.JournalEntry when row is JournalEntryListDto j =>
+                    j.EntryNumber,
 
                 _ => row.ToString() ?? ""
             };
@@ -71,11 +86,15 @@ namespace ERPSystem.Core.Actions
                 EntityType.FabricItem when row is FabricItemModel f => f.Code,
                 EntityType.Supplier when row is SupplierModel s => s.Code,
                 EntityType.PurchaseInvoice when row is PurchaseInvoiceModel p => p.InvoiceNumber,
-                EntityType.ImportContainer when row is ImportContainerModel c => c.ContainerNumber,
+                EntityType.ImportContainer when row is ContainerListRow c => c.ContainerNumber,
                 EntityType.Employee when row is EmployeeModel e => e.EmployeeCode,
                 EntityType.JournalEntry when row is JournalEntryModel j => j.EntryNumber,
                 EntityType.Warehouse when row is WarehouseEntity w => w.Code,
                 EntityType.Cashbox when row is Cashbox cb => cb.Code,
+                EntityType.Expense when row is ExpenseListDto ex => ex.Code,
+                EntityType.CapitalPartner when row is CapitalPartnerListDto p => p.Code,
+                EntityType.Account when row is AccountListDto a => a.Code,
+                EntityType.JournalEntry when row is JournalEntryListDto j => j.EntryNumber,
                 _ => Guid.NewGuid().ToString("N")
             };
         }

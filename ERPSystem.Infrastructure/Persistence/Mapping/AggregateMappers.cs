@@ -151,15 +151,21 @@ internal static class ContainerMapper
         ChinaOrderId = aggregate.ChinaOrderId,
         ContainerNumber = aggregate.ContainerNumber.Value,
         Status = (int)aggregate.Status,
-        ShipmentDate = aggregate.ShipmentDate,
-        ExpectedArrival = aggregate.ExpectedArrival,
-        ArrivalDate = aggregate.ArrivalDate,
+        ShipmentDate = UtcDateTimeNormalizer.ToUtc(aggregate.ShipmentDate),
+        ExpectedArrival = aggregate.ExpectedArrival.HasValue
+            ? UtcDateTimeNormalizer.ToUtc(aggregate.ExpectedArrival.Value)
+            : null,
+        ArrivalDate = aggregate.ArrivalDate.HasValue
+            ? UtcDateTimeNormalizer.ToUtc(aggregate.ArrivalDate.Value)
+            : null,
         TotalRolls = aggregate.TotalRolls,
         TotalMeters = aggregate.TotalMeters.Value,
         TotalWeightKg = aggregate.TotalWeight?.Value,
         Port = aggregate.Port,
         Notes = aggregate.Notes,
         ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
+        ChinaInvoiceAmountUsd = aggregate.ChinaInvoiceAmountUsd,
+        FinancialTaxReservePostedLocal = aggregate.FinancialTaxReservePostedLocal,
         ApprovedAt = aggregate.ApprovedAt,
         ApprovedByUserId = aggregate.ApprovedByUserId,
         IsArchived = aggregate.IsArchived
@@ -168,7 +174,8 @@ internal static class ContainerMapper
     public static ContainerAggregate ToAggregate(
         ContainerEntity header,
         IReadOnlyList<ContainerItemEntity> items,
-        LandingCostEntity? landingCost)
+        LandingCostEntity? landingCost,
+        IReadOnlyList<ContainerFabricTypeLineEntity> fabricTypeLines)
     {
         var aggregate = DomainHydrator.Create<ContainerAggregate>();
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Id), header.Id);
@@ -188,6 +195,8 @@ internal static class ContainerMapper
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Port), header.Port);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Notes), header.Notes);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ExchangeRateToLocalCurrency), header.ExchangeRateToLocalCurrency);
+        DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ChinaInvoiceAmountUsd), header.ChinaInvoiceAmountUsd);
+        DomainHydrator.Set(aggregate, nameof(ContainerAggregate.FinancialTaxReservePostedLocal), header.FinancialTaxReservePostedLocal);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ApprovedAt), header.ApprovedAt);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ApprovedByUserId), header.ApprovedByUserId);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.IsArchived), header.IsArchived);
@@ -218,12 +227,49 @@ internal static class ContainerMapper
             DomainHydrator.Set(lc, nameof(LandingCost.ContainerWeight), new WeightInKg(landingCost.ContainerWeightKg));
             DomainHydrator.Set(lc, nameof(LandingCost.CustomsAmountPaid), new Money(landingCost.CustomsAmount));
             DomainHydrator.Set(lc, nameof(LandingCost.Shipping), new Money(landingCost.Shipping));
+            DomainHydrator.Set(lc, nameof(LandingCost.Insurance), new Money(landingCost.Insurance));
             DomainHydrator.Set(lc, nameof(LandingCost.Clearance), new Money(landingCost.Clearance));
             DomainHydrator.Set(lc, nameof(LandingCost.OtherExpenses), new Money(landingCost.OtherExpenses));
+            DomainHydrator.Set(lc, nameof(LandingCost.OtherExpense1), new Money(landingCost.OtherExpense1));
+            DomainHydrator.Set(lc, nameof(LandingCost.OtherExpense2), new Money(landingCost.OtherExpense2));
+            DomainHydrator.Set(lc, nameof(LandingCost.OtherExpense3), new Money(landingCost.OtherExpense3));
+            DomainHydrator.Set(lc, nameof(LandingCost.OtherExpense4), new Money(landingCost.OtherExpense4));
+            DomainHydrator.Set(lc, nameof(LandingCost.UsesWeightedAllocation), landingCost.UsesWeightedAllocation);
             DomainHydrator.Set(lc, nameof(LandingCost.Status), (LandingCostStatus)landingCost.Status);
             DomainHydrator.Set(lc, nameof(LandingCost.CalculatedAt), landingCost.CalculatedAt);
             DomainHydrator.Set(lc, nameof(LandingCost.CalculatedByUserId), landingCost.CalculatedByUserId);
             DomainHydrator.Set(aggregate, "_landingCost", lc);
+        }
+
+        if (fabricTypeLines.Count > 0)
+        {
+            var domainTypeLines = fabricTypeLines.Select(t =>
+            {
+                var line = DomainHydrator.Create<ContainerFabricTypeLine>();
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.Id), t.Id);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.LineNumber), t.LineNumber);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.TypeDisplayName), t.TypeDisplayName);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.MatchKey), t.MatchKey);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.FabricItemId), t.FabricItemId);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.FabricColorId), t.FabricColorId);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.LengthMeters), t.LengthMeters);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.RollCount), t.RollCount);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.NetWeightKg), t.NetWeightKg);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.Cbm), t.Cbm);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.ChinaUnitPriceUsd), t.ChinaUnitPriceUsd);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.InvoiceLineAmountUsd), t.InvoiceLineAmountUsd);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.ExpenseShareUsd), t.ExpenseShareUsd);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.LandedCostPerMeterUsd), t.LandedCostPerMeterUsd);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.MarginPerMeterUsd), t.MarginPerMeterUsd);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.SalePricePerMeterUsd), t.SalePricePerMeterUsd);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.HasInvoiceMatch), t.HasInvoiceMatch);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.HasPlMatch), t.HasPlMatch);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.HasDplMatch), t.HasDplMatch);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.MatchWarnings), t.MatchWarnings);
+                DomainHydrator.Set(line, nameof(ContainerFabricTypeLine.UsesWeightedAllocation), t.UsesWeightedAllocation);
+                return line;
+            }).ToList();
+            AggregateCollectionHelper.SetPrivateList(aggregate, "_fabricTypeLines", domainTypeLines);
         }
 
         return aggregate;
@@ -291,6 +337,7 @@ internal static class AccountingMapper
         DomainHydrator.Set(aggregate, nameof(AccountingAggregate.PostedByUserId), header.PostedByUserId);
         DomainHydrator.Set(aggregate, nameof(AccountingAggregate.ReversalOfEntryId), header.ReversalOfEntryId);
         DomainHydrator.Set(aggregate, nameof(AccountingAggregate.CancelledAt), header.CancelledAt);
+        DomainHydrator.Set(aggregate, nameof(AccountingAggregate.JournalBookId), header.JournalBookId);
 
         var domainLines = lines.Select(l => JournalEntryLine.Create(
             l.AccountId,

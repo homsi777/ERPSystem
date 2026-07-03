@@ -1,5 +1,7 @@
+using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Infrastructure.Seed;
 using ERPSystem.Services;
@@ -23,14 +25,10 @@ public sealed class NewChinaImportControl : UserControl
     private readonly DatePicker _expectedArrival = ErpUiFactory.FormDate(DateTime.Today.AddDays(20));
     private readonly TextBox _exchangeRate = ErpUiFactory.FormField("1");
     private readonly TextBox _notes = ErpUiFactory.FormField("");
-    private readonly Button _uploadButton;
-    private readonly TextBlock _hint = new()
-    {
-        Text = "ارفع ملف Packing List من المورد (.xlsx). بعد التحليل ستنتقل تلقائياً إلى شاشة «تحليل الملف».",
-        TextWrapping = TextWrapping.Wrap,
-        Foreground = (Brush)WpfApplication.Current.Resources["TextMutedBrush"]!,
-        Margin = new Thickness(0, 8, 0, 0)
-    };
+    private readonly TextBlock _invoiceStatus = StatusLabel("لم يُرفع");
+    private readonly TextBlock _plStatus = StatusLabel("لم يُرفع");
+    private readonly TextBlock _dplStatus = StatusLabel("لم يُرفع");
+    private readonly Button _continueButton;
 
     public NewChinaImportControl()
     {
@@ -43,8 +41,8 @@ public sealed class NewChinaImportControl : UserControl
             ("تحليل الملف", false, false),
             ("إدخال التكلفة", false, false),
             ("Landing Cost", false, false),
+            ("أسعار البيع", false, false),
             ("اعتماد", false, false),
-            ("تحويل للمخزن", false, false),
             ("جاهز للبيع", false, false)));
 
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
@@ -55,21 +53,57 @@ public sealed class NewChinaImportControl : UserControl
             ("سعر الصرف", _exchangeRate),
             ("ملاحظات", _notes))));
 
-        _uploadButton = new Button
+        stack.Children.Add(ErpUiFactory.SectionTitle("ملفات الشحنة (3 ملفات من المورد)"));
+        stack.Children.Add(ErpUxFactory.InfoBanner(
+            "الفاتورة + PL الملخّص اختياريان للتكلفة حسب النوع. ملف DPL (تفاصيل الأثواب) مطلوب. بدون فاتورة/PL يُطبَّق معدّل مسطح كما سابقاً.",
+            "info"));
+
+        var filesPanel = new StackPanel();
+        filesPanel.Children.Add(FileUploadRow("1. فاتورة الصين (Invoice)", "رفع الفاتورة", async () => await UploadInvoiceAsync(), _invoiceStatus));
+        filesPanel.Children.Add(FileUploadRow("2. Packing List ملخّص (PL)", "رفع PL", async () => await UploadPlAsync(), _plStatus));
+        filesPanel.Children.Add(FileUploadRow("3. قائمة الأثواب التفصيلية (DPL)", "رفع DPL", async () => await UploadDplAsync(), _dplStatus));
+        stack.Children.Add(ErpUiFactory.Card(filesPanel));
+
+        _continueButton = new Button
         {
-            Content = "رفع ملف Excel",
+            Content = "التالي — تحليل الملفات",
             Style = S("PrimaryButtonStyle"),
-            HorizontalAlignment = HorizontalAlignment.Left
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 12, 0, 0),
+            IsEnabled = false
         };
-        stack.Children.Add(ErpUiFactory.Card(_uploadButton));
-        stack.Children.Add(_hint);
+        _continueButton.Click += (_, _) => ChinaImportNavigation.Navigate("FileAnalysis");
+        stack.Children.Add(_continueButton);
 
         root.Content = stack;
         Content = root;
         Background = (SolidColorBrush)WpfApplication.Current.Resources["AppBgBrush"]!;
 
-        _uploadButton.Click += async (_, _) => await UploadExcelAsync();
         Loaded += async (_, _) => await LoadSuppliersAsync();
+    }
+
+    private static TextBlock StatusLabel(string text) => new()
+    {
+        Text = text,
+        Foreground = (Brush)WpfApplication.Current.Resources["TextMutedBrush"]!,
+        Margin = new Thickness(12, 0, 0, 0),
+        VerticalAlignment = VerticalAlignment.Center
+    };
+
+    private static UIElement FileUploadRow(string label, string buttonText, Func<Task> upload, TextBlock status)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 6) };
+        row.Children.Add(new TextBlock
+        {
+            Text = label,
+            Width = 260,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var btn = new Button { Content = buttonText, Style = S("SecondaryButtonStyle"), MinWidth = 120 };
+        btn.Click += async (_, _) => await upload();
+        row.Children.Add(btn);
+        row.Children.Add(status);
+        return row;
     }
 
     private async Task LoadSuppliersAsync()
@@ -92,84 +126,111 @@ public sealed class NewChinaImportControl : UserControl
             };
             _supplierCombo.SelectedIndex = 0;
         }
-
-        var canCreate = await ContainerUiService.Instance.CanCreateAsync();
-        _uploadButton.IsEnabled = canCreate;
     }
 
-    private async Task UploadExcelAsync()
+    private ChinaImportHeaderDraft? BuildHeaderDraft()
     {
         if (_supplierCombo.SelectedValue is not Guid supplierId || supplierId == Guid.Empty)
-        {
-            MessageBox.Show("يرجى اختيار المورد.", "استيراد حاوية", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+            return null;
 
         if (!decimal.TryParse(_exchangeRate.Text.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var exchangeRate) &&
             !decimal.TryParse(_exchangeRate.Text.Trim(), out exchangeRate))
-        {
-            MessageBox.Show("سعر الصرف غير صالح.", "استيراد حاوية", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+            return null;
 
         if (exchangeRate <= 0)
+            return null;
+
+        return new ChinaImportHeaderDraft
         {
-            MessageBox.Show("سعر الصرف يجب أن يكون أكبر من صفر.", "استيراد حاوية", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ContainerNumber = _containerNumber.Text.Trim(),
+            SupplierId = supplierId,
+            ShipmentDate = _shipmentDate.SelectedDate ?? DateTime.Today,
+            ExpectedArrival = _expectedArrival.SelectedDate,
+            ExchangeRateToLocalCurrency = exchangeRate,
+            Notes = string.IsNullOrWhiteSpace(_notes.Text) ? null : _notes.Text.Trim()
+        };
+    }
+
+    private async Task UploadInvoiceAsync()
+    {
+        var bytes = await PickExcelBytes("اختر ملف الفاتورة");
+        if (bytes is null)
+            return;
+
+        var (fileName, content) = bytes.Value;
+        var result = await ContainerUiService.Instance.ParseInvoiceAsync(fileName, content);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        ChinaImportNavigationContext.SetInvoiceParse(result.Value, fileName);
+        _invoiceStatus.Text = $"✅ {fileName} ({result.Value.Lines.Count} بند)";
+        _invoiceStatus.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
+        UpdateContinueState();
+    }
+
+    private async Task UploadPlAsync()
+    {
+        var bytes = await PickExcelBytes("اختر ملف PL الملخّص");
+        if (bytes is null)
+            return;
+
+        var (fileName, content) = bytes.Value;
+        var result = await ContainerUiService.Instance.ParsePackingSummaryAsync(fileName, content);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        ChinaImportNavigationContext.SetPackingSummaryParse(result.Value, fileName);
+        _plStatus.Text = $"✅ {fileName} ({result.Value.Lines.Count} بند)";
+        _plStatus.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
+        UpdateContinueState();
+    }
+
+    private async Task UploadDplAsync()
+    {
+        var header = BuildHeaderDraft();
+        if (header is null)
+        {
+            MessageBox.Show("يرجى اختيار المورد وإدخال سعر صرف صالح.", "استيراد حاوية",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var dialog = new OpenFileDialog
-        {
-            Filter = "Excel Files (*.xls;*.xlsx;*.xlsm)|*.xls;*.xlsx;*.xlsm",
-            Title = "اختر ملف Packing List"
-        };
-
-        if (dialog.ShowDialog() != true)
+        var bytes = await PickExcelBytes("اختر ملف DPL (تفاصيل الأثواب)");
+        if (bytes is null)
             return;
 
-        _uploadButton.IsEnabled = false;
-        _uploadButton.Content = "جاري التحليل...";
+        var (fileName, content) = bytes.Value;
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
-            var bytes = await File.ReadAllBytesAsync(dialog.FileName);
-            var result = await ContainerUiService.Instance.ParseExcelAsync(dialog.SafeFileName, bytes);
+            var result = await ContainerUiService.Instance.ParseExcelAsync(fileName, content);
             if (!ApplicationResultPresenter.Present(result) || result.Value is null)
                 return;
 
-            ChinaImportNavigationContext.SetParseSession(
-                result.Value,
-                new ChinaImportHeaderDraft
-                {
-                    ContainerNumber = _containerNumber.Text.Trim(),
-                    SupplierId = supplierId,
-                    ShipmentDate = _shipmentDate.SelectedDate ?? DateTime.Today,
-                    ExpectedArrival = _expectedArrival.SelectedDate,
-                    ExchangeRateToLocalCurrency = exchangeRate,
-                    Notes = string.IsNullOrWhiteSpace(_notes.Text) ? null : _notes.Text.Trim()
-                },
-                dialog.SafeFileName);
-
-            MockInteractionService.Navigate(AppModule.ChinaImport, "FileAnalysis");
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"تعذّر استيراد الملف.\n\n{ex.Message}",
-                "استيراد حاوية",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            ChinaImportNavigationContext.SetParseSession(result.Value, header, fileName);
+            _dplStatus.Text = $"✅ {fileName} ({result.Value.Groups.Count} مجموعة)";
+            _dplStatus.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
+            UpdateContinueState();
         }
         finally
         {
             Mouse.OverrideCursor = null;
-            _uploadButton.Content = "رفع ملف Excel";
-            if (AppServices.IsInitialized)
-            {
-                var canCreate = await ContainerUiService.Instance.CanCreateAsync();
-                _uploadButton.IsEnabled = canCreate;
-            }
         }
+    }
+
+    private void UpdateContinueState() =>
+        _continueButton.IsEnabled = ChinaImportNavigationContext.GetParseResult() is not null;
+
+    private static async Task<(string FileName, byte[] Content)?> PickExcelBytes(string title)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Excel Files (*.xls;*.xlsx;*.xlsm)|*.xls;*.xlsx;*.xlsm",
+            Title = title
+        };
+        if (dialog.ShowDialog() != true)
+            return null;
+        return (dialog.SafeFileName, await File.ReadAllBytesAsync(dialog.FileName));
     }
 
     private static Style S(string key) => (Style)WpfApplication.Current.Resources[key]!;
