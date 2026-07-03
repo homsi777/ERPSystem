@@ -9,9 +9,9 @@ public class CustomerEntity : PersistenceEntity
     public int Type { get; set; }
     public int Status { get; set; }
     public decimal CreditLimit { get; set; }
-    public string CreditLimitCurrency { get; set; } = "SAR";
+    public string CreditLimitCurrency { get; set; } = "USD";
     public decimal Balance { get; set; }
-    public string BalanceCurrency { get; set; } = "SAR";
+    public string BalanceCurrency { get; set; } = "USD";
     public int PaymentTermsDays { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }
@@ -29,11 +29,11 @@ public class SupplierEntity : PersistenceEntity
     public string NameEn { get; set; } = "";
     public int Status { get; set; }
     public decimal Balance { get; set; }
-    public string BalanceCurrency { get; set; } = "SAR";
+    public string BalanceCurrency { get; set; } = "USD";
     public decimal CreditLimit { get; set; }
-    public string CreditLimitCurrency { get; set; } = "SAR";
+    public string CreditLimitCurrency { get; set; } = "USD";
     public int PaymentTermsDays { get; set; }
-    public string CurrencyCode { get; set; } = "SAR";
+    public string CurrencyCode { get; set; } = "USD";
     public string? Phone { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }

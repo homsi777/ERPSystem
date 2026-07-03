@@ -204,7 +204,7 @@ namespace ERPSystem.Core.Customers
 
         public string BalanceDisplay(bool ar)
         {
-            string cur = ar ? "ر.س" : "SAR";
+            string cur = ar ? "$" : "USD";
             if (_balance > 0) return ar ? $"عليه {_balance:N2} {cur}" : $"Owes {cur} {_balance:N2}";
             if (_balance < 0) return ar ? $"له {Math.Abs(_balance):N2} {cur}" : $"Credit {cur} {Math.Abs(_balance):N2}";
             return ar ? "صفر" : "Zero";

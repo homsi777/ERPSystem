@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Accounting;
 using ERPSystem.Application.DTOs.Capital;
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Controls.China;
 using ERPSystem.Core.Accounting;
 using ERPSystem.Core.Customers;
@@ -59,6 +60,9 @@ namespace ERPSystem.Core.Actions
 
                 EntityType.Warehouse when row is WarehouseEntity w =>
                     w.Name,
+
+                EntityType.Warehouse when row is WarehouseListExtendedDto w =>
+                    string.IsNullOrWhiteSpace(w.NameAr) ? w.Code : w.NameAr,
 
                 EntityType.Cashbox when row is Cashbox cb =>
                     cb.Name,

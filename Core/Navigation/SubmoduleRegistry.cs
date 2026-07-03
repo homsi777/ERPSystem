@@ -1,5 +1,6 @@
 using ERPSystem.Core;
 using ERPSystem.Views.China;
+using ERPSystem.Views.Inventory;
 
 namespace ERPSystem.Core.Navigation
 {
@@ -21,6 +22,7 @@ namespace ERPSystem.Core.Navigation
             },
             AppModule.Inventory => new[]
             {
+                new SubmoduleDef("Dashboard", "لوحة المخزون", "\uE9D9"),
                 new SubmoduleDef("Warehouses", "المستودعات", "\uE8B7"),
                 new SubmoduleDef("Categories", "التصنيفات", "\uECA5"),
                 new SubmoduleDef("ImportExcel", "استيراد Excel", "\uE8B7"),
@@ -154,6 +156,9 @@ namespace ERPSystem.Core.Navigation
                 if (ChinaViews.IsKnownRoute(subPage))
                     return subPage;
             }
+
+            if (module == AppModule.Inventory && InventoryViews.IsKnownRoute(subPage))
+                return subPage;
 
             return subs.FirstOrDefault(s =>
                 s.Key.Equals(subPage, StringComparison.OrdinalIgnoreCase) ||

@@ -126,6 +126,11 @@ internal sealed class WarehouseConfiguration : IEntityTypeConfiguration<Warehous
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => new { x.BranchId, x.Code }).IsUnique();
         builder.HasQueryFilter(x => x.IsActive && !x.IsArchived);
+        builder.Property(x => x.NameEn).HasMaxLength(200);
+        builder.Property(x => x.Description).HasMaxLength(500);
+        builder.Property(x => x.Address).HasMaxLength(500);
+        builder.Property(x => x.Manager).HasMaxLength(200);
+        builder.Property(x => x.Notes).HasMaxLength(1000);
     }
 }
 

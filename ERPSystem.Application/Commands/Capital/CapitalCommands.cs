@@ -12,7 +12,7 @@ public sealed class CreateCapitalPartnerCommand
     public string? Email { get; init; }
     public string? Address { get; init; }
     public string? Notes { get; init; }
-    public string DefaultCurrency { get; init; } = "SAR";
+    public string DefaultCurrency { get; init; } = "USD";
     public PartnerRiskLevel RiskLevel { get; init; } = PartnerRiskLevel.Medium;
 }
 
@@ -26,7 +26,7 @@ public sealed class CreateCapitalPartnerWithSetupCommand
     public string? Email { get; init; }
     public string? Address { get; init; }
     public string? Notes { get; init; }
-    public string DefaultCurrency { get; init; } = "SAR";
+    public string DefaultCurrency { get; init; } = "USD";
     public PartnerRiskLevel RiskLevel { get; init; } = PartnerRiskLevel.Medium;
     public decimal OwnershipPercentage { get; init; }
     public decimal InitialInvestmentAmount { get; init; }
@@ -41,7 +41,7 @@ public sealed class UpdateCapitalPartnerCommand
     public string? Email { get; init; }
     public string? Address { get; init; }
     public string? Notes { get; init; }
-    public string DefaultCurrency { get; init; } = "SAR";
+    public string DefaultCurrency { get; init; } = "USD";
     public PartnerRiskLevel RiskLevel { get; init; }
 }
 
@@ -61,9 +61,9 @@ public sealed class RecordCapitalTransactionCommand
     public Guid? ParticipationId { get; init; }
     public CapitalTransactionType Type { get; init; }
     public decimal AmountOriginal { get; init; }
-    public string Currency { get; init; } = "SAR";
+    public string Currency { get; init; } = "USD";
     public decimal ExchangeRate { get; init; } = 1m;
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
     public DateTime TransactionDate { get; init; }
     public PartnershipScope Scope { get; init; }
     public string? ProjectCode { get; init; }

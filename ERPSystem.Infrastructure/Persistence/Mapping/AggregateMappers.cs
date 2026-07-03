@@ -297,7 +297,16 @@ internal static class WarehouseMapper
 
         foreach (var loc in locations)
         {
-            var location = WarehouseLocation.Create(loc.WarehouseId, loc.Zone, loc.BinCode);
+            var location = WarehouseLocation.Create(
+                loc.WarehouseId,
+                (StorageLocationType)loc.LocationType,
+                string.IsNullOrWhiteSpace(loc.Code) ? loc.BinCode : loc.Code,
+                string.IsNullOrWhiteSpace(loc.Name) ? loc.Zone : loc.Name,
+                loc.ParentId,
+                loc.Zone,
+                loc.BinCode,
+                loc.CapacityMeters,
+                loc.Priority);
             DomainHydrator.Set(location, nameof(WarehouseLocation.Id), loc.Id);
             aggregate.AddLocation(location);
         }

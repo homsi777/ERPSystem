@@ -15,4 +15,7 @@ public interface INumberingService
     Task<string> NextPurchaseInvoiceNumberAsync(Guid branchId, CancellationToken cancellationToken = default);
     Task<string> NextPurchaseOrderNumberAsync(Guid branchId, CancellationToken cancellationToken = default);
     Task<string> NextPurchaseReturnNumberAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task<string> NextStockTransferNumberAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task<string> NextStocktakeNumberAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task<string> NextOpeningStockNumberAsync(Guid branchId, CancellationToken cancellationToken = default);
 }

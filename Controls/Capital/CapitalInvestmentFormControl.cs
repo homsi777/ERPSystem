@@ -24,7 +24,7 @@ public sealed class CapitalInvestmentFormControl : UserControl
     private readonly TextBox _amount = ErpUiFactory.FormField("0");
     private readonly DatePicker _date = ErpUiFactory.FormDate(DateTime.Today);
     private readonly TextBox _notes = ErpUiFactory.FormField("البيان");
-    private readonly ComboBox _currency = ErpUiFactory.FilterCombo(["SAR", "USD", "EUR", "CNY"]);
+    private readonly ComboBox _currency = ErpUiFactory.FilterCombo(["USD", "EUR", "CNY", "SAR"]);
     private readonly Button _save = new() { Content = "حفظ الحركة", Style = S("PrimaryButtonStyle"), MinWidth = 130, Height = 38 };
     private readonly Button _cancel = new() { Content = "إلغاء", Style = S("SecondaryButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0) };
 
@@ -141,7 +141,7 @@ public sealed class CapitalInvestmentFormControl : UserControl
                 AmountOriginal = amount,
                 Currency = _currency.Text,
                 ExchangeRate = 1m,
-                BaseCurrency = "SAR",
+                BaseCurrency = "USD",
                 TransactionDate = _date.SelectedDate ?? DateTime.Today,
                 Scope = PartnershipScope.Company,
                 Notes = string.IsNullOrWhiteSpace(_notes.Text) ? null : _notes.Text.Trim()

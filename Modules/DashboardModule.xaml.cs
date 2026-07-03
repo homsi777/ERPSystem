@@ -180,10 +180,10 @@ namespace ERPSystem.Modules
                     return;
 
                 var dto = result.Value;
-                CardSales.CardValue = $"{dto.TodaySalesTotal:N0} ر.س";
+                CardSales.CardValue = $"{dto.TodaySalesTotal:N0} $";
                 CardOrders.CardValue = dto.AwaitingDetailingCount.ToString();
                 CardInventory.CardValue = dto.PendingContainersCount.ToString();
-                CardReceivables.CardValue = $"{dto.TotalCustomerOutstanding:N0} ر.س";
+                CardReceivables.CardValue = $"{dto.TotalCustomerOutstanding:N0} $";
             }
             catch
             {
@@ -237,7 +237,7 @@ namespace ERPSystem.Modules
                 row.Children.Add(name);
                 var bal = new TextBlock
                 {
-                    Text = $"{c.Balance:N0} ر.س", FontSize = 12, FontWeight = FontWeights.SemiBold,
+                    Text = $"{c.Balance:N0} $", FontSize = 12, FontWeight = FontWeights.SemiBold,
                     Foreground = Br("DangerBrush"), FontFamily = Ff()
                 };
                 Grid.SetColumn(bal, 1);

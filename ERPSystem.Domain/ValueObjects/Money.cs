@@ -1,3 +1,4 @@
+using ERPSystem.Domain.Common;
 using ERPSystem.Domain.Exceptions;
 
 namespace ERPSystem.Domain.ValueObjects;
@@ -7,7 +8,7 @@ public sealed record Money
     public decimal Amount { get; }
     public string Currency { get; }
 
-    public Money(decimal amount, string currency = "SAR")
+    public Money(decimal amount, string currency = CurrencyDefaults.Code)
     {
         if (string.IsNullOrWhiteSpace(currency))
             throw new ValidationException("Currency is required.");
@@ -17,7 +18,7 @@ public sealed record Money
         Currency = currency.ToUpperInvariant();
     }
 
-    public static Money Zero(string currency = "SAR") => new(0, currency);
+    public static Money Zero(string currency = CurrencyDefaults.Code) => new(0, currency);
 
     public Money Add(Money other)
     {

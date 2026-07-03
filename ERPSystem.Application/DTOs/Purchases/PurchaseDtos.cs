@@ -30,7 +30,7 @@ public sealed class PurchaseInvoiceDetailsDto
     public DateTime DueDate { get; init; }
     public Guid? WarehouseId { get; init; }
     public string? WarehouseName { get; init; }
-    public string CurrencyCode { get; init; } = "SAR";
+    public string CurrencyCode { get; init; } = "USD";
     public decimal SubTotal { get; init; }
     public decimal DiscountAmount { get; init; }
     public decimal TaxAmount { get; init; }
@@ -191,5 +191,5 @@ public sealed class PurchaseInvoicePickDto
     public Guid Id { get; init; }
     public string InvoiceNumber { get; init; } = "";
     public decimal RemainingAmount { get; init; }
-    public string Display => $"{InvoiceNumber} — {RemainingAmount:N2} ر.س";
+    public string Display => $"{InvoiceNumber} — {RemainingAmount:N2} $";
 }

@@ -126,24 +126,24 @@ namespace ERPSystem.Controls.Workspace
                 EntityType.Customer when row is CustomerListRow c => new()
                 {
                     ("كود العميل", c.Code), ("اسم العميل", c.NameAr),
-                    ("الرصيد", $"{c.Balance:N2} ر.س"),
-                    ("الحد الائتماني", $"{c.CreditLimit:N2} ر.س"),
+                    ("الرصيد", $"{c.Balance:N2} $"),
+                    ("الحد الائتماني", $"{c.CreditLimit:N2} $"),
                     ("النوع", c.TypeDisplay),
                     ("الحالة", c.StatusDisplay),
                 },
                 EntityType.Customer when row is CustomerModel c => new()
                 {
                     ("كود العميل", c.Code), ("اسم العميل", c.NameAr),
-                    ("الهاتف", c.Phone), ("الرصيد", $"{c.Balance:N2} ر.س"),
-                    ("الحد الائتماني", $"{c.CreditLimit:N2} ر.س"),
+                    ("الهاتف", c.Phone), ("الرصيد", $"{c.Balance:N2} $"),
+                    ("الحد الائتماني", $"{c.CreditLimit:N2} $"),
                     ("الحالة", c.Status == CustomerStatus.Active ? "نشط" : "موقوف"),
                 },
                 EntityType.SalesInvoice when row is SalesInvoice inv => new()
                 {
                     ("رقم الفاتورة", inv.InvoiceNumber), ("العميل", inv.CustomerNameAr),
                     ("التاريخ", inv.Date.ToString("yyyy/MM/dd")),
-                    ("الإجمالي", $"{inv.GrandTotal:N2} ر.س"),
-                    ("المتبقي", $"{inv.RemainingAmount:N2} ر.س"),
+                    ("الإجمالي", $"{inv.GrandTotal:N2} $"),
+                    ("المتبقي", $"{inv.RemainingAmount:N2} $"),
                     ("الحالة", inv.StatusDisplayAr),
                 },
                 EntityType.FabricItem when row is FabricItemModel f => new()
@@ -162,12 +162,12 @@ namespace ERPSystem.Controls.Workspace
                 EntityType.Supplier when row is SupplierModel s => new()
                 {
                     ("كود المورد", s.Code), ("اسم المورد", s.Name),
-                    ("البلد", s.Country), ("الرصيد", $"{s.Balance:N2} ر.س"),
+                    ("البلد", s.Country), ("الرصيد", $"{s.Balance:N2} $"),
                 },
                 EntityType.PurchaseInvoice when row is PurchaseInvoiceModel p => new()
                 {
                     ("رقم الفاتورة", p.InvoiceNumber), ("المورد", p.SupplierName),
-                    ("الإجمالي", $"{p.TotalAmount:N2} ر.س"), ("الحالة", p.StatusDisplay),
+                    ("الإجمالي", $"{p.TotalAmount:N2} $"), ("الحالة", p.StatusDisplay),
                 },
                 EntityType.ImportContainer when row is ContainerListRow c => new()
                 {
@@ -183,7 +183,7 @@ namespace ERPSystem.Controls.Workspace
                 EntityType.JournalEntry when row is Core.Accounting.JournalEntryModel j => new()
                 {
                     ("رقم القيد", j.EntryNumber), ("الوصف", j.Description),
-                    ("مدين", $"{j.DebitTotal:N2} ر.س"), ("دائن", $"{j.CreditTotal:N2} ر.س"),
+                    ("مدين", $"{j.DebitTotal:N2} $"), ("دائن", $"{j.CreditTotal:N2} $"),
                 },
                 _ => new() { ("ملاحظة", "بيانات تجريبية") }
             };

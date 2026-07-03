@@ -16,7 +16,7 @@ public sealed class CapitalPartner
     public string? Email { get; private set; }
     public string? Address { get; private set; }
     public string? Notes { get; private set; }
-    public string DefaultCurrency { get; private set; } = "SAR";
+    public string DefaultCurrency { get; private set; } = "USD";
     public PartnerStatus Status { get; private set; }
     public PartnerRiskLevel RiskLevel { get; private set; }
 
@@ -34,7 +34,7 @@ public sealed class CapitalPartner
         Guid companyId,
         string code,
         string fullName,
-        string defaultCurrency = "SAR",
+        string defaultCurrency = "USD",
         PartnerRiskLevel riskLevel = PartnerRiskLevel.Medium)
     {
         if (string.IsNullOrWhiteSpace(fullName))
@@ -274,7 +274,7 @@ public sealed class PartnerBankAccount
     public string BankName { get; private set; } = "";
     public string AccountNumber { get; private set; } = "";
     public string? Iban { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = "USD";
     public bool IsDefault { get; private set; }
 
     private PartnerBankAccount() { }
@@ -322,9 +322,9 @@ public sealed class CapitalTransaction
     public Guid? ParticipationId { get; private set; }
     public CapitalTransactionType Type { get; private set; }
     public decimal AmountOriginal { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = "USD";
     public decimal ExchangeRate { get; private set; } = 1m;
-    public string BaseCurrency { get; private set; } = "SAR";
+    public string BaseCurrency { get; private set; } = "USD";
     public decimal AmountBase { get; private set; }
     public DateTime TransactionDate { get; private set; }
     public PartnershipScope Scope { get; private set; }
@@ -440,7 +440,7 @@ public sealed class ProfitDistribution
     public decimal TotalCosts { get; private set; }
     public decimal NetProfit { get; private set; }
     public decimal NetLoss { get; private set; }
-    public string BaseCurrency { get; private set; } = "SAR";
+    public string BaseCurrency { get; private set; } = "USD";
     public DistributionStatus Status { get; private set; }
     public string? Notes { get; private set; }
 

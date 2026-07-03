@@ -6,7 +6,7 @@ public class Company
     public string Code { get; private set; } = "";
     public string NameAr { get; private set; } = "";
     public string NameEn { get; private set; } = "";
-    public string DefaultCurrency { get; private set; } = "SAR";
+    public string DefaultCurrency { get; private set; } = "USD";
     public bool IsActive { get; private set; } = true;
 
     private Company() { }

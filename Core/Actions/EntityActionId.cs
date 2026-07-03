@@ -108,6 +108,20 @@ namespace ERPSystem.Core.Actions
         AccountAddChild,
         AccountDeactivate,
         AccountCreate,
-        AccountLedger
+        AccountLedger,
+
+        WarehouseEdit,
+        WarehouseArchive,
+        WarehouseActivate,
+        WarehouseDuplicate,
+        WarehouseStockReport,
+        WarehouseMovementHistory,
+        WarehouseStocktake,
+        WarehouseTimeline,
+        WarehouseAudit,
+        WarehouseExportExcel,
+        WarehouseExportPdf,
+        WarehousePrint,
+        WarehouseProperties
     }
 }

@@ -52,7 +52,7 @@ public partial class ExtendSuppliersModule : Migration
             table: "suppliers",
             type: "text",
             nullable: false,
-            defaultValue: "SAR");
+            defaultValue: "USD");
 
         migrationBuilder.AddColumn<string>(
             name: "CurrencyCode",
@@ -61,7 +61,7 @@ public partial class ExtendSuppliersModule : Migration
             type: "character varying(10)",
             maxLength: 10,
             nullable: false,
-            defaultValue: "SAR");
+            defaultValue: "USD");
 
         migrationBuilder.AddColumn<string>(
             name: "Email",

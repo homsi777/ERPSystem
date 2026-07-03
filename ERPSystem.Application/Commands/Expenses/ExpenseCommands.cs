@@ -11,10 +11,10 @@ public sealed class CreateExpenseCommand
     public string? Description { get; init; }
     public DateTime StartDate { get; init; }
     public DateTime? EndDate { get; init; }
-    public string OriginalCurrency { get; init; } = "SAR";
+    public string OriginalCurrency { get; init; } = "USD";
     public decimal OriginalAmount { get; init; }
     public decimal ExchangeRate { get; init; } = 1m;
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
     public ExpensePaymentMethod PaymentMethod { get; init; }
     public string? PayeeName { get; init; }
     public Guid? SupplierId { get; init; }
@@ -38,10 +38,10 @@ public sealed class UpdateExpenseCommand
     public string? Description { get; init; }
     public DateTime StartDate { get; init; }
     public DateTime? EndDate { get; init; }
-    public string OriginalCurrency { get; init; } = "SAR";
+    public string OriginalCurrency { get; init; } = "USD";
     public decimal OriginalAmount { get; init; }
     public decimal ExchangeRate { get; init; } = 1m;
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
     public ExpensePaymentMethod PaymentMethod { get; init; }
     public string? PayeeName { get; init; }
     public Guid? SupplierId { get; init; }
@@ -87,7 +87,7 @@ public sealed class ExpenseInstallmentInput
     public DateTime DueDate { get; init; }
     public decimal AmountOriginal { get; init; }
     public decimal AmountBase { get; init; }
-    public string Currency { get; init; } = "SAR";
+    public string Currency { get; init; } = "USD";
 }
 
 public sealed class ArchiveExpenseCommand

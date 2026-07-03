@@ -104,7 +104,7 @@ public class Cashbox
     public string Name { get; private set; } = "";
     public Guid BranchId { get; private set; }
     public Money Balance { get; private set; } = Money.Zero();
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = "USD";
     public bool IsActive { get; private set; } = true;
 
     private Cashbox() { }

@@ -10,7 +10,7 @@ public class PurchaseInvoiceEntity : CancellablePersistenceEntity
     public DateTime InvoiceDate { get; set; }
     public DateTime DueDate { get; set; }
     public Guid? WarehouseId { get; set; }
-    public string CurrencyCode { get; set; } = "SAR";
+    public string CurrencyCode { get; set; } = "USD";
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxAmount { get; set; }

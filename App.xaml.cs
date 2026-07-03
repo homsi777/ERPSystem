@@ -8,6 +8,7 @@ using ERPSystem.Services.Purchases;
 using ERPSystem.Services.Sales;
 using ERPSystem.Services.China;
 using ERPSystem.Services.Expenses;
+using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Accounting;
 using ERPSystem.Services.Finance;
@@ -57,6 +58,8 @@ public partial class App : System.Windows.Application
             services.AddSingleton<SalesUiService>();
             services.AddSingleton<ContainerUiService>();
             services.AddSingleton<ExpenseUiService>();
+            services.AddSingleton<InventoryUiService>();
+            services.AddSingleton<InventoryCatalogUiService>();
             services.AddSingleton<CapitalPartnerUiService>();
             services.AddSingleton<AccountingUiService>();
             services.AddSingleton<FinanceUiService>();

@@ -69,8 +69,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
+        services.AddScoped<IInventoryManagementRepository, InventoryManagementRepository>();
         services.AddScoped<IModuleReportRepository, ModuleReportRepository>();
 
+        services.AddScoped<IInventoryEngine, InventoryEngine>();
         services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
         services.AddScoped<IPurchaseInventoryService, PurchaseInventoryService>();
         services.AddScoped<IIntegratedAccountingService, IntegratedAccountingService>();
@@ -89,8 +91,13 @@ public static class InfrastructureServiceCollectionExtensions
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<ErpDbContext>>();
+        var configuration = scope.ServiceProvider.GetService<IConfiguration>();
 
         await context.Database.MigrateAsync(cancellationToken);
+
+        if (configuration?.GetValue<bool>("Development:CleanupImportCatalogOnStartup") == true)
+            await Seed.ImportCatalogDevelopmentCleanup.RunAsync(context, logger, cancellationToken);
+
         await Seed.DatabaseSeeder.SeedAsync(context, logger, cancellationToken);
     }
 }

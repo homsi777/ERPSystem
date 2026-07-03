@@ -13,5 +13,8 @@ public enum DocumentType
     DeliveryNote = 8,
     ChinaContainer = 9,
     ExpensePayment = 10,
-    SupplierOpeningBalance = 11
+    SupplierOpeningBalance = 11,
+    OpeningBalance = 12,
+    StockTransfer = 13,
+    Stocktake = 14
 }

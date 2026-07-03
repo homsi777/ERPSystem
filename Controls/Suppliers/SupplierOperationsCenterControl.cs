@@ -120,9 +120,9 @@ public sealed class SupplierOperationsCenterControl : UserControl
             HeaderFields =
             [
                 ("كود المورد", s.Code),
-                ("الرصيد المستحق", $"{s.Balance:N2} ر.س"),
+                ("الرصيد المستحق", $"{s.Balance:N2} $"),
                 ("شروط السداد", s.PaymentTermsDisplay),
-                ("حد الائتمان", $"{s.CreditLimit:N2} ر.س"),
+                ("حد الائتمان", $"{s.CreditLimit:N2} $"),
                 ("الدولة", s.Country ?? "—"),
                 ("الهاتف", s.Phone ?? "—"),
                 ("حساب الذمم", s.PayablesAccountName ?? "—"),
@@ -130,9 +130,9 @@ public sealed class SupplierOperationsCenterControl : UserControl
             ],
             Kpis =
             [
-                ("مشتريات السنة", $"{data.PurchasesYtd:N0} ر.س", "\uE7BF"),
-                ("رصيد مستحق", $"{data.OutstandingBalance:N2} ر.س", "\uE8C1"),
-                ("متأخرات", $"{data.OverdueAmount:N2} ر.س", "\uE823"),
+                ("مشتريات السنة", $"{data.PurchasesYtd:N0} $", "\uE7BF"),
+                ("رصيد مستحق", $"{data.OutstandingBalance:N2} $", "\uE8C1"),
+                ("متأخرات", $"{data.OverdueAmount:N2} $", "\uE823"),
                 ("فواتير مفتوحة", data.OpenInvoicesCount.ToString(), "\uE9F9"),
             ],
             Tabs =
@@ -164,9 +164,9 @@ public sealed class SupplierOperationsCenterControl : UserControl
     private static UIElement OverviewTab(SupplierOperationsCenterDto data) =>
         PlaceholderUi.MockGrid(new[]
         {
-            new { المؤشر = "مشتريات السنة", القيمة = $"{data.PurchasesYtd:N2} ر.س" },
-            new { المؤشر = "الرصيد المستحق", القيمة = $"{data.OutstandingBalance:N2} ر.س" },
-            new { المؤشر = "المتأخرات", القيمة = $"{data.OverdueAmount:N2} ر.س" },
+            new { المؤشر = "مشتريات السنة", القيمة = $"{data.PurchasesYtd:N2} $" },
+            new { المؤشر = "الرصيد المستحق", القيمة = $"{data.OutstandingBalance:N2} $" },
+            new { المؤشر = "المتأخرات", القيمة = $"{data.OverdueAmount:N2} $" },
             new { المؤشر = "فواتير مفتوحة", القيمة = data.OpenInvoicesCount.ToString() },
         });
 

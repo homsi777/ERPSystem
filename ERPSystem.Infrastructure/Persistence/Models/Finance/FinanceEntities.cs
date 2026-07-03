@@ -32,5 +32,5 @@ public class CashboxEntity : PersistenceEntity
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public decimal Balance { get; set; }
-    public string Currency { get; set; } = "SAR";
+    public string Currency { get; set; } = "USD";
 }

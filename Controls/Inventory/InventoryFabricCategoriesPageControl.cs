@@ -1,68 +1,188 @@
-using ERPSystem.Application.Abstractions.Repositories;
-using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Application.DTOs.Catalog;
+using ERPSystem.Controls;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
-using Microsoft.Extensions.DependencyInjection;
+using ERPSystem.Services.Inventory;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ERPSystem.Controls.Inventory;
 
 public sealed class InventoryFabricCategoriesPageControl : UserControl
 {
-    private readonly ContentPresenter _host = new();
+    private readonly ImportedFabricClassificationPanel _panel = new();
 
     public InventoryFabricCategoriesPageControl()
     {
-        Content = _host;
-        Loaded += OnLoaded;
+        var root = new Grid { Margin = new Thickness(16) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var title = ErpUiFactory.SectionTitle("تصنيفات الأقمشة المستوردة");
+        Grid.SetRow(title, 0);
+        root.Children.Add(title);
+
+        var banner = ErpUxFactory.InfoBanner(
+            "التصنيفات تُنشأ تلقائياً عند استيراد حاوية من الصين (DPL). يمكنك تعديل الأسماء فقط — لا إضافة يدوية.");
+        Grid.SetRow(banner, 1);
+        root.Children.Add(banner);
+
+        Grid.SetRow(_panel, 2);
+        root.Children.Add(_panel);
+        Content = root;
+    }
+}
+
+internal sealed class ContainerFilterOption
+{
+    public Guid? Id { get; init; }
+    public string Label { get; init; } = "";
+}
+
+internal sealed class ImportedFabricClassificationPanel : UserControl
+{
+    private readonly ErpListModuleControl _page = new();
+    private readonly ComboBox _containerFilter = new()
+    {
+        Width = 200,
+        Height = ErpDesignTokens.ControlHeight,
+        DisplayMemberPath = nameof(ContainerFilterOption.Label),
+        FontSize = ErpDesignTokens.FontBody - 1
+    };
+    private bool _isLoading;
+    private bool _suppressFilterChange;
+
+    public ImportedFabricClassificationPanel()
+    {
+        VerticalAlignment = VerticalAlignment.Stretch;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+
+        _page.SetEmptyState(
+            "لا توجد تصنيفات بعد — ستظهر تلقائياً بعد استيراد حاوية من الصين",
+            null,
+            "\uECA5");
+        _containerFilter.Style = (Style)System.Windows.Application.Current.Resources["EnterpriseComboBoxStyle"]!;
+        _page.SetFilterExtras(_containerFilter);
+        _containerFilter.SelectionChanged += async (_, _) =>
+        {
+            if (_suppressFilterChange) return;
+            await LoadAsync();
+        };
+
+        var g = _page.Grid;
+        g.AutoGenerateColumns = false;
+        g.IsReadOnly = true;
+        foreach (var (h, p, w) in new (string, string, object)[]
+        {
+            ("الحاوية", nameof(ImportedFabricClassificationDto.ContainerNumber), 110),
+            ("كود التوب", nameof(ImportedFabricClassificationDto.FabricCode), 90),
+            ("التصنيف", nameof(ImportedFabricClassificationDto.NameAr), "*"),
+            ("اللون", nameof(ImportedFabricClassificationDto.ColorNameAr), 100),
+            ("التوب", nameof(ImportedFabricClassificationDto.RollCount), 70),
+            ("الأمتار", nameof(ImportedFabricClassificationDto.LengthMeters), 90)
+        })
+            ErpUiFactory.AddGridColumn(g, h, p, w, null);
+
+        g.MouseDoubleClick += (_, _) =>
+        {
+            if (g.SelectedItem is ImportedFabricClassificationDto row)
+                InventoryCatalogPopupService.ShowEditClassification(row);
+        };
+
+        g.PreviewMouseRightButtonDown += (_, e) =>
+        {
+            if (FindRow(g, e) is not DataGridRow dgRow || dgRow.Item is not ImportedFabricClassificationDto row)
+                return;
+            e.Handled = true;
+            dgRow.IsSelected = true;
+            ShowMenu(row, g);
+        };
+
+        Content = _page;
+        Loaded += async (_, _) =>
+        {
+            await LoadContainerFilterAsync();
+            await LoadAsync();
+        };
+        InventoryCatalogListRefreshHub.RefreshRequested += async (_, _) =>
+        {
+            await LoadContainerFilterAsync();
+            await LoadAsync();
+        };
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private async Task LoadContainerFilterAsync()
     {
-        Loaded -= OnLoaded;
-        if (!AppServices.IsInitialized)
-        {
-            _host.Content = PlaceholderUi.EmptyMessage("لا توجد تصنيفات أقمشة");
-            return;
-        }
+        var result = await InventoryCatalogUiService.Instance.GetImportedContainerFiltersAsync();
+        if (!result.IsSuccess || result.Value is null) return;
 
+        var selectedId = (_containerFilter.SelectedItem as ContainerFilterOption)?.Id;
+        var items = new List<ContainerFilterOption>
+        {
+            new() { Id = null, Label = "كل الحاويات" }
+        };
+        items.AddRange(result.Value.Select(c =>
+            new ContainerFilterOption { Id = c.Id, Label = $"{c.ContainerNumber} ({c.FabricTypeCount})" }));
+
+        _suppressFilterChange = true;
         try
         {
-            using var scope = AppServices.CreateScope();
-            var branch = scope.ServiceProvider.GetRequiredService<ICurrentBranchService>();
-            var catalog = scope.ServiceProvider.GetRequiredService<IFabricCatalogRepository>();
-            if (branch.CompanyId is not Guid companyId)
-            {
-                _host.Content = PlaceholderUi.EmptyMessage("لا توجد تصنيفات أقمشة");
-                return;
-            }
-
-            var categories = await catalog.GetCategoriesAsync(companyId);
-            var items = await catalog.GetItemsAsync(companyId);
-            if (categories.Count == 0 && items.Count == 0)
-            {
-                _host.Content = PlaceholderUi.EmptyMessage(
-                    "لا توجد تصنيفات أو أصناف أقمشة",
-                    "تُضاف التصنيفات عند استيراد الحاويات أو من إعدادات الكتالوج");
-                return;
-            }
-
-            var rows = items
-                .Select(i => new
-                {
-                    نوع_البضاعة = categories.FirstOrDefault(c => c.Id == i.CategoryId)?.NameAr ?? "—",
-                    كود_التوب = i.Code,
-                    الاسم = i.NameAr,
-                    الحالة = "نشط"
-                })
-                .ToArray();
-
-            _host.Content = ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows, false));
+            _containerFilter.ItemsSource = items;
+            _containerFilter.SelectedItem = selectedId.HasValue
+                ? items.FirstOrDefault(i => i.Id == selectedId) ?? items[0]
+                : items[0];
         }
-        catch
+        finally
         {
-            _host.Content = PlaceholderUi.EmptyMessage("لا توجد تصنيفات أقمشة");
+            _suppressFilterChange = false;
         }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_isLoading || !AppServices.IsInitialized) return;
+
+        _isLoading = true;
+        _page.SetLoadingState(true);
+        try
+        {
+            Guid? containerId = (_containerFilter.SelectedItem as ContainerFilterOption)?.Id;
+            var result = await InventoryCatalogUiService.Instance.GetImportedClassificationsAsync(containerId);
+            _page.BindData(result.IsSuccess && result.Value is not null
+                ? result.Value.Cast<object>().ToList()
+                : []);
+        }
+        finally
+        {
+            _page.SetLoadingState(false);
+            _isLoading = false;
+        }
+    }
+
+    private static void ShowMenu(ImportedFabricClassificationDto row, DataGrid grid)
+    {
+        var menu = new ContextMenu { FlowDirection = FlowDirection.RightToLeft, MinWidth = 200 };
+        menu.Items.Add(new MenuItem { Header = row.DisplayLabel, IsEnabled = false, FontWeight = FontWeights.SemiBold });
+        menu.Items.Add(new Separator());
+        var edit = new MenuItem { Header = "تعديل التصنيف", Padding = new Thickness(12, 8, 12, 8) };
+        edit.Click += (_, _) => InventoryCatalogPopupService.ShowEditClassification(row);
+        menu.Items.Add(edit);
+        menu.PlacementTarget = grid;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
+    }
+
+    private static DataGridRow? FindRow(DataGrid grid, MouseButtonEventArgs e)
+    {
+        var dep = (DependencyObject)e.OriginalSource;
+        while (dep != null)
+        {
+            if (dep is DataGridRow row) return row;
+            dep = VisualTreeHelper.GetParent(dep);
+        }
+        return null;
     }
 }

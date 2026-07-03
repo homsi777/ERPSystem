@@ -101,7 +101,7 @@ public sealed class CapitalTransactionListDto
     public CapitalTransactionType Type { get; init; }
     public string TypeDisplay { get; init; } = "";
     public decimal AmountOriginal { get; init; }
-    public string Currency { get; init; } = "SAR";
+    public string Currency { get; init; } = "USD";
     public decimal SignedBaseAmount { get; init; }
     public DateTime TransactionDate { get; init; }
     public string? Notes { get; init; }
@@ -124,7 +124,7 @@ public sealed class CapitalFinancialSummaryDto
     public decimal TotalWithdrawalsBase { get; init; }
     public decimal DistributedProfitBase { get; init; }
     public decimal UndistributedProfitBase { get; init; }
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
     public int TransactionCount { get; init; }
     public int ParticipationCount { get; init; }
 }
@@ -172,7 +172,7 @@ public sealed class PartnerTimelineEventDto
 public sealed class CapitalDashboardDto
 {
     public decimal TotalCapitalBase { get; init; }
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
     public int ActivePartnersCount { get; init; }
     public int ActiveParticipationsCount { get; init; }
     public decimal MonthlyDistributedProfit { get; init; }
@@ -245,7 +245,7 @@ public sealed class CapitalReportDto
     public DateTime GeneratedAt { get; init; }
     public IReadOnlyList<CapitalReportRowDto> Rows { get; init; } = [];
     public decimal TotalBase { get; init; }
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
 }
 
 public sealed class CapitalReportRowDto

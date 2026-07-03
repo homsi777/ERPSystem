@@ -141,7 +141,7 @@ namespace ERPSystem.Core
             ["Loading"] = new() { ["ar"] = "جاري التحميل...", ["en"] = "Loading..." },
 
             // Currency
-            ["Currency"] = new() { ["ar"] = "ر.س", ["en"] = "SAR" },
+            ["Currency"] = new() { ["ar"] = "$", ["en"] = "USD" },
 
             // ─── Submenu: Sales ───
             ["Sub_Sales_Invoices"] = new() { ["ar"] = "فواتير البيع", ["en"] = "Sales Invoices" },

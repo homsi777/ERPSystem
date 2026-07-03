@@ -84,7 +84,7 @@ public sealed class SupplierOpeningBalanceControl : UserControl
 
         _resultHost.Children.Clear();
         _resultHost.Children.Add(ErpUxFactory.InfoBanner(
-            $"تم ترحيل الرصيد الافتتاحي بنجاح — {amount:N2} ر.س",
+            $"تم ترحيل الرصيد الافتتاحي بنجاح — {amount:N2} $",
             "success"));
         SupplierListRefreshHub.RequestRefresh();
         _btnPost.IsEnabled = false;

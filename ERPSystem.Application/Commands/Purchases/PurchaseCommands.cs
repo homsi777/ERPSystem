@@ -10,7 +10,7 @@ public sealed class CreatePurchaseInvoiceDraftCommand
     public DateTime InvoiceDate { get; init; }
     public DateTime DueDate { get; init; }
     public Guid? WarehouseId { get; init; }
-    public string CurrencyCode { get; init; } = "SAR";
+    public string CurrencyCode { get; init; } = "USD";
     public decimal DiscountAmount { get; init; }
     public decimal TaxAmount { get; init; }
     public Guid? PurchaseOrderId { get; init; }
@@ -26,7 +26,7 @@ public sealed class UpdatePurchaseInvoiceDraftCommand
     public DateTime InvoiceDate { get; init; }
     public DateTime DueDate { get; init; }
     public Guid? WarehouseId { get; init; }
-    public string CurrencyCode { get; init; } = "SAR";
+    public string CurrencyCode { get; init; } = "USD";
     public decimal DiscountAmount { get; init; }
     public decimal TaxAmount { get; init; }
     public string? Notes { get; init; }

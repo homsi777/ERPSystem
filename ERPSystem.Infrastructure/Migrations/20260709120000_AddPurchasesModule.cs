@@ -45,7 +45,7 @@ public partial class AddPurchasesModule : Migration
             type: "character varying(10)",
             maxLength: 10,
             nullable: false,
-            defaultValue: "SAR");
+            defaultValue: "USD");
 
         migrationBuilder.AddColumn<decimal>(
             name: "SubTotal",

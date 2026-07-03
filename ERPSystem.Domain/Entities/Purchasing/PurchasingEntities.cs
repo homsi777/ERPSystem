@@ -15,7 +15,7 @@ public class PurchaseInvoice
     public DateTime InvoiceDate { get; private set; }
     public DateTime DueDate { get; private set; }
     public Guid? WarehouseId { get; private set; }
-    public string CurrencyCode { get; private set; } = "SAR";
+    public string CurrencyCode { get; private set; } = "USD";
     public PurchaseInvoiceStatus Status { get; private set; }
     public Money SubTotal { get; private set; } = Money.Zero();
     public Money DiscountAmount { get; private set; } = Money.Zero();
@@ -40,7 +40,7 @@ public class PurchaseInvoice
         Guid supplierId,
         DateTime invoiceDate,
         DateTime dueDate,
-        string currencyCode = "SAR",
+        string currencyCode = "USD",
         Guid? warehouseId = null,
         Guid? purchaseOrderId = null) => new()
     {
@@ -75,7 +75,7 @@ public class PurchaseInvoice
         DueDate = dueDate;
         SupplierReference = supplierReference?.Trim();
         WarehouseId = warehouseId;
-        CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "SAR" : currencyCode.Trim();
+        CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "USD" : currencyCode.Trim();
         DiscountAmount = new Money(discountAmount, CurrencyCode);
         TaxAmount = new Money(taxAmount, CurrencyCode);
         Notes = notes?.Trim();

@@ -9,7 +9,7 @@ using ERPSystem.Services.Purchases;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Suppliers;
-using ERPSystem.Services.China;
+using ERPSystem.Services.Inventory;
 using System.Windows.Controls;
 
 namespace ERPSystem.Services
@@ -22,6 +22,9 @@ namespace ERPSystem.Services
                 return;
 
             if (SupplierActionRouter.TryHandleQuickAction(actionKey, ctx))
+                return;
+
+            if (InventoryActionRouter.TryHandleQuickAction(actionKey, ctx))
                 return;
 
             if (string.IsNullOrEmpty(actionKey))
@@ -70,10 +73,12 @@ namespace ERPSystem.Services
                     MockInteractionService.Navigate(AppModule.HR, "Form");
                     break;
                 case "form:NewTransfer":
-                    MockInteractionService.OpenMockForm("مناقلة مخزنية");
+                    InventoryNavigationContext.BeginCreateTransfer();
+                    MockInteractionService.Navigate(AppModule.Inventory, "TransferForm");
                     break;
                 case "form:Stocktake":
-                    MockInteractionService.OpenMockForm("جرد مستودع");
+                    InventoryNavigationContext.BeginCreateStocktake();
+                    MockInteractionService.Navigate(AppModule.Inventory, "StocktakeForm");
                     break;
                 case "form:EditPrice":
                     MockInteractionService.OpenMockForm("تعديل سعر الصنف");

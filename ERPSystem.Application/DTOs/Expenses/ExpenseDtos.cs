@@ -228,7 +228,7 @@ public sealed class ExpenseDashboardDto
     public decimal LargestExpenseBase { get; init; }
     public string LargestExpenseName { get; init; } = "";
     public decimal BurnRateMonthly { get; init; }
-    public string BaseCurrency { get; init; } = "SAR";
+    public string BaseCurrency { get; init; } = "USD";
     public IReadOnlyList<ExpenseMonthlyTrendDto> MonthlyTrend { get; init; } = [];
     public IReadOnlyList<ExpenseYearlyTrendDto> YearlyTrend { get; init; } = [];
     public IReadOnlyList<ExpenseCategoryBreakdownDto> CategoryBreakdown { get; init; } = [];

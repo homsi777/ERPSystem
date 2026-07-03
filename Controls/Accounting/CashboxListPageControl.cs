@@ -84,7 +84,7 @@ public sealed class CashboxListPageControl : UserControl
         Code = dto.Code,
         Name = dto.Name,
         Balance = 0,
-        Currency = "ر.س"
+        Currency = "$"
     };
 
     private static SolidColorBrush B(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;

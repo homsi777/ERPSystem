@@ -99,16 +99,16 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             HeaderFields =
             [
                 ("المورد", inv.SupplierName),
-                ("الإجمالي", $"{inv.TotalAmount:N2} ر.س"),
-                ("المدفوع", $"{inv.PaidAmount:N2} ر.س"),
-                ("المتبقي", $"{inv.RemainingAmount:N2} ر.س"),
+                ("الإجمالي", $"{inv.TotalAmount:N2} $"),
+                ("المدفوع", $"{inv.PaidAmount:N2} $"),
+                ("المتبقي", $"{inv.RemainingAmount:N2} $"),
                 ("الاستحقاق", inv.DueDate.ToString("yyyy/MM/dd")),
                 ("شروط السداد", $"{inv.SupplierPaymentTermsDays} يوم"),
             ],
             Kpis =
             [
-                ("الإجمالي", $"{inv.TotalAmount:N0} ر.س", "\uE9F9"),
-                ("المتبقي", $"{inv.RemainingAmount:N2} ر.س", "\uE8C1"),
+                ("الإجمالي", $"{inv.TotalAmount:N0} $", "\uE9F9"),
+                ("المتبقي", $"{inv.RemainingAmount:N2} $", "\uE8C1"),
                 ("أيام للاستحقاق", data.IsOverdue ? $"متأخر {Math.Abs(data.DaysUntilDue)} يوم" : data.DaysUntilDue.ToString(), "\uE823"),
                 ("المدفوعات", data.Payments.Count.ToString(), "\uE719"),
             ],

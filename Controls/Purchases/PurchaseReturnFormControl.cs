@@ -179,7 +179,7 @@ public sealed class PurchaseReturnFormControl : UserControl
     {
         _lines.ItemsSource = null;
         _lines.ItemsSource = _lineItems.ToList();
-        _txtSummary.Text = $"إجمالي المرتجع: {_lineItems.Sum(l => l.LineTotal):N2} ر.س";
+        _txtSummary.Text = $"إجمالي المرتجع: {_lineItems.Sum(l => l.LineTotal):N2} $";
     }
 
     private async Task SaveDraftAsync()

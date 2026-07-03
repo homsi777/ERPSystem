@@ -1,9 +1,10 @@
+using ERPSystem.Application.Commands.Inventory;
+using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
-using ERPSystem.Core.Domain;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
-using ERPSystem.Services.Sales;
+using ERPSystem.Services.Inventory;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -18,27 +19,40 @@ public sealed class InventoryWarehouseListPageControl : UserControl
     public InventoryWarehouseListPageControl()
     {
         _page.Configure(EntityType.Warehouse, AppModule.Inventory);
-        _page.SetHeader("المستودعات", "", "\uE8B7", B("AccentInventoryBrush"));
+        _page.SetHeader("المستودعات", "إدارة مستودعات الأقمشة والمخزون", "\uE8B7", B("AccentInventoryBrush"));
         _page.SetPrimaryButton("إضافة مستودع");
         _page.SetEmptyState("لا توجد مستودعات مضافة بعد", "إضافة مستودع", "\uE8B7");
-        _page.PrimaryActionRequested += (_, _) =>
-            MockInteractionService.ShowComingSoon("إضافة مستودع");
+        _page.PrimaryActionRequested += (_, _) => InventoryPopupService.ShowCreateWarehouse();
+
+        _page.Grid.MouseDoubleClick += (_, _) =>
+        {
+            if (_page.Grid.SelectedItem is WarehouseListExtendedDto w)
+            {
+                InventoryNavigationContext.BeginWorkspace(w.Id);
+                NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "WarehouseOperationsCenter");
+            }
+        };
 
         var g = _page.Grid;
         g.AutoGenerateColumns = false;
+        g.IsReadOnly = true;
         foreach (var (h, p, w) in new (string, string, object)[]
         {
-            ("الكود", nameof(WarehouseEntity.Code), 90),
-            ("الاسم", nameof(WarehouseEntity.Name), "*"),
-            ("المدينة", nameof(WarehouseEntity.City), 100),
-            ("الحالة", nameof(WarehouseEntity.Status), 80)
+            ("الكود", nameof(WarehouseListExtendedDto.Code), 90),
+            ("الاسم", nameof(WarehouseListExtendedDto.NameAr), "*"),
+            ("المدينة", nameof(WarehouseListExtendedDto.City), 100),
+            ("المدير", nameof(WarehouseListExtendedDto.Manager), 120),
+            ("Rolls", nameof(WarehouseListExtendedDto.RollCount), 80),
+            ("الأمتار", nameof(WarehouseListExtendedDto.TotalMeters), 100),
+            ("القيمة $", nameof(WarehouseListExtendedDto.InventoryValue), 110),
+            ("افتراضي", nameof(WarehouseListExtendedDto.IsDefault), 70),
+            ("الحالة", nameof(WarehouseListExtendedDto.IsActive), 80)
         })
-        {
             ErpUiFactory.AddGridColumn(g, h, p, w, null);
-        }
 
         Content = _page;
         Loaded += OnLoaded;
+        InventoryListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -49,35 +63,19 @@ public sealed class InventoryWarehouseListPageControl : UserControl
 
     private async Task LoadAsync()
     {
-        if (_isLoading || !AppServices.IsInitialized)
-        {
-            _page.BindData([]);
-            return;
-        }
-
+        if (_isLoading || !AppServices.IsInitialized) { _page.BindData([]); return; }
         _isLoading = true;
         _page.SetLoadingState(true);
         try
         {
-            var result = await SalesUiService.Instance.GetWarehousesAsync();
-            if (!result.IsSuccess || result.Value is null || result.Value.Count == 0)
+            var result = await InventoryUiService.Instance.GetWarehousesAsync();
+            if (!result.IsSuccess || result.Value is null)
             {
                 _page.BindData([]);
                 return;
             }
 
-            var rows = result.Value
-                .Select(w => new WarehouseEntity
-                {
-                    Code = w.Code,
-                    Name = w.NameAr,
-                    City = w.City ?? "—",
-                    Status = w.IsActive ? "نشط" : "معطل"
-                })
-                .Cast<object>()
-                .ToList();
-
-            _page.BindData(rows);
+            _page.BindData(result.Value.Cast<object>().ToList());
         }
         finally
         {

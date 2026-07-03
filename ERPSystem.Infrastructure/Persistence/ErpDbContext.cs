@@ -56,6 +56,20 @@ public sealed class ErpDbContext(DbContextOptions<ErpDbContext> options) : DbCon
     public DbSet<WarehouseLocationEntity> WarehouseLocations => Set<WarehouseLocationEntity>();
     public DbSet<WarehouseStockEntity> WarehouseStocks => Set<WarehouseStockEntity>();
     public DbSet<StockMovementEntity> StockMovements => Set<StockMovementEntity>();
+    public DbSet<StockMovementLineEntity> StockMovementLines => Set<StockMovementLineEntity>();
+    public DbSet<FabricBatchEntity> FabricBatches => Set<FabricBatchEntity>();
+    public DbSet<InventoryReservationEntity> InventoryReservations => Set<InventoryReservationEntity>();
+    public DbSet<StockTransferDocumentEntity> StockTransfers => Set<StockTransferDocumentEntity>();
+    public DbSet<StockTransferLineEntity> StockTransferLines => Set<StockTransferLineEntity>();
+    public DbSet<StocktakeSessionEntity> StocktakeSessions => Set<StocktakeSessionEntity>();
+    public DbSet<StocktakeLineEntity> StocktakeLines => Set<StocktakeLineEntity>();
+    public DbSet<OpeningStockDocumentEntity> OpeningStockDocuments => Set<OpeningStockDocumentEntity>();
+    public DbSet<OpeningStockLineEntity> OpeningStockLines => Set<OpeningStockLineEntity>();
+    public DbSet<InventoryRuleEntity> InventoryRules => Set<InventoryRuleEntity>();
+    public DbSet<InventoryAlertEntity> InventoryAlerts => Set<InventoryAlertEntity>();
+    public DbSet<InventoryAuditEntryEntity> InventoryAuditLogs => Set<InventoryAuditEntryEntity>();
+    public DbSet<InventoryTimelineEventEntity> InventoryTimelineEvents => Set<InventoryTimelineEventEntity>();
+    public DbSet<InventoryValuationSnapshotEntity> InventoryValuationSnapshots => Set<InventoryValuationSnapshotEntity>();
 
     // sales
     public DbSet<SalesInvoiceEntity> SalesInvoices => Set<SalesInvoiceEntity>();

@@ -61,7 +61,7 @@ public sealed class CreateSupplierHandler(
                 command.NameAr.Trim(),
                 command.NameEn.Trim(),
                 payablesAccountId,
-                string.IsNullOrWhiteSpace(command.CurrencyCode) ? "SAR" : command.CurrencyCode.Trim(),
+                string.IsNullOrWhiteSpace(command.CurrencyCode) ? "USD" : command.CurrencyCode.Trim(),
                 command.PaymentTermsDays,
                 new Money(command.CreditLimit, command.CurrencyCode));
 

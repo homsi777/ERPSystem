@@ -73,10 +73,10 @@ public sealed class Expense
     public ExpenseStatus Status { get; private set; }
     public DateTime StartDate { get; private set; }
     public DateTime? EndDate { get; private set; }
-    public string OriginalCurrency { get; private set; } = "SAR";
+    public string OriginalCurrency { get; private set; } = "USD";
     public decimal OriginalAmount { get; private set; }
     public decimal ExchangeRate { get; private set; } = 1m;
-    public string BaseCurrency { get; private set; } = "SAR";
+    public string BaseCurrency { get; private set; } = "USD";
     public decimal BaseAmount { get; private set; }
     public ExpensePaymentMethod PaymentMethod { get; private set; }
     public string? PayeeName { get; private set; }
@@ -492,7 +492,7 @@ public sealed class ExpensePayment
     public DateTime? DueDate { get; private set; }
     public decimal AmountOriginal { get; private set; }
     public decimal AmountBase { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = "USD";
     public decimal ExchangeRateSnapshot { get; private set; } = 1m;
     public ExpensePaymentMethod PaymentMethod { get; private set; }
     public ExpenseFundingSource FundingSource { get; private set; }
@@ -665,7 +665,7 @@ public sealed class ExpenseInstallment
     public DateTime DueDate { get; private set; }
     public decimal AmountOriginal { get; private set; }
     public decimal AmountBase { get; private set; }
-    public string Currency { get; private set; } = "SAR";
+    public string Currency { get; private set; } = "USD";
     public ExpenseInstallmentStatus Status { get; private set; }
     public Guid? PaymentId { get; private set; }
 

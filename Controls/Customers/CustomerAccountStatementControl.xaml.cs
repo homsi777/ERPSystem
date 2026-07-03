@@ -100,10 +100,10 @@ public partial class CustomerAccountStatementControl : UserControl
             RunningBalance = l.RunningBalance
         }));
 
-        TxtOpeningBalance.Text = $"{dto.OpeningBalance:N2} ر.س";
-        TxtClosingBalance.Text = $"{dto.ClosingBalance:N2} ر.س";
-        TxtTotalDebit.Text = $"{_allLines.Sum(x => x.Debit):N2} ر.س";
-        TxtTotalCredit.Text = $"{_allLines.Sum(x => x.Credit):N2} ر.س";
+        TxtOpeningBalance.Text = $"{dto.OpeningBalance:N2} $";
+        TxtClosingBalance.Text = $"{dto.ClosingBalance:N2} $";
+        TxtTotalDebit.Text = $"{_allLines.Sum(x => x.Debit):N2} $";
+        TxtTotalCredit.Text = $"{_allLines.Sum(x => x.Credit):N2} $";
 
         ApplyFilters();
     }

@@ -192,7 +192,7 @@ public sealed class PurchaseInvoiceFormControl : UserControl
         foreach (var line in _expenseLines)
             if (line.TryRead(out var input))
                 total += input.UnitPrice;
-        _txtSummary.Text = $"الإجمالي: {total:N2} ر.س";
+        _txtSummary.Text = $"الإجمالي: {total:N2} $";
     }
 
     private void SetLinesReadOnly(bool readOnly)

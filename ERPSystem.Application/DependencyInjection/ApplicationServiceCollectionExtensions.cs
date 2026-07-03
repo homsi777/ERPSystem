@@ -9,6 +9,8 @@ using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.Commands.Purchases;
 using ERPSystem.Application.Commands.Suppliers;
+using ERPSystem.Application.Commands.Inventory;
+using ERPSystem.Application.Queries.Inventory;
 using ERPSystem.Application.Queries.Accounting;
 using ERPSystem.Application.Queries.Capital;
 using ERPSystem.Application.Queries.Customers;
@@ -28,6 +30,10 @@ using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Application.UseCases.Reports;
 using ERPSystem.Application.UseCases.Sales;
 using ERPSystem.Application.UseCases.Purchases;
+using ERPSystem.Application.Commands.Catalog;
+using ERPSystem.Application.Queries.Catalog;
+using ERPSystem.Application.UseCases.Catalog;
+using ERPSystem.Application.UseCases.Inventory;
 using ERPSystem.Application.UseCases.Suppliers;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -47,6 +53,8 @@ public static class ApplicationServiceCollectionExtensions
         RegisterFinanceHandlers(services);
         RegisterSalesHandlers(services);
         RegisterContainerHandlers(services);
+        RegisterInventoryHandlers(services);
+        RegisterFabricCatalogHandlers(services);
         RegisterQueryHandlers(services);
         return services;
     }
@@ -185,6 +193,59 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<ArchiveContainerCommand, ApplicationResult>, ArchiveContainerHandler>();
         services.AddScoped<ICommandHandler<SetContainerTypeSalePricesCommand, ApplicationResult>, SetContainerTypeSalePricesHandler>();
         services.AddScoped<ICommandHandler<SaveFabricTypeAliasCommand, ApplicationResult>, SaveFabricTypeAliasHandler>();
+    }
+
+    private static void RegisterInventoryHandlers(IServiceCollection services)
+    {
+        services.AddScoped<ICommandHandler<CreateWarehouseCommand, ApplicationResult<Guid>>, CreateWarehouseHandler>();
+        services.AddScoped<ICommandHandler<UpdateWarehouseCommand, ApplicationResult>, UpdateWarehouseHandler>();
+        services.AddScoped<ICommandHandler<DeactivateWarehouseCommand, ApplicationResult>, DeactivateWarehouseHandler>();
+        services.AddScoped<ICommandHandler<ArchiveWarehouseCommand, ApplicationResult>, ArchiveWarehouseHandler>();
+        services.AddScoped<ICommandHandler<ActivateWarehouseCommand, ApplicationResult>, ActivateWarehouseHandler>();
+        services.AddScoped<ICommandHandler<DuplicateWarehouseCommand, ApplicationResult<Guid>>, DuplicateWarehouseHandler>();
+        services.AddScoped<ICommandHandler<CreateStorageLocationCommand, ApplicationResult<Guid>>, CreateStorageLocationHandler>();
+        services.AddScoped<ICommandHandler<CreateStockTransferCommand, ApplicationResult<Guid>>, CreateStockTransferHandler>();
+        services.AddScoped<ICommandHandler<ApproveStockTransferCommand, ApplicationResult>, ApproveStockTransferHandler>();
+        services.AddScoped<ICommandHandler<CompleteStockTransferCommand, ApplicationResult>, CompleteStockTransferHandler>();
+        services.AddScoped<ICommandHandler<CreateStocktakeCommand, ApplicationResult<Guid>>, CreateStocktakeHandler>();
+        services.AddScoped<ICommandHandler<UpdateStocktakeLinesCommand, ApplicationResult>, UpdateStocktakeLinesHandler>();
+        services.AddScoped<ICommandHandler<PostStocktakeCommand, ApplicationResult>, PostStocktakeHandler>();
+        services.AddScoped<ICommandHandler<CreateOpeningStockCommand, ApplicationResult<Guid>>, CreateOpeningStockHandler>();
+        services.AddScoped<ICommandHandler<PostOpeningStockCommand, ApplicationResult>, PostOpeningStockHandler>();
+        services.AddScoped<GetInventoryWarehouseListHandler>();
+        services.AddScoped<GetInventoryWarehouseDetailHandler>();
+        services.AddScoped<GetInventoryOperationsCenterHandler>();
+        services.AddScoped<GetInventoryDashboardHandler>();
+        services.AddScoped<GetFabricStockBalancesHandler>();
+        services.AddScoped<GetInventoryMovementsHandler>();
+        services.AddScoped<GetInventoryAlertsHandler>();
+        services.AddScoped<GetStockTransfersHandler>();
+        services.AddScoped<GetStockTransferDetailHandler>();
+        services.AddScoped<GetWarehouseTransferRollsHandler>();
+        services.AddScoped<GetStocktakeSessionsHandler>();
+        services.AddScoped<GetStocktakeDetailHandler>();
+        services.AddScoped<GetOpeningStockDocumentsHandler>();
+        services.AddScoped<GetWarehouseStorageLocationsHandler>();
+        services.AddScoped<GetInventoryAuditTrailHandler>();
+        services.AddScoped<GetInventoryTimelineHandler>();
+    }
+
+    private static void RegisterFabricCatalogHandlers(IServiceCollection services)
+    {
+        services.AddScoped<ICommandHandler<CreateFabricCategoryCommand, ApplicationResult<Guid>>, CreateFabricCategoryHandler>();
+        services.AddScoped<ICommandHandler<UpdateFabricCategoryCommand, ApplicationResult>, UpdateFabricCategoryHandler>();
+        services.AddScoped<ICommandHandler<DeactivateFabricCategoryCommand, ApplicationResult>, DeactivateFabricCategoryHandler>();
+        services.AddScoped<ICommandHandler<CreateFabricItemCommand, ApplicationResult<Guid>>, CreateFabricItemHandler>();
+        services.AddScoped<ICommandHandler<UpdateFabricItemCommand, ApplicationResult>, UpdateFabricItemHandler>();
+        services.AddScoped<ICommandHandler<DeactivateFabricItemCommand, ApplicationResult>, DeactivateFabricItemHandler>();
+        services.AddScoped<ICommandHandler<CreateFabricColorCommand, ApplicationResult<Guid>>, CreateFabricColorHandler>();
+        services.AddScoped<ICommandHandler<UpdateFabricColorCommand, ApplicationResult>, UpdateFabricColorHandler>();
+        services.AddScoped<ICommandHandler<DeactivateFabricColorCommand, ApplicationResult>, DeactivateFabricColorHandler>();
+        services.AddScoped<GetFabricCategoryListHandler>();
+        services.AddScoped<GetFabricItemListHandler>();
+        services.AddScoped<GetFabricColorListHandler>();
+        services.AddScoped<GetImportedFabricClassificationListHandler>();
+        services.AddScoped<GetImportedFabricContainerFiltersHandler>();
     }
 
     private static void RegisterQueryHandlers(IServiceCollection services)

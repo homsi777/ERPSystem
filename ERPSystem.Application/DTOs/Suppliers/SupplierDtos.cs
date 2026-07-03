@@ -29,7 +29,7 @@ public sealed class SupplierDetailsDto
     public string? Address { get; init; }
     public string? Country { get; init; }
     public string? City { get; init; }
-    public string CurrencyCode { get; init; } = "SAR";
+    public string CurrencyCode { get; init; } = "USD";
     public int PaymentTermsDays { get; init; }
     public decimal CreditLimit { get; init; }
     public string? TaxNumber { get; init; }

@@ -126,19 +126,19 @@
                 <UniformGrid Columns="4">
                     <StackPanel Margin="0,0,8,0">
                         <TextBlock Text="رصيد افتتاحي" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TxtOpeningBalance" Text="0.00 ر.س" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="TxtOpeningBalance" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,8,0">
                         <TextBlock Text="إجمالي مدين" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TxtTotalDebit" Text="0.00 ر.س" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="TxtTotalDebit" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,8,0">
                         <TextBlock Text="إجمالي دائن" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TxtTotalCredit" Text="0.00 ر.س" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="TxtTotalCredit" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel>
                         <TextBlock Text="رصيد ختامي" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TxtClosingBalance" Text="0.00 ر.س" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="TxtClosingBalance" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                     </StackPanel>
                 </UniformGrid>
             </Border>

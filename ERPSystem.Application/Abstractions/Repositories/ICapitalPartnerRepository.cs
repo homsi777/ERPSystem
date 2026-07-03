@@ -61,7 +61,7 @@ public sealed class CapitalTransactionRow
     public string PartnerName { get; init; } = "";
     public CapitalTransactionType Type { get; init; }
     public decimal AmountOriginal { get; init; }
-    public string Currency { get; init; } = "SAR";
+    public string Currency { get; init; } = "USD";
     public decimal SignedBaseAmount { get; init; }
     public DateTime TransactionDate { get; init; }
     public string? Notes { get; init; }

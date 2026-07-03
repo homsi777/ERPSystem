@@ -13,7 +13,7 @@ public class CapitalPartnerEntity : PersistenceEntity
     public string? Email { get; set; }
     public string? Address { get; set; }
     public string? Notes { get; set; }
-    public string DefaultCurrency { get; set; } = "SAR";
+    public string DefaultCurrency { get; set; } = "USD";
     public int Status { get; set; }
     public int RiskLevel { get; set; }
 
@@ -43,7 +43,7 @@ public class PartnerBankAccountEntity
     public string BankName { get; set; } = "";
     public string AccountNumber { get; set; } = "";
     public string? Iban { get; set; }
-    public string Currency { get; set; } = "SAR";
+    public string Currency { get; set; } = "USD";
     public bool IsDefault { get; set; }
     public CapitalPartnerEntity? Partner { get; set; }
 }
@@ -55,9 +55,9 @@ public class CapitalTransactionEntity
     public Guid? ParticipationId { get; set; }
     public int Type { get; set; }
     public decimal AmountOriginal { get; set; }
-    public string Currency { get; set; } = "SAR";
+    public string Currency { get; set; } = "USD";
     public decimal ExchangeRate { get; set; } = 1m;
-    public string BaseCurrency { get; set; } = "SAR";
+    public string BaseCurrency { get; set; } = "USD";
     public decimal AmountBase { get; set; }
     public DateTime TransactionDate { get; set; }
     public int Scope { get; set; }
@@ -84,7 +84,7 @@ public class ProfitDistributionEntity : PersistenceEntity
     public decimal TotalCosts { get; set; }
     public decimal NetProfit { get; set; }
     public decimal NetLoss { get; set; }
-    public string BaseCurrency { get; set; } = "SAR";
+    public string BaseCurrency { get; set; } = "USD";
     public int Status { get; set; }
     public string? Notes { get; set; }
     public ICollection<ProfitDistributionLineEntity> Lines { get; set; } = [];

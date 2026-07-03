@@ -6,6 +6,7 @@ using ERPSystem.Services;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.China;
+using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
 using ERPSystem.Application.DTOs.Capital;
@@ -255,6 +256,10 @@ namespace ERPSystem.Controls.OperationsCenter
                         if (spec.Context?.EntityType == EntityType.CapitalPartner &&
                             spec.Context.EntityRow is CapitalPartnerDetailsDto capitalDetails &&
                             CapitalPartnerQuickActionRouter.TryHandle(action.ActionKey, capitalDetails))
+                            return;
+
+                        if (spec.Context is not null &&
+                            InventoryActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
                             return;
 
                         MockQuickActionRouter.Execute(action.ActionKey, spec.Context ?? new OperationsCenterContext

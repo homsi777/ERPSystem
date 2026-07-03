@@ -82,8 +82,8 @@ public sealed class SupplierAccountStatementControl : UserControl
 
         var dto = result.Value;
         _summary.Text =
-            $"شروط السداد: {dto.PaymentTermsDisplay} | حد الائتمان: {dto.CreditLimit:N2} ر.س | " +
-            $"افتتاحي: {dto.OpeningBalance:N2} | مدين: {dto.TotalDebit:N2} | دائن: {dto.TotalCredit:N2} | ختامي: {dto.ClosingBalance:N2} ر.س";
+            $"شروط السداد: {dto.PaymentTermsDisplay} | حد الائتمان: {dto.CreditLimit:N2} $ | " +
+            $"افتتاحي: {dto.OpeningBalance:N2} | مدين: {dto.TotalDebit:N2} | دائن: {dto.TotalCredit:N2} | ختامي: {dto.ClosingBalance:N2} $";
 
         _grid.ItemsSource = dto.Lines.Select(SupplierStatementLineVm.FromDto).ToList();
     }

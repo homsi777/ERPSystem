@@ -81,19 +81,19 @@ public sealed class CustomerOperationsCenterControl : UserControl
             HeaderFields =
             [
                 ("كود العميل", c.Code),
-                ("حد الائتمان", $"{c.CreditLimit:N0} ر.س"),
-                ("الرصيد الحالي", $"{c.Balance:N0} ر.س"),
+                ("حد الائتمان", $"{c.CreditLimit:N0} $"),
+                ("الرصيد الحالي", $"{c.Balance:N0} $"),
                 ("فواتير مفتوحة", data.OpenInvoicesCount.ToString()),
                 ("الهاتف", c.Phone ?? "—"),
                 ("نوع العميل", row.TypeDisplay),
                 ("أيام السداد", c.PaymentTermsDays.ToString()),
-                ("إجمالي المستحق", $"{data.TotalOutstanding:N0} ر.س"),
+                ("إجمالي المستحق", $"{data.TotalOutstanding:N0} $"),
             ],
             Kpis =
             [
-                ("الرصيد الحالي", $"{c.Balance:N0} ر.س", "\uE8C1"),
+                ("الرصيد الحالي", $"{c.Balance:N0} $", "\uE8C1"),
                 ("فواتير غير مغلقة", data.OpenInvoicesCount.ToString(), "\uE9F9"),
-                ("إجمالي المستحق", $"{data.TotalOutstanding:N0} ر.س", "\uE8F1"),
+                ("إجمالي المستحق", $"{data.TotalOutstanding:N0} $", "\uE8F1"),
                 ("سندات قبض معلقة", data.PendingReceiptsCount.ToString(), "\uE7BF"),
             ],
             Tabs =
@@ -127,10 +127,10 @@ public sealed class CustomerOperationsCenterControl : UserControl
         var c = data.Customer;
         return PlaceholderUi.MockGrid(new[]
         {
-            new { المؤشر = "الرصيد الحالي", القيمة = $"{c.Balance:N0} ر.س" },
-            new { المؤشر = "حد الائتمان", القيمة = $"{c.CreditLimit:N0} ر.س" },
+            new { المؤشر = "الرصيد الحالي", القيمة = $"{c.Balance:N0} $" },
+            new { المؤشر = "حد الائتمان", القيمة = $"{c.CreditLimit:N0} $" },
             new { المؤشر = "فواتير مفتوحة", القيمة = data.OpenInvoicesCount.ToString() },
-            new { المؤشر = "إجمالي المستحق", القيمة = $"{data.TotalOutstanding:N0} ر.س" },
+            new { المؤشر = "إجمالي المستحق", القيمة = $"{data.TotalOutstanding:N0} $" },
         });
     }
 

@@ -1,10 +1,12 @@
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Workspace;
+using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
+using ERPSystem.Services.Inventory;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -66,12 +68,27 @@ namespace ERPSystem.Services
             if (item == null) return;
 
             e.Handled = true;
-            ShowContextMenu(grid, entityType, item, e.GetPosition(grid));
+            var entity = UnwrapEntity(item, entityType) ?? item;
+
+            if (entityType == EntityType.Warehouse && entity is WarehouseListExtendedDto wh)
+            {
+                WarehouseContextMenuService.Show(wh, grid);
+                return;
+            }
+
+            ShowEntityContextMenu(grid, entityType, entity, GetSourceModule(grid), e.GetPosition(grid));
         }
 
         public static void ShowContextMenu(DataGrid grid, EntityType entityType, object rowItem, Point position)
         {
             var entity = UnwrapEntity(rowItem, entityType) ?? rowItem;
+
+            if (entityType == EntityType.Warehouse && entity is WarehouseListExtendedDto wh)
+            {
+                WarehouseContextMenuService.Show(wh, grid);
+                return;
+            }
+
             ShowEntityContextMenu(grid, entityType, entity, GetSourceModule(grid), position);
         }
 
@@ -156,6 +173,9 @@ namespace ERPSystem.Services
                 return;
 
             if (CapitalPartnerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
+            if (InventoryActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                 return;
 
             WorkspaceWindowManager.Instance.OpenAction(

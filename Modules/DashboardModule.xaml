@@ -50,7 +50,7 @@
             <!-- KPI strip — 6 cards -->
             <UniformGrid Grid.Row="1" Columns="6" Margin="0,0,0,12">
                 <controls:MetricCardControl x:Name="CardSales" Margin="0,0,6,0"
-                    CardTitle="مبيعات اليوم" CardValue="48,750 ر.س"
+                    CardTitle="مبيعات اليوم" CardValue="48,750 $"
                     CardIcon="&#xE8F1;" TrendValue="↑ 12.5%" TrendDirection="Up"
                     CardDescription="مقارنة بالأمس"
                     AccentColor="{StaticResource AccentSalesBrush}"/>
@@ -65,12 +65,12 @@
                     CardDescription="مركز عمليات الحاوية"
                     AccentColor="{StaticResource AccentInventoryBrush}"/>
                 <controls:MetricCardControl x:Name="CardReceivables" Margin="3,0,3,0"
-                    CardTitle="الذمم المدينة" CardValue="83,400 ر.س"
+                    CardTitle="الذمم المدينة" CardValue="83,400 $"
                     CardIcon="&#xE8C1;" TrendValue="↑ 5.2%" TrendDirection="Up"
                     CardDescription="مستحقة من العملاء"
                     AccentColor="{StaticResource AccentReceivableBrush}"/>
                 <controls:MetricCardControl x:Name="CardPayables" Margin="3,0,3,0"
-                    CardTitle="الذمم الدائنة" CardValue="32,100 ر.س"
+                    CardTitle="الذمم الدائنة" CardValue="32,100 $"
                     CardIcon="&#xEA8F;" TrendValue="↓ 3.8%" TrendDirection="Down"
                     CardDescription="مستحقة للموردين"
                     AccentColor="{StaticResource AccentPayableBrush}"/>

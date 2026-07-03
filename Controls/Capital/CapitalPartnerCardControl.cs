@@ -42,7 +42,7 @@ public sealed class CapitalPartnerCardControl : Border
 
     var pct = partner.CompanyOwnershipPercentage;
     _ownership.Text = pct is decimal p ? $"{p:N2}%" : "—";
-    _capital.Text = $"{partner.CurrentCapitalBase:N0} SAR";
+    _capital.Text = $"{partner.CurrentCapitalBase:N0} $";
     _invest.Text = $"استثمارات: {partner.TotalInvestmentsBase:N0}";
     _withdraw.Text = $"سحوبات: {partner.TotalWithdrawalsBase:N0}";
 

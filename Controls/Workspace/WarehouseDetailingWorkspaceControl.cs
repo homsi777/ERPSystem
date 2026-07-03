@@ -353,7 +353,7 @@ namespace ERPSystem.Controls.Workspace
             _txtTotal.Text = $"{total:N2} م";
             _txtProgress.Text = $"{filled} / {_rows.Count} توب — متبقي {remaining}";
             _txtPercent.Text = $"{pct:N0}% مكتمل";
-            _txtEstimated.Text = total > 0 ? $"{total * _pricePerMeter:N2} ر.س" : "—";
+            _txtEstimated.Text = total > 0 ? $"{total * _pricePerMeter:N2} $" : "—";
             _progressBar.Value = pct;
 
             bool complete = filled == _rows.Count && _rows.Count > 0;

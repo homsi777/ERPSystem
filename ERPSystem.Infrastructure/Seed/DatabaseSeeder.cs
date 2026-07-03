@@ -1,4 +1,5 @@
 using ERPSystem.Application.Common;
+using ERPSystem.Domain.Common;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Models.Accounting;
@@ -34,7 +35,7 @@ public static class DatabaseSeeder
         await EnsureAccountingPermissionsAsync(context, cancellationToken);
         await EnsureSupplierPermissionsAsync(context, cancellationToken);
         await EnsurePurchasePermissionsAsync(context, cancellationToken);
-        await ChinaImportFabricCatalogSeeder.EnsureAsync(context, DefaultCompanyId, cancellationToken);
+        await EnsureDefaultCurrencyAsync(context, cancellationToken);
         await ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken);
         await CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken);
 
@@ -52,7 +53,7 @@ public static class DatabaseSeeder
             Code = "ERP",
             NameAr = "شركة ERP PRO",
             NameEn = "ERP PRO Company",
-            DefaultCurrency = "SAR"
+            DefaultCurrency = "USD"
         });
 
         context.Branches.Add(new BranchEntity
@@ -141,7 +142,7 @@ public static class DatabaseSeeder
             Code = "CASH-MAIN",
             Name = "Main Cashbox",
             Balance = 0,
-            Currency = "SAR"
+            Currency = "USD"
         });
 
         context.Suppliers.Add(new SupplierEntity
@@ -152,40 +153,11 @@ public static class DatabaseSeeder
             Name = "مورد قوانغتشو",
             Status = 0,
             Balance = 0,
-            BalanceCurrency = "SAR"
-        });
-
-        var categoryId = Guid.Parse("77777777-7777-7777-7777-777777777777");
-        context.FabricCategories.Add(new FabricCategoryEntity
-        {
-            Id = categoryId,
-            CompanyId = DefaultCompanyId,
-            Code = "FAB",
-            NameAr = "أقمشة",
-            NameEn = "Fabrics"
-        });
-
-        context.FabricItems.Add(new FabricItemEntity
-        {
-            Id = Guid.Parse("88888888-8888-8888-8888-888888888888"),
-            CompanyId = DefaultCompanyId,
-            CategoryId = categoryId,
-            Code = "FAB-001",
-            NameAr = "قماش قطن",
-            NameEn = "Cotton Fabric"
-        });
-
-        context.FabricColors.Add(new FabricColorEntity
-        {
-            Id = Guid.Parse("99999999-9999-9999-9999-999999999999"),
-            FabricItemId = Guid.Parse("88888888-8888-8888-8888-888888888888"),
-            Code = "WHITE",
-            NameAr = "أبيض",
-            NameEn = "White"
+            BalanceCurrency = "USD"
         });
 
         context.SystemSettings.AddRange(
-            new SystemSettingEntity { Id = Guid.NewGuid(), Key = "DefaultCurrency", Value = "SAR", CompanyId = DefaultCompanyId },
+            new SystemSettingEntity { Id = Guid.NewGuid(), Key = "DefaultCurrency", Value = "USD", CompanyId = DefaultCompanyId },
             new SystemSettingEntity { Id = Guid.NewGuid(), Key = "DefaultPaymentType", Value = "Credit", CompanyId = DefaultCompanyId },
             new SystemSettingEntity { Id = Guid.NewGuid(), Key = "CompanyName", Value = "ERP PRO", CompanyId = DefaultCompanyId }
         );
@@ -239,9 +211,9 @@ public static class DatabaseSeeder
                 Country = "الصين",
                 Status = 0,
                 Balance = 0,
-                BalanceCurrency = "SAR",
+                BalanceCurrency = "USD",
                 PaymentTermsDays = 30,
-                CurrencyCode = "SAR",
+                CurrencyCode = "USD",
                 PayablesAccountId = AccountingAccountIds.AccountsPayable
             });
             await context.SaveChangesAsync(cancellationToken);
@@ -348,6 +320,31 @@ public static class DatabaseSeeder
                 NameEn = nameEn,
                 BookType = (int)type
             });
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureDefaultCurrencyAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        foreach (var company in await context.Companies.ToListAsync(cancellationToken))
+        {
+            if (company.DefaultCurrency == "SAR")
+                company.DefaultCurrency = CurrencyDefaults.Code;
+        }
+
+        foreach (var setting in await context.SystemSettings
+                     .Where(s => s.Key == "DefaultCurrency" && s.Value == "SAR")
+                     .ToListAsync(cancellationToken))
+        {
+            setting.Value = CurrencyDefaults.Code;
+        }
+
+        foreach (var cashbox in await context.Cashboxes
+                     .Where(c => c.Currency == "SAR")
+                     .ToListAsync(cancellationToken))
+        {
+            cashbox.Currency = CurrencyDefaults.Code;
         }
 
         await context.SaveChangesAsync(cancellationToken);

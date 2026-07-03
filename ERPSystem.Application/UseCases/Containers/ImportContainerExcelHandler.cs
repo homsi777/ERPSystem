@@ -8,7 +8,9 @@ using ERPSystem.Application.UseCases.Containers.Excel;
 
 namespace ERPSystem.Application.UseCases.Containers;
 
-public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricCatalogRepository)
+public sealed class ImportContainerExcelHandler(
+    IFabricCatalogRepository fabricCatalogRepository,
+    IUnitOfWork unitOfWork)
     : IQueryHandler<ParseContainerExcelQuery, ApplicationResult<ContainerExcelParseResultDto>>
 {
     public async Task<ApplicationResult<ContainerExcelParseResultDto>> HandleAsync(
@@ -69,7 +71,7 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
 
             PackingListImportLogger.Stage("fabric-lookup-start", $"groups={parsed.Groups.Count}");
             var groups = new List<PackingListGroupDto>();
-            var hasUnresolved = false;
+            var catalogMutated = false;
 
             foreach (var group in parsed.Groups)
             {
@@ -87,12 +89,24 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                 var fabricCode = PackingListCatalogNormalizer.NormalizeFabricCode(group.FabricCode);
                 var colorKey = PackingListCatalogNormalizer.NormalizeColor(group.Color);
 
-                var fabricItem = await fabricCatalogRepository.GetItemByCodeAsync(
-                    query.CompanyId, fabricCode, cancellationToken);
-                if (fabricItem is null)
+                try
                 {
-                    resolutionError = "كود القماش غير موجود";
-                    hasUnresolved = true;
+                    var (fabricItem, fabricColor, created) = await FabricCatalogImportProvisioner.EnsureAsync(
+                        fabricCatalogRepository,
+                        query.CompanyId,
+                        fabricCode,
+                        colorKey,
+                        cancellationToken);
+                    if (created)
+                        catalogMutated = true;
+                    fabricResolved = true;
+                    colorResolved = true;
+                    fabricItemId = fabricItem.Id;
+                    fabricColorId = fabricColor.Id;
+                }
+                catch (Exception ex)
+                {
+                    resolutionError = ex.Message;
                     issues.Add(new PackingListResolutionIssueDto
                     {
                         GroupIndex = group.GroupIndex,
@@ -100,30 +114,6 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                         Color = colorKey,
                         Reason = resolutionError
                     });
-                }
-                else
-                {
-                    fabricResolved = true;
-                    fabricItemId = fabricItem.Id;
-                    var fabricColor = await fabricCatalogRepository.GetColorForItemAsync(
-                        fabricItem.Id, colorKey, cancellationToken);
-                    if (fabricColor is null)
-                    {
-                        resolutionError = "اللون غير موجود";
-                        hasUnresolved = true;
-                        issues.Add(new PackingListResolutionIssueDto
-                        {
-                            GroupIndex = group.GroupIndex,
-                            FabricCode = fabricCode,
-                            Color = colorKey,
-                            Reason = resolutionError
-                        });
-                    }
-                    else
-                    {
-                        colorResolved = true;
-                        fabricColorId = fabricColor.Id;
-                    }
                 }
 
                 foreach (var roll in group.Rolls.Where(r => !r.IsValid))
@@ -161,6 +151,10 @@ public sealed class ImportContainerExcelHandler(IFabricCatalogRepository fabricC
                     ResolutionIssues = issues
                 });
             }
+            if (catalogMutated)
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var hasUnresolved = groups.Any(g => !g.FabricResolved || !g.ColorResolved);
 
             var grandMetersMatch = parsed.DeclaredGrandMeters is null ||
                                    PackingListExcelParser.MetersApproximatelyEqual(parsed.DeclaredGrandMeters.Value, totalParsedMeters);

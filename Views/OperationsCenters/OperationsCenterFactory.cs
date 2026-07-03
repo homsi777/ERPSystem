@@ -1,5 +1,8 @@
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Application.DTOs.Inventory;
+using ERPSystem.Controls.Inventory;
 using ERPSystem.Controls.Sales;
+using ERPSystem.Services.Inventory;
 using ERPSystem.Controls.Customers;
 using ERPSystem.Controls.Purchases;
 using ERPSystem.Controls.Suppliers;
@@ -203,6 +206,12 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildWarehouse(WorkspaceOpenRequest req, string initialTab)
         {
+            if (req.EntityRow is WarehouseListExtendedDto dto)
+            {
+                InventoryNavigationContext.BeginWorkspace(dto.Id, initialTab);
+                return new InventoryOperationsCenterControl();
+            }
+
             if (req.EntityRow is not WarehouseEntity w)
                 return NoEntityContextControl();
 
@@ -320,7 +329,7 @@ namespace ERPSystem.Views.OperationsCenters
                 HeaderFields =
                 [
                     ("الكود", e.EmployeeCode), ("القسم", e.Department),
-                    ("المسمى", e.JobTitle), ("الراتب", e.BasicSalary > 0 ? $"{e.BasicSalary:N0} ر.س" : "—"),
+                    ("المسمى", e.JobTitle), ("الراتب", e.BasicSalary > 0 ? $"{e.BasicSalary:N0} $" : "—"),
                 ],
                 Kpis =
                 [
@@ -431,10 +440,10 @@ namespace ERPSystem.Views.OperationsCenters
                 Accent = Br("PrimaryBrush"),
                 AccentLight = Br("PrimaryVeryLightBrush"),
                 StatusBadge = "نشط",
-                HeaderFields = [("الكود", cb.Code), ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} ر.س" : "—")],
+                HeaderFields = [("الكود", cb.Code), ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} $" : "—")],
                 Kpis =
                 [
-                    ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} ر.س" : "—", "\uE8C1"),
+                    ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} $" : "—", "\uE8C1"),
                     ("قبض اليوم", "—", "\uE7BF"),
                     ("صرف اليوم", "—", "\uE719"),
                 ],

@@ -21,6 +21,15 @@ public class FabricCategory
         NameAr = nameAr,
         NameEn = nameEn
     };
+
+    public void Update(string nameAr, string nameEn)
+    {
+        NameAr = nameAr;
+        NameEn = nameEn;
+    }
+
+    public void Deactivate() => IsActive = false;
+    public void Activate() => IsActive = true;
 }
 
 public class FabricItem
@@ -43,6 +52,17 @@ public class FabricItem
         NameAr = nameAr,
         NameEn = nameEn
     };
+
+    public void Update(Guid categoryId, string nameAr, string nameEn, string defaultUnit = "meter")
+    {
+        CategoryId = categoryId;
+        NameAr = nameAr;
+        NameEn = nameEn;
+        DefaultUnit = defaultUnit;
+    }
+
+    public void Deactivate() => IsActive = false;
+    public void Activate() => IsActive = true;
 }
 
 public class FabricColor
@@ -64,6 +84,15 @@ public class FabricColor
         NameAr = nameAr,
         NameEn = nameEn
     };
+
+    public void Update(string nameAr, string nameEn)
+    {
+        NameAr = nameAr;
+        NameEn = nameEn;
+    }
+
+    public void Deactivate() => IsActive = false;
+    public void Activate() => IsActive = true;
 }
 
 public class FabricRoll

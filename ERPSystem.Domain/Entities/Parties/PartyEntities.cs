@@ -81,7 +81,7 @@ public class Supplier
     public Money Balance { get; private set; } = Money.Zero();
     public Money CreditLimit { get; private set; } = Money.Zero();
     public int PaymentTermsDays { get; private set; }
-    public string CurrencyCode { get; private set; } = "SAR";
+    public string CurrencyCode { get; private set; } = "USD";
     public string? Phone { get; private set; }
     public string? Email { get; private set; }
     public string? Address { get; private set; }
@@ -102,7 +102,7 @@ public class Supplier
         string nameAr,
         string nameEn,
         Guid payablesAccountId,
-        string currencyCode = "SAR",
+        string currencyCode = "USD",
         int paymentTermsDays = 30,
         Money? creditLimit = null) => new()
     {

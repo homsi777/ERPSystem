@@ -25,10 +25,10 @@ public class ExpenseEntity : PersistenceEntity
     public int Status { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
-    public string OriginalCurrency { get; set; } = "SAR";
+    public string OriginalCurrency { get; set; } = "USD";
     public decimal OriginalAmount { get; set; }
     public decimal ExchangeRate { get; set; } = 1m;
-    public string BaseCurrency { get; set; } = "SAR";
+    public string BaseCurrency { get; set; } = "USD";
     public decimal BaseAmount { get; set; }
     public int PaymentMethod { get; set; }
     public string? PayeeName { get; set; }
@@ -58,7 +58,7 @@ public class ExpensePaymentEntity : PersistenceEntity
     public DateTime? DueDate { get; set; }
     public decimal AmountOriginal { get; set; }
     public decimal AmountBase { get; set; }
-    public string Currency { get; set; } = "SAR";
+    public string Currency { get; set; } = "USD";
     public decimal ExchangeRateSnapshot { get; set; } = 1m;
     public int PaymentMethod { get; set; }
     public int FundingSource { get; set; }
@@ -80,7 +80,7 @@ public class ExpenseInstallmentEntity : PersistenceEntity
     public DateTime DueDate { get; set; }
     public decimal AmountOriginal { get; set; }
     public decimal AmountBase { get; set; }
-    public string Currency { get; set; } = "SAR";
+    public string Currency { get; set; } = "USD";
     public int Status { get; set; }
     public Guid? PaymentId { get; set; }
     public ExpenseEntity? Expense { get; set; }

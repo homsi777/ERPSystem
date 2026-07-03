@@ -907,7 +907,7 @@ public sealed class GetExpenseDashboardHandler(IExpenseRepository expenseReposit
         CancellationToken cancellationToken = default)
     {
         var data = await expenseRepository.GetDashboardDataAsync(query.CompanyId, cancellationToken);
-        return ApplicationResult<ExpenseDashboardDto>.Success(ExpenseMapper.ToDashboardDto(data, "SAR"));
+        return ApplicationResult<ExpenseDashboardDto>.Success(ExpenseMapper.ToDashboardDto(data, "USD"));
     }
 }
 

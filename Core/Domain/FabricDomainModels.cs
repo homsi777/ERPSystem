@@ -127,7 +127,7 @@ namespace ERPSystem.Core.Domain
         public string Code { get; set; } = "";
         public string Name { get; set; } = "";
         public decimal Balance { get; set; }
-        public string Currency { get; set; } = "ر.س";
+        public string Currency { get; set; } = "$";
     }
 
     public class CashboxTransfer

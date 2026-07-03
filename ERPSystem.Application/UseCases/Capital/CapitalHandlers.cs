@@ -130,7 +130,7 @@ public sealed class CreateCapitalPartnerWithSetupHandler(
                     command.InitialInvestmentAmount,
                     command.DefaultCurrency,
                     1m,
-                    "SAR",
+                    "USD",
                     ApplicationDateNormalizer.ToUtcDate(DateTime.Today),
                     PartnershipScope.Company,
                     notes: "استثمار أولي عند التسجيل");
@@ -767,7 +767,7 @@ public sealed class GetCapitalReportHandler(ICapitalPartnerRepository repository
             GeneratedAt = DateTime.UtcNow,
             Rows = rows,
             TotalBase = rows.Sum(r => r.Amount),
-            BaseCurrency = "SAR"
+            BaseCurrency = "USD"
         });
     }
 }
