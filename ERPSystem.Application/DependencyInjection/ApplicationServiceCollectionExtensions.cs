@@ -182,6 +182,16 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CompleteWarehouseDetailingCommand, ApplicationResult>, CompleteWarehouseDetailingHandler>();
         services.AddScoped<ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>, ApproveSalesInvoiceHandler>();
         services.AddScoped<ICommandHandler<CancelSalesInvoiceCommand, ApplicationResult>, CancelSalesInvoiceHandler>();
+        services.AddScoped<ICommandHandler<ConfirmSalesInvoiceDeliveryCommand, ApplicationResult>, ConfirmSalesInvoiceDeliveryHandler>();
+        services.AddScoped<ICommandHandler<UpdateSalesInvoiceWarehouseCommand, ApplicationResult>, UpdateSalesInvoiceWarehouseHandler>();
+        services.AddScoped<ICommandHandler<CreateSalesReturnCommand, ApplicationResult<Guid>>, CreateSalesReturnHandler>();
+        services.AddScoped<ICommandHandler<UpdateSalesReturnCommand, ApplicationResult>, UpdateSalesReturnHandler>();
+        services.AddScoped<ICommandHandler<PostSalesReturnCommand, ApplicationResult>, PostSalesReturnHandler>();
+        services.AddScoped<ICommandHandler<CancelSalesReturnCommand, ApplicationResult>, CancelSalesReturnHandler>();
+        services.AddScoped<GetSalesReturnListHandler>();
+        services.AddScoped<GetSalesReturnDetailsHandler>();
+        services.AddScoped<GetDeliveryQueueHandler>();
+        services.AddScoped<GetInvoicePaymentHistoryHandler>();
     }
 
     private static void RegisterContainerHandlers(IServiceCollection services)

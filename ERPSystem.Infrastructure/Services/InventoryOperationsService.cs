@@ -52,4 +52,10 @@ internal sealed class InventoryOperationsService(
 
     public Task ReleaseForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
         engine.ReleaseForInvoiceAsync(invoice, cancellationToken);
+
+    public Task<decimal> ReceiveSalesReturnAsync(
+        SalesReturnAggregate salesReturn,
+        SalesInvoiceAggregate originalInvoice,
+        CancellationToken cancellationToken = default) =>
+        engine.ReceiveSalesReturnAsync(salesReturn, originalInvoice, cancellationToken);
 }

@@ -7,6 +7,13 @@ public sealed class CreateReceiptVoucherCommand
     public Guid CustomerId { get; init; }
     public Guid CashboxId { get; init; }
     public decimal Amount { get; init; }
+    public IReadOnlyList<ReceiptInvoiceAllocationInput> Allocations { get; init; } = [];
+}
+
+public sealed class ReceiptInvoiceAllocationInput
+{
+    public Guid SalesInvoiceId { get; init; }
+    public decimal Amount { get; init; }
 }
 
 public sealed class ApproveReceiptVoucherCommand

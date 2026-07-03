@@ -449,7 +449,7 @@
                             <DataGridTextColumn Header="اللون" Binding="{Binding Color}" Width="80"
                                                 IsReadOnly="True"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"/>
-                            <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCount, UpdateSourceTrigger=LostFocus}" Width="90"
+                            <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCountText, UpdateSourceTrigger=PropertyChanged}" Width="90"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
                             <DataGridTemplateColumn Header="الأطوال" Width="130" IsReadOnly="True">
@@ -466,7 +466,7 @@
                             <DataGridTextColumn Header="الوحدة" Binding="{Binding Unit}" Width="70"
                                                 IsReadOnly="True"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"/>
-                            <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPrice, UpdateSourceTrigger=LostFocus}" Width="90"
+                            <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPriceText, UpdateSourceTrigger=PropertyChanged}" Width="90"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
                             <DataGridTemplateColumn Header="إجراءات" Width="60" IsReadOnly="True">

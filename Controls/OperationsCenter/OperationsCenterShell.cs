@@ -9,6 +9,7 @@ using ERPSystem.Services.China;
 using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
+using ERPSystem.Services.Sales;
 using ERPSystem.Application.DTOs.Capital;
 using ERPSystem.Application.DTOs.Expenses;
 using System.Windows;
@@ -260,6 +261,10 @@ namespace ERPSystem.Controls.OperationsCenter
 
                         if (spec.Context is not null &&
                             InventoryActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
+                            return;
+
+                        if (spec.Context is not null &&
+                            SalesActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
                             return;
 
                         MockQuickActionRouter.Execute(action.ActionKey, spec.Context ?? new OperationsCenterContext

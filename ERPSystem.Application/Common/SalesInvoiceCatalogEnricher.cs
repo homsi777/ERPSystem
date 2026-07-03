@@ -101,6 +101,16 @@ public static class SalesInvoiceCatalogEnricher
             DiscountTotal = invoice.DiscountTotal,
             TaxTotal = invoice.TaxTotal,
             GrandTotal = invoice.GrandTotal,
+            SentToWarehouseAt = invoice.SentToWarehouseAt,
+            DetailedAt = invoice.DetailedAt,
+            ApprovedAt = invoice.ApprovedAt,
+            PrintedAt = invoice.PrintedAt,
+            DeliveredAt = invoice.DeliveredAt,
+            CancelledAt = invoice.CancelledAt,
+            DeliveredToName = invoice.DeliveredToName,
+            DeliveryDriverName = invoice.DeliveryDriverName,
+            DeliveryNotes = invoice.DeliveryNotes,
+            CancelReason = invoice.CancelReason,
             Lines = lines
         };
 

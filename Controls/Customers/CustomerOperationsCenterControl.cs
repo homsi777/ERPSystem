@@ -100,7 +100,7 @@ public sealed class CustomerOperationsCenterControl : UserControl
             [
                 Tab("Overview", "نظرة عامة", OverviewTab(data)),
                 Tab("Statement", "كشف الحساب", statement),
-                Tab("Invoices", "الفواتير", PlaceholderUi.DatabasePhase("فواتير العميل — تُربط مع وحدة المبيعات")),
+                Tab("Invoices", "الفواتير", BuildInvoicesTab(row)),
                 Tab("Receipts", "سندات القبض", PlaceholderUi.DatabasePhase("سندات القبض — تُربط مع المحاسبة")),
             ],
             QuickActions =
@@ -120,6 +120,13 @@ public sealed class CustomerOperationsCenterControl : UserControl
                 Title = c.NameAr
             }
         });
+    }
+
+    private static UIElement BuildInvoicesTab(CustomerListRow row)
+    {
+        var list = new Controls.Sales.SalesInvoiceListPageControl();
+        list.ScopeToCustomer(row.Id, row.NameAr);
+        return list;
     }
 
     private static UIElement OverviewTab(CustomerOperationsCenterDto data)

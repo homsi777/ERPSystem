@@ -1,3 +1,4 @@
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.DTOs.Sales;
@@ -17,6 +18,16 @@ public sealed class SalesInvoiceDto
     public decimal DiscountTotal { get; init; }
     public decimal TaxTotal { get; init; }
     public decimal GrandTotal { get; init; }
+    public DateTime? SentToWarehouseAt { get; init; }
+    public DateTime? DetailedAt { get; init; }
+    public DateTime? ApprovedAt { get; init; }
+    public DateTime? PrintedAt { get; init; }
+    public DateTime? DeliveredAt { get; init; }
+    public DateTime? CancelledAt { get; init; }
+    public string? DeliveredToName { get; init; }
+    public string? DeliveryDriverName { get; init; }
+    public string? DeliveryNotes { get; init; }
+    public string? CancelReason { get; init; }
     public IReadOnlyList<SalesInvoiceLineDto> Lines { get; init; } = [];
 }
 
@@ -81,4 +92,11 @@ public sealed class SalesInvoiceOperationsCenterDto
     public bool CanCompleteDetailing { get; init; }
     public bool CanApprove { get; init; }
     public bool CanCancel { get; init; }
+    public IReadOnlyList<JournalEntryDto> JournalEntries { get; init; } = [];
+    public IReadOnlyList<ReceiptInvoicePaymentDto> Payments { get; init; } = [];
+    public decimal CollectedAmount { get; init; }
+    public decimal RemainingBalance { get; init; }
+    public IReadOnlyList<SalesReturnDto> Returns { get; init; } = [];
+    public string? WarehouseName { get; init; }
+    public string? CustomerPhone { get; init; }
 }

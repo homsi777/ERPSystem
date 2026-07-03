@@ -161,7 +161,11 @@ public sealed class GetSalesInvoiceListHandler(
 public sealed class GetSalesInvoiceOperationsCenterHandler(
     ISalesInvoiceRepository invoiceRepository,
     ICustomerRepository customerRepository,
-    IFabricCatalogRepository fabricCatalogRepository)
+    IFabricCatalogRepository fabricCatalogRepository,
+    IJournalEntryRepository journalEntryRepository,
+    IReceiptInvoicePaymentRepository paymentRepository,
+    ISalesReturnRepository salesReturnRepository,
+    IWarehouseRepository warehouseRepository)
     : IQueryHandler<GetSalesInvoiceOperationsCenterQuery, ApplicationResult<SalesInvoiceOperationsCenterDto>>
 {
     public async Task<ApplicationResult<SalesInvoiceOperationsCenterDto>> HandleAsync(
@@ -174,6 +178,7 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
 
         var customer = await customerRepository.GetByIdAsync(aggregate.CustomerId, cancellationToken);
         var customerName = customer?.Customer.NameAr ?? "";
+        var customerPhone = customer?.Customer.Phone?.ToString();
 
         var baseDto = SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName);
         var enrichedLines = await SalesInvoiceCatalogEnricher.EnrichLinesAsync(
@@ -192,6 +197,86 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
             enrichedDetailing = SalesInvoiceCatalogEnricher.WithEnrichedRolls(baseDto.Detailing, enrichedRolls);
         }
 
+        // Journal entries linked to this invoice (approval, delivery/COGS, returns)
+        var journalRows = await journalEntryRepository.GetBySourceIdAsync(aggregate.Id, cancellationToken);
+        var journalDtos = new List<Application.DTOs.Finance.JournalEntryDto>();
+        foreach (var row in journalRows)
+        {
+            var entry = await journalEntryRepository.GetByIdAsync(row.Id, cancellationToken);
+            if (entry is null) continue;
+            journalDtos.Add(new Application.DTOs.Finance.JournalEntryDto
+            {
+                Id = entry.Id,
+                EntryNumber = entry.EntryNumber,
+                EntryDate = entry.EntryDate,
+                Description = entry.Description ?? row.Description,
+                Status = entry.Status,
+                DebitTotal = entry.Lines.Sum(l => l.Debit.Amount),
+                CreditTotal = entry.Lines.Sum(l => l.Credit.Amount),
+                Lines = entry.Lines.Select(l => new Application.DTOs.Finance.JournalEntryLineDto
+                {
+                    AccountId = l.AccountId,
+                    AccountCode = l.AccountId.ToString(),
+                    Debit = l.Debit.Amount,
+                    Credit = l.Credit.Amount,
+                    Narrative = l.Narrative ?? ""
+                }).ToList()
+            });
+        }
+
+        // Payments (receipts) applied to this invoice
+        var payments = await paymentRepository.GetByInvoiceWithVoucherAsync(aggregate.Id, cancellationToken);
+        var paymentDtos = payments
+            .Select(p => new ReceiptInvoicePaymentDto
+            {
+                SalesInvoiceId = p.Payment.SalesInvoiceId,
+                ReceiptVoucherId = p.Payment.ReceiptVoucherId,
+                ReceiptNumber = p.VoucherNumber,
+                Amount = p.Payment.Amount.Amount,
+                AppliedAt = p.Payment.AppliedAt
+            })
+            .ToList();
+        var collected = paymentDtos.Sum(p => p.Amount);
+
+        // Returns referencing this invoice
+        var returns = await salesReturnRepository.GetListAsync(
+            aggregate.CompanyId, aggregate.BranchId, originalInvoiceId: aggregate.Id, cancellationToken: cancellationToken);
+        var returnDtos = returns.Select(r => new SalesReturnDto
+        {
+            Id = r.Id,
+            ReturnNumber = r.ReturnNumber,
+            OriginalInvoiceId = r.OriginalInvoiceId,
+            OriginalInvoiceNumber = aggregate.InvoiceNumber.Value,
+            CustomerId = r.CustomerId,
+            CustomerName = customerName,
+            WarehouseId = r.WarehouseId,
+            ReturnDate = r.ReturnDate,
+            Reason = r.Reason,
+            ReasonNotes = r.ReasonNotes,
+            Notes = r.Notes,
+            Status = r.Status,
+            TotalAmount = r.TotalAmount.Amount,
+            Lines = r.Lines.Select(l => new SalesReturnLineDto
+            {
+                Id = l.Id,
+                LineNumber = l.LineNumber,
+                OriginalInvoiceItemId = l.OriginalInvoiceItemId,
+                FabricItemId = l.FabricItemId,
+                FabricColorId = l.FabricColorId,
+                ReturnMeters = l.ReturnMeters,
+                UnitPrice = l.UnitPrice.Amount,
+                LineTotal = l.LineTotal.Amount
+            }).ToList()
+        }).ToList();
+
+        // Warehouse name (for header display)
+        string? warehouseName = null;
+        if (aggregate.WarehouseId != Guid.Empty)
+        {
+            var wh = await warehouseRepository.GetByIdAsync(aggregate.WarehouseId, cancellationToken);
+            warehouseName = wh?.Warehouse.NameAr;
+        }
+
         return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(new SalesInvoiceOperationsCenterDto
         {
             Invoice = SalesInvoiceCatalogEnricher.WithEnrichedLines(baseDto.Invoice, enrichedLines),
@@ -199,7 +284,14 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
             CanSendToWarehouse = baseDto.CanSendToWarehouse,
             CanCompleteDetailing = baseDto.CanCompleteDetailing,
             CanApprove = baseDto.CanApprove,
-            CanCancel = baseDto.CanCancel
+            CanCancel = baseDto.CanCancel,
+            JournalEntries = journalDtos,
+            Payments = paymentDtos,
+            CollectedAmount = collected,
+            RemainingBalance = Math.Max(0, aggregate.GrandTotal.Amount - collected),
+            Returns = returnDtos,
+            WarehouseName = warehouseName,
+            CustomerPhone = customerPhone
         });
     }
 }

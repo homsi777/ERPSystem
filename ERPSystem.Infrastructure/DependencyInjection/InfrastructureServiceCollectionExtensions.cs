@@ -56,6 +56,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
         services.AddScoped<ISalesReturnRepository, SalesReturnRepository>();
+        services.AddScoped<IReceiptInvoicePaymentRepository, ReceiptInvoicePaymentRepository>();
         services.AddScoped<IPurchaseInvoiceRepository, PurchaseInvoiceRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddScoped<IPurchaseReturnRepository, PurchaseReturnRepository>();

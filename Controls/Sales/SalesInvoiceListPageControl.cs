@@ -27,6 +27,8 @@ public sealed class SalesInvoiceListPageControl : UserControl
     private bool _isLoading;
     private Dictionary<Guid, string> _warehouseNames = [];
     private Dictionary<Guid, string> _containerNames = [];
+    private Guid? _filterCustomerId;
+    private string? _filterCustomerName;
 
     public SalesInvoiceListPageControl()
     {
@@ -40,6 +42,24 @@ public sealed class SalesInvoiceListPageControl : UserControl
             _searchTimer.Stop();
             await LoadInvoicesAsync(_pendingSearch);
         };
+    }
+
+    /// <summary>
+    /// Scope the list to a specific customer. Call BEFORE Loaded fires (e.g. from a factory).
+    /// </summary>
+    public void ScopeToCustomer(Guid customerId, string customerName)
+    {
+        _filterCustomerId = customerId;
+        _filterCustomerName = customerName;
+        _page.SetHeader(
+            $"فواتير {customerName}",
+            "قائمة فواتير هذا العميل فقط",
+            "\uE8F1",
+            B("AccentSalesBrush"));
+        _page.SetEmptyState(
+            "لا توجد فواتير لهذا العميل",
+            "فاتورة بيع جديدة",
+            "\uE9F9");
     }
 
     private void ConfigureList()
@@ -88,10 +108,28 @@ public sealed class SalesInvoiceListPageControl : UserControl
         {
             if (g.SelectedItem is not SalesInvoiceListRow row)
                 return;
-
-            SalesNavigationContext.BeginEdit(row.Id);
-            MockInteractionService.Navigate(AppModule.Sales, "NewInvoice");
+            SalesPopupService.ShowOperationsCenter(row);
         };
+
+        g.MouseRightButtonUp += (_, e) =>
+        {
+            if (e.OriginalSource is not DependencyObject dep) return;
+            var rowContainer = FindAncestor<DataGridRow>(dep);
+            if (rowContainer?.Item is not SalesInvoiceListRow row) return;
+            g.SelectedItem = row;
+            SalesContextMenuService.Show(row, g);
+            e.Handled = true;
+        };
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T t) return t;
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -152,7 +190,7 @@ public sealed class SalesInvoiceListPageControl : UserControl
         try
         {
             var status = MapStatusFilter((_statusFilter.SelectedItem as ComboBoxItem)?.Content?.ToString());
-            var result = await SalesUiService.Instance.GetListAsync(search, status, 1, 100);
+            var result = await SalesUiService.Instance.GetListAsync(search, status, 1, 100, _filterCustomerId);
             if (!ApplicationResultPresenter.Present(result))
                 return;
 

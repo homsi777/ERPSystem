@@ -23,6 +23,9 @@ public sealed class CustomerAggregate : AggregateRoot
     public void RecordPostedReceipt(decimal amount) =>
         Customer.ApplyPostedReceipt(new ValueObjects.Money(amount));
 
+    public void RecordSalesReturn(decimal amount) =>
+        Customer.ApplyPostedReceipt(new ValueObjects.Money(amount));
+
     public bool WouldExceedCreditLimit(decimal additionalAmount) =>
         Customer.WouldExceedCreditLimit(new ValueObjects.Money(additionalAmount));
 }

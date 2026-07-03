@@ -56,6 +56,7 @@ public partial class App : System.Windows.Application
             services.AddSingleton<SupplierUiService>();
             services.AddSingleton<PurchaseUiService>();
             services.AddSingleton<SalesUiService>();
+            services.AddSingleton<SalesReturnUiService>();
             services.AddSingleton<ContainerUiService>();
             services.AddSingleton<ExpenseUiService>();
             services.AddSingleton<InventoryUiService>();

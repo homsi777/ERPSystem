@@ -129,6 +129,29 @@ public class SalesReturn
     };
 }
 
+public class ReceiptInvoicePayment
+{
+    public Guid Id { get; private set; }
+    public Guid SalesInvoiceId { get; private set; }
+    public Guid ReceiptVoucherId { get; private set; }
+    public Money Amount { get; private set; } = Money.Zero();
+    public DateTime AppliedAt { get; private set; }
+
+    private ReceiptInvoicePayment() { }
+
+    public static ReceiptInvoicePayment Create(
+        Guid salesInvoiceId,
+        Guid receiptVoucherId,
+        Money amount) => new()
+    {
+        Id = Guid.NewGuid(),
+        SalesInvoiceId = salesInvoiceId,
+        ReceiptVoucherId = receiptVoucherId,
+        Amount = amount,
+        AppliedAt = DateTime.UtcNow
+    };
+}
+
 public class DeliveryNote
 {
     public Guid Id { get; private set; }

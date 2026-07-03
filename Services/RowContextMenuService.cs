@@ -208,12 +208,7 @@ namespace ERPSystem.Services
             return sp;
         }
 
-        private static object? UnwrapEntity(object row, EntityType entityType) =>
-            entityType switch
-            {
-                EntityType.SalesInvoice when row is Views.Sales.FabricSalesInvoiceRow f && f.Source != null => f.Source,
-                _ => row
-            };
+        private static object? UnwrapEntity(object row, EntityType entityType) => row;
 
         private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
         {

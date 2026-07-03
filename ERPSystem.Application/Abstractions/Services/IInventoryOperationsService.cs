@@ -14,4 +14,5 @@ public interface IInventoryOperationsService
     Task<decimal> DeductForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task ReleaseForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task AssignFabricRollsOnDetailingAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
+    Task<decimal> ReceiveSalesReturnAsync(SalesReturnAggregate salesReturn, SalesInvoiceAggregate originalInvoice, CancellationToken cancellationToken = default);
 }

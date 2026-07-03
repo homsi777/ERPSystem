@@ -1,6 +1,8 @@
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Entities.Sales;
 using ERPSystem.Domain.Enums;
+using ERPSystem.Domain.ValueObjects;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Mapping;
 using ERPSystem.Infrastructure.Persistence.Models.ChinaImport;
@@ -452,5 +454,53 @@ internal sealed class SalesReturnRepository(ErpDbContext context) : ISalesReturn
             UnitPrice = l.UnitPrice.Amount,
             LineTotal = l.LineTotal.Amount
         }), ct);
+    }
+}
+
+internal sealed class ReceiptInvoicePaymentRepository(ErpDbContext context) : IReceiptInvoicePaymentRepository
+{
+    public async Task AddAsync(ReceiptInvoicePayment payment, CancellationToken cancellationToken = default) =>
+        await context.ReceiptInvoicePayments.AddAsync(new ReceiptInvoicePaymentEntity
+        {
+            Id = payment.Id,
+            SalesInvoiceId = payment.SalesInvoiceId,
+            ReceiptVoucherId = payment.ReceiptVoucherId,
+            Amount = payment.Amount.Amount,
+            AppliedAt = payment.AppliedAt,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        }, cancellationToken);
+
+    public async Task<IReadOnlyList<ReceiptInvoicePayment>> GetByInvoiceIdAsync(Guid invoiceId, CancellationToken cancellationToken = default)
+    {
+        var rows = await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(p => p.SalesInvoiceId == invoiceId).ToListAsync(cancellationToken);
+        return rows.Select(r => ReceiptInvoicePayment.Create(r.SalesInvoiceId, r.ReceiptVoucherId, new Money(r.Amount))).ToList();
+    }
+
+    public async Task<IReadOnlyList<ReceiptInvoicePayment>> GetByVoucherIdAsync(Guid voucherId, CancellationToken cancellationToken = default)
+    {
+        var rows = await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(p => p.ReceiptVoucherId == voucherId).ToListAsync(cancellationToken);
+        return rows.Select(r => ReceiptInvoicePayment.Create(r.SalesInvoiceId, r.ReceiptVoucherId, new Money(r.Amount))).ToList();
+    }
+
+    public async Task<decimal> GetCollectedTotalAsync(Guid invoiceId, CancellationToken cancellationToken = default)
+    {
+        return await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(p => p.SalesInvoiceId == invoiceId)
+            .SumAsync(p => (decimal?)p.Amount, cancellationToken) ?? 0m;
+    }
+
+    public async Task<IReadOnlyList<(ReceiptInvoicePayment Payment, string VoucherNumber)>> GetByInvoiceWithVoucherAsync(
+        Guid invoiceId, CancellationToken cancellationToken = default)
+    {
+        var rows = await (from p in context.ReceiptInvoicePayments.AsNoTracking()
+                          join r in context.ReceiptVouchers.AsNoTracking() on p.ReceiptVoucherId equals r.Id
+                          where p.SalesInvoiceId == invoiceId
+                          orderby p.AppliedAt descending
+                          select new { p, r.VoucherNumber }).ToListAsync(cancellationToken);
+        return rows.Select(x =>
+            (ReceiptInvoicePayment.Create(x.p.SalesInvoiceId, x.p.ReceiptVoucherId, new Money(x.p.Amount)), x.VoucherNumber)).ToList();
     }
 }

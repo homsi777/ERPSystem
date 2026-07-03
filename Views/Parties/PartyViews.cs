@@ -67,13 +67,12 @@ namespace ERPSystem.Views.Parties
 
         private static UserControl CreateCustomerInvoicesView()
         {
-            var (id, _) = CustomerNavigationContext.TakeStatementContext();
-            if (id is Guid)
+            var (id, name) = CustomerNavigationContext.TakeStatementContext();
+            if (id is Guid customerId)
             {
-                MockInteractionService.Navigate(AppModule.Sales, "Invoices");
-                return Wrap(PlaceholderUi.EmptyMessage(
-                    "عرض فواتير العميل",
-                    "استخدم قائمة فواتير البيع مع البحث عن العميل"));
+                var list = new Controls.Sales.SalesInvoiceListPageControl();
+                list.ScopeToCustomer(customerId, name ?? "العميل");
+                return Wrap(list);
             }
 
             return Wrap(PlaceholderUi.EmptyMessage("اختر عميلاً لعرض فواتيره"));

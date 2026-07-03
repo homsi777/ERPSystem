@@ -86,6 +86,7 @@ public sealed class SalesUiService
         SalesInvoiceStatus? status = null,
         int page = 1,
         int pageSize = 100,
+        Guid? customerId = null,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -95,6 +96,7 @@ public sealed class SalesUiService
             CompanyId = CompanyId,
             BranchId = BranchId,
             Status = status,
+            CustomerId = customerId,
             Page = page,
             PageSize = pageSize
         }, cancellationToken);
@@ -210,6 +212,69 @@ public sealed class SalesUiService
             Reason = reason
         }, cancellationToken);
     }
+
+    public async Task<ApplicationResult> DeliverAsync(
+        Guid invoiceId,
+        DateTime deliveryDate,
+        string? receivedByName,
+        string? driverName,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<ConfirmSalesInvoiceDeliveryCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new ConfirmSalesInvoiceDeliveryCommand
+        {
+            InvoiceId = invoiceId,
+            DeliveryDate = deliveryDate,
+            ReceivedByName = receivedByName,
+            DriverName = driverName,
+            Notes = notes
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult> UpdateWarehouseAsync(
+        Guid invoiceId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<UpdateSalesInvoiceWarehouseCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new UpdateSalesInvoiceWarehouseCommand
+        {
+            InvoiceId = invoiceId,
+            WarehouseId = warehouseId
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<IReadOnlyList<SalesInvoiceDto>>> GetDeliveryQueueAsync(
+        bool includeDelivered = true,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetDeliveryQueueHandler>();
+        return await handler.HandleAsync(new GetDeliveryQueueQuery
+        {
+            CompanyId = CompanyId,
+            BranchId = BranchId,
+            IncludeDelivered = includeDelivered
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<IReadOnlyList<ReceiptInvoicePaymentDto>>> GetInvoicePaymentsAsync(
+        Guid invoiceId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetInvoicePaymentHistoryHandler>();
+        return await handler.HandleAsync(new GetInvoicePaymentHistoryQuery { InvoiceId = invoiceId }, cancellationToken);
+    }
+
+    public async Task<bool> CanDeliverAsync(CancellationToken cancellationToken = default) =>
+        await CanAsync("sales.deliver", cancellationToken);
+
+    public async Task<bool> CanReturnAsync(CancellationToken cancellationToken = default) =>
+        await CanAsync("sales.return", cancellationToken);
 
     public async Task<bool> CanCreateAsync(CancellationToken cancellationToken = default) =>
         await CanAsync("sales.create", cancellationToken);

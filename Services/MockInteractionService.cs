@@ -7,7 +7,6 @@ using ERPSystem.Core.Workspace;
 using ERPSystem.Dialogs;
 using ERPSystem.Services.China;
 using ERPSystem.Services.Sales;
-using ERPSystem.Views.Sales;
 
 namespace ERPSystem.Services
 {
@@ -45,15 +44,10 @@ namespace ERPSystem.Services
             w.ShowDialog();
         }
 
-        public static void OpenDetailingWorkspace(string? invoiceNumber = null, FabricSalesInvoiceRow? rowOverride = null)
+        public static void OpenDetailingWorkspace(string? invoiceNumber = null)
         {
-            if (rowOverride is not null)
-                SalesNavigationContext.BeginDetailing(null, rowOverride.InvoiceNumber);
-            else if (!string.IsNullOrWhiteSpace(invoiceNumber))
-            {
+            if (!string.IsNullOrWhiteSpace(invoiceNumber))
                 SalesNavigationContext.BeginDetailing(null, invoiceNumber);
-            }
-
             Navigate(AppModule.Sales, "Detailing");
         }
 
@@ -89,8 +83,7 @@ namespace ERPSystem.Services
                 ?? items[0];
 
             var row = SalesInvoiceListRow.FromDto(invoice, "—", "—");
-            WorkspaceWindowManager.Instance.OpenAction(
-                EntityActionId.InvoiceView, EntityType.SalesInvoice, row, AppModule.Sales);
+            SalesPopupService.ShowOperationsCenter(row);
         }
 
         public static void OpenCustomerStatement(CustomerListRow? customer = null)

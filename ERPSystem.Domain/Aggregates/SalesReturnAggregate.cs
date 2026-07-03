@@ -5,6 +5,8 @@ using ERPSystem.Domain.ValueObjects;
 
 namespace ERPSystem.Domain.Aggregates;
 
+// SalesReturnReason lives in ERPSystem.Domain.Enums namespace.
+
 /// <summary>
 /// Aggregate root: Sales return (credit note) that references an approved/delivered
 /// invoice. On posting it reverses inventory movement and posts a GL credit note.
@@ -169,10 +171,3 @@ public sealed class SalesReturnLine
     }
 }
 
-public enum SalesReturnReason
-{
-    DefectiveGoods = 0,
-    WrongOrder = 1,
-    CustomerRequest = 2,
-    Other = 3
-}

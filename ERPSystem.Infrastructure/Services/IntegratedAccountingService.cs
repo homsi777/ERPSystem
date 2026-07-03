@@ -170,6 +170,41 @@ internal sealed class IntegratedAccountingService(
             .FirstAsync(cancellationToken);
     }
 
+    public async Task<string> PostSalesReturnAsync(
+        SalesReturnAggregate salesReturn,
+        decimal cogsReversalAmount,
+        CancellationToken cancellationToken = default)
+    {
+        var revenueReversal = salesReturn.TotalAmount.Amount;
+        var lines = new List<(Guid, decimal, decimal, string, Guid?)>
+        {
+            (AccountingAccountIds.SalesRevenue, revenueReversal, 0m, "عكس إيراد مبيعات — مرتجع", null),
+            (AccountingAccountIds.AccountsReceivable, 0m, revenueReversal, "خصم ذمم عميل — مرتجع بيع", salesReturn.CustomerId)
+        };
+
+        if (cogsReversalAmount > 0)
+        {
+            lines.Add((AccountingAccountIds.InventoryAsset, cogsReversalAmount, 0m, "إعادة مخزون — مرتجع بيع", null));
+            lines.Add((AccountingAccountIds.CostOfGoodsSold, 0m, cogsReversalAmount, "عكس تكلفة مبيعات — مرتجع", null));
+        }
+
+        await PostIfNotExistsAsync(
+            DocumentType.SalesReturn,
+            salesReturn.Id,
+            null,
+            JournalBookIds.Sales,
+            $"مرتجع مبيعات {salesReturn.ReturnNumber} — فاتورة {salesReturn.OriginalInvoiceNumber}",
+            lines,
+            cancellationToken,
+            salesReturn.ReturnDate);
+
+        return await context.JournalEntries.AsNoTracking()
+            .Where(j => j.SourceType == (int)DocumentType.SalesReturn && j.SourceId == salesReturn.Id)
+            .OrderByDescending(j => j.EntryDate)
+            .Select(j => j.EntryNumber)
+            .FirstOrDefaultAsync(cancellationToken) ?? "";
+    }
+
     public async Task<string> PostPurchaseReturnAsync(
         PurchaseReturn purchaseReturn,
         Guid payablesAccountId,

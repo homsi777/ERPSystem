@@ -17,6 +17,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ERPSystem.Controls.Sales
 {
@@ -44,9 +45,11 @@ namespace ERPSystem.Controls.Sales
         private string _boltCode = "";
         private string _color = "";
         private int _rollCount;
+        private string _rollCountText = "";
         private string _lengthStatus = "—";
         private string _unit = "متر";
         private decimal _unitPrice;
+        private string _unitPriceText = "";
         private SalesWarehouseStockOptionDto? _selectedStock;
         private bool _missingSalePrice;
 
@@ -93,7 +96,24 @@ namespace ERPSystem.Controls.Sales
         public int RollCount
         {
             get => _rollCount;
-            set => SetField(ref _rollCount, value);
+            set
+            {
+                if (!SetField(ref _rollCount, value))
+                    return;
+                var text = value.ToString(CultureInfo.CurrentCulture);
+                if (_rollCountText != text)
+                {
+                    _rollCountText = text;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RollCountText)));
+                }
+            }
+        }
+
+        /// <summary>Editable text for grid cell — avoids WPF int-binding blocking keystrokes.</summary>
+        public string RollCountText
+        {
+            get => _rollCountText;
+            set => SetField(ref _rollCountText, value ?? "");
         }
 
         public string LengthStatus
@@ -111,7 +131,24 @@ namespace ERPSystem.Controls.Sales
         public decimal UnitPrice
         {
             get => _unitPrice;
-            set => SetField(ref _unitPrice, value);
+            set
+            {
+                if (!SetField(ref _unitPrice, value))
+                    return;
+                var text = value.ToString(CultureInfo.CurrentCulture);
+                if (_unitPriceText != text)
+                {
+                    _unitPriceText = text;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UnitPriceText)));
+                }
+            }
+        }
+
+        /// <summary>Editable text for grid cell — avoids WPF decimal-binding blocking keystrokes.</summary>
+        public string UnitPriceText
+        {
+            get => _unitPriceText;
+            set => SetField(ref _unitPriceText, value ?? "");
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -175,6 +212,7 @@ namespace ERPSystem.Controls.Sales
             TxtInvoiceNumber.Text = "جديد";
             DpDate.SelectedDate = DateTime.Today;
             ItemsGrid.ItemsSource = _lines;
+            ItemsGrid.PreviewMouseLeftButtonDown += ItemsGrid_PreviewMouseLeftButtonDown;
 
             await LoadLookupsAsync();
             await ReloadStockOptionsAsync();
@@ -628,14 +666,33 @@ namespace ERPSystem.Controls.Sales
             return commands;
         }
 
-        private void BtnPrint_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview($"فاتورة {TxtInvoiceNumber.Text}", "طباعة");
+        private async void BtnPrint_Click(object sender, RoutedEventArgs e) =>
+            await ShowInvoicePreviewAsync(exportPdf: false);
 
-        private void BtnPdf_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview($"فاتورة {TxtInvoiceNumber.Text}", "PDF");
+        private async void BtnPdf_Click(object sender, RoutedEventArgs e) =>
+            await ShowInvoicePreviewAsync(exportPdf: true);
 
-        private void BtnPreview_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview($"فاتورة {TxtInvoiceNumber.Text}", "معاينة");
+        private async void BtnPreview_Click(object sender, RoutedEventArgs e) =>
+            await ShowInvoicePreviewAsync(exportPdf: false);
+
+        private async Task ShowInvoicePreviewAsync(bool exportPdf)
+        {
+            if (_invoiceId is null || _invoiceId == Guid.Empty)
+            {
+                MockInteractionService.ShowWarning(
+                    "احفظ الفاتورة أولاً قبل الطباعة أو التصدير.",
+                    "طباعة الفاتورة");
+                return;
+            }
+            if (!AppServices.IsInitialized) return;
+
+            var oc = await SalesUiService.Instance.GetOperationsCenterAsync(_invoiceId.Value);
+            if (!ApplicationResultPresenter.Present(oc) || oc.Value?.Invoice is null) return;
+            SalesDocumentService.ShowInvoicePreview(
+                oc.Value.Invoice,
+                oc.Value.Invoice.CustomerName,
+                exportPdf);
+        }
 
         private void UpdateStatusBadge()
         {
@@ -675,6 +732,36 @@ namespace ERPSystem.Controls.Sales
                 _lines.Remove(row);
                 RefreshSummary();
             }
+        }
+
+        private void ItemsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_domainStatus != SalesInvoiceStatus.Draft)
+                return;
+
+            var dep = e.OriginalSource as DependencyObject;
+            while (dep is not null and not DataGridCell)
+                dep = VisualTreeHelper.GetParent(dep);
+
+            if (dep is not DataGridCell { IsReadOnly: false, IsEditing: false } cell)
+                return;
+
+            if (cell.Column is not DataGridTextColumn)
+                return;
+
+            var header = cell.Column.Header?.ToString();
+            if (header is not ("عدد الأثواب" or "سعر الوحدة"))
+                return;
+
+            if (header == "سعر الوحدة" &&
+                cell.DataContext is SalesInvoiceLineRow row &&
+                !row.MissingSalePrice)
+                return;
+
+            ItemsGrid.CurrentCell = new DataGridCellInfo(cell);
+            if (!cell.IsFocused)
+                cell.Focus();
+            ItemsGrid.BeginEdit(e);
         }
 
         private void ItemsGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
@@ -776,10 +863,12 @@ namespace ERPSystem.Controls.Sales
                         e.Cancel = true;
                         _cellEditFailed = true;
                         MockInteractionService.ShowWarning("أدخل عدداً صحيحاً موجباً لعدد الأثواب.");
-                        textBox.Text = row.RollCount.ToString(CultureInfo.CurrentCulture);
+                        row.RollCountText = row.RollCount.ToString(CultureInfo.CurrentCulture);
+                        textBox.Text = row.RollCountText;
                         return;
                     }
                     row.RollCount = rolls;
+                    row.RollCountText = rolls.ToString(CultureInfo.CurrentCulture);
                     break;
 
                 case "سعر الوحدة":
@@ -788,10 +877,12 @@ namespace ERPSystem.Controls.Sales
                         e.Cancel = true;
                         _cellEditFailed = true;
                         MockInteractionService.ShowWarning("أدخل سعر وحدة صحيحاً.");
-                        textBox.Text = row.UnitPrice.ToString(CultureInfo.CurrentCulture);
+                        row.UnitPriceText = row.UnitPrice.ToString(CultureInfo.CurrentCulture);
+                        textBox.Text = row.UnitPriceText;
                         return;
                     }
                     row.UnitPrice = price;
+                    row.UnitPriceText = price.ToString(CultureInfo.CurrentCulture);
                     row.MissingSalePrice = price <= 0;
                     break;
             }

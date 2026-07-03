@@ -31,7 +31,8 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             "inv.item_analysis" => await BuildItemAnalysisAsync(query, cancellationToken),
             "inv.low_stock" => await BuildLowStockAsync(query, cancellationToken),
             "inv.valuation" => await BuildValuationAsync(query, cancellationToken),
-            "sal.invoices" or "sal.returns" or "sal.delivery" => await BuildSalesInvoicesAsync(query, key, cancellationToken),
+            "sal.invoices" or "sal.delivery" => await BuildSalesInvoicesAsync(query, key, cancellationToken),
+            "sal.returns" => await BuildSalesReturnsAsync(query, cancellationToken),
             "sal.by_customer" => await BuildSalesByCustomerAsync(query, cancellationToken),
             "sal.detailing" => await BuildDetailingQueueAsync(query, cancellationToken),
             "cus.balances" or "cus.statements" => await BuildCustomerBalancesAsync(query, cancellationToken),
@@ -356,38 +357,83 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
         if (query.ToDate.HasValue)
             q = q.Where(i => i.InvoiceDate <= UtcDateTimeNormalizer.ToUtc(query.ToDate.Value));
 
-        if (key == "sal.detailing")
-            q = q.Where(i => i.SentToWarehouseAt != null && i.DetailedAt == null);
-        else if (key == "sal.delivery")
-            q = q.Where(i => i.DetailedAt != null && i.DeliveredAt == null);
+        if (key == "sal.delivery")
+            q = q.Where(i => i.Status == (int)SalesInvoiceStatus.Approved || i.DeliveredAt != null);
 
         var invoices = await q.OrderByDescending(i => i.InvoiceDate).Take(5000).ToListAsync(ct);
         var custIds = invoices.Select(i => i.CustomerId).Distinct().ToList();
+        var whIds = invoices.Select(i => i.WarehouseId).Distinct().ToList();
         var custMap = await context.Customers.AsNoTracking()
             .Where(c => custIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.NameAr, ct);
+        var whMap = await context.Warehouses.AsNoTracking()
+            .Where(w => whIds.Contains(w.Id))
+            .ToDictionaryAsync(w => w.Id, w => w.NameAr, ct);
+
+        static string StatusDisplay(SalesInvoiceStatus s) => s switch
+        {
+            SalesInvoiceStatus.Draft => "مسودة",
+            SalesInvoiceStatus.AwaitingDetailing => "قيد التفصيل",
+            SalesInvoiceStatus.Detailed => "تم التفصيل",
+            SalesInvoiceStatus.ReadyForApproval => "بانتظار الاعتماد",
+            SalesInvoiceStatus.Approved => "معتمدة",
+            SalesInvoiceStatus.Delivered => "مسلّمة",
+            SalesInvoiceStatus.Cancelled => "ملغاة",
+            _ => s.ToString()
+        };
+
+        if (key == "sal.delivery")
+        {
+            var todayUtc = DateTime.UtcNow.Date;
+            var weekStart = todayUtc.AddDays(-(int)todayUtc.DayOfWeek);
+            var monthStart = new DateTime(todayUtc.Year, todayUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var deliveredToday = invoices.Count(i => i.DeliveredAt.HasValue && i.DeliveredAt.Value.Date == todayUtc);
+            var deliveredWeek = invoices.Count(i => i.DeliveredAt.HasValue && i.DeliveredAt.Value.Date >= weekStart);
+            var deliveredMtd = invoices.Count(i => i.DeliveredAt.HasValue && i.DeliveredAt.Value >= monthStart);
+            var pending = invoices.Count(i => !i.DeliveredAt.HasValue);
+
+            var deliveryRows = invoices.Select(i => Row(
+                ("Number", i.InvoiceNumber),
+                ("Customer", custMap.GetValueOrDefault(i.CustomerId, "—")),
+                ("Warehouse", whMap.GetValueOrDefault(i.WarehouseId, "—")),
+                ("ApprovedAt", i.ApprovedAt),
+                ("DeliveredAt", i.DeliveredAt),
+                ("Amount", i.GrandTotal),
+                ("Status", StatusDisplay((SalesInvoiceStatus)i.Status)))).ToList();
+
+            return Result(query, "التسليمات", "الفواتير المعتمدة والجاهزة للتسليم / المسلّمة",
+                Cols(
+                    ("Number", "الفاتورة", 120, null),
+                    ("Customer", "العميل", "*", null),
+                    ("Warehouse", "المستودع", 140, null),
+                    ("ApprovedAt", "اعتماد", 100, "yyyy/MM/dd"),
+                    ("DeliveredAt", "تسليم", 100, "yyyy/MM/dd"),
+                    ("Amount", "الإجمالي", 100, "N2"),
+                    ("Status", "الحالة", 110, null)),
+                deliveryRows,
+                Kpi("قيد التسليم", pending.ToString()),
+                Kpi("سُلّم اليوم", deliveredToday.ToString()),
+                Kpi("سُلّم هذا الأسبوع", deliveredWeek.ToString()),
+                Kpi("سُلّم هذا الشهر", deliveredMtd.ToString()));
+        }
 
         var rows = invoices.Select(i => Row(
             ("Number", i.InvoiceNumber),
             ("Date", i.InvoiceDate),
             ("Customer", custMap.GetValueOrDefault(i.CustomerId, "—")),
+            ("Warehouse", whMap.GetValueOrDefault(i.WarehouseId, "—")),
             ("Total", i.GrandTotal),
-            ("Status", ((SalesInvoiceStatus)i.Status).ToString()))).ToList();
+            ("Status", StatusDisplay((SalesInvoiceStatus)i.Status)))).ToList();
 
-        var title = key switch
-        {
-            "sal.detailing" => "طابور التفصيل",
-            "sal.delivery" => "جاهزة للتسليم",
-            _ => "فواتير البيع"
-        };
-
-        return Result(query, title, "فواتير البيع ضمن الفترة",
+        return Result(query, "فواتير البيع", "فواتير البيع ضمن الفترة",
             Cols(
                 ("Number", "الفاتورة", 110, null),
                 ("Date", "التاريخ", 100, "yyyy/MM/dd"),
                 ("Customer", "العميل", "*", null),
+                ("Warehouse", "المستودع", 130, null),
                 ("Total", "الإجمالي", 100, "N2"),
-                ("Status", "الحالة", 100, null)),
+                ("Status", "الحالة", 110, null)),
             rows,
             Kpi("فواتير", rows.Count.ToString()),
             Kpi("إجمالي", invoices.Sum(i => i.GrandTotal).ToString("N2")));
@@ -403,10 +449,33 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
         if (query.ToDate.HasValue)
             q = q.Where(i => i.InvoiceDate <= UtcDateTimeNormalizer.ToUtc(query.ToDate.Value));
 
-        var grouped = await q.GroupBy(i => i.CustomerId)
-            .Select(g => new { CustomerId = g.Key, Count = g.Count(), Total = g.Sum(x => x.GrandTotal) })
-            .OrderByDescending(x => x.Total)
-            .ToListAsync(ct);
+        var invoices = await q.Select(i => new { i.Id, i.CustomerId, i.GrandTotal }).ToListAsync(ct);
+        var invoiceIds = invoices.Select(i => i.Id).ToList();
+        var payments = await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(p => invoiceIds.Contains(p.SalesInvoiceId))
+            .GroupBy(p => p.SalesInvoiceId)
+            .Select(g => new { InvoiceId = g.Key, Collected = g.Sum(x => x.Amount) })
+            .ToDictionaryAsync(x => x.InvoiceId, x => x.Collected, ct);
+
+        var grouped = invoices
+            .GroupBy(i => i.CustomerId)
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                Count = g.Count(),
+                Total = g.Sum(x => x.GrandTotal),
+                Collected = g.Sum(x => payments.GetValueOrDefault(x.Id)),
+            })
+            .Select(g => new
+            {
+                g.CustomerId,
+                g.Count,
+                g.Total,
+                g.Collected,
+                Outstanding = g.Total - g.Collected
+            })
+            .OrderByDescending(g => g.Outstanding)
+            .ToList();
 
         var custMap = await context.Customers.AsNoTracking()
             .Where(c => grouped.Select(g => g.CustomerId).Contains(c.Id))
@@ -415,21 +484,138 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
         var rows = grouped.Select(g => Row(
             ("Customer", custMap.GetValueOrDefault(g.CustomerId, "—")),
             ("Count", g.Count),
-            ("Total", g.Total))).ToList();
+            ("Total", g.Total),
+            ("Collected", g.Collected),
+            ("Outstanding", g.Outstanding))).ToList();
 
-        return Result(query, "مبيعات حسب العميل", "تحليل تجميعي للمبيعات",
+        return Result(query, "مبيعات حسب العميل", "تحصيل ورصيد مستحق حسب العميل",
             Cols(
                 ("Customer", "العميل", "*", null),
                 ("Count", "فواتير", 80, null),
-                ("Total", "الإجمالي", 120, "N2")),
+                ("Total", "الإجمالي", 120, "N2"),
+                ("Collected", "المحصّل", 120, "N2"),
+                ("Outstanding", "المستحق", 120, "N2")),
             rows,
             Kpi("عملاء", rows.Count.ToString()),
-            Kpi("مبيعات", grouped.Sum(g => g.Total).ToString("N2")));
+            Kpi("مبيعات", grouped.Sum(g => g.Total).ToString("N2")),
+            Kpi("محصّل", grouped.Sum(g => g.Collected).ToString("N2")),
+            Kpi("مستحق", grouped.Sum(g => g.Outstanding).ToString("N2")));
     }
 
-    private Task<ModuleReportResultDto> BuildDetailingQueueAsync(
-        GetModuleReportQuery query, CancellationToken ct) =>
-        BuildSalesInvoicesAsync(query, "sal.detailing", ct);
+    private async Task<ModuleReportResultDto> BuildDetailingQueueAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var from = query.FromDate.HasValue ? UtcDateTimeNormalizer.ToUtc(query.FromDate.Value) : (DateTime?)null;
+        var to = query.ToDate.HasValue ? UtcDateTimeNormalizer.ToUtc(query.ToDate.Value) : (DateTime?)null;
+
+        var baseQ = context.SalesInvoices.AsNoTracking()
+            .Where(i => i.CompanyId == query.CompanyId && i.BranchId == query.BranchId && !i.IsArchived);
+
+        var pending = await baseQ
+            .Where(i => i.SentToWarehouseAt != null && i.DetailedAt == null)
+            .OrderBy(i => i.SentToWarehouseAt)
+            .Select(i => new { i.Id, i.InvoiceNumber, i.CustomerId, i.SentToWarehouseAt, i.GrandTotal })
+            .ToListAsync(ct);
+
+        var completedQ = baseQ.Where(i => i.SentToWarehouseAt != null && i.DetailedAt != null);
+        if (from.HasValue) completedQ = completedQ.Where(i => i.DetailedAt >= from.Value);
+        if (to.HasValue) completedQ = completedQ.Where(i => i.DetailedAt <= to.Value);
+        var completed = await completedQ
+            .Select(i => new { i.SentToWarehouseAt, i.DetailedAt })
+            .ToListAsync(ct);
+
+        double? avgHours = completed.Count == 0 ? null :
+            completed.Average(c => (c.DetailedAt!.Value - c.SentToWarehouseAt!.Value).TotalHours);
+
+        var todayUtc = DateTime.UtcNow.Date;
+        var weekStart = todayUtc.AddDays(-(int)todayUtc.DayOfWeek);
+        var completedToday = completed.Count(c => c.DetailedAt!.Value.Date == todayUtc);
+        var completedThisWeek = completed.Count(c => c.DetailedAt!.Value.Date >= weekStart);
+
+        var custIds = pending.Select(p => p.CustomerId).Distinct().ToList();
+        var custMap = await context.Customers.AsNoTracking()
+            .Where(c => custIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.NameAr, ct);
+
+        var rows = pending.Select(p => Row(
+            ("Number", p.InvoiceNumber),
+            ("Customer", custMap.GetValueOrDefault(p.CustomerId, "—")),
+            ("SentAt", p.SentToWarehouseAt!.Value),
+            ("WaitHours", Math.Round((DateTime.UtcNow - p.SentToWarehouseAt!.Value).TotalHours, 1)),
+            ("Total", p.GrandTotal))).ToList();
+
+        return Result(query, "طابور التفصيل", "الفواتير المرسلة للمستودع وتنتظر التفصيل",
+            Cols(
+                ("Number", "الفاتورة", 120, null),
+                ("Customer", "العميل", "*", null),
+                ("SentAt", "أُرسلت", 150, "yyyy/MM/dd HH:mm"),
+                ("WaitHours", "ساعات الانتظار", 120, "N1"),
+                ("Total", "الإجمالي", 120, "N2")),
+            rows,
+            Kpi("قيد التفصيل", pending.Count.ToString()),
+            Kpi("اكتمل اليوم", completedToday.ToString()),
+            Kpi("اكتمل هذا الأسبوع", completedThisWeek.ToString()),
+            Kpi("متوسط الزمن (ساعة)", avgHours.HasValue ? avgHours.Value.ToString("N1") : "—"));
+    }
+
+    private async Task<ModuleReportResultDto> BuildSalesReturnsAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var q = context.SalesReturns.AsNoTracking()
+            .Where(r => r.CompanyId == query.CompanyId && r.BranchId == query.BranchId && !r.IsArchived);
+        if (query.FromDate.HasValue)
+            q = q.Where(r => r.ReturnDate >= UtcDateTimeNormalizer.ToUtc(query.FromDate.Value));
+        if (query.ToDate.HasValue)
+            q = q.Where(r => r.ReturnDate <= UtcDateTimeNormalizer.ToUtc(query.ToDate.Value));
+
+        var returns = await q.OrderByDescending(r => r.ReturnDate).Take(5000).ToListAsync(ct);
+        var custIds = returns.Select(r => r.CustomerId).Distinct().ToList();
+        var custMap = await context.Customers.AsNoTracking()
+            .Where(c => custIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.NameAr, ct);
+
+        static string ReasonDisplay(int r) => r switch
+        {
+            0 => "بضاعة معيبة",
+            1 => "خطأ في الطلب",
+            2 => "طلب العميل",
+            _ => "أخرى"
+        };
+        static string StatusDisplay(int s) => s switch
+        {
+            0 => "مسودة",
+            1 => "معتمدة",
+            2 => "مرحلة",
+            3 => "ملغاة",
+            _ => "?"
+        };
+
+        var rows = returns.Select(r => Row(
+            ("Number", r.ReturnNumber),
+            ("InvoiceNumber", r.OriginalInvoiceNumber),
+            ("Customer", custMap.GetValueOrDefault(r.CustomerId, "—")),
+            ("Date", r.ReturnDate),
+            ("Reason", ReasonDisplay(r.Reason)),
+            ("Status", StatusDisplay(r.Status)),
+            ("Amount", r.TotalAmount))).ToList();
+
+        var postedCount = returns.Count(r => r.Status == 2);
+        var postedTotal = returns.Where(r => r.Status == 2).Sum(r => r.TotalAmount);
+
+        return Result(query, "المرتجعات", "قائمة المرتجعات ضمن الفترة",
+            Cols(
+                ("Number", "رقم المرتجع", 120, null),
+                ("InvoiceNumber", "الفاتورة الأصلية", 120, null),
+                ("Customer", "العميل", "*", null),
+                ("Date", "التاريخ", 100, "yyyy/MM/dd"),
+                ("Reason", "السبب", 130, null),
+                ("Status", "الحالة", 90, null),
+                ("Amount", "القيمة", 100, "N2")),
+            rows,
+            Kpi("مرتجعات", rows.Count.ToString()),
+            Kpi("مرحّلة", postedCount.ToString()),
+            Kpi("قيمة المرحّل", postedTotal.ToString("N2")));
+    }
 
     private async Task<ModuleReportResultDto> BuildCustomerBalancesAsync(
         GetModuleReportQuery query, CancellationToken ct)

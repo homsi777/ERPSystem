@@ -13,6 +13,7 @@ namespace ERPSystem.Application.UseCases.Finance;
 
 public sealed class CreateReceiptVoucherHandler(
     IReceiptVoucherRepository voucherRepository,
+    IReceiptInvoicePaymentRepository paymentRepository,
     IUnitOfWork unitOfWork,
     INumberingService numberingService,
     IPermissionService permissionService)
@@ -38,9 +39,27 @@ public sealed class CreateReceiptVoucherHandler(
                 command.CashboxId,
                 new Money(command.Amount));
 
+            foreach (var allocation in command.Allocations)
+            {
+                if (allocation.SalesInvoiceId == Guid.Empty || allocation.Amount <= 0) continue;
+                voucher.Allocate(allocation.SalesInvoiceId, new Money(allocation.Amount));
+            }
+
             Domain.Validators.ReceiptVoucherValidator.Validate(voucher);
 
             await voucherRepository.AddAsync(voucher, cancellationToken);
+
+            foreach (var allocation in command.Allocations)
+            {
+                if (allocation.SalesInvoiceId == Guid.Empty || allocation.Amount <= 0) continue;
+                await paymentRepository.AddAsync(
+                    Domain.Entities.Sales.ReceiptInvoicePayment.Create(
+                        allocation.SalesInvoiceId,
+                        voucher.Id,
+                        new Money(allocation.Amount)),
+                    cancellationToken);
+            }
+
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult<Guid>.Success(voucher.Id);
@@ -102,6 +121,7 @@ public sealed class PostReceiptVoucherHandler(
                 voucher.CustomerId,
                 voucher.Amount.Amount,
                 cancellationToken);
+
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             await notificationService.PublishAsync(new ReceiptVoucherPostedNotification

@@ -207,6 +207,16 @@ public static class SalesInvoiceMapper
         DiscountTotal = aggregate.DiscountTotal.Amount,
         TaxTotal = aggregate.TaxTotal.Amount,
         GrandTotal = aggregate.GrandTotal.Amount,
+        SentToWarehouseAt = aggregate.SentToWarehouseAt,
+        DetailedAt = aggregate.DetailedAt,
+        ApprovedAt = aggregate.ApprovedAt,
+        PrintedAt = aggregate.PrintedAt,
+        DeliveredAt = aggregate.DeliveredAt,
+        CancelledAt = aggregate.CancelledAt,
+        DeliveredToName = aggregate.DeliveredToName,
+        DeliveryDriverName = aggregate.DeliveryDriverName,
+        DeliveryNotes = aggregate.DeliveryNotes,
+        CancelReason = aggregate.CancelReason,
         Lines = aggregate.Items.Select(i => new SalesInvoiceLineDto
         {
             Id = i.Id,

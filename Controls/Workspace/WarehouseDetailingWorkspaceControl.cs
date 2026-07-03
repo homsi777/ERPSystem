@@ -34,6 +34,10 @@ namespace ERPSystem.Controls.Workspace
         private readonly ProgressBar _progressBar;
         private readonly Button _btnSave;
         private readonly Button _btnComplete;
+        private readonly TextBlock _txtStatTotalRolls;
+        private readonly TextBlock _txtStatCompleted;
+        private readonly TextBlock _txtStatRemaining;
+        private readonly TextBlock _txtStatCurrentLength;
         private DataGrid? _grid;
         private int _currentIndex;
         private decimal _pricePerMeter;
@@ -122,13 +126,10 @@ namespace ERPSystem.Controls.Workspace
             root.Children.Add(_grid);
 
             var stats = new UniformGrid { Columns = 4, Margin = new Thickness(0, 12, 0, 12) };
-            foreach (var (l, v) in new[] { ("إجمالي الأثواب", "0"), ("مكتمل", "0"), ("متبقي", "0"), ("الطول الحالي", "0.00 م") })
-            {
-                var cell = new StackPanel { Margin = new Thickness(4) };
-                cell.Children.Add(new TextBlock { Text = l, FontSize = 10, Foreground = Br("TextMutedBrush"), FontFamily = Ff() });
-                cell.Children.Add(new TextBlock { Text = v, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = Br("TextPrimaryBrush"), FontFamily = Ff(), Name = $"Stat_{l}" });
-                stats.Children.Add(cell);
-            }
+            _txtStatTotalRolls = AddStatCell(stats, "إجمالي الأثواب", "0");
+            _txtStatCompleted = AddStatCell(stats, "مكتمل", "0");
+            _txtStatRemaining = AddStatCell(stats, "متبقي", "0");
+            _txtStatCurrentLength = AddStatCell(stats, "الطول الحالي", "0.00 م");
             root.Children.Add(stats);
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
@@ -359,6 +360,31 @@ namespace ERPSystem.Controls.Workspace
             bool complete = filled == _rows.Count && _rows.Count > 0;
             _btnSave.IsEnabled = filled > 0;
             _btnComplete.IsEnabled = complete && _invoiceId.HasValue;
+
+            _txtStatTotalRolls.Text = _rows.Count.ToString();
+            _txtStatCompleted.Text = filled.ToString();
+            _txtStatRemaining.Text = remaining.ToString();
+            var currentLength = _currentIndex >= 0 && _currentIndex < _rows.Count && TryParseLength(_rows[_currentIndex].LengthText, out var curLen)
+                ? $"{curLen:N2} م"
+                : "0.00 م";
+            _txtStatCurrentLength.Text = currentLength;
+        }
+
+        private TextBlock AddStatCell(Panel parent, string label, string initialValue)
+        {
+            var cell = new StackPanel { Margin = new Thickness(4) };
+            cell.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = Br("TextMutedBrush"), FontFamily = Ff() });
+            var value = new TextBlock
+            {
+                Text = initialValue,
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Br("TextPrimaryBrush"),
+                FontFamily = Ff()
+            };
+            cell.Children.Add(value);
+            parent.Children.Add(cell);
+            return value;
         }
 
         private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject

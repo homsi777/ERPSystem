@@ -54,6 +54,11 @@ public interface IInventoryEngine
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default);
 
+    Task<decimal> ReceiveSalesReturnAsync(
+        SalesReturnAggregate salesReturn,
+        SalesInvoiceAggregate originalInvoice,
+        CancellationToken cancellationToken = default);
+
     Task<Guid> PostOpeningStockAsync(
         Guid documentId,
         CancellationToken cancellationToken = default);

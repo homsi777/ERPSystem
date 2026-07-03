@@ -515,6 +515,96 @@ internal sealed class InventoryEngine(
         return cogsTotal;
     }
 
+    public async Task<decimal> ReceiveSalesReturnAsync(
+        SalesReturnAggregate salesReturn,
+        SalesInvoiceAggregate originalInvoice,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var movementId = Guid.NewGuid();
+        var lines = new List<StockMovementLineEntity>();
+        decimal cogsReversal = 0m;
+
+        foreach (var returnLine in salesReturn.Lines)
+        {
+            var originalItem = originalInvoice.Items.FirstOrDefault(i => i.Id == returnLine.OriginalInvoiceItemId)
+                ?? throw new InventoryException("Original invoice item not found for return line.");
+
+            var soldRolls = await context.FabricRolls
+                .Where(r =>
+                    r.WarehouseId == originalInvoice.WarehouseId &&
+                    r.ContainerId == originalInvoice.ChinaContainerId &&
+                    r.FabricItemId == originalItem.FabricItemId &&
+                    r.FabricColorId == originalItem.FabricColorId)
+                .OrderByDescending(r => r.UpdatedAt ?? r.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var avgCost = soldRolls.Count > 0
+                ? soldRolls.Average(r => r.CostPerMeter)
+                : originalItem.UnitPrice.Amount;
+
+            cogsReversal += returnLine.ReturnMeters * avgCost;
+
+            var stock = await context.WarehouseStocks.FirstOrDefaultAsync(s =>
+                s.WarehouseId == salesReturn.WarehouseId &&
+                s.ContainerId == originalInvoice.ChinaContainerId &&
+                s.FabricItemId == originalItem.FabricItemId &&
+                s.FabricColorId == originalItem.FabricColorId, cancellationToken);
+
+            if (stock is null)
+            {
+                stock = new WarehouseStockEntity
+                {
+                    Id = Guid.NewGuid(),
+                    WarehouseId = salesReturn.WarehouseId,
+                    ContainerId = originalInvoice.ChinaContainerId,
+                    FabricItemId = originalItem.FabricItemId,
+                    FabricColorId = originalItem.FabricColorId,
+                    TotalMeters = returnLine.ReturnMeters,
+                    AvailableMeters = returnLine.ReturnMeters,
+                    ReservedMeters = 0,
+                    RollCount = 0,
+                    CreatedAt = now
+                };
+                await context.WarehouseStocks.AddAsync(stock, cancellationToken);
+            }
+            else
+            {
+                stock.TotalMeters += returnLine.ReturnMeters;
+                stock.AvailableMeters += returnLine.ReturnMeters;
+                stock.UpdatedAt = now;
+            }
+
+            lines.Add(new StockMovementLineEntity
+            {
+                Id = Guid.NewGuid(),
+                MovementId = movementId,
+                FabricItemId = originalItem.FabricItemId,
+                FabricColorId = originalItem.FabricColorId,
+                FabricRollId = null,
+                ContainerId = originalInvoice.ChinaContainerId,
+                QuantityMeters = returnLine.ReturnMeters,
+                UnitCost = avgCost,
+                TotalValue = returnLine.ReturnMeters * avgCost,
+                CurrencyCode = "USD",
+                CreatedAt = now
+            });
+        }
+
+        await PostMovementAsync(
+            movementId,
+            $"SRET-{salesReturn.ReturnNumber}-{now:yyyyMMddHHmmss}",
+            MovementType.SaleReturn,
+            salesReturn.WarehouseId,
+            DocumentType.SalesReturn,
+            salesReturn.Id,
+            lines,
+            now,
+            cancellationToken);
+
+        return cogsReversal;
+    }
+
     public async Task ReleaseForInvoiceAsync(
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default)

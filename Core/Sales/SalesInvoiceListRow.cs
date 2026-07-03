@@ -25,6 +25,8 @@ public sealed class SalesInvoiceListRow
         SalesInvoiceStatus.Printed => "مطبوعة",
         SalesInvoiceStatus.Delivered => "مسلمة",
         SalesInvoiceStatus.Cancelled => "ملغاة",
+        SalesInvoiceStatus.PartiallyReturned => "مرتجع جزئي",
+        SalesInvoiceStatus.Returned => "مرتجعة كاملاً",
         _ => Status.ToString()
     };
 

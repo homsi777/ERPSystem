@@ -53,4 +53,9 @@ public interface IIntegratedAccountingService
         PurchaseReturn purchaseReturn,
         Guid payablesAccountId,
         CancellationToken cancellationToken = default);
+
+    Task<string> PostSalesReturnAsync(
+        SalesReturnAggregate salesReturn,
+        decimal cogsReversalAmount,
+        CancellationToken cancellationToken = default);
 }
