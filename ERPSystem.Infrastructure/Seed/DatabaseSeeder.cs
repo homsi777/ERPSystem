@@ -35,6 +35,11 @@ public static class DatabaseSeeder
         await EnsureAccountingPermissionsAsync(context, cancellationToken);
         await EnsureSupplierPermissionsAsync(context, cancellationToken);
         await EnsurePurchasePermissionsAsync(context, cancellationToken);
+        await EnsureCustomerPermissionsAsync(context, cancellationToken);
+        await EnsureSalesPermissionsAsync(context, cancellationToken);
+        await EnsureFinancePermissionsAsync(context, cancellationToken);
+        await EnsureContainerPermissionsAsync(context, cancellationToken);
+        await EnsureWarehousePermissionsAsync(context, cancellationToken);
         await EnsureDefaultCurrencyAsync(context, cancellationToken);
         await ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken);
         await CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken);
@@ -422,6 +427,58 @@ public static class DatabaseSeeder
             ("suppliers.create", "suppliers", "create"),
             ("suppliers.deactivate", "suppliers", "deactivate"),
             ("suppliers.opening-balance", "suppliers", "opening-balance")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureCustomerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("customers.create", "customers", "create"),
+            ("customers.deactivate", "customers", "deactivate")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureSalesPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("sales.create", "sales", "create"),
+            ("sales.approve", "sales", "approve"),
+            ("sales.send-to-warehouse", "sales", "send-to-warehouse"),
+            ("sales.cancel", "sales", "cancel"),
+            ("sales.deliver", "sales", "deliver"),
+            ("sales.return", "sales", "return")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureFinancePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("finance.receipt.create", "finance", "receipt-create"),
+            ("finance.receipt.post", "finance", "receipt-post"),
+            ("finance.payment.create", "finance", "payment-create"),
+            ("finance.payment.post", "finance", "payment-post")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureContainerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("containers.create", "containers", "create"),
+            ("containers.approve", "containers", "approve"),
+            ("containers.landing-cost", "containers", "landing-cost"),
+            ("containers.move-to-warehouse", "containers", "move-to-warehouse")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureWarehousePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("warehouse.detailing", "warehouse", "detailing")
         ], cancellationToken);
     }
 
