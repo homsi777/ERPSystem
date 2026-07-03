@@ -43,8 +43,8 @@ public sealed class InventoryStocktakeWizardControl : UserControl
         stack.Children.Add(_kpiBlock);
         stack.Children.Add(_linesGrid);
 
-        _primaryBtn.Style = (Style)Application.Current.Resources["PrimaryButtonStyle"]!;
-        _postBtn.Style = (Style)Application.Current.Resources["SecondaryButtonStyle"]!;
+        _primaryBtn.Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!;
+        _postBtn.Style = (Style)System.Windows.Application.Current.Resources["SecondaryButtonStyle"]!;
         _primaryBtn.Click += async (_, _) => await OnPrimaryAsync();
         _postBtn.Click += async (_, _) => await PostAsync();
 
@@ -96,8 +96,12 @@ public sealed class InventoryStocktakeWizardControl : UserControl
             _lines.Add(new CountRow(line));
 
         BuildLinesGrid();
-        _phase = d.Status is "Posted" or "Completed" or "Closed" ? 3
-            : d.Lines.Count > 0 ? 2 : 1;
+        _phase = d.Status switch
+        {
+            "Posted" or "Completed" or "Closed" => 3,
+            "Review" or "Approved" => 2,
+            _ => d.Lines.Count > 0 ? 1 : 0
+        };
         UpdatePhaseUi();
         RefreshKpis();
     }
@@ -182,8 +186,6 @@ public sealed class InventoryStocktakeWizardControl : UserControl
         _warehouse.IsEnabled = false;
         _responsible.IsEnabled = false;
         await LoadSessionAsync(_sessionId.Value);
-        _phase = 1;
-        BuildLinesGrid();
         UpdatePhaseUi();
         InventoryListRefreshHub.RequestRefresh();
     }
@@ -231,7 +233,7 @@ public sealed class InventoryStocktakeWizardControl : UserControl
     }
 
     private static Brush Br(string key) =>
-        (Brush)Application.Current.Resources[key]!;
+        (Brush)System.Windows.Application.Current.Resources[key]!;
 
     private sealed class CountRow : INotifyPropertyChanged
     {

@@ -79,10 +79,7 @@ public sealed class InventoryTransferListPageControl : UserControl
         _grid.MouseDoubleClick += (_, _) =>
         {
             if (_grid.SelectedItem is StockTransferListDto t)
-            {
-                InventoryNavigationContext.BeginEditTransfer(t.Id);
-                NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "TransferForm");
-            }
+                InventoryPopupService.ShowTransferWizard(transferId: t.Id);
         };
 
         root.Children.Add(_grid);
@@ -115,11 +112,7 @@ public sealed class InventoryStocktakeListPageControl : UserControl
             Style = (Style)System.Windows.Application.Current.Resources["SecondaryButtonStyle"]!,
             HorizontalAlignment = HorizontalAlignment.Left
         };
-        btn.Click += (_, _) =>
-        {
-            InventoryNavigationContext.BeginCreateStocktake();
-            NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "StocktakeForm");
-        };
+        btn.Click += (_, _) => InventoryPopupService.ShowStocktakeWizard();
         header.Children.Add(btn);
         DockPanel.SetDock(header, Dock.Top);
         root.Children.Add(header);
@@ -129,6 +122,13 @@ public sealed class InventoryStocktakeListPageControl : UserControl
         ErpUiFactory.AddGridColumn(_grid, "المسؤول", nameof(StocktakeListDto.Responsible), 120, null);
         ErpUiFactory.AddGridColumn(_grid, "الحالة", nameof(StocktakeListDto.Status), 100, null);
         ErpUiFactory.AddGridColumn(_grid, "التاريخ", nameof(StocktakeListDto.Date), 120, null);
+
+        _grid.MouseDoubleClick += (_, _) =>
+        {
+            if (_grid.SelectedItem is StocktakeListDto s)
+                InventoryPopupService.ShowStocktakeWizard(sessionId: s.Id);
+        };
+
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();

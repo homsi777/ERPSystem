@@ -2,12 +2,43 @@ using ERPSystem.Controls;
 using ERPSystem.Controls.Inventory;
 using ERPSystem.Core;
 using ERPSystem.Helpers;
+using ERPSystem.Services.Inventory;
 using ERPSystem.Views.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace ERPSystem.Views.Inventory;
+
+/// <summary>يفتح معالج المناقلة عند التنقل المباشر لهذا المسار.</summary>
+public sealed class InventoryTransferFormLauncherControl : UserControl
+{
+    public InventoryTransferFormLauncherControl() => Loaded += OnLoaded;
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        var id = InventoryNavigationContext.EditTransferId;
+        var from = InventoryNavigationContext.TakePreselectedFromWarehouse();
+        InventoryPopupService.ShowTransferWizard(from, id);
+        NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "Transfers");
+    }
+}
+
+/// <summary>يفتح معالج الجرد عند التنقل المباشر لهذا المسار.</summary>
+public sealed class InventoryStocktakeFormLauncherControl : UserControl
+{
+    public InventoryStocktakeFormLauncherControl() => Loaded += OnLoaded;
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        var wh = InventoryNavigationContext.TakePreselectedStocktakeWarehouse();
+        var id = InventoryNavigationContext.EditStocktakeId;
+        InventoryPopupService.ShowStocktakeWizard(wh, id);
+        NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "Stocktake");
+    }
+}
 
 public static class InventoryViews
 {
@@ -33,8 +64,8 @@ public static class InventoryViews
         "Warehouses" => BuildWarehousesHub(),
         "WarehouseForm" => Wrap(new InventoryWarehouseFormControl()),
         "WarehouseOperationsCenter" => Wrap(new InventoryOperationsCenterControl()),
-        "TransferForm" => Wrap(new InventoryTransferFormControl()),
-        "StocktakeForm" => Wrap(new InventoryStocktakeFormControl()),
+        "TransferForm" => Wrap(new InventoryTransferFormLauncherControl()),
+        "StocktakeForm" => Wrap(new InventoryStocktakeFormLauncherControl()),
         "OpeningStockForm" => Wrap(new InventoryOpeningStockFormControl()),
         _ => BuildWarehousesHub()
     };

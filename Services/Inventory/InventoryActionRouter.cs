@@ -77,12 +77,10 @@ public static class InventoryActionRouter
                 InventoryPopupService.ShowEditWarehouse(row.Id);
                 return true;
             case "nav:Inventory:Transfers":
-                InventoryNavigationContext.BeginCreateTransfer(row.Id);
-                NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "TransferForm");
+                InventoryPopupService.ShowTransferWizard(row.Id);
                 return true;
             case "nav:Inventory:Stocktake":
-                InventoryNavigationContext.BeginCreateStocktake(row.Id);
-                NavigationStateManager.Instance.NavigateTo(AppModule.Inventory, "StocktakeForm");
+                InventoryPopupService.ShowStocktakeWizard(row.Id);
                 return true;
             case "ws:ArchiveWarehouse":
                 _ = ArchiveAsync(row);

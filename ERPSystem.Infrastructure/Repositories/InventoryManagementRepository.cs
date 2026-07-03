@@ -3,6 +3,7 @@ using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Domain.Entities.Inventory;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Persistence;
+using ERPSystem.Infrastructure.Persistence.Models.Catalog;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
 using Microsoft.EntityFrameworkCore;
 

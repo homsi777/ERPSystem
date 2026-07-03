@@ -54,9 +54,9 @@ public sealed class InventoryTransferWizardControl : UserControl
         root.Children.Add(_footer);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
-        _backBtn.Style = (Style)Application.Current.Resources["SecondaryButtonStyle"]!;
-        _nextBtn.Style = (Style)Application.Current.Resources["PrimaryButtonStyle"]!;
-        _finishBtn.Style = (Style)Application.Current.Resources["PrimaryButtonStyle"]!;
+        _backBtn.Style = (Style)System.Windows.Application.Current.Resources["SecondaryButtonStyle"]!;
+        _nextBtn.Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!;
+        _finishBtn.Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!;
         _backBtn.Click += (_, _) => GoBack();
         _nextBtn.Click += async (_, _) => await GoNextAsync();
         _finishBtn.Click += async (_, _) => await FinishAsync();
@@ -353,7 +353,7 @@ public sealed class InventoryTransferWizardControl : UserControl
     }
 
     private static Brush Br(string key) =>
-        (Brush)Application.Current.Resources[key]!;
+        (Brush)System.Windows.Application.Current.Resources[key]!;
 
     private sealed class RollPickRow
     {
