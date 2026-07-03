@@ -167,9 +167,9 @@ namespace ERPSystem.Views.Settings
             stack.Children.Add(ErpUiFactory.SectionTitle(title));
             stack.Children.Add(new TextBlock { Text = desc, Foreground = Br("TextSecondaryBrush"), Margin = new Thickness(0, 0, 0, 16), FontFamily = Ff() });
             stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-                ("الإعداد 1", ErpUiFactory.FormField("قيمة تجريبية")),
-                ("الإعداد 2", ErpUiFactory.FormField("قيمة تجريبية")),
-                ("الإعداد 3", ErpUiFactory.FormField("قيمة تجريبية")))));
+                ("الإعداد 1", ErpUiFactory.FormField("")),
+                ("الإعداد 2", ErpUiFactory.FormField("")),
+                ("الإعداد 3", ErpUiFactory.FormField("")))));
 
             var saveBar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
             saveBar.Children.Add(new Button { Content = "حفظ", Style = S("PrimaryButtonStyle"), Height = 34, Margin = new Thickness(0, 0, 8, 0) });

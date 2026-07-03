@@ -66,7 +66,7 @@ namespace ERPSystem.Core.Actions
                 new(EntityActionId.ContainerCosts, "تكلفة الاستيراد", "\uE8C1"),
                 new(EntityActionId.ContainerApprove, "اعتماد الحاوية", "\uE73E"),
                 new(EntityActionId.ContainerArchive, "أرشفة الحاوية", "\uE7B8", destructive: true),
-                new(EntityActionId.ContainerDelete, "حذف تجريبي", "\uE74D", destructive: true),
+                new(EntityActionId.ContainerDelete, "حذف", "\uE74D", destructive: true),
             ],
             [EntityType.Employee] =
             [

@@ -81,8 +81,8 @@
                     AccentColor="{StaticResource AccentCustomersBrush}"/>
             </UniformGrid>
 
-            <!-- Sales insights — mock data (USD) -->
-            <UniformGrid Grid.Row="2" Columns="4" Margin="0,0,0,12">
+            <!-- Sales insights — hidden until real analytics handler exists -->
+            <UniformGrid x:Name="InsightCardsRow" Grid.Row="2" Columns="4" Margin="0,0,0,12" Visibility="Collapsed">
                 <controls:MetricCardControl x:Name="CardTopCustomer" Margin="0,0,6,0"
                     CardTitle="أكثر عميل يشتري" CardValue="—"
                     CardIcon="&#xE77B;" TrendValue="هذا العام" TrendDirection="Up"
@@ -120,94 +120,11 @@
                     <StackPanel>
                         <controls:SectionHeaderControl x:Name="ActivityHeader" Title="آخر النشاط"/>
                         <StackPanel x:Name="ActivityList">
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Style="{StaticResource IconBadgeStyle}">
-                                    <TextBlock Text="&#xE9F9;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                               Foreground="{StaticResource PrimaryBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                    <TextBlock Text="فاتورة مبيعات #1045" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="عميل: شركة الأمل" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <TextBlock Text="3,200 ر.س" Style="{StaticResource BodyTextStyle}"
-                                               FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"
-                                               HorizontalAlignment="Left"/>
-                                    <TextBlock Text="منذ 12 د" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                            </Grid>
-                            <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Width="40" Height="40" CornerRadius="8"
-                                        Background="{StaticResource AccentOrdersLightBrush}">
-                                    <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                               Foreground="{StaticResource AccentOrdersBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                    <TextBlock Text="عميل جديد مضاف" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="محمد أحمد العتيبي" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                                <TextBlock Grid.Column="2" Text="منذ 28 د" Style="{StaticResource CaptionTextStyle}"
-                                           VerticalAlignment="Center"/>
-                            </Grid>
-                            <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Width="40" Height="40" CornerRadius="8"
-                                        Background="{StaticResource AccentReceivableLightBrush}">
-                                    <TextBlock Text="&#xE7BF;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                               Foreground="{StaticResource AccentReceivableBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                    <TextBlock Text="أمر شراء #PO-0088" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="مورد: مؤسسة التوريد" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <TextBlock Text="8,500 ر.س" Style="{StaticResource BodyTextStyle}"
-                                               FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}"/>
-                                    <TextBlock Text="منذ ساعة" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                            </Grid>
-                            <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Width="40" Height="40" CornerRadius="8"
-                                        Background="{StaticResource SuccessBgBrush}">
-                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                               Foreground="{StaticResource SuccessBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                    <TextBlock Text="تفصيل أثواب مكتمل" Style="{StaticResource BodyTextStyle}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="فاتورة INV-2026-0085 — 12 توب" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <TextBlock Text="12,340 ر.س" Style="{StaticResource BodyTextStyle}"
-                                               FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/>
-                                    <TextBlock Text="منذ 2 ساعة" Style="{StaticResource CaptionTextStyle}"/>
-                                </StackPanel>
-                            </Grid>
+                            <TextBlock x:Name="TxtActivityEmpty"
+                                       Text="لا يوجد نشاط حديث"
+                                       Style="{StaticResource CaptionTextStyle}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="4,8,4,0"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

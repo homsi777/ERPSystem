@@ -54,6 +54,38 @@ namespace ERPSystem.Helpers
         public static UIElement MockGrid(object[] rows) =>
             ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows));
 
+        public static UIElement EmptyMessage(string message, string? subtitle = null)
+        {
+            var stack = new StackPanel { Margin = new Thickness(8) };
+            stack.Children.Add(new TextBlock
+            {
+                Text = message,
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Br("TextPrimaryBrush"),
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = Ff()
+            });
+            if (!string.IsNullOrWhiteSpace(subtitle))
+            {
+                stack.Children.Add(new TextBlock
+                {
+                    Text = subtitle,
+                    FontSize = 12,
+                    Foreground = Br("TextSecondaryBrush"),
+                    Margin = new Thickness(0, 6, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    FontFamily = Ff()
+                });
+            }
+            return ErpUiFactory.Card(stack);
+        }
+
+        public static UIElement DevelopmentPhase(string? featureName = null) =>
+            EmptyMessage(
+                featureName ?? "قيد التطوير",
+                "سيتم ربط هذه الشاشة بقاعدة البيانات لاحقاً");
+
         private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;
         private static FontFamily Ff() => new("Segoe UI, Tahoma, Arial");
     }

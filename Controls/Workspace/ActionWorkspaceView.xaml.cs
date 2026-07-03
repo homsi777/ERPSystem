@@ -207,7 +207,7 @@ namespace ERPSystem.Controls.Workspace
             if (_request.ActionId == EntityActionId.FabricMovement)
             {
                 stack.Children.Add(ErpUxFactory.ActionToolbar("حركة الأقمشة", ("تصدير", false)));
-                stack.Children.Add(BuildMovementGrid());
+                stack.Children.Add(PlaceholderUi.EmptyMessage("لا توجد حركات مخزنية مسجلة"));
             }
             else if (_request.ActionId is EntityActionId.ContainerItems or EntityActionId.ContainerImportReview)
             {
@@ -223,21 +223,10 @@ namespace ERPSystem.Controls.Workspace
                 }
             }
             else
-                stack.Children.Add(BuildDataGrid());
+                stack.Children.Add(PlaceholderUi.DevelopmentPhase(GetContentSectionTitle()));
 
             return stack;
         }
-
-        private DataGrid BuildMovementGrid() => new()
-        {
-            AutoGenerateColumns = true, IsReadOnly = true,
-            ItemsSource = new[]
-            {
-                new { التاريخ = DateTime.Today.AddDays(-3).ToString("yyyy/MM/dd"), النوع = "وارد", الكمية = "+120 م", المرجع = "CN-2026-001" },
-                new { التاريخ = DateTime.Today.AddDays(-1).ToString("yyyy/MM/dd"), النوع = "صادر", الكمية = "-45 م", المرجع = "INV-2026-0042" },
-            },
-            MinHeight = 160, FontFamily = Ff(), FontSize = 13
-        };
 
         private string GetContentSectionTitle() => _request.ActionId switch
         {
@@ -250,20 +239,6 @@ namespace ERPSystem.Controls.Workspace
             EntityActionId.EmployeeAttendance => "الحضور والانصراف",
             EntityActionId.EmployeeLeaves => "الإجازات",
             _ => "تفاصيل العملية"
-        };
-
-        private DataGrid BuildDataGrid() => new()
-        {
-            AutoGenerateColumns = true, IsReadOnly = true,
-            ItemsSource = (System.Collections.IEnumerable)GetTableData(),
-            MinHeight = 180, FontFamily = Ff(), FontSize = 13,
-            BorderBrush = Br("BorderBrush"), BorderThickness = new Thickness(1)
-        };
-
-        private object GetTableData() => new[]
-        {
-            new { البيان = "سطر 1", الكمية = "100 م", القيمة = "4,500 ر.س" },
-            new { البيان = "سطر 2", الكمية = "80 م", القيمة = "3,200 ر.س" },
         };
 
         private UIElement BuildExcelImportPanel()

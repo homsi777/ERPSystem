@@ -115,11 +115,13 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildSupplier(WorkspaceOpenRequest req, string initialTab)
         {
-            var s = req.EntityRow as SupplierModel ?? SupplierSampleData.Generate(1).First();
+            if (req.EntityRow is not SupplierModel s)
+                return NoEntityContextControl();
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = s.Name,
-                Subtitle = "مركز عمليات المورد — استيراد ومحلي",
+                Subtitle = "مركز عمليات المورد",
                 Breadcrumb = "ERP PRO › الموردون › مركز العمليات",
                 IconGlyph = "\uE779",
                 Accent = Br("AccentPayableBrush"),
@@ -133,36 +135,26 @@ namespace ERPSystem.Views.OperationsCenters
                 Kpis =
                 [
                     ("الرصيد", $"{s.Balance:N0} ر.س", "\uE8C1"),
-                    ("مشتريات", "95,000 ر.س", "\uE7BF"),
-                    ("حاويات", "4", "\uE7BF"),
-                    ("مدفوعات", "62,000 ر.س", "\uE719"),
+                    ("مشتريات", "—", "\uE7BF"),
+                    ("حاويات", "—", "\uE7BF"),
+                    ("مدفوعات", "—", "\uE719"),
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", OverviewSupplier(s)),
-                    Tab("Statement", "كشف الحساب", StatementTabContent(s.Name)),
-                    Tab("Invoices", "فواتير الشراء", PlaceholderUi.MockGrid(new[] {
-                        new { رقم = "PUR-0088", التاريخ = "2026/06/24", المبلغ = "95,000" },
-                    })),
-                    Tab("Payments", "المدفوعات", PlaceholderUi.MockGrid(new[] {
-                        new { رقم = "PAY-001", المبلغ = "40,000", التاريخ = "2026/06/10" },
-                    })),
-                    Tab("Containers", "الحاويات", PlaceholderUi.MockGrid(new[] {
-                        new { حاوية = "CN-2026-001", المورد = s.Name, الحالة = "وصلت" },
-                    })),
-                    Tab("ImportHistory", "سجل الاستيراد", PlaceholderUi.MockGrid(new[] {
-                        new { الشهر = "يونيو 2026", الحاويات = 2, القيمة = "185,000" },
-                    })),
-                    Tab("Notes", "ملاحظات", NotesEditor("ملاحظات المورد")),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("مورد")),
+                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة المورد")),
+                    Tab("Statement", "كشف الحساب", PlaceholderUi.DevelopmentPhase("كشف حساب المورد")),
+                    Tab("Invoices", "فواتير الشراء", PlaceholderUi.DevelopmentPhase("فواتير الشراء")),
+                    Tab("Payments", "المدفوعات", PlaceholderUi.DevelopmentPhase("مدفوعات المورد")),
+                    Tab("Containers", "الحاويات", PlaceholderUi.DevelopmentPhase("حاويات المورد")),
+                    Tab("ImportHistory", "سجل الاستيراد", PlaceholderUi.DevelopmentPhase("سجل الاستيراد")),
+                    Tab("Notes", "ملاحظات", NotesEditor("")),
+                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
                 ],
                 QuickActions =
                 [
                     Q("سند دفع", true, "Payments", actionKey: "nav:Accounting:Payments"),
                     Q("كشف حساب", false, "Statement"),
-                    Q("PDF", false, null, actionKey: "preview:كشف حساب المورد"),
                     Q("تعديل", false, null, actionKey: "form:EditSupplier"),
-                    Q("تعطيل", false, null, destructive: true, confirm: true, actionKey: "success:تم تعطيل المورد (تجريبي)"),
                 ],
                 InitialTabIndex = Idx(initialTab, "Overview", "Statement", "Invoices", "Payments", "Containers", "ImportHistory", "Notes", "Timeline"),
                 Context = new OperationsCenterContext
@@ -199,7 +191,10 @@ namespace ERPSystem.Views.OperationsCenters
         {
             FabricItemModel? f = req.EntityRow as FabricItemModel;
             WarehouseStockRow? w = req.EntityRow as WarehouseStockRow;
-            var title = f?.FabricName ?? w?.GoodsType ?? "قماش";
+            if (f is null && w is null)
+                return NoEntityContextControl();
+
+            var title = f?.FabricName ?? w?.GoodsType ?? "—";
             var code = f?.Code ?? w?.BoltCode ?? "—";
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
@@ -209,45 +204,38 @@ namespace ERPSystem.Views.OperationsCenters
                 IconGlyph = "\uE821",
                 Accent = Br("AccentInventoryBrush"),
                 AccentLight = Br("SuccessBgBrush"),
-                StatusBadge = f?.StatusDisplay ?? w?.Status ?? "متوفر",
+                StatusBadge = f?.StatusDisplay ?? w?.Status ?? "—",
                 HeaderFields =
                 [
                     ("كود التوب", code),
                     ("اللون", f?.Color ?? w?.Color ?? "—"),
                     ("المستودع", f?.Warehouse ?? w?.Warehouse ?? "—"),
-                    ("الحاوية", "CN-2026-001"),
+                    ("الحاوية", "—"),
                 ],
                 Kpis =
                 [
                     ("الأثواب", (f?.RollCount ?? w?.RollCount ?? 0).ToString(), "\uE7C3"),
                     ("الأطوال", $"{(f?.TotalMeters ?? w?.TotalLength ?? 0):N0} م", "\uE821"),
-                    ("محجوز", "45 م", "\uE823"),
-                    ("مباع", "120 م", "\uE8F1"),
-                    ("متبقي", "555 م", "\uE8FD"),
-                    ("تكلفة/م", "42.50 ر.س", "\uE8C1"),
+                    ("محجوز", "—", "\uE823"),
+                    ("مباع", "—", "\uE8F1"),
+                    ("متبقي", "—", "\uE8FD"),
+                    ("تكلفة/م", "—", "\uE8C1"),
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.MockGrid(new[] {
-                        new { البند = "الموقع", القيمة = w?.Location ?? "A-12" },
-                        new { البند = "اللوط", القيمة = w?.Lot ?? "LOT-01" },
-                    })),
-                    Tab("Movements", "حركة المخزون", PlaceholderUi.MockGrid(new[] {
-                        new { التاريخ = "2026/06/26", النوع = "وارد", الكمية = "+120 م", المرجع = "CN-001" },
-                        new { التاريخ = "2026/06/25", النوع = "صادر", الكمية = "-45 م", المرجع = "INV-1045" },
-                    })),
-                    Tab("SalesHistory", "سجل المبيعات", PlaceholderUi.TabContent("سجل المبيعات")),
-                    Tab("Reservations", "الحجوزات", PlaceholderUi.TabContent("الحجوزات")),
-                    Tab("Transfers", "المناقلات", PlaceholderUi.TabContent("المناقلات")),
-                    Tab("Adjustments", "التسويات", PlaceholderUi.TabContent("التسويات")),
-                    Tab("Purchases", "سجل الشراء", PlaceholderUi.TabContent("سجل الشراء")),
-                    Tab("Notes", "ملاحظات", NotesEditor("ملاحظات الصنف")),
+                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة الصنف")),
+                    Tab("Movements", "حركة المخزون", PlaceholderUi.DevelopmentPhase("حركة المخزون")),
+                    Tab("SalesHistory", "سجل المبيعات", PlaceholderUi.DevelopmentPhase("سجل المبيعات")),
+                    Tab("Reservations", "الحجوزات", PlaceholderUi.DevelopmentPhase("الحجوزات")),
+                    Tab("Transfers", "المناقلات", PlaceholderUi.DevelopmentPhase("المناقلات")),
+                    Tab("Adjustments", "التسويات", PlaceholderUi.DevelopmentPhase("التسويات")),
+                    Tab("Purchases", "سجل الشراء", PlaceholderUi.DevelopmentPhase("سجل الشراء")),
+                    Tab("Notes", "ملاحظات", NotesEditor("")),
                 ],
                 QuickActions =
                 [
                     Q("حركة الصنف", false, "Movements"),
                     Q("مناقلة", false, "Transfers", actionKey: "form:NewTransfer"),
-                    Q("تعديل السعر", false, null, actionKey: "form:EditPrice"),
                 ],
                 InitialTabIndex = Idx(initialTab, "Overview", "Movements", "SalesHistory", "Reservations", "Transfers", "Adjustments", "Purchases", "Notes")
             });
@@ -255,11 +243,9 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildWarehouse(WorkspaceOpenRequest req, string initialTab)
         {
-            var w = req.EntityRow as WarehouseEntity ?? new WarehouseEntity
-            {
-                Code = "WH-01", Name = "المستودع الرئيسي", City = "جدة",
-                RollCount = 4850, TotalLength = 385420, CapacityPercent = 72
-            };
+            if (req.EntityRow is not WarehouseEntity w)
+                return NoEntityContextControl();
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = w.Name,
@@ -272,32 +258,29 @@ namespace ERPSystem.Views.OperationsCenters
                 HeaderFields =
                 [
                     ("الكود", w.Code), ("المدينة", w.City),
-                    ("السعة المستخدمة", $"{w.CapacityPercent}%"),
-                    ("إجمالي الأثواب", w.RollCount.ToString("N0")),
+                    ("السعة المستخدمة", w.CapacityPercent > 0 ? $"{w.CapacityPercent}%" : "—"),
+                    ("إجمالي الأثواب", w.RollCount > 0 ? w.RollCount.ToString("N0") : "—"),
                 ],
                 Kpis =
                 [
-                    ("السعة", $"{w.CapacityPercent}%", "\uE8B7"),
-                    ("مشغول", "72%", "\uE821"),
-                    ("متاح", "28%", "\uE8FD"),
-                    ("أثواب", w.RollCount.ToString("N0"), "\uE7C3"),
-                    ("أطوال", $"{w.TotalLength:N0} م", "\uE821"),
-                    ("تسليم معلق", "7", "\uE823"),
-                    ("مناقلات", "3", "\uE8AB"),
-                    ("تنبيهات", "2", "\uE783"),
+                    ("السعة", w.CapacityPercent > 0 ? $"{w.CapacityPercent}%" : "—", "\uE8B7"),
+                    ("مشغول", "—", "\uE821"),
+                    ("متاح", "—", "\uE8FD"),
+                    ("أثواب", w.RollCount > 0 ? w.RollCount.ToString("N0") : "—", "\uE7C3"),
+                    ("أطوال", w.TotalLength > 0 ? $"{w.TotalLength:N0} م" : "—", "\uE821"),
+                    ("تسليم معلق", "—", "\uE823"),
+                    ("مناقلات", "—", "\uE8AB"),
+                    ("تنبيهات", "—", "\uE783"),
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.MockGrid(new[] {
-                        new { مؤشر = "تفصيل معلق", القيمة = "7 فواتير" },
-                        new { مؤشر = "مناقلات جارية", القيمة = "3" },
-                    })),
-                    Tab("Inventory", "المخزون", PlaceholderUi.TabContent("أرصدة المستودع")),
-                    Tab("Transfers", "المناقلات", PlaceholderUi.TabContent("المناقلات")),
-                    Tab("Stocktake", "الجرد", PlaceholderUi.TabContent("الجرد")),
-                    Tab("Reservations", "الحجوزات", PlaceholderUi.TabContent("الحجوزات")),
-                    Tab("Detailing", "تفصيل معلق", PlaceholderUi.TabContent("فواتير بانتظار التفصيل")),
-                    Tab("Movements", "الحركات", PlaceholderUi.TabContent("حركات المستودع")),
+                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة المستودع")),
+                    Tab("Inventory", "المخزون", PlaceholderUi.DevelopmentPhase("أرصدة المستودع")),
+                    Tab("Transfers", "المناقلات", PlaceholderUi.DevelopmentPhase("المناقلات")),
+                    Tab("Stocktake", "الجرد", PlaceholderUi.DevelopmentPhase("الجرد")),
+                    Tab("Reservations", "الحجوزات", PlaceholderUi.DevelopmentPhase("الحجوزات")),
+                    Tab("Detailing", "تفصيل معلق", PlaceholderUi.DevelopmentPhase("فواتير بانتظار التفصيل")),
+                    Tab("Movements", "الحركات", PlaceholderUi.DevelopmentPhase("حركات المستودع")),
                 ],
                 QuickActions =
                 [
@@ -337,7 +320,7 @@ namespace ERPSystem.Views.OperationsCenters
                 [
                     Tab("Overview", "نظرة عامة", new TextBlock
                     {
-                        Text = "يرجى فتح مركز العمليات من قائمة الفواتير",
+                        Text = "يرجى اختيار سجل من القائمة لفتح مركز العمليات",
                         Margin = new Thickness(24),
                         FontSize = 14,
                         TextWrapping = TextWrapping.Wrap,
@@ -350,7 +333,9 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildPurchaseInvoice(WorkspaceOpenRequest req, string initialTab)
         {
-            var p = req.EntityRow as PurchaseInvoiceModel ?? PurchaseSampleData.Generate(1).First();
+            if (req.EntityRow is not PurchaseInvoiceModel p)
+                return NoEntityContextControl();
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = p.InvoiceNumber,
@@ -371,30 +356,35 @@ namespace ERPSystem.Views.OperationsCenters
                 [
                     ("الإجمالي", $"{p.TotalAmount:N0} ر.س", "\uE8C1"),
                     ("المتبقي", $"{p.Remaining:N0} ر.س", "\uE719"),
-                    ("البنود", "12", "\uE821"),
+                    ("البنود", p.LineCount > 0 ? p.LineCount.ToString() : "—", "\uE821"),
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "التفاصيل", PlaceholderUi.MockGrid(new[] {
-                        new { صنف = "قماش صيني", الكمية = "500 م", السعر = "38", الإجمالي = "19,000" },
-                    })),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("شراء")),
+                    Tab("Overview", "التفاصيل", PlaceholderUi.DevelopmentPhase("تفاصيل فاتورة الشراء")),
+                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
                     Tab("Printing", "الطباعة", PrintPreview()),
                 ],
                 QuickActions =
                 [
                     Q("طباعة", false, null, actionKey: "preview:فاتورة الشراء"),
-                    Q("PDF", false, null, actionKey: "preview:فاتورة الشراء"),
                     Q("مرتجع", false, null, actionKey: "nav:Purchases:Returns"),
-                    Q("إلغاء", false, null, destructive: true, confirm: true, actionKey: "success:تم إلغاء فاتورة الشراء (تجريبي)"),
                 ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Timeline", "Printing")
+                InitialTabIndex = Idx(initialTab, "Overview", "Timeline", "Printing"),
+                Context = new OperationsCenterContext
+                {
+                    EntityType = EntityType.PurchaseInvoice,
+                    EntityRow = p,
+                    SourceModule = AppModule.Purchases,
+                    Title = p.InvoiceNumber
+                }
             });
         }
 
         private static UserControl BuildEmployee(WorkspaceOpenRequest req, string initialTab)
         {
-            var e = req.EntityRow as EmployeeModel ?? HRSampleData.Generate(1).First();
+            if (req.EntityRow is not EmployeeModel e)
+                return NoEntityContextControl();
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = e.FullName,
@@ -407,41 +397,45 @@ namespace ERPSystem.Views.OperationsCenters
                 HeaderFields =
                 [
                     ("الكود", e.EmployeeCode), ("القسم", e.Department),
-                    ("المسمى", e.JobTitle), ("الراتب", $"{e.BasicSalary:N0} ر.س"),
+                    ("المسمى", e.JobTitle), ("الراتب", e.BasicSalary > 0 ? $"{e.BasicSalary:N0} ر.س" : "—"),
                 ],
                 Kpis =
                 [
                     ("القسم", e.Department, "\uEE57"),
-                    ("الوردية", e.Shift, "\uE728"),
-                    ("الحضور", "22/26", "\uE823"),
-                    ("إجازات", "3", "\uE787"),
+                    ("الوردية", string.IsNullOrWhiteSpace(e.Shift) ? "—" : e.Shift, "\uE728"),
+                    ("الحضور", "—", "\uE823"),
+                    ("إجازات", "—", "\uE787"),
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.MockGrid(new[] {
-                        new { البند = "تاريخ التعيين", القيمة = e.HireDate.ToString("yyyy/MM/dd") },
-                    })),
-                    Tab("Attendance", "الحضور", PlaceholderUi.MockGrid(new[] {
-                        new { تاريخ = "2026/06/26", دخول = "08:00", خروج = "17:00" },
-                    })),
-                    Tab("Leaves", "الإجازات", PlaceholderUi.TabContent("الإجازات")),
-                    Tab("Contracts", "العقود", PlaceholderUi.TabContent("العقود")),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("موظف")),
+                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة الموظف")),
+                    Tab("Attendance", "الحضور", PlaceholderUi.DevelopmentPhase("الحضور")),
+                    Tab("Leaves", "الإجازات", PlaceholderUi.DevelopmentPhase("الإجازات")),
+                    Tab("Contracts", "العقود", PlaceholderUi.DevelopmentPhase("العقود")),
+                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
                 ],
                 QuickActions =
                 [
                     Q("الحضور", false, "Attendance"),
                     Q("إجازة", false, "Leaves"),
                     Q("تعديل", false, null, actionKey: "form:EditEmployee"),
-                    Q("تعطيل", false, null, destructive: true, confirm: true, actionKey: "success:تم تعطيل الموظف (تجريبي)"),
                 ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Attendance", "Leaves", "Contracts", "Timeline")
+                InitialTabIndex = Idx(initialTab, "Overview", "Attendance", "Leaves", "Contracts", "Timeline"),
+                Context = new OperationsCenterContext
+                {
+                    EntityType = EntityType.Employee,
+                    EntityRow = e,
+                    SourceModule = AppModule.HR,
+                    Title = e.FullName
+                }
             });
         }
 
         private static UserControl BuildJournal(WorkspaceOpenRequest req, string initialTab)
         {
-            var j = req.EntityRow as JournalEntryModel ?? AccountingSampleData.Generate(1).First();
+            if (req.EntityRow is not JournalEntryModel j)
+                return NoEntityContextControl();
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = j.EntryNumber,
@@ -460,20 +454,21 @@ namespace ERPSystem.Views.OperationsCenters
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "سطور القيد", PlaceholderUi.MockGrid(new[] {
-                        new { حساب = "الصندوق", مدين = "10,000", دائن = "—" },
-                        new { حساب = "ذمم", مدين = "—", دائن = "10,000" },
-                    })),
-                    Tab("Timeline", "الخط الزمني", TimelineMock("قيد")),
+                    Tab("Overview", "سطور القيد", PlaceholderUi.DevelopmentPhase("سطور القيد")),
+                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
                 ],
                 QuickActions =
                 [
                     Q("طباعة", false, null, actionKey: "preview:قيد يومية"),
-                    Q("PDF", false, null, actionKey: "preview:قيد يومية"),
-                    Q("Excel", false, null, actionKey: "preview:قيد يومية"),
-                    Q("إلغاء", false, null, destructive: true, confirm: true, actionKey: "success:تم إلغاء القيد (تجريبي)"),
                 ],
-                InitialTabIndex = 0
+                InitialTabIndex = 0,
+                Context = new OperationsCenterContext
+                {
+                    EntityType = EntityType.JournalEntry,
+                    EntityRow = j,
+                    SourceModule = AppModule.Accounting,
+                    Title = j.EntryNumber
+                }
             });
         }
 
@@ -501,7 +496,9 @@ namespace ERPSystem.Views.OperationsCenters
 
         private static UserControl BuildCashbox(WorkspaceOpenRequest req, string initialTab)
         {
-            var cb = req.EntityRow as Cashbox ?? new Cashbox { Code = "CB-01", Name = "الصندوق الرئيسي", Balance = 125000 };
+            if (req.EntityRow is not Cashbox cb)
+                return NoEntityContextControl();
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = cb.Name,
@@ -511,26 +508,31 @@ namespace ERPSystem.Views.OperationsCenters
                 Accent = Br("PrimaryBrush"),
                 AccentLight = Br("PrimaryVeryLightBrush"),
                 StatusBadge = "نشط",
-                HeaderFields = [("الكود", cb.Code), ("الرصيد", $"{cb.Balance:N0} ر.س")],
+                HeaderFields = [("الكود", cb.Code), ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} ر.س" : "—")],
                 Kpis =
                 [
-                    ("الرصيد", $"{cb.Balance:N0} ر.س", "\uE8C1"),
-                    ("قبض اليوم", "32,400", "\uE7BF"),
-                    ("صرف اليوم", "8,200", "\uE719"),
+                    ("الرصيد", cb.Balance > 0 ? $"{cb.Balance:N0} ر.س" : "—", "\uE8C1"),
+                    ("قبض اليوم", "—", "\uE7BF"),
+                    ("صرف اليوم", "—", "\uE719"),
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "الحركات", PlaceholderUi.MockGrid(new[] {
-                        new { التاريخ = "2026/06/26", النوع = "قبض", المبلغ = "10,000" },
-                    })),
-                    Tab("Transfers", "التحويلات", PlaceholderUi.TabContent("تحويلات الصندوق")),
+                    Tab("Overview", "الحركات", PlaceholderUi.DevelopmentPhase("حركات الصندوق")),
+                    Tab("Transfers", "التحويلات", PlaceholderUi.DevelopmentPhase("تحويلات الصندوق")),
                 ],
                 QuickActions =
                 [
                     Q("سند قبض", true, null, actionKey: "nav:Accounting:Receipts"),
                     Q("سند صرف", false, null, actionKey: "nav:Accounting:Payments"),
                 ],
-                InitialTabIndex = 0
+                InitialTabIndex = 0,
+                Context = new OperationsCenterContext
+                {
+                    EntityType = EntityType.Cashbox,
+                    EntityRow = cb,
+                    SourceModule = AppModule.Accounting,
+                    Title = cb.Name
+                }
             });
         }
 
@@ -570,33 +572,17 @@ namespace ERPSystem.Views.OperationsCenters
 
         // --- Tab content helpers ---
 
-        private static UIElement OverviewCustomer(CustomerModel c)
+        private static UserControl NoEntityContextControl() => new()
         {
-            var s = new StackPanel();
-            s.Children.Add(ErpUxFactory.InfoBanner($"مندوب المبيعات: خالد الشمري — آخر تواصل 2026/06/24", "info"));
-            s.Children.Add(PlaceholderUi.MockGrid(new[] {
-                new { المؤشر = "متوسط قيمة الفاتورة", القيمة = "28,500 ر.س" },
-                new { المؤشر = "أكثر قماش شراءً", القيمة = "كولومبيا" },
-            }));
-            return s;
-        }
-
-        private static UIElement OverviewSupplier(SupplierModel s) =>
-            PlaceholderUi.MockGrid(new[] {
-                new { المؤشر = "آخر حاوية", القيمة = "—" },
-                new { المؤشر = "متوسط lead time", القيمة = "—" },
-            });
-
-        private static UIElement StatementTabContent(string name)
-        {
-            var req = new WorkspaceOpenRequest
+            Content = new TextBlock
             {
-                EntityType = EntityType.Customer,
-                ActionId = EntityActionId.CustomerStatement,
-                EntityDisplayName = name
-            };
-            return BuildAccountStatement(req);
-        }
+                Text = "يرجى اختيار سجل من القائمة لفتح مركز العمليات",
+                Margin = new Thickness(24),
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                FontFamily = new FontFamily("Segoe UI, Tahoma, Arial")
+            }
+        };
 
         private static UIElement NotesEditor(string placeholder) =>
             ErpUiFactory.Card(new TextBox
@@ -608,11 +594,8 @@ namespace ERPSystem.Views.OperationsCenters
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             });
 
-        private static UIElement TimelineMock(string entity) =>
-            PlaceholderUi.MockGrid(new[] {
-                new { التاريخ = "2026/06/26 09:30", الحدث = $"تحديث {entity}", المستخدم = "مدير النظام" },
-                new { التاريخ = "2026/06/20 14:00", الحدث = "اعتماد", المستخدم = "محاسب" },
-            });
+        private static UIElement EmptyTimeline() =>
+            PlaceholderUi.EmptyMessage("لا يوجد سجل نشاط");
 
         private static UIElement PrintPreview()
         {

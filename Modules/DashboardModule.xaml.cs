@@ -32,7 +32,6 @@ namespace ERPSystem.Modules
 
         private bool _cardsWired;
         private bool _languageSubscribed;
-        private DashboardInsightSnapshot _salesInsights = DashboardInsightSnapshot.CreateMock();
 
         public DashboardModule()
         {
@@ -77,37 +76,37 @@ namespace ERPSystem.Modules
 
             CardSales.CardTitle = "مبيعات اليوم";
             CardSales.CardDescription = "مقارنة بالأمس";
-            CardSales.TrendValue = "↑ 12.5%";
+            CardSales.TrendValue = "—";
 
             CardOrders.CardTitle = "بانتظار التفصيل";
             CardOrders.CardDescription = "فواتير تحتاج تفصيل أثواب";
-            CardOrders.TrendValue = "3 عاجلة";
+            CardOrders.TrendValue = "—";
 
             CardInventory.CardTitle = "تكلفة استيراد معلّقة";
             CardInventory.CardDescription = "حاويات بانتظار Landing Cost";
-            CardInventory.TrendValue = "CN-2026-001";
+            CardInventory.TrendValue = "—";
 
             CardReceivables.CardTitle = "التحصيل / الذمم";
             CardReceivables.CardDescription = "عملاء يحتاجون تحصيل";
-            CardReceivables.TrendValue = "↑ 5.2%";
+            CardReceivables.TrendValue = "—";
 
             CardPayables.CardTitle = "الذمم الدائنة";
             CardPayables.CardDescription = "مستحقة للموردين";
-            CardPayables.TrendValue = "↓ 3.8%";
+            CardPayables.TrendValue = "—";
             CardPayables.TrendDirection = Controls.MetricTrend.Down;
-            // TODO: not supported by handler yet — supplier payables balance
-            CardPayables.CardValue = "32,100 ر.س";
+            CardPayables.CardValue = "—";
 
             CardCustomers.CardTitle = "العملاء النشطون";
             CardCustomers.CardDescription = "خلال هذا الشهر";
-            CardCustomers.TrendValue = "↑ 34 جديد";
-            // TODO: not supported by handler yet — active customers count
-            CardCustomers.CardValue = "2,847";
+            CardCustomers.TrendValue = "—";
+            CardCustomers.CardValue = "—";
 
             CardSales.CardValue = "—";
             CardOrders.CardValue = "—";
             CardInventory.CardValue = "—";
             CardReceivables.CardValue = "—";
+
+            InsightCardsRow.Visibility = Visibility.Collapsed;
 
             TxtQA_Invoice.Text = "فاتورة بيع جديدة";
             TxtQA_Container.Text = "استيراد حاوية";
@@ -125,7 +124,6 @@ namespace ERPSystem.Modules
             ChartHeader.Subtitle = "حاويات قادمة — انقر لفتح مركز الحاوية";
             ProductsHeader.Title = "عملاء يحتاجون تحصيل";
 
-            LoadSalesInsightCards();
             LoadOperationalTables();
             WireCardClicks();
             _ = LoadKpiCardsAsync();
@@ -150,49 +148,10 @@ namespace ERPSystem.Modules
             ContainersChartPanel.Cursor = Cursors.Hand;
             ContainersChartPanel.MouseLeftButtonUp += (_, _) =>
                 MockInteractionService.Navigate(AppModule.ChinaImport, "Containers");
-
-            CardTopCustomer.MouseLeftButtonUp += (_, _) =>
-                MockInteractionService.Navigate(AppModule.Customers, "List");
-            CardLeastCustomer.MouseLeftButtonUp += (_, _) =>
-                MockInteractionService.Navigate(AppModule.Customers, "List");
-            CardTopFabric.MouseLeftButtonUp += (_, _) =>
-                MockInteractionService.Navigate(AppModule.Sales, "Invoices");
-            CardLeastFabric.MouseLeftButtonUp += (_, _) =>
-                MockInteractionService.Navigate(AppModule.Sales, "Invoices");
         }
-
-        private void LoadSalesInsightCards()
-        {
-            _salesInsights = DashboardInsightSnapshot.CreateMock();
-
-            CardTopCustomer.CardTitle = "أكثر عميل يشتري";
-            CardTopCustomer.CardValue = _salesInsights.TopCustomer.Name;
-            CardTopCustomer.TrendValue = FormatUsd(_salesInsights.TopCustomer.AmountUsd);
-            CardTopCustomer.CardDescription = $"{_salesInsights.TopCustomer.InvoiceCount} فاتورة";
-
-            CardTopFabric.CardTitle = "أكثر توب مباع";
-            CardTopFabric.CardValue = _salesInsights.TopFabric.Label;
-            CardTopFabric.TrendValue = $"{_salesInsights.TopFabric.RollCount:N0} توب";
-            CardTopFabric.CardDescription = FormatUsd(_salesInsights.TopFabric.AmountUsd);
-
-            CardLeastCustomer.CardTitle = "أقل عميل يشتري";
-            CardLeastCustomer.CardValue = _salesInsights.LeastCustomer.Name;
-            CardLeastCustomer.TrendValue = FormatUsd(_salesInsights.LeastCustomer.AmountUsd);
-            CardLeastCustomer.CardDescription = $"{_salesInsights.LeastCustomer.InvoiceCount} فاتورة";
-            CardLeastCustomer.TrendDirection = Controls.MetricTrend.Down;
-
-            CardLeastFabric.CardTitle = "أقل توب مباع";
-            CardLeastFabric.CardValue = _salesInsights.LeastFabric.Label;
-            CardLeastFabric.TrendValue = $"{_salesInsights.LeastFabric.RollCount:N0} توب";
-            CardLeastFabric.CardDescription = FormatUsd(_salesInsights.LeastFabric.AmountUsd);
-            CardLeastFabric.TrendDirection = Controls.MetricTrend.Down;
-        }
-
-        private static string FormatUsd(decimal amount) => $"${amount:N0}";
 
         private void BtnHeaderRefresh_Click(object sender, RoutedEventArgs e)
         {
-            LoadSalesInsightCards();
             LoadOperationalTables();
             _ = LoadKpiCardsAsync();
             MockInteractionService.ShowSuccess("تم تحديث بيانات لوحة التحكم.", "تحديث");
@@ -496,22 +455,5 @@ namespace ERPSystem.Modules
             string Rolls,
             string Status);
         public record DashboardActionRequest(AppModule Module, string SubPage);
-
-        private sealed record DashboardCustomerInsight(string Name, decimal AmountUsd, int InvoiceCount);
-
-        private sealed record DashboardFabricInsight(string Label, int RollCount, decimal AmountUsd);
-
-        private sealed record DashboardInsightSnapshot(
-            DashboardCustomerInsight TopCustomer,
-            DashboardCustomerInsight LeastCustomer,
-            DashboardFabricInsight TopFabric,
-            DashboardFabricInsight LeastFabric)
-        {
-            public static DashboardInsightSnapshot CreateMock() => new(
-                TopCustomer: new("مؤسسة النسيج الذهبي", 128_450m, 47),
-                LeastCustomer: new("محل الأمل للأقمشة", 1_280m, 2),
-                TopFabric: new("COL-8821 / بيج", 342, 89_600m),
-                LeastFabric: new("DPL-1102 / أسود", 3, 420m));
-        }
     }
 }

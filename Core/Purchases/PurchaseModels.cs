@@ -24,25 +24,4 @@ namespace ERPSystem.Core.Purchases
             _ => ""
         };
     }
-
-    public static class PurchaseSampleData
-    {
-        public static List<PurchaseInvoiceModel> Generate(int count = 30)
-        {
-            var rnd = new Random(21);
-            var suppliers = new[] { "مورد قوانغتشو", "مورد شنتشن", "مورد محلي الرياض", "مورد جدة" };
-
-            return Enumerable.Range(1, count).Select(i => new PurchaseInvoiceModel
-            {
-                InvoiceNumber = $"PUR-2026-{i:D4}",
-                SupplierName = suppliers[rnd.Next(suppliers.Length)],
-                InvoiceDate = DateTime.Today.AddDays(-rnd.Next(1, 90)),
-                TotalAmount = rnd.Next(5000, 250000),
-                PaidAmount = rnd.Next(0, 2) == 0 ? 0 : rnd.Next(1000, 200000),
-                Status = (PurchaseStatus)(rnd.Next(4)),
-                LineCount = rnd.Next(2, 15),
-                Warehouse = "المستودع الرئيسي"
-            }).ToList();
-        }
-    }
 }

@@ -32,9 +32,7 @@ namespace ERPSystem.Shell
                 MockInteractionService.ShowWarning("اكتب كلمة البحث ثم اضغط Enter.");
                 return;
             }
-            MockInteractionService.ShowInfo(
-                $"نتائج تجريبية لـ «{q}»:\n• فاتورة SINV-1026\n• عميل: محل الأناقة\n• حاوية CN-2026-001",
-                "بحث سريع");
+            MockInteractionService.ShowComingSoon("البحث السريع");
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -107,9 +105,7 @@ namespace ERPSystem.Shell
         }
 
         private void BtnNotifications_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowInfo(
-                "• فاتورة INV-2026-0088 بانتظار التفصيل\n• حاوية CN-2026-001 بانتظار Landing Cost\n• 3 عملاء تجاوزوا حد الائتمان",
-                "الإشعارات");
+            MockInteractionService.ShowInfo("لا توجد إشعارات حالياً.", "الإشعارات");
 
         private void BtnSettingsQuick_Click(object sender, RoutedEventArgs e) =>
             SettingsRequested?.Invoke(this, EventArgs.Empty);
