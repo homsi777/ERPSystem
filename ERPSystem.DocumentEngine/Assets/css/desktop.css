@@ -1,0 +1,33 @@
+/* ============================================================================
+   desktop.css  —  Large-viewport refinements (laptop / desktop)
+   The visual identity is defined in the base files; this only tunes layout
+   at wide breakpoints. It NEVER changes the design language.
+   ============================================================================ */
+
+@media (min-width: 1024px) {
+  .doc-canvas {
+    padding: var(--space-8) var(--page-gap);
+  }
+
+  /* Keep the sheet centred and at true A4 width */
+  .doc-page {
+    width: var(--page-width);
+  }
+}
+
+@media (min-width: 1440px) {
+  .doc-canvas {
+    padding: var(--space-10) var(--page-gap);
+  }
+}
+
+/* Tablet / laptop band: allow the sheet to shrink to the viewport without
+   losing proportion. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .doc-page {
+    width: 100%;
+    max-width: var(--page-width);
+  }
+
+  .doc-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -64,7 +64,17 @@ public sealed class CapitalPartnerListPageControl : UserControl
             Height = 32,
             Margin = new Thickness(6, 0, 0, 0)
         };
-        exportBtn.Click += (_, _) => MockInteractionService.ShowDocumentPreview("قائمة الشركاء", "Excel");
+        exportBtn.Click += (_, _) => ERPSystem.Services.Documents.ListExportService.ExportRecords(
+            _allPartners, "قائمة الشركاء",
+            ("الكود", p => p.Code),
+            ("الاسم", p => p.FullName),
+            ("الحالة", p => p.StatusDisplay),
+            ("العملة", p => p.DefaultCurrency),
+            ("رأس المال الحالي", p => p.CurrentCapitalBase),
+            ("إجمالي الاستثمارات", p => p.TotalInvestmentsBase),
+            ("إجمالي السحوبات", p => p.TotalWithdrawalsBase),
+            ("عدد المشاركات", p => p.ParticipationsCount),
+            ("الهاتف", p => p.Phone));
 
         var toolbar = new Border
         {

@@ -19,6 +19,7 @@ public class Customer
     public Address? Address { get; private set; }
     public Guid? SalesRepUserId { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public bool OpeningBalancePosted { get; private set; }
     public Guid CompanyId { get; private set; }
 
     private Customer() { }
@@ -52,6 +53,16 @@ public class Customer
 
     public void ApplyPostedReceipt(Money amount) =>
         Balance = Balance.Subtract(amount);
+
+    public void MarkOpeningBalancePosted(decimal amount)
+    {
+        if (OpeningBalancePosted)
+            throw new InvalidOperationException("Opening balance already posted for this customer.");
+
+        OpeningBalancePosted = true;
+        if (amount > 0)
+            Balance = Balance.Add(new Money(amount, Balance.Currency));
+    }
 
     public bool WouldExceedCreditLimit(Money additionalAmount) =>
         Type == CustomerType.Credit && Balance.Add(additionalAmount).Amount > CreditLimit.Amount;

@@ -12,6 +12,11 @@ public sealed class WpfCurrentUserService : ICurrentUserService
 
 public sealed class WpfCurrentBranchService : ICurrentBranchService
 {
+    private static Guid? _selectedBranchId;
+
     public Guid? CompanyId => DatabaseSeeder.DefaultCompanyId;
-    public Guid? BranchId => DatabaseSeeder.DefaultBranchId;
+    public Guid? BranchId => _selectedBranchId ?? DatabaseSeeder.DefaultBranchId;
+
+    /// <summary>Updates the active branch for the current session (branch selector).</summary>
+    public static void SelectBranch(Guid branchId) => _selectedBranchId = branchId;
 }

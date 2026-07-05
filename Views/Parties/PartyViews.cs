@@ -17,7 +17,7 @@ namespace ERPSystem.Views.Parties
         public static UserControl CreateCustomer(string key) => key switch
         {
             "Form" => Wrap(new CustomerFormControl()),
-            "Opening" => OpeningBalances("عملاء"),
+            "Opening" => Wrap(new CustomerOpeningBalanceControl()),
             "Statement" => CreateCustomerStatementView(),
             "Invoices" => CreateCustomerInvoicesView(),
             "Reports" => ModuleReportsViews.CreateHub(AppModule.Customers),
@@ -76,16 +76,6 @@ namespace ERPSystem.Views.Parties
             }
 
             return Wrap(PlaceholderUi.EmptyMessage("اختر عميلاً لعرض فواتيره"));
-        }
-
-        private static UserControl OpeningBalances(string type)
-        {
-            var root = new ScrollViewer { Padding = new Thickness(16) };
-            var stack = new StackPanel();
-            stack.Children.Add(ErpUiFactory.SectionTitle($"أرصدة افتتاحية — {type}"));
-            stack.Children.Add(PlaceholderUi.EmptyMessage("لا توجد أرصدة افتتاحية"));
-            root.Content = stack;
-            return Wrap(root);
         }
 
         private static UserControl Wrap(UIElement c) => new() { Content = c };

@@ -21,6 +21,9 @@ public sealed class SupplierAccountStatementControl : UserControl
 
     private Guid? _supplierId;
     private string _supplierName = "";
+    private readonly List<ERPSystem.Services.Documents.StatementLine> _lines = new();
+    private decimal _openingBalance;
+    private decimal _closingBalance;
 
     public SupplierAccountStatementControl()
     {
@@ -43,7 +46,10 @@ public sealed class SupplierAccountStatementControl : UserControl
         _to.SelectedDateChanged += async (_, _) => await ReloadAsync();
 
         _content.Children.Add(filters);
-        _content.Children.Add(ErpUxFactory.ExportBar($"كشف حساب — {_supplierName}"));
+        _content.Children.Add(ErpUxFactory.ActionToolbar(
+            ("طباعة", false, () => ShowStatement(false)),
+            ("PDF", false, () => ShowStatement(true)),
+            ("Excel", false, () => ERPSystem.Services.Documents.ListExportService.ExportGrid(_grid, $"كشف حساب - {_supplierName}"))));
         _content.Children.Add(_summary);
         _content.Children.Add(ErpUiFactory.Card(_grid));
 
@@ -85,7 +91,25 @@ public sealed class SupplierAccountStatementControl : UserControl
             $"شروط السداد: {dto.PaymentTermsDisplay} | حد الائتمان: {dto.CreditLimit:N2} $ | " +
             $"افتتاحي: {dto.OpeningBalance:N2} | مدين: {dto.TotalDebit:N2} | دائن: {dto.TotalCredit:N2} | ختامي: {dto.ClosingBalance:N2} $";
 
+        _openingBalance = dto.OpeningBalance;
+        _closingBalance = dto.ClosingBalance;
+        _lines.Clear();
+        _lines.AddRange(dto.Lines.Select(l => new ERPSystem.Services.Documents.StatementLine(
+            l.EntryDate, l.DocumentNumber, l.Description, l.Debit, l.Credit, l.RunningBalance)));
+
         _grid.ItemsSource = dto.Lines.Select(SupplierStatementLineVm.FromDto).ToList();
+    }
+
+    private void ShowStatement(bool exportPdf)
+    {
+        if (_supplierId is null)
+        {
+            MockInteractionService.ShowWarning("اختر مورداً أولاً.", "كشف حساب");
+            return;
+        }
+
+        ERPSystem.Services.Documents.StatementDocumentService.ShowStatementPreview(
+            _supplierName, "مورد", _from.SelectedDate, _to.SelectedDate, _openingBalance, _closingBalance, _lines, exportPdf);
     }
 
     private sealed class SupplierStatementLineVm

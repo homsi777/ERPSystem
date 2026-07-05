@@ -1,8 +1,10 @@
-using ERPSystem.Application.Commands.Suppliers;
+using ERPSystem.Application.Commands.Finance;
+using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Suppliers;
+using ERPSystem.Services.Finance;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -22,8 +24,17 @@ public sealed class SupplierOpeningBalanceControl : UserControl
         var stack = new StackPanel();
         stack.Children.Add(ErpUiFactory.SectionTitle("أرصدة افتتاحية — الموردون"));
         stack.Children.Add(ErpUxFactory.InfoBanner(
-            "يُنشئ قيداً مزدوجاً: مدين حقوق الملكية / أرصدة افتتاحية — دائن حساب ذمم المورد. يُرحَّل مرة واحدة فقط لكل مورد.",
+            "يُنشئ مستنداً في محرك الأرصدة الافتتاحية الموحّد ويرحّله محاسبياً — قيد واحد لكل مورد، مع سجل تدقيق كامل.",
             "info"));
+        var navBtn = new Button
+        {
+            Content = "فتح مركز الأرصدة الافتتاحية",
+            Style = S("SecondaryButtonStyle"),
+            Margin = new Thickness(0, 0, 0, 8),
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        navBtn.Click += (_, _) => MockInteractionService.Navigate(AppModule.Accounting, "OpeningBalances");
+        stack.Children.Add(navBtn);
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("المورد", _cmbSupplier),
             ("المبلغ", _txtAmount),
@@ -41,7 +52,7 @@ public sealed class SupplierOpeningBalanceControl : UserControl
         if (!AppServices.IsInitialized)
             return;
 
-        _btnPost.IsEnabled = await SupplierUiService.Instance.CanPostOpeningBalanceAsync();
+        _btnPost.IsEnabled = await OpeningBalanceUiService.Instance.CanAsync("suppliers.opening-balance");
         var result = await SupplierUiService.Instance.GetListAsync(null, pageSize: 200);
         if (!result.IsSuccess || result.Value is null)
             return;
@@ -71,11 +82,20 @@ public sealed class SupplierOpeningBalanceControl : UserControl
             return;
         }
 
-        var result = await SupplierUiService.Instance.PostOpeningBalanceAsync(new PostSupplierOpeningBalanceCommand
+        if (!await OpeningBalanceUiService.Instance.CanAsync("suppliers.opening-balance"))
         {
-            SupplierId = supplierId,
+            MockInteractionService.ShowWarning("ليس لديك صلاحية ترحيل أرصدة الموردين.", "صلاحيات");
+            return;
+        }
+
+        var partyName = (item.Content as string) ?? "";
+        var result = await OpeningBalanceUiService.Instance.PostPartyOpeningBalanceAsync(new PostPartyOpeningBalanceCommand
+        {
+            Type = OpeningBalanceType.SupplierPayable,
+            PartyId = supplierId,
+            PartyName = partyName,
             Amount = amount,
-            PostingDate = _dpDate.SelectedDate ?? DateTime.Today,
+            OpeningDate = _dpDate.SelectedDate ?? DateTime.Today,
             ReferenceNote = _txtNote.Text.Trim()
         });
 
@@ -84,9 +104,10 @@ public sealed class SupplierOpeningBalanceControl : UserControl
 
         _resultHost.Children.Clear();
         _resultHost.Children.Add(ErpUxFactory.InfoBanner(
-            $"تم ترحيل الرصيد الافتتاحي بنجاح — {amount:N2} $",
+            $"تم الترحيل عبر المحرك الموحّد — {amount:N2} $ — قيد {result.Value?.JournalEntryNumber}",
             "success"));
         SupplierListRefreshHub.RequestRefresh();
+        OpeningBalanceListRefreshHub.RequestRefresh();
         _btnPost.IsEnabled = false;
         _txtAmount.IsEnabled = false;
     }

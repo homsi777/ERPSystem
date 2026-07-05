@@ -101,7 +101,7 @@ public sealed class CustomerOperationsCenterControl : UserControl
                 Tab("Overview", "نظرة عامة", OverviewTab(data)),
                 Tab("Statement", "كشف الحساب", statement),
                 Tab("Invoices", "الفواتير", BuildInvoicesTab(row)),
-                Tab("Receipts", "سندات القبض", PlaceholderUi.DatabasePhase("سندات القبض — تُربط مع المحاسبة")),
+                Tab("Receipts", "سندات القبض", BuildReceiptsTab(c.Id)),
             ],
             QuickActions =
             [
@@ -127,6 +127,42 @@ public sealed class CustomerOperationsCenterControl : UserControl
         var list = new Controls.Sales.SalesInvoiceListPageControl();
         list.ScopeToCustomer(row.Id, row.NameAr);
         return list;
+    }
+
+    private static UIElement BuildReceiptsTab(Guid customerId)
+    {
+        var grid = new DataGrid
+        {
+            AutoGenerateColumns = false,
+            IsReadOnly = true,
+            CanUserAddRows = false,
+            Margin = new Thickness(16),
+            HeadersVisibility = DataGridHeadersVisibility.Column
+        };
+        ErpDataGridHelper.ApplyEnterpriseStyle(grid);
+        ErpUiFactory.AddGridColumn(grid, "رقم السند", nameof(Services.Finance.CustomerReceiptRow.VoucherNumber), 140, null);
+        ErpUiFactory.AddGridColumn(grid, "التاريخ", nameof(Services.Finance.CustomerReceiptRow.DateDisplay), 110, null);
+        ErpUiFactory.AddGridColumn(grid, "المبلغ", nameof(Services.Finance.CustomerReceiptRow.AmountDisplay), 120, null);
+        ErpUiFactory.AddGridColumn(grid, "الصندوق", nameof(Services.Finance.CustomerReceiptRow.CashboxName), "*", null);
+        ErpUiFactory.AddGridColumn(grid, "الحالة", nameof(Services.Finance.CustomerReceiptRow.StatusDisplay), 100, null);
+
+        var host = new Grid();
+        var empty = PlaceholderUi.EmptyMessage("لا توجد سندات قبض لهذا العميل", "أنشئ سند قبض من قائمة المحاسبة");
+        empty.Visibility = Visibility.Collapsed;
+        host.Children.Add(grid);
+        host.Children.Add(empty);
+
+        host.Loaded += async (_, _) =>
+        {
+            if (!AppServices.IsInitialized) return;
+            var rows = await Services.Finance.FinanceUiService.Instance.GetReceiptsForCustomerAsync(customerId);
+            grid.ItemsSource = rows;
+            var hasRows = rows.Count > 0;
+            grid.Visibility = hasRows ? Visibility.Visible : Visibility.Collapsed;
+            empty.Visibility = hasRows ? Visibility.Collapsed : Visibility.Visible;
+        };
+
+        return host;
     }
 
     private static UIElement OverviewTab(CustomerOperationsCenterDto data)

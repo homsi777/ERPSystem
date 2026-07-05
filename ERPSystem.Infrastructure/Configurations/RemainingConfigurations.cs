@@ -343,3 +343,20 @@ internal sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departm
         builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
     }
 }
+
+internal sealed class EmployeeConfiguration : IEntityTypeConfiguration<EmployeeEntity>
+{
+    public void Configure(EntityTypeBuilder<EmployeeEntity> builder)
+    {
+        builder.ToTable("Employees");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.EmployeeCode).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.JobTitle).HasMaxLength(120);
+        builder.Property(x => x.Phone).HasMaxLength(50);
+        builder.Property(x => x.Email).HasMaxLength(200);
+        builder.Property(x => x.Notes).HasMaxLength(1000);
+        builder.Property(x => x.BasicSalary).HasPrecision(18, 2);
+        builder.HasIndex(x => new { x.CompanyId, x.EmployeeCode }).IsUnique();
+    }
+}

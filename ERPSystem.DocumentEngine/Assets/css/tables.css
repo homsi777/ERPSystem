@@ -1,0 +1,130 @@
+/* ============================================================================
+   tables.css  —  Enterprise responsive data tables
+   Desktop: classic table.  Mobile: each row becomes an information card.
+   Horizontal overflow is never allowed.
+   ============================================================================ */
+
+.doc-table-wrap {
+  width: 100%;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  background: var(--color-surface);
+}
+
+.doc-table thead th {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-weight: var(--fw-semibold);
+  text-align: start;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.doc-table tbody td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border);
+  vertical-align: middle;
+  color: var(--color-text);
+}
+
+.doc-table tbody tr:nth-child(even) td {
+  background: var(--color-surface-alt);
+}
+
+.doc-table tbody tr:last-child td {
+  border-bottom: var(--border-strong);
+}
+
+.doc-table tfoot td {
+  padding: var(--space-2) var(--space-3);
+  font-weight: var(--fw-semibold);
+  border-top: var(--border-strong);
+}
+
+/* Alignment helpers for cells */
+.doc-table .col-num,
+.doc-table .col-money {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.doc-table .col-center { text-align: center; }
+.doc-table .col-index { width: 40px; text-align: center; color: var(--color-text-muted); }
+
+/* Compact / bordered variants */
+.doc-table--bordered th,
+.doc-table--bordered td {
+  border: var(--border);
+}
+
+.doc-table--compact th,
+.doc-table--compact td {
+  padding: var(--space-1) var(--space-2);
+}
+
+/* ---- Mobile transformation --------------------------------------------
+   On narrow screens each <tr> collapses into a labelled card. The header
+   text is projected via the data-label attribute on each <td>.            */
+@media (max-width: 640px) {
+  .doc-table.responsive thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .doc-table.responsive,
+  .doc-table.responsive tbody,
+  .doc-table.responsive tr,
+  .doc-table.responsive td {
+    display: block;
+    width: 100%;
+  }
+
+  .doc-table.responsive tr {
+    margin-bottom: var(--space-3);
+    border: var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+
+  .doc-table.responsive tbody tr:nth-child(even) td {
+    background: transparent;
+  }
+
+  .doc-table.responsive td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    text-align: end;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--border);
+  }
+
+  .doc-table.responsive td:last-child {
+    border-bottom: 0;
+  }
+
+  .doc-table.responsive td::before {
+    content: attr(data-label);
+    font-weight: var(--fw-semibold);
+    color: var(--color-text-muted);
+    text-align: start;
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+}

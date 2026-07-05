@@ -192,21 +192,59 @@ public sealed class PostPurchaseInvoiceHandler(
 
 public sealed class CancelPurchaseInvoiceHandler(
     IPurchaseInvoiceRepository invoiceRepository,
-    IUnitOfWork unitOfWork)
+    ISupplierRepository supplierRepository,
+    IPurchaseInventoryService inventoryService,
+    IIntegratedAccountingService accountingService,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
     : ICommandHandler<CancelPurchaseInvoiceCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
         CancelPurchaseInvoiceCommand command,
         CancellationToken cancellationToken = default)
     {
+        if (!await permissionService.CanAsync("purchases.post", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed.");
+
         var invoice = await invoiceRepository.GetByIdAsync(command.InvoiceId, cancellationToken);
         if (invoice is null)
             return ApplicationResult.NotFound("Invoice not found.");
 
+        // Draft invoices are simply voided — no posted effects to reverse.
+        if (invoice.Status == Domain.Enums.PurchaseInvoiceStatus.Draft)
+        {
+            try
+            {
+                invoice.Cancel();
+                await invoiceRepository.UpdateAsync(invoice, cancellationToken);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                return ApplicationResult.Success();
+            }
+            catch (Exception ex)
+            {
+                return ex.ToFailureResult();
+            }
+        }
+
+        // Posted invoices require a full reversal chain (GL + inventory + supplier balance).
+        if (invoice.Status is Domain.Enums.PurchaseInvoiceStatus.PartiallyPaid or Domain.Enums.PurchaseInvoiceStatus.Paid)
+            return ApplicationResult.Failure("لا يمكن إلغاء فاتورة تم سدادها جزئياً أو كلياً.");
+
+        var supplierAgg = await supplierRepository.GetByIdAsync(invoice.SupplierId, cancellationToken);
+        if (supplierAgg is null)
+            return ApplicationResult.NotFound("Supplier not found.");
+
         try
         {
-            invoice.Cancel();
+            invoice.Reverse();
+
+            await inventoryService.ReversePurchaseInvoiceStockAsync(invoice, cancellationToken);
+            await accountingService.ReversePurchaseInvoiceAsync(
+                invoice, supplierAgg.Supplier.PayablesAccountId, cancellationToken);
+            supplierAgg.Supplier.ApplyPostedPayment(invoice.TotalAmount);
+
             await invoiceRepository.UpdateAsync(invoice, cancellationToken);
+            await supplierRepository.UpdateAsync(supplierAgg, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult.Success();
         }

@@ -16,5 +16,9 @@ public enum DocumentType
     SupplierOpeningBalance = 11,
     OpeningBalance = 12,
     StockTransfer = 13,
-    Stocktake = 14
+    Stocktake = 14,
+    PurchaseInvoiceReversal = 15,
+    CustomerOpeningBalance = 16,
+    CashboxTransfer = 17,
+    FinanceOpeningBalance = 18
 }

@@ -57,7 +57,8 @@ public sealed class ExpenseEntryFormControl : UserControl
     };
     private readonly TextBox _description = ErpUiFactory.FormField("البيان — وصف الحركة");
     private readonly TextBox _amount = ErpUiFactory.FormField("0");
-    private readonly TextBox _exchangeRate = ErpUiFactory.FormField("15000");
+    private readonly TextBox _exchangeRate = ErpUiFactory.FormField(
+        ERPSystem.Services.Settings.CurrencyCatalog.DefaultExchangeRate.ToString("0.####"));
     private readonly TextBlock _exchangeRateLabel = new()
     {
         FontSize = 11,

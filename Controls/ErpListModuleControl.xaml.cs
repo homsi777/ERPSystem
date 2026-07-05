@@ -163,7 +163,9 @@ namespace ERPSystem.Controls
         private void BtnPrimary_Click(object sender, RoutedEventArgs e) =>
             PrimaryActionRequested?.Invoke(this, EventArgs.Empty);
 
+        public string ExportName { get; set; } = "قائمة";
+
         private void BtnExport_Click(object sender, RoutedEventArgs e) =>
-            MockInteractionService.ShowDocumentPreview("قائمة البيانات", "Excel");
+            ERPSystem.Services.Documents.ListExportService.ExportGrid(MainGrid, ExportName);
     }
 }

@@ -477,6 +477,7 @@ internal static class FinanceMapper
         DomainHydrator.Set(cashbox, nameof(Cashbox.Balance), new Money(entity.Balance, entity.Currency));
         DomainHydrator.Set(cashbox, nameof(Cashbox.Currency), entity.Currency);
         DomainHydrator.Set(cashbox, nameof(Cashbox.IsActive), entity.IsActive);
+        DomainHydrator.Set(cashbox, nameof(Cashbox.AccountId), entity.AccountId);
         return cashbox;
     }
 

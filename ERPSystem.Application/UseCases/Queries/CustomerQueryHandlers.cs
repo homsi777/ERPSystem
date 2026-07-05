@@ -15,7 +15,9 @@ public sealed class GetDashboardSummaryHandler(
     ISalesInvoiceRepository invoiceRepository,
     IChinaContainerRepository containerRepository,
     ICustomerRepository customerRepository,
-    IInventoryRepository inventoryRepository)
+    ISupplierRepository supplierRepository,
+    IInventoryRepository inventoryRepository,
+    IAuditLogRepository auditLogRepository)
     : IQueryHandler<GetDashboardSummaryQuery, ApplicationResult<DashboardSummaryDto>>
 {
     public async Task<ApplicationResult<DashboardSummaryDto>> HandleAsync(
@@ -32,6 +34,16 @@ public sealed class GetDashboardSummaryHandler(
             query.CompanyId, query.BranchId, cancellationToken: cancellationToken);
 
         var customers = await customerRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
+        var suppliers = await supplierRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
+
+        var activeCutoff = DateTime.UtcNow.Date.AddDays(-90);
+        var activeCustomers = invoices
+            .Where(i => i.InvoiceDate.Date >= activeCutoff && i.Status >= SalesInvoiceStatus.AwaitingDetailing)
+            .Select(i => i.CustomerId)
+            .Distinct()
+            .Count();
+
+        var recent = await auditLogRepository.GetRecentAsync(10, cancellationToken);
 
         var dto = new DashboardSummaryDto
         {
@@ -44,13 +56,46 @@ public sealed class GetDashboardSummaryHandler(
                 i.Status is SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval),
             OpenReceiptsCount = 0,
             TotalCustomerOutstanding = customers.Sum(c => c.Customer.Balance.Amount),
+            TotalSupplierPayables = suppliers.Sum(s => s.Supplier.Balance.Amount),
+            ActiveCustomersCount = activeCustomers,
             TodaySalesTotal = invoices
                 .Where(i => i.InvoiceDate.Date == DateTime.UtcNow.Date && i.Status >= SalesInvoiceStatus.Approved)
                 .Sum(i => i.GrandTotal.Amount),
-            LowStockItemsCount = await inventoryRepository.CountLowStockItemsAsync(query.BranchId, cancellationToken: cancellationToken)
+            LowStockItemsCount = await inventoryRepository.CountLowStockItemsAsync(query.BranchId, cancellationToken: cancellationToken),
+            RecentActivity = recent.Select(a => new DashboardActivityDto
+            {
+                OccurredAt = a.OccurredAt,
+                EntityType = a.EntityType,
+                EntityId = a.EntityId,
+                Description = DescribeActivity(a.Action, a.EntityType)
+            }).ToList()
         };
 
         return ApplicationResult<DashboardSummaryDto>.Success(dto);
+    }
+
+    private static string DescribeActivity(string action, string entityType)
+    {
+        var verb = action switch
+        {
+            "Insert" or "Create" or "Added" => "إنشاء",
+            "Update" or "Modified" => "تعديل",
+            "Delete" or "Deleted" => "حذف",
+            _ => action
+        };
+        var entity = entityType switch
+        {
+            "SalesInvoice" or "SalesInvoiceEntity" => "فاتورة بيع",
+            "PurchaseInvoice" or "PurchaseInvoiceEntity" => "فاتورة شراء",
+            "ReceiptVoucher" or "ReceiptVoucherEntity" => "سند قبض",
+            "PaymentVoucher" or "PaymentVoucherEntity" => "سند صرف",
+            "Customer" or "CustomerEntity" => "عميل",
+            "Supplier" or "SupplierEntity" => "مورد",
+            "ChinaContainer" or "ChinaContainerEntity" => "حاوية",
+            "Expense" or "ExpenseEntity" => "مصروف",
+            _ => entityType
+        };
+        return $"{verb} {entity}".Trim();
     }
 }
 
@@ -110,7 +155,8 @@ public sealed class GetCustomerOperationsCenterHandler(
 public sealed class GetCustomerStatementHandler(
     ICustomerRepository customerRepository,
     ISalesInvoiceRepository invoiceRepository,
-    IReceiptVoucherRepository receiptRepository)
+    IReceiptVoucherRepository receiptRepository,
+    IAccountingReportRepository accountingReports)
     : IQueryHandler<GetCustomerStatementQuery, ApplicationResult<CustomerStatementDto>>
 {
     public async Task<ApplicationResult<CustomerStatementDto>> HandleAsync(
@@ -150,8 +196,13 @@ public sealed class GetCustomerStatementHandler(
             rawLines.Add((rv.VoucherDate, DocumentType.ReceiptVoucher, rv.VoucherNumber, 0, rv.Amount.Amount));
         }
 
+        var opening = aggregate.Customer.OpeningBalancePosted
+            ? await accountingReports.GetPartyOpeningBalanceAsync(
+                query.CustomerId, DocumentType.CustomerOpeningBalance, cancellationToken)
+            : 0m;
+
         var sorted = rawLines.OrderBy(l => l.Date).ThenBy(l => l.Number).ToList();
-        var running = 0m;
+        var running = opening;
         var lines = new List<CustomerStatementLineDto>();
         foreach (var line in sorted)
         {
@@ -171,8 +222,8 @@ public sealed class GetCustomerStatementHandler(
         {
             CustomerId = aggregate.Customer.Id,
             CustomerName = aggregate.Customer.NameAr,
-            OpeningBalance = 0,
-            ClosingBalance = aggregate.Customer.Balance.Amount,
+            OpeningBalance = opening,
+            ClosingBalance = running,
             Lines = lines
         };
 

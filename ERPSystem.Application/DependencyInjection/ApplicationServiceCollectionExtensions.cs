@@ -10,12 +10,15 @@ using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.Commands.Purchases;
 using ERPSystem.Application.Commands.Suppliers;
 using ERPSystem.Application.Commands.Inventory;
+using ERPSystem.Application.Commands.HR;
+using ERPSystem.Application.Queries.HR;
+using ERPSystem.Application.UseCases.HR;
 using ERPSystem.Application.Queries.Inventory;
 using ERPSystem.Application.Queries.Accounting;
 using ERPSystem.Application.Queries.Capital;
 using ERPSystem.Application.Queries.Customers;
 using ERPSystem.Application.Queries.Dashboard;
-using ERPSystem.Application.Queries.Expenses;
+using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Application.Queries.Purchases;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Accounting;
@@ -25,6 +28,7 @@ using ERPSystem.Application.UseCases.Customers;
 using ERPSystem.Application.UseCases.Expenses;
 using ERPSystem.Application.UseCases.Finance;
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Application.UseCases.Reports;
@@ -51,12 +55,25 @@ public static class ApplicationServiceCollectionExtensions
         RegisterCapitalHandlers(services);
         RegisterAccountingHandlers(services);
         RegisterFinanceHandlers(services);
+        RegisterOpeningBalanceHandlers(services);
         RegisterSalesHandlers(services);
         RegisterContainerHandlers(services);
         RegisterInventoryHandlers(services);
         RegisterFabricCatalogHandlers(services);
+        RegisterHrHandlers(services);
         RegisterQueryHandlers(services);
         return services;
+    }
+
+    private static void RegisterHrHandlers(IServiceCollection services)
+    {
+        services.AddScoped<ICommandHandler<CreateEmployeeCommand, ApplicationResult<Guid>>, CreateEmployeeHandler>();
+        services.AddScoped<ICommandHandler<UpdateEmployeeCommand, ApplicationResult>, UpdateEmployeeHandler>();
+        services.AddScoped<ICommandHandler<CreateDepartmentCommand, ApplicationResult<Guid>>, CreateDepartmentHandler>();
+        services.AddScoped<ICommandHandler<UpdateDepartmentCommand, ApplicationResult>, UpdateDepartmentHandler>();
+        services.AddScoped<GetEmployeeListHandler>();
+        services.AddScoped<GetEmployeeDetailsHandler>();
+        services.AddScoped<GetDepartmentListHandler>();
     }
 
     private static void RegisterCustomerHandlers(IServiceCollection services)
@@ -64,6 +81,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CreateCustomerCommand, ApplicationResult<Guid>>, CreateCustomerHandler>();
         services.AddScoped<ICommandHandler<UpdateCustomerCommand, ApplicationResult>, UpdateCustomerHandler>();
         services.AddScoped<ICommandHandler<DeactivateCustomerCommand, ApplicationResult>, DeactivateCustomerHandler>();
+        services.AddScoped<ICommandHandler<PostCustomerOpeningBalanceCommand, ApplicationResult<Application.DTOs.Customers.CustomerOpeningBalanceResultDto>>, PostCustomerOpeningBalanceHandler>();
     }
 
     private static void RegisterSupplierHandlers(IServiceCollection services)
@@ -183,6 +201,24 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCashboxMovementsHandler>();
         services.AddScoped<GetCashboxTransferListHandler>();
         services.AddScoped<GetCashboxOperationsCenterHandler>();
+    }
+
+    private static void RegisterOpeningBalanceHandlers(IServiceCollection services)
+    {
+        services.AddScoped<ICommandHandler<CreateOpeningBalanceCommand, ApplicationResult<OpeningBalanceListDto>>, CreateOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<UpdateOpeningBalanceCommand, ApplicationResult<OpeningBalanceListDto>>, UpdateOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<SubmitOpeningBalanceCommand, ApplicationResult>, SubmitOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<ApproveOpeningBalanceCommand, ApplicationResult>, ApproveOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<RejectOpeningBalanceCommand, ApplicationResult>, RejectOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<PostOpeningBalanceCommand, ApplicationResult<OpeningBalancePostResultDto>>, PostOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<ArchiveOpeningBalanceCommand, ApplicationResult>, ArchiveOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<DuplicateOpeningBalanceCommand, ApplicationResult<OpeningBalanceListDto>>, DuplicateOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<ValidateOpeningBalanceCommand, ApplicationResult<OpeningBalanceValidationReportDto>>, ValidateOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<ImportOpeningBalanceExcelCommand, ApplicationResult<OpeningBalanceImportResultDto>>, ImportOpeningBalanceExcelHandler>();
+        services.AddScoped<GetOpeningBalanceListHandler>();
+        services.AddScoped<GetOpeningBalanceDetailsHandler>();
+        services.AddScoped<GetOpeningBalanceDashboardHandler>();
+        services.AddScoped<GetOpeningBalanceLookupsHandler>();
     }
 
     private static void RegisterSalesHandlers(IServiceCollection services)

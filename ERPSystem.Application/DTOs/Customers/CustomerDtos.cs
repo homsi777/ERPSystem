@@ -13,6 +13,14 @@ public sealed class CustomerListDto
     public decimal Balance { get; init; }
     public decimal CreditLimit { get; init; }
     public bool IsActive { get; init; }
+    public bool OpeningBalancePosted { get; init; }
+}
+
+public sealed class CustomerOpeningBalanceResultDto
+{
+    public string JournalEntryNumber { get; init; } = "";
+    public DateTime PostedDate { get; init; }
+    public decimal Amount { get; init; }
 }
 
 public sealed class CustomerDetailsDto
@@ -29,6 +37,7 @@ public sealed class CustomerDetailsDto
     public string? Phone { get; init; }
     public string? Email { get; init; }
     public bool IsActive { get; init; }
+    public bool OpeningBalancePosted { get; init; }
 }
 
 public sealed class CustomerStatementDto

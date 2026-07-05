@@ -33,6 +33,7 @@ public class CashboxEntity : PersistenceEntity
     public string Name { get; set; } = "";
     public decimal Balance { get; set; }
     public string Currency { get; set; } = "USD";
+    public Guid? AccountId { get; set; }
 }
 
 public class CashboxTransferEntity : PersistenceEntity

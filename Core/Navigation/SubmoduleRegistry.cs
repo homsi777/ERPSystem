@@ -74,6 +74,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Receivables", "الذمم المدينة", "\uE8F1"),
                 new SubmoduleDef("Payables", "الذمم الدائنة", "\uE7BF"),
                 new SubmoduleDef("TrialBalance", "ميزان مراجعة", "\uE9D2"),
+                new SubmoduleDef("OpeningBalances", "أرصدة افتتاحية", "\uE8F1"),
                 new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Expenses => new[]

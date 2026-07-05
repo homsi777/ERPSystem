@@ -1,0 +1,88 @@
+/* ============================================================================
+   print.css  —  Dedicated A4 print / PDF layout
+   ----------------------------------------------------------------------------
+   Applied via @media print AND via the .mode-print / .mode-pdf body classes
+   so the renderer can preview print output on screen identically.
+   ============================================================================ */
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+/* Shared print rules — expressed as a mixin-like selector list so both the
+   real print context and the on-screen print/pdf preview share them. */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  .doc-canvas {
+    padding: 0;
+    gap: 0;
+    display: block;
+    min-height: auto;
+  }
+
+  .doc-page {
+    width: auto;
+    min-height: auto;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0;
+    page-break-after: always;
+  }
+
+  .doc-page:last-child {
+    page-break-after: auto;
+  }
+
+  .doc-page__inner {
+    padding: 0;
+  }
+
+  /* Hide interactive / preview-only chrome */
+  .ui-toolbar,
+  .ui-btn,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Preserve brand colours in print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Repeat table headers across page breaks */
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr, img, .card, .metric, .party-card { page-break-inside: avoid; }
+
+  /* Avoid orphan section titles */
+  .doc-section__title,
+  h1, h2, h3 { page-break-after: avoid; }
+
+  a[href]::after { content: ""; }
+}
+
+/* On-screen print / pdf preview mirrors the printed sheet exactly */
+.mode-print .doc-canvas,
+.mode-pdf .doc-canvas {
+  background: #d9dee5;
+}
+
+.mode-print .ui-toolbar,
+.mode-pdf .ui-toolbar,
+.mode-print .no-print,
+.mode-pdf .no-print {
+  display: none !important;
+}
+
+.mode-print .doc-page,
+.mode-pdf .doc-page {
+  box-shadow: var(--shadow-lg);
+  border-radius: 0;
+}

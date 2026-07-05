@@ -106,6 +106,7 @@ public class Cashbox
     public Money Balance { get; private set; } = Money.Zero();
     public string Currency { get; private set; } = "USD";
     public bool IsActive { get; private set; } = true;
+    public Guid? AccountId { get; private set; }
 
     private Cashbox() { }
 
@@ -127,6 +128,7 @@ public class Cashbox
 
     public void Activate() => IsActive = true;
     public void Deactivate() => IsActive = false;
+    public void LinkAccount(Guid accountId) => AccountId = accountId;
 
     public void ApplyReceipt(Money amount) => Balance = Balance.Add(amount);
     public void ApplyPayment(Money amount) => Balance = Balance.Subtract(amount);

@@ -1,5 +1,8 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Controls;
 using ERPSystem.Helpers;
+using ERPSystem.Services;
+using ERPSystem.Services.Settings;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -166,16 +169,7 @@ namespace ERPSystem.Views.Settings
             });
             stack.Children.Add(ErpUiFactory.SectionTitle(title));
             stack.Children.Add(new TextBlock { Text = desc, Foreground = Br("TextSecondaryBrush"), Margin = new Thickness(0, 0, 0, 16), FontFamily = Ff() });
-            stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-                ("الإعداد 1", ErpUiFactory.FormField("")),
-                ("الإعداد 2", ErpUiFactory.FormField("")),
-                ("الإعداد 3", ErpUiFactory.FormField("")))));
-
-            var saveBar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
-            saveBar.Children.Add(new Button { Content = "حفظ", Style = S("PrimaryButtonStyle"), Height = 34, Margin = new Thickness(0, 0, 8, 0) });
-            saveBar.Children.Add(new Button { Content = "إعادة تعيين", Style = S("SecondaryButtonStyle"), Height = 34, Margin = new Thickness(0, 0, 8, 0) });
-            saveBar.Children.Add(new Button { Content = "تصدير JSON", Style = S("GhostButtonStyle"), Height = 34 });
-            stack.Children.Add(saveBar);
+            BuildSectionContent(stack, key);
 
             if (title.Contains("نسخ") || title.Contains("تدقيق"))
             {
@@ -193,6 +187,165 @@ namespace ERPSystem.Views.Settings
             grid.Children.Add(content);
 
             return new UserControl { Content = grid, Background = Br("AppBgBrush") as SolidColorBrush };
+        }
+
+        private static void BuildSectionContent(StackPanel stack, string key)
+        {
+            switch (key)
+            {
+                case "Company":
+                    BuildKeyValueSection(stack,
+                        (SystemSettingKeys.CompanyName, "اسم الشركة (عربي)"),
+                        (SystemSettingKeys.CompanyNameEn, "اسم الشركة (English)"),
+                        (SystemSettingKeys.CompanyTaxNumber, "الرقم الضريبي"),
+                        (SystemSettingKeys.CompanyPhone, "الهاتف"),
+                        (SystemSettingKeys.CompanyAddress, "العنوان"),
+                        (SystemSettingKeys.CompanyLogoPath, "مسار الشعار"));
+                    break;
+                case "Finance":
+                    BuildKeyValueSection(stack,
+                        (SystemSettingKeys.DefaultCurrency, "العملة الافتراضية"),
+                        (SystemSettingKeys.DefaultExchangeRate, "سعر الصرف الافتراضي"),
+                        (SystemSettingKeys.EnabledCurrencies, "العملات المفعّلة (مفصولة بفاصلة)"));
+                    break;
+                case "Numbering":
+                    BuildKeyValueSection(stack,
+                        (SystemSettingKeys.InvoicePrefix, "بادئة الفواتير"),
+                        (SystemSettingKeys.ReceiptPrefix, "بادئة سندات القبض"),
+                        (SystemSettingKeys.PurchaseOrderPrefix, "بادئة أوامر الشراء"));
+                    break;
+                case "Branches":
+                    BuildBranchesSection(stack);
+                    break;
+                default:
+                    BuildUnsupportedSection(stack);
+                    break;
+            }
+        }
+
+        private static void BuildKeyValueSection(StackPanel stack, params (string Key, string Label)[] fields)
+        {
+            var editors = new Dictionary<string, TextBox>();
+            var formStack = new StackPanel();
+            foreach (var (fieldKey, label) in fields)
+            {
+                var row = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+                row.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = Br("TextSecondaryBrush"), Margin = new Thickness(0, 0, 0, 4), FontFamily = Ff() });
+                var box = new TextBox { Height = 34, Padding = new Thickness(8, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center, FontFamily = Ff() };
+                editors[fieldKey] = box;
+                row.Children.Add(box);
+                formStack.Children.Add(row);
+            }
+            stack.Children.Add(ErpUiFactory.Card(formStack));
+
+            var saveBtn = new Button { Content = "حفظ", Style = S("PrimaryButtonStyle"), Height = 34, Margin = new Thickness(0, 16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+            saveBtn.Click += async (_, _) =>
+            {
+                if (!AppServices.IsInitialized) return;
+                try
+                {
+                    var values = editors.ToDictionary(e => e.Key, e => e.Value.Text?.Trim() ?? "");
+                    await SettingsUiService.Instance.SaveAsync(values);
+                    MockInteractionService.ShowSuccess("تم حفظ الإعدادات بنجاح.", "الإعدادات");
+                }
+                catch (Exception ex)
+                {
+                    MockInteractionService.ShowWarning("تعذّر حفظ الإعدادات: " + ex.Message, "الإعدادات");
+                }
+            };
+            stack.Children.Add(saveBtn);
+
+            stack.Loaded += async (_, _) =>
+            {
+                if (!AppServices.IsInitialized) return;
+                try
+                {
+                    var all = await SettingsUiService.Instance.LoadAllAsync();
+                    foreach (var (fieldKey, box) in editors)
+                        if (all.TryGetValue(fieldKey, out var v)) box.Text = v;
+                }
+                catch { /* first-run: no rows yet */ }
+            };
+        }
+
+        private static void BuildBranchesSection(StackPanel stack)
+        {
+            var list = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+            stack.Children.Add(ErpUiFactory.SectionTitle("الفروع"));
+            stack.Children.Add(ErpUiFactory.Card(list));
+
+            var addStack = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            var codeBox = new TextBox { Width = 110, Height = 34, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center, FontFamily = Ff() };
+            var nameArBox = new TextBox { Width = 200, Height = 34, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center, FontFamily = Ff() };
+            var nameEnBox = new TextBox { Width = 200, Height = 34, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center, FontFamily = Ff() };
+            SetPlaceholder(codeBox, "الكود");
+            SetPlaceholder(nameArBox, "الاسم بالعربي");
+            SetPlaceholder(nameEnBox, "الاسم بالإنجليزي");
+            var addBtn = new Button { Content = "إضافة فرع", Style = S("PrimaryButtonStyle"), Height = 34 };
+            addStack.Children.Add(codeBox);
+            addStack.Children.Add(nameArBox);
+            addStack.Children.Add(nameEnBox);
+            addStack.Children.Add(addBtn);
+            stack.Children.Add(addStack);
+
+            async Task RefreshAsync()
+            {
+                if (!AppServices.IsInitialized) return;
+                list.Children.Clear();
+                try
+                {
+                    var branches = await SettingsUiService.Instance.GetBranchesAsync();
+                    if (branches.Count == 0)
+                    {
+                        list.Children.Add(new TextBlock { Text = "لا توجد فروع.", Foreground = Br("TextMutedBrush"), Margin = new Thickness(8), FontFamily = Ff() });
+                        return;
+                    }
+                    foreach (var b in branches)
+                        list.Children.Add(new TextBlock
+                        {
+                            Text = $"{b.Code} — {b.NameAr}",
+                            Margin = new Thickness(8, 4, 8, 4),
+                            FontFamily = Ff()
+                        });
+                }
+                catch (Exception ex)
+                {
+                    list.Children.Add(new TextBlock { Text = ex.Message, Foreground = Br("DangerBrush"), Margin = new Thickness(8), FontFamily = Ff() });
+                }
+            }
+
+            addBtn.Click += async (_, _) =>
+            {
+                if (!AppServices.IsInitialized) return;
+                var code = codeBox.Tag?.ToString() == "placeholder" ? "" : codeBox.Text?.Trim() ?? "";
+                var nameAr = nameArBox.Tag?.ToString() == "placeholder" ? "" : nameArBox.Text?.Trim() ?? "";
+                var nameEn = nameEnBox.Tag?.ToString() == "placeholder" ? "" : nameEnBox.Text?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(nameAr))
+                {
+                    MockInteractionService.ShowWarning("الكود والاسم بالعربي مطلوبان.", "الفروع");
+                    return;
+                }
+                try
+                {
+                    await SettingsUiService.Instance.AddBranchAsync(code, nameAr, nameEn);
+                    MockInteractionService.ShowSuccess("تمت إضافة الفرع.", "الفروع");
+                    await RefreshAsync();
+                }
+                catch (Exception ex)
+                {
+                    MockInteractionService.ShowWarning("تعذّر إضافة الفرع: " + ex.Message, "الفروع");
+                }
+            };
+
+            stack.Loaded += async (_, _) => await RefreshAsync();
+        }
+
+        private static void BuildUnsupportedSection(StackPanel stack)
+        {
+            stack.Children.Add(PlaceholderUi.DevelopmentPhase("هذا القسم"));
+            var saveBtn = new Button { Content = "حفظ", Style = S("PrimaryButtonStyle"), Height = 34, Margin = new Thickness(0, 16, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+            saveBtn.Click += (_, _) => MockInteractionService.ShowInfo("هذا القسم قيد التطوير.", "الإعدادات");
+            stack.Children.Add(saveBtn);
         }
 
         private static void NavigateSettings(string key, UIElement source)

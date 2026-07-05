@@ -38,6 +38,10 @@ public interface IInventoryEngine
         PurchaseInvoice originalInvoice,
         CancellationToken cancellationToken = default);
 
+    Task ReversePurchaseInvoiceAsync(
+        PurchaseInvoice invoice,
+        CancellationToken cancellationToken = default);
+
     Task ReserveForInvoiceAsync(
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default);
@@ -61,6 +65,14 @@ public interface IInventoryEngine
 
     Task<Guid> PostOpeningStockAsync(
         Guid documentId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Posts inventory movements for a finance opening-balance stock document.
+    /// Idempotent — returns existing movement ids if already posted.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> PostFinanceOpeningBalanceStockAsync(
+        Guid openingBalanceDocumentId,
         CancellationToken cancellationToken = default);
 
     Task<Guid> CompleteTransferAsync(

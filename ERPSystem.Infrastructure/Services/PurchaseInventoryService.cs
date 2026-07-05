@@ -14,4 +14,9 @@ internal sealed class PurchaseInventoryService(IInventoryEngine engine) : IPurch
         PurchaseInvoice originalInvoice,
         CancellationToken cancellationToken = default) =>
         engine.ReversePurchaseReturnAsync(purchaseReturn, originalInvoice, cancellationToken);
+
+    public Task ReversePurchaseInvoiceStockAsync(
+        PurchaseInvoice invoice,
+        CancellationToken cancellationToken = default) =>
+        engine.ReversePurchaseInvoiceAsync(invoice, cancellationToken);
 }

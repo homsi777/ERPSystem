@@ -128,6 +128,16 @@ public class PurchaseInvoice
         Status = PurchaseInvoiceStatus.Cancelled;
     }
 
+    /// <summary>Reverse a POSTED (not paid) invoice: full GL + inventory + supplier rollback happens in the handler.</summary>
+    public void Reverse()
+    {
+        if (Status is PurchaseInvoiceStatus.PartiallyPaid or PurchaseInvoiceStatus.Paid)
+            throw new AccountingException("لا يمكن إلغاء فاتورة تم سدادها جزئياً أو كلياً.");
+        if (Status != PurchaseInvoiceStatus.Posted)
+            throw new AccountingException("يمكن فقط عكس الفواتير المرحّلة.");
+        Status = PurchaseInvoiceStatus.Cancelled;
+    }
+
     public void ApplyPayment(decimal amount)
     {
         if (Status is not (PurchaseInvoiceStatus.Posted or PurchaseInvoiceStatus.PartiallyPaid))

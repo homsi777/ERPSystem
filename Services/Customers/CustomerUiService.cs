@@ -164,11 +164,23 @@ public sealed class CustomerUiService
         return await handler.HandleAsync(new DeactivateCustomerCommand { CustomerId = customerId }, cancellationToken);
     }
 
+    [Obsolete("Use OpeningBalanceUiService.PostPartyOpeningBalanceAsync instead.")]
+    public async Task<ApplicationResult<CustomerOpeningBalanceResultDto>> PostOpeningBalanceAsync(
+        PostCustomerOpeningBalanceCommand command, CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<PostCustomerOpeningBalanceCommand, ApplicationResult<CustomerOpeningBalanceResultDto>>>();
+        return await handler.HandleAsync(command, cancellationToken);
+    }
+
     public async Task<bool> CanCreateAsync(CancellationToken cancellationToken = default) =>
         await CanAsync("customers.create", cancellationToken);
 
     public async Task<bool> CanDeactivateAsync(CancellationToken cancellationToken = default) =>
         await CanAsync("customers.deactivate", cancellationToken);
+
+    public async Task<bool> CanPostOpeningBalanceAsync(CancellationToken cancellationToken = default) =>
+        await CanAsync("customers.opening-balance", cancellationToken);
 
     private async Task<bool> CanAsync(string permission, CancellationToken cancellationToken)
     {

@@ -28,6 +28,17 @@ public static class CustomerActionRouter
                 _ = DeactivateAsync(row);
                 return true;
 
+            case EntityActionId.CustomerReceivables:
+            case EntityActionId.CustomerStatement:
+                MockInteractionService.OpenCustomerStatement(row);
+                return true;
+
+            case EntityActionId.CustomerPayment:
+            case EntityActionId.CustomerReceipt:
+                ERPSystem.Controls.Accounting.ReceiptVoucherNavigationContext.PreselectCustomerId = row.Id;
+                MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
+                return true;
+
             default:
                 return false;
         }

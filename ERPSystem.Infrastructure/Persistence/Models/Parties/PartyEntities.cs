@@ -18,6 +18,7 @@ public class CustomerEntity : PersistenceEntity
     public string? AddressLine1 { get; set; }
     public string? AddressCity { get; set; }
     public Guid? SalesRepUserId { get; set; }
+    public bool OpeningBalancePosted { get; set; }
 }
 
 public class SupplierEntity : PersistenceEntity

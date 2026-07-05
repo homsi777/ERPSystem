@@ -84,6 +84,12 @@ namespace ERPSystem.Services
                 return;
             }
 
+            if (entityType == EntityType.OpeningBalance && entity is OpeningBalanceListDto obRow)
+            {
+                OpeningBalanceContextMenuService.Show(obRow, row);
+                return;
+            }
+
             ShowEntityContextMenu(grid, entityType, entity, GetSourceModule(grid), e.GetPosition(grid));
         }
 

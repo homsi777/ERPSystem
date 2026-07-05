@@ -12,4 +12,8 @@ public interface IPurchaseInventoryService
         PurchaseReturn purchaseReturn,
         PurchaseInvoice originalInvoice,
         CancellationToken cancellationToken = default);
+
+    Task ReversePurchaseInvoiceStockAsync(
+        PurchaseInvoice invoice,
+        CancellationToken cancellationToken = default);
 }

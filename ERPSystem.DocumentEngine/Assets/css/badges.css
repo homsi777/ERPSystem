@@ -1,0 +1,60 @@
+/* ============================================================================
+   badges.css  —  Status badges / pills / tags
+   ============================================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge--neutral {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border-color: var(--border-color);
+}
+
+.badge--primary { background: var(--color-primary-soft); color: var(--color-primary); }
+.badge--success { background: var(--color-success-soft); color: var(--color-success); }
+.badge--danger  { background: var(--color-danger-soft);  color: var(--color-danger); }
+.badge--warning { background: var(--color-warning-soft); color: var(--color-warning); }
+.badge--info    { background: var(--color-info-soft);    color: var(--color-info); }
+
+/* Solid variants for high emphasis */
+.badge--solid { border: 0; }
+.badge--solid.badge--primary { background: var(--color-primary); color: #fff; }
+.badge--solid.badge--success { background: var(--color-success); color: #fff; }
+.badge--solid.badge--danger  { background: var(--color-danger);  color: #fff; }
+.badge--solid.badge--warning { background: var(--color-warning); color: #fff; }
+.badge--solid.badge--info    { background: var(--color-info);    color: #fff; }
+.badge--solid::before { background: rgba(255, 255, 255, 0.85); }
+
+/* Tag (no dot) */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  border: var(--border);
+}

@@ -25,3 +25,11 @@ public sealed class DeactivateCustomerCommand
 {
     public Guid CustomerId { get; init; }
 }
+
+public sealed class PostCustomerOpeningBalanceCommand
+{
+    public Guid CustomerId { get; init; }
+    public decimal Amount { get; init; }
+    public DateTime PostingDate { get; init; }
+    public string? ReferenceNote { get; init; }
+}

@@ -163,6 +163,7 @@ public sealed class SupplierUiService
         return await handler.HandleAsync(new DeactivateSupplierCommand { SupplierId = supplierId }, cancellationToken);
     }
 
+    [Obsolete("Use OpeningBalanceUiService.PostPartyOpeningBalanceAsync instead.")]
     public async Task<ApplicationResult<SupplierOpeningBalanceResultDto>> PostOpeningBalanceAsync(
         PostSupplierOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {

@@ -17,4 +17,5 @@ public static class AccountingAccountIds
     public static readonly Guid RootRevenue = Guid.Parse("b1000004-0004-0004-0004-000000000004");
     public static readonly Guid RootExpense = Guid.Parse("b1000005-0005-0005-0005-000000000005");
     public static readonly Guid OpeningBalanceEquity = Guid.Parse("a1000009-0009-0009-0009-000000000009");
+    public static readonly Guid PartnerCapital = Guid.Parse("a1000010-0010-0010-0010-000000000010");
 }

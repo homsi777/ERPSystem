@@ -15,10 +15,12 @@
     <Compile Remove="ERPSystem.Application/**" />
     <Compile Remove="ERPSystem.Domain/**" />
     <Compile Remove="ERPSystem.Infrastructure/**" />
+    <Compile Remove="ERPSystem.DocumentEngine/**" />
     <Compile Remove="tools/**" />
     <None Remove="ERPSystem.Application/**" />
     <None Remove="ERPSystem.Domain/**" />
     <None Remove="ERPSystem.Infrastructure/**" />
+    <None Remove="ERPSystem.DocumentEngine/**" />
     <None Remove="tools/**" />
   </ItemGroup>
 

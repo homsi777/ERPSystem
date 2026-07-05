@@ -9,7 +9,9 @@ using ERPSystem.Services.Purchases;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Suppliers;
+using ERPSystem.Services.Finance;
 using ERPSystem.Services.Inventory;
+using ERPSystem.Services.Sales;
 using System.Windows.Controls;
 
 namespace ERPSystem.Services
@@ -25,6 +27,12 @@ namespace ERPSystem.Services
                 return;
 
             if (InventoryActionRouter.TryHandleQuickAction(actionKey, ctx))
+                return;
+
+            if (SalesActionRouter.TryHandleQuickAction(actionKey, ctx))
+                return;
+
+            if (OpeningBalanceQuickActionRouter.TryHandleQuickAction(actionKey, ctx))
                 return;
 
             if (string.IsNullOrEmpty(actionKey))
@@ -50,7 +58,19 @@ namespace ERPSystem.Services
 
             if (actionKey.StartsWith("preview:", StringComparison.OrdinalIgnoreCase))
             {
-                MockInteractionService.ShowDocumentPreview(actionKey[8..], "PDF");
+                var kind = actionKey[8..];
+                if (kind.Equals("PurchaseInvoice", StringComparison.OrdinalIgnoreCase) &&
+                    ctx.EntityRow is PurchaseListRow prow)
+                {
+                    _ = PurchaseUiService.Instance.GetInvoiceDetailsAsync(prow.Id).ContinueWith(t =>
+                    {
+                        if (t.Result.IsSuccess && t.Result.Value is not null)
+                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                                PurchaseDocumentService.ShowInvoicePreview(t.Result.Value, false));
+                    });
+                    return;
+                }
+                MockInteractionService.ShowDocumentPreview(kind, "PDF");
                 return;
             }
 
@@ -62,13 +82,6 @@ namespace ERPSystem.Services
 
             switch (actionKey)
             {
-                case "ws:SendToWarehouse":
-                    if (tabs != null) SelectTab(tabs, "Detailing");
-                    MockInteractionService.ShowSuccess("تم إرسال الفاتورة للمستودع.\n\nالحالة: بانتظار التفصيل", "إرسال للمستودع");
-                    break;
-                case "ws:ApproveInvoice":
-                    MockInteractionService.ShowSuccess("تم اعتماد الفاتورة بنجاح.", "اعتماد الفاتورة");
-                    break;
                 case "form:EditEmployee":
                     MockInteractionService.Navigate(AppModule.HR, "Form");
                     break;

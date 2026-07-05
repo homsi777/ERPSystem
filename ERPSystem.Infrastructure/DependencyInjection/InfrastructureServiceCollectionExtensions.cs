@@ -46,6 +46,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<ICapitalPartnerRepository, CapitalPartnerRepository>();
         services.AddScoped<ICostCenterRepository, CostCenterRepository>();
@@ -74,12 +76,18 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IInventoryManagementRepository, InventoryManagementRepository>();
         services.AddScoped<IModuleReportRepository, ModuleReportRepository>();
+        services.AddScoped<ISystemSettingsRepository, SystemSettingsRepository>();
+        services.AddScoped<IBranchRepository, BranchRepository>();
+        services.AddScoped<IOpeningBalanceRepository, OpeningBalanceRepository>();
+        services.AddScoped<IOpeningBalanceLookupService, OpeningBalanceLookupService>();
+        services.AddScoped<IOpeningBalanceEngine, OpeningBalanceEngine>();
 
         services.AddScoped<IInventoryEngine, InventoryEngine>();
         services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
         services.AddScoped<IPurchaseInventoryService, PurchaseInventoryService>();
         services.AddScoped<IIntegratedAccountingService, IntegratedAccountingService>();
         services.AddScoped<IContainerWarehouseImportService, ContainerWarehouseImportService>();
+        services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 
         services.AddScoped<INumberingService, PostgreSqlNumberingService>();
         services.AddSingleton<INotificationService, InMemoryNotificationService>();
@@ -102,5 +110,7 @@ public static class InfrastructureServiceCollectionExtensions
             await Seed.ImportCatalogDevelopmentCleanup.RunAsync(context, logger, cancellationToken);
 
         await Seed.DatabaseSeeder.SeedAsync(context, logger, cancellationToken);
+
+        await Services.AccountingHealth.ValidateAsync(context, cancellationToken);
     }
 }

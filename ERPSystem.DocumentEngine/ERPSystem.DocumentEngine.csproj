@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    ERPSystem.DocumentEngine
+    ========================
+    A completely standalone HTML/CSS document rendering engine.
+
+    HARD RULES (do not break):
+      * No dependency on WPF / XAML / Views / Controls / ViewModels.
+      * No dependency on PostgreSQL / EF Core / the ERP application layer.
+      * Input  = plain DTO objects (see /Models).
+      * Output = self-contained, responsive HTML documents.
+
+    Consumable later, without redesign, from:
+      WPF, ASP.NET Core, Blazor, MAUI, React, Next.js, Mobile Web.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ERPSystem.DocumentEngine</RootNamespace>
+    <AssemblyName>ERPSystem.DocumentEngine</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!--
+    All design-system assets (CSS, fonts, icons, images, logo) are embedded so
+    that a produced document can be a single portable .html file with inlined
+    styles, OR reference the assets externally when hosted on the web.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\**\*.css" />
+    <EmbeddedResource Include="Assets\**\*.svg" />
+    <EmbeddedResource Include="Assets\**\*.woff2" />
+    <EmbeddedResource Include="Assets\**\*.woff" />
+  </ItemGroup>
+
+</Project>

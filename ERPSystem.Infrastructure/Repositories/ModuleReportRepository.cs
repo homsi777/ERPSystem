@@ -1101,7 +1101,8 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             .OrderBy(e => e.FullName)
             .ToListAsync(ct);
 
-        var deptIds = employees.Select(e => e.DepartmentId).Distinct().ToList();
+        var deptIds = employees.Where(e => e.DepartmentId.HasValue)
+            .Select(e => e.DepartmentId!.Value).Distinct().ToList();
         var depts = await context.Departments.AsNoTracking()
             .Where(d => deptIds.Contains(d.Id))
             .ToDictionaryAsync(d => d.Id, d => d.Name, ct);
@@ -1109,7 +1110,7 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
         var rows = employees.Select(e => Row(
             ("Code", e.EmployeeCode),
             ("Name", e.FullName),
-            ("Department", depts.GetValueOrDefault(e.DepartmentId, "—")),
+            ("Department", e.DepartmentId is Guid did ? depts.GetValueOrDefault(did, "—") : "—"),
             ("Job", e.JobTitle),
             ("Salary", e.BasicSalary),
             ("HireDate", e.HireDate))).ToList();

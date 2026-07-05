@@ -1,0 +1,66 @@
+/* ============================================================================
+   mobile.css  —  Phone / small-tablet adaptations (Android, iPhone)
+   Layout adapts; the visual identity does NOT change.
+   Tables collapse to cards (see tables.css .responsive rules).
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  :root {
+    --page-margin: 16px;
+    --watermark-size: 84px;
+  }
+
+  .doc-canvas {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .doc-page {
+    width: 100%;
+    min-height: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .doc-grid--2,
+  .doc-grid--3,
+  .doc-grid--4 {
+    grid-template-columns: 1fr;
+  }
+
+  .company-header {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .company-header__doc {
+    align-items: flex-start;
+    text-align: start;
+  }
+
+  .signatures {
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .totals {
+    width: 100%;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --fs-base: 13px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .bar {
+    grid-template-columns: 90px 1fr auto;
+  }
+}

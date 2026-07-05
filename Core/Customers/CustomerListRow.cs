@@ -48,6 +48,7 @@ public sealed class CustomerListRow
         Status = dto.Status,
         Balance = dto.Balance,
         CreditLimit = dto.CreditLimit,
-        IsActive = dto.IsActive
+        IsActive = dto.IsActive,
+        OpeningBalancePosted = dto.OpeningBalancePosted
     });
 }

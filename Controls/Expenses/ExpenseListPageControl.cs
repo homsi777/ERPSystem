@@ -58,7 +58,17 @@ public sealed class ExpenseListPageControl : UserControl
             Height = 32,
             Margin = new Thickness(6, 0, 0, 0)
         };
-        exportBtn.Click += (_, _) => MockInteractionService.ShowDocumentPreview("تعريفات المصاريف", "Excel");
+        exportBtn.Click += (_, _) => ERPSystem.Services.Documents.ListExportService.ExportRecords(
+            _allItems, "تعريفات المصاريف",
+            ("الكود", x => x.Code),
+            ("الاسم", x => x.Name),
+            ("التصنيف", x => x.CategoryName),
+            ("الحالة", x => x.StatusDisplay),
+            ("العملة", x => x.OriginalCurrency),
+            ("المبلغ", x => x.OriginalAmount),
+            ("المبلغ بالأساس", x => x.BaseAmount),
+            ("المدفوع", x => x.PaidAmountBase),
+            ("المتبقي", x => x.RemainingBalanceBase));
 
         var toolbar = new Border
         {

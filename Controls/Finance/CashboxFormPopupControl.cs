@@ -12,7 +12,7 @@ public sealed class CashboxFormPopupControl : UserControl
     private readonly TextBlock _title = ErpUiFactory.SectionTitle("صندوق جديد");
     private readonly TextBox _txtCode = ErpUiFactory.FormField("");
     private readonly TextBox _txtName = ErpUiFactory.FormField("");
-    private readonly ComboBox _cmbCurrency = ErpUiFactory.FilterCombo(["USD", "SAR", "EUR"]);
+    private readonly ComboBox _cmbCurrency = ErpUiFactory.FilterCombo(ERPSystem.Services.Settings.CurrencyCatalog.CurrencyArray);
     private readonly Button _btnSave = new() { Content = "حفظ", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 36 };
     private readonly Button _btnCancel = new() { Content = "إلغاء", Style = S("SecondaryButtonStyle"), MinWidth = 100, Height = 36, Margin = new Thickness(8, 0, 0, 0) };
     private Guid? _editId;

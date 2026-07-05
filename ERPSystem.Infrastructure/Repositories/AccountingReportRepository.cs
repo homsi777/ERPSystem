@@ -193,4 +193,30 @@ internal sealed class AccountingReportRepository(ErpDbContext context) : IAccoun
 
         return totals.Credit - totals.Debit;
     }
+
+    public async Task<decimal> GetPartyOpeningBalanceAsync(
+        Guid partyId,
+        DocumentType sourceType,
+        CancellationToken cancellationToken = default)
+    {
+        var postedStatus = (int)JournalEntryStatus.Posted;
+
+        var totals = await (
+            from line in context.JournalEntryLines.AsNoTracking()
+            join entry in context.JournalEntries.AsNoTracking() on line.JournalEntryId equals entry.Id
+            where line.PartyId == partyId
+                  && entry.SourceType == (int)sourceType
+                  && entry.Status == postedStatus
+            group line by 1 into g
+            select new
+            {
+                Debit = g.Sum(x => x.Debit),
+                Credit = g.Sum(x => x.Credit)
+            }).FirstOrDefaultAsync(cancellationToken);
+
+        if (totals is null)
+            return 0m;
+
+        return totals.Debit - totals.Credit;
+    }
 }

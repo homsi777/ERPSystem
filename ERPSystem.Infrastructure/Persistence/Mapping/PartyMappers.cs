@@ -30,6 +30,7 @@ internal static class CustomerMapper
             AddressLine1 = c.Address?.Line1,
             AddressCity = c.Address?.City,
             SalesRepUserId = c.SalesRepUserId,
+            OpeningBalancePosted = c.OpeningBalancePosted,
             IsActive = c.IsActive
         };
     }
@@ -48,6 +49,7 @@ internal static class CustomerMapper
         DomainHydrator.Set(customer, nameof(Customer.Balance), new Money(entity.Balance, entity.BalanceCurrency));
         DomainHydrator.Set(customer, nameof(Customer.PaymentTermsDays), entity.PaymentTermsDays);
         DomainHydrator.Set(customer, nameof(Customer.IsActive), entity.IsActive);
+        DomainHydrator.Set(customer, nameof(Customer.OpeningBalancePosted), entity.OpeningBalancePosted);
 
         if (!string.IsNullOrWhiteSpace(entity.Phone))
             DomainHydrator.Set(customer, nameof(Customer.Phone), new PhoneNumber(entity.Phone));
@@ -75,6 +77,7 @@ internal static class CustomerMapper
         entity.AddressLine1 = mapped.AddressLine1;
         entity.AddressCity = mapped.AddressCity;
         entity.IsActive = mapped.IsActive;
+        entity.OpeningBalancePosted = mapped.OpeningBalancePosted;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }

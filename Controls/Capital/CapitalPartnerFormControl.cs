@@ -30,7 +30,7 @@ public sealed class CapitalPartnerFormControl : UserControl
     private readonly TextBox _phone = ErpUiFactory.FormField("");
     private readonly TextBox _nationalId = ErpUiFactory.FormField("");
     private readonly TextBox _notes = ErpUiFactory.FormField("");
-    private readonly ComboBox _currency = ErpUiFactory.FilterCombo(["USD", "EUR", "CNY", "SAR"]);
+    private readonly ComboBox _currency = ErpUiFactory.FilterCombo(ERPSystem.Services.Settings.CurrencyCatalog.CurrencyArray);
     private readonly Button _save = new() { Content = "حفظ الشريك", Style = S("PrimaryButtonStyle"), MinWidth = 140, Height = 38 };
     private readonly Button _cancel = new() { Content = "إلغاء", Style = S("SecondaryButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0) };
 

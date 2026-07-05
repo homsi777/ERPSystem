@@ -127,6 +127,7 @@ public sealed class ActivateCashboxHandler(
 public sealed class CreateCashboxTransferHandler(
     ICashboxRepository cashboxRepository,
     ICashboxTransferRepository transferRepository,
+    IIntegratedAccountingService accountingService,
     IUnitOfWork unitOfWork,
     INumberingService numberingService,
     IPermissionService permissionService)
@@ -169,6 +170,14 @@ public sealed class CreateCashboxTransferHandler(
             to.ApplyReceipt(new Money(command.Amount, to.Currency));
             await cashboxRepository.UpdateAsync(from, cancellationToken);
             await cashboxRepository.UpdateAsync(to, cancellationToken);
+            await accountingService.PostCashboxTransferAsync(
+                transfer.Id,
+                transfer.Number,
+                from.AccountId ?? AccountingAccountIds.CashUsd,
+                to.AccountId ?? AccountingAccountIds.CashUsd,
+                command.Amount,
+                transfer.TransferDate,
+                cancellationToken);
         }
 
         await transferRepository.AddAsync(transfer, command.CompanyId, command.BranchId, cancellationToken);
@@ -180,6 +189,7 @@ public sealed class CreateCashboxTransferHandler(
 public sealed class PostCashboxTransferHandler(
     ICashboxRepository cashboxRepository,
     ICashboxTransferRepository transferRepository,
+    IIntegratedAccountingService accountingService,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService)
     : ICommandHandler<PostCashboxTransferCommand, ApplicationResult>
@@ -213,6 +223,14 @@ public sealed class PostCashboxTransferHandler(
         await cashboxRepository.UpdateAsync(from, cancellationToken);
         await cashboxRepository.UpdateAsync(to, cancellationToken);
         await transferRepository.UpdateAsync(transfer, cancellationToken);
+        await accountingService.PostCashboxTransferAsync(
+            transfer.Id,
+            transfer.Number,
+            from.AccountId ?? AccountingAccountIds.CashUsd,
+            to.AccountId ?? AccountingAccountIds.CashUsd,
+            transfer.Amount.Amount,
+            transfer.TransferDate,
+            cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return ApplicationResult.Success();
     }

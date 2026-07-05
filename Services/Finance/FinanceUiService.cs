@@ -35,6 +35,36 @@ public sealed class FinancePartyOption
     public string Display { get; init; } = "";
 }
 
+/// <summary>A receipt voucher belonging to a customer (Customer OC → Receipts tab).</summary>
+public sealed class CustomerReceiptRow
+{
+    public string VoucherNumber { get; init; } = "";
+    public DateTime VoucherDate { get; init; }
+    public decimal Amount { get; init; }
+    public string CashboxName { get; init; } = "";
+    public string StatusDisplay { get; init; } = "";
+
+    public string DateDisplay => VoucherDate.ToString("yyyy/MM/dd");
+    public string AmountDisplay => Amount.ToString("N2");
+}
+
+/// <summary>An open sales invoice a receipt can be allocated to.</summary>
+public sealed class OpenInvoiceOption
+{
+    public Guid Id { get; init; }
+    public string InvoiceNumber { get; init; } = "";
+    public DateTime InvoiceDate { get; init; }
+    public decimal Total { get; init; }
+    public decimal Collected { get; init; }
+    public decimal Remaining { get; init; }
+    public decimal Allocated { get; set; }
+
+    public string DateDisplay => InvoiceDate.ToString("yyyy/MM/dd");
+    public string TotalDisplay => Total.ToString("N2");
+    public string CollectedDisplay => Collected.ToString("N2");
+    public string RemainingDisplay => Remaining.ToString("N2");
+}
+
 public sealed class FinanceUiService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -257,6 +287,7 @@ public sealed class FinanceUiService
         Guid customerId,
         Guid cashboxId,
         decimal amount,
+        IReadOnlyList<ReceiptInvoiceAllocationInput>? allocations = null,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -267,8 +298,81 @@ public sealed class FinanceUiService
             BranchId = BranchId,
             CustomerId = customerId,
             CashboxId = cashboxId,
-            Amount = amount
+            Amount = amount,
+            Allocations = allocations ?? []
         }, cancellationToken);
+    }
+
+    /// <summary>All receipt vouchers for a customer (for the Customer OC → Receipts tab).</summary>
+    public async Task<IReadOnlyList<CustomerReceiptRow>> GetReceiptsForCustomerAsync(
+        Guid customerId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var voucherRepo = scope.ServiceProvider.GetRequiredService<IReceiptVoucherRepository>();
+        var boxRepo = scope.ServiceProvider.GetRequiredService<ICashboxRepository>();
+
+        var vouchers = await voucherRepo.GetListAsync(CompanyId, null, customerId, cancellationToken);
+        var boxes = await boxRepo.GetListAsync(BranchId, cancellationToken);
+        var boxNames = boxes.ToDictionary(b => b.Id, b => b.Name);
+
+        return vouchers
+            .OrderByDescending(v => v.VoucherDate)
+            .Select(v => new CustomerReceiptRow
+            {
+                VoucherNumber = v.VoucherNumber,
+                VoucherDate = v.VoucherDate,
+                Amount = v.Amount.Amount,
+                CashboxName = boxNames.GetValueOrDefault(v.CashboxId, "—"),
+                StatusDisplay = MapVoucherStatus(v.Status)
+            })
+            .ToList();
+    }
+
+    private static string MapVoucherStatus(Domain.Enums.VoucherStatus s) => s switch
+    {
+        Domain.Enums.VoucherStatus.Draft => "مسودة",
+        Domain.Enums.VoucherStatus.Approved => "معتمد",
+        Domain.Enums.VoucherStatus.Posted => "مرحّل",
+        Domain.Enums.VoucherStatus.Cancelled => "ملغى",
+        _ => s.ToString()
+    };
+
+    /// <summary>Open (posted, not fully collected) sales invoices for a customer, for receipt allocation.</summary>
+    public async Task<IReadOnlyList<OpenInvoiceOption>> GetOpenInvoicesForCustomerAsync(
+        Guid customerId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var invoiceRepo = scope.ServiceProvider.GetRequiredService<ISalesInvoiceRepository>();
+        var paymentRepo = scope.ServiceProvider.GetRequiredService<IReceiptInvoicePaymentRepository>();
+
+        var invoices = await invoiceRepo.GetListAsync(CompanyId, BranchId, null, customerId, cancellationToken);
+        var rows = new List<OpenInvoiceOption>();
+        foreach (var inv in invoices)
+        {
+            if (inv.Status is not (Domain.Enums.SalesInvoiceStatus.Approved
+                or Domain.Enums.SalesInvoiceStatus.Printed
+                or Domain.Enums.SalesInvoiceStatus.Delivered))
+                continue;
+
+            var total = inv.GrandTotal.Amount;
+            if (total <= 0) continue;
+            var collected = await paymentRepo.GetCollectedTotalAsync(inv.Id, cancellationToken);
+            var remaining = total - collected;
+            if (remaining <= 0.005m) continue;
+
+            rows.Add(new OpenInvoiceOption
+            {
+                Id = inv.Id,
+                InvoiceNumber = inv.InvoiceNumber.Value,
+                InvoiceDate = inv.InvoiceDate,
+                Total = total,
+                Collected = collected,
+                Remaining = remaining
+            });
+        }
+        return rows.OrderBy(r => r.InvoiceDate).ToList();
     }
 
     public async Task<ApplicationResult> PostReceiptVoucherAsync(

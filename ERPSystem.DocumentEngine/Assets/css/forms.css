@@ -1,0 +1,96 @@
+/* ============================================================================
+   forms.css  —  Read-only form / field presentation for documents
+   (Documents are non-interactive; these style filled field displays and any
+    interactive preview controls that must be hidden on print.)
+   ============================================================================ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field__label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
+}
+
+.field__value {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-alt);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  min-height: 32px;
+}
+
+.field-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* Checkbox / choice display */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+}
+
+.choice__box {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border-color-strong);
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--color-primary);
+}
+
+.choice--checked .choice__box::after { content: "\2713"; }
+
+/* Interactive preview-only controls (toolbar buttons, etc.) */
+.ui-toolbar {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--page-gap);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-btn {
+  appearance: none;
+  border: var(--border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--anim-fast) var(--anim-ease),
+              border-color var(--anim-fast) var(--anim-ease);
+}
+
+.ui-btn:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary-light);
+}
+
+.ui-btn--primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+}
+
+.ui-btn--primary:hover { background: var(--color-primary-dark); }

@@ -15,6 +15,7 @@ namespace ERPSystem.Core.Actions
         JournalEntry,
         Account,
         Expense,
-        CapitalPartner
+        CapitalPartner,
+        OpeningBalance
     }
 }

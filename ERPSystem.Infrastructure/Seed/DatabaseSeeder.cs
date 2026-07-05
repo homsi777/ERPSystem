@@ -38,8 +38,10 @@ public static class DatabaseSeeder
         await EnsureCustomerPermissionsAsync(context, cancellationToken);
         await EnsureSalesPermissionsAsync(context, cancellationToken);
         await EnsureFinancePermissionsAsync(context, cancellationToken);
+        await EnsureOpeningBalancePermissionsAsync(context, cancellationToken);
         await EnsureContainerPermissionsAsync(context, cancellationToken);
         await EnsureWarehousePermissionsAsync(context, cancellationToken);
+        await EnsureHrPermissionsAsync(context, cancellationToken);
         await EnsureDefaultCurrencyAsync(context, cancellationToken);
         await ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken);
         await CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken);
@@ -268,7 +270,8 @@ public static class DatabaseSeeder
             (AccountingAccountIds.SalesRevenue, "4100", "إيراد مبيعات", "Sales Revenue", "Revenue", AccountingAccountIds.RootRevenue),
             (AccountingAccountIds.CostOfGoodsSold, "5100", "تكلفة مبيعات", "Cost of Goods Sold", "Expense", AccountingAccountIds.RootExpense),
             (AccountingAccountIds.OperatingExpenses, "5210", "مصاريف تشغيل", "Operating Expenses", "Expense", AccountingAccountIds.RootExpense),
-            (AccountingAccountIds.OpeningBalanceEquity, "3100", "أرصدة افتتاحية", "Opening Balance Equity", "Equity", AccountingAccountIds.RootEquity)
+            (AccountingAccountIds.OpeningBalanceEquity, "3100", "أرصدة افتتاحية", "Opening Balance Equity", "Equity", AccountingAccountIds.RootEquity),
+            (AccountingAccountIds.PartnerCapital, "3200", "رأس مال الشركاء", "Partner Capital", "Equity", AccountingAccountIds.RootEquity)
         };
 
         foreach (var (id, code, nameAr, nameEn, type, parentId) in accounts)
@@ -435,7 +438,8 @@ public static class DatabaseSeeder
         await EnsurePermissionsAsync(context,
         [
             ("customers.create", "customers", "create"),
-            ("customers.deactivate", "customers", "deactivate")
+            ("customers.deactivate", "customers", "deactivate"),
+            ("customers.opening-balance", "customers", "opening-balance")
         ], cancellationToken);
     }
 
@@ -466,6 +470,22 @@ public static class DatabaseSeeder
         ], cancellationToken);
     }
 
+    private static async Task EnsureOpeningBalancePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("openingbalances.view", "openingbalances", "view"),
+            ("openingbalances.create", "openingbalances", "create"),
+            ("openingbalances.edit", "openingbalances", "edit"),
+            ("openingbalances.import", "openingbalances", "import"),
+            ("openingbalances.approve", "openingbalances", "approve"),
+            ("openingbalances.post", "openingbalances", "post"),
+            ("openingbalances.archive", "openingbalances", "archive"),
+            ("openingbalances.export", "openingbalances", "export"),
+            ("openingbalances.print", "openingbalances", "print")
+        ], cancellationToken);
+    }
+
     private static async Task EnsureContainerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
     {
         await EnsurePermissionsAsync(context,
@@ -491,6 +511,15 @@ public static class DatabaseSeeder
         [
             ("purchases.create", "purchases", "create"),
             ("purchases.post", "purchases", "post")
+        ], cancellationToken);
+    }
+
+    private static async Task EnsureHrPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        await EnsurePermissionsAsync(context,
+        [
+            ("hr.employee.manage", "hr", "employee.manage"),
+            ("hr.department.manage", "hr", "department.manage")
         ], cancellationToken);
     }
 

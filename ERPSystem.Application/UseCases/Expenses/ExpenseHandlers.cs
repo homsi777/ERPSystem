@@ -12,6 +12,7 @@ using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Expenses;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Domain.Enums;
+using ERPSystem.Domain.ValueObjects;
 
 namespace ERPSystem.Application.UseCases.Expenses;
 
@@ -581,6 +582,7 @@ public sealed class DuplicateExpenseHandler(
 public sealed class RecordExpensePaymentHandler(
     IExpenseRepository expenseRepository,
     IIntegratedAccountingService integratedAccounting,
+    ICashboxRepository cashboxRepository,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     ICurrentUserService currentUser)
@@ -645,6 +647,17 @@ public sealed class RecordExpensePaymentHandler(
                 command.AmountBase,
                 paymentDescription,
                 cancellationToken);
+
+            // Keep the cashbox entity balance synchronized with the GL cash outflow.
+            if (command.CashboxId is Guid cashboxId && cashboxId != Guid.Empty && command.AmountBase > 0)
+            {
+                var cashbox = await cashboxRepository.GetByIdAsync(cashboxId, cancellationToken);
+                if (cashbox is not null)
+                {
+                    cashbox.ApplyPayment(new Money(command.AmountBase));
+                    await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+                }
+            }
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult.Success();

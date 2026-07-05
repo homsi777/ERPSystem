@@ -184,10 +184,80 @@ namespace ERPSystem.Modules
                 CardOrders.CardValue = dto.AwaitingDetailingCount.ToString();
                 CardInventory.CardValue = dto.PendingContainersCount.ToString();
                 CardReceivables.CardValue = $"{dto.TotalCustomerOutstanding:N0} $";
+                CardPayables.CardValue = $"{dto.TotalSupplierPayables:N0} $";
+                CardCustomers.CardValue = dto.ActiveCustomersCount.ToString();
+
+                PopulateActivityFeed(dto.RecentActivity);
             }
             catch
             {
                 // Keep fallback/placeholder values if the summary query fails.
+            }
+        }
+
+        private void PopulateActivityFeed(IReadOnlyList<ERPSystem.Application.DTOs.Dashboard.DashboardActivityDto> activity)
+        {
+            ActivityList.Children.Clear();
+
+            if (ERPSystem.Infrastructure.Services.AccountingHealth.HasMissingAccounts)
+            {
+                var names = string.Join("، ", ERPSystem.Infrastructure.Services.AccountingHealth.MissingRequiredAccounts);
+                ActivityList.Children.Add(new Border
+                {
+                    Background = Br("DangerBgBrush"),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(12),
+                    Margin = new Thickness(0, 0, 0, 8),
+                    Child = new TextBlock
+                    {
+                        Text = $"تحذير: بعض الحسابات الأساسية غير مكوّنة ({names}) — راجع إعدادات المحاسبة.",
+                        Foreground = Br("DangerBrush"),
+                        TextWrapping = TextWrapping.Wrap,
+                        FontFamily = Ff()
+                    }
+                });
+            }
+
+            if (activity.Count == 0)
+            {
+                ActivityList.Children.Add(new TextBlock
+                {
+                    Text = "لا يوجد نشاط حديث",
+                    Foreground = Br("TextMutedBrush"),
+                    FontSize = 12,
+                    FontFamily = Ff()
+                });
+                return;
+            }
+
+            foreach (var a in activity)
+            {
+                var row = new Grid { Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var desc = new TextBlock
+                {
+                    Text = a.Description,
+                    FontSize = 12,
+                    Foreground = Br("TextPrimaryBrush"),
+                    FontFamily = Ff(),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                Grid.SetColumn(desc, 0);
+                row.Children.Add(desc);
+
+                var when = new TextBlock
+                {
+                    Text = a.OccurredAt.ToLocalTime().ToString("MM/dd HH:mm"),
+                    FontSize = 11,
+                    Foreground = Br("TextMutedBrush"),
+                    FontFamily = Ff()
+                };
+                Grid.SetColumn(when, 1);
+                row.Children.Add(when);
+
+                ActivityList.Children.Add(row);
             }
         }
 

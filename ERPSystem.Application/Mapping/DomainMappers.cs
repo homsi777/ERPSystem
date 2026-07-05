@@ -25,7 +25,8 @@ public static class CustomerMapper
         Status = aggregate.Customer.Status,
         Balance = aggregate.Customer.Balance.Amount,
         CreditLimit = aggregate.Customer.CreditLimit.Amount,
-        IsActive = aggregate.Customer.IsActive
+        IsActive = aggregate.Customer.IsActive,
+        OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted
     };
 
     public static CustomerDetailsDto ToDetailsDto(CustomerAggregate aggregate) => new()
@@ -41,7 +42,8 @@ public static class CustomerMapper
         PaymentTermsDays = aggregate.Customer.PaymentTermsDays,
         Phone = aggregate.Customer.Phone?.Value,
         Email = aggregate.Customer.Email?.Value,
-        IsActive = aggregate.Customer.IsActive
+        IsActive = aggregate.Customer.IsActive,
+        OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted
     };
 }
 

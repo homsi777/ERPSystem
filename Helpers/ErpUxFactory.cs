@@ -98,6 +98,27 @@ namespace ERPSystem.Helpers
             ActionToolbar(documentTitle,
                 ("طباعة", false), ("PDF", false), ("Excel", false), ("معاينة", false));
 
+        /// <summary>Toolbar wired to real callbacks instead of the mock preview.</summary>
+        public static StackPanel ActionToolbar(params (string Label, bool Primary, Action OnClick)[] actions)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, ErpDesignTokens.SpaceSm) };
+            foreach (var (label, primary, onClick) in actions.Take(6))
+            {
+                var btn = new Button
+                {
+                    Content = label,
+                    Style = (Style)System.Windows.Application.Current.Resources[primary ? "PrimaryButtonStyle" : "SecondaryButtonStyle"]!,
+                    Height = ErpDesignTokens.ControlHeight,
+                    Padding = new Thickness(10, 0, 10, 0),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    FontSize = 12
+                };
+                btn.Click += (_, _) => onClick();
+                row.Children.Add(btn);
+            }
+            return row;
+        }
+
         public static Border InfoBanner(string text, string tone = "info")
         {
             var (bg, border, fg) = tone switch

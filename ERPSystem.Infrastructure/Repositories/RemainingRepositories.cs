@@ -659,7 +659,8 @@ internal sealed class CashboxRepository(ErpDbContext context) : ICashboxReposito
             Name = cashbox.Name,
             Balance = cashbox.Balance.Amount,
             Currency = cashbox.Currency,
-            IsActive = cashbox.IsActive
+            IsActive = cashbox.IsActive,
+            AccountId = cashbox.AccountId
         }, cancellationToken);
 
     public async Task UpdateAsync(Cashbox cashbox, CancellationToken cancellationToken = default)
@@ -671,6 +672,7 @@ internal sealed class CashboxRepository(ErpDbContext context) : ICashboxReposito
         entity.Currency = cashbox.Currency;
         entity.Balance = cashbox.Balance.Amount;
         entity.IsActive = cashbox.IsActive;
+        entity.AccountId = cashbox.AccountId;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }
@@ -943,6 +945,17 @@ internal sealed class AuditLogRepository(ErpDbContext context) : IAuditLogReposi
 
         return entities.Select(e => AuditLog.Record(
             e.UserId, e.Action, e.EntityType, e.EntityId, e.OldValuesJson, e.NewValuesJson, e.BranchId)).ToList();
+    }
+
+    public async Task<IReadOnlyList<AuditActivityItem>> GetRecentAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        return await context.AuditLogs.AsNoTracking()
+            .OrderByDescending(a => a.OccurredAt)
+            .Take(limit)
+            .Select(a => new AuditActivityItem(a.OccurredAt, a.UserId, a.Action, a.EntityType, a.EntityId))
+            .ToListAsync(cancellationToken);
     }
 }
 

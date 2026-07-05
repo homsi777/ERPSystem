@@ -178,10 +178,12 @@ public sealed class DeactivateSupplierHandler(
     }
 }
 
+/// <summary>
+/// Thin adapter: delegates to <see cref="IOpeningBalanceEngine.PostPartyOpeningBalanceAsync"/>.
+/// Prefer calling the engine (or unified opening balance UI service) directly from WPF.
+/// </summary>
 public sealed class PostSupplierOpeningBalanceHandler(
-    ISupplierRepository supplierRepository,
-    IIntegratedAccountingService integratedAccounting,
-    IUnitOfWork unitOfWork,
+    IOpeningBalanceEngine openingBalanceEngine,
     IPermissionService permissionService)
     : ICommandHandler<PostSupplierOpeningBalanceCommand, ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>>
 {
@@ -197,32 +199,26 @@ public sealed class PostSupplierOpeningBalanceHandler(
         if (!await permissionService.CanAsync("suppliers.opening-balance", cancellationToken))
             return ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>.PermissionDenied("Not allowed to post supplier opening balances.");
 
-        var aggregate = await supplierRepository.GetByIdAsync(command.SupplierId, cancellationToken);
-        if (aggregate is null)
-            return ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>.NotFound("Supplier not found.");
-
-        if (aggregate.Supplier.OpeningBalancePosted)
-            return ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>.ValidationFailed(nameof(command.SupplierId), "Opening balance already posted for this supplier.");
-
         try
         {
-            var entryNumber = await integratedAccounting.PostSupplierOpeningBalanceAsync(
-                aggregate.Id,
-                aggregate.Supplier.PayablesAccountId,
-                command.Amount,
-                command.PostingDate,
-                command.ReferenceNote ?? $"رصيد افتتاحي — {aggregate.Supplier.NameAr}",
-                cancellationToken);
+            var result = await openingBalanceEngine.PostPartyOpeningBalanceAsync(
+                new Application.Commands.Finance.PostPartyOpeningBalanceCommand
+                {
+                    Type = Domain.Entities.Finance.OpeningBalanceType.SupplierPayable,
+                    PartyId = command.SupplierId,
+                    Amount = command.Amount,
+                    OpeningDate = command.PostingDate,
+                    ReferenceNote = command.ReferenceNote
+                }, cancellationToken);
 
-            aggregate.Supplier.MarkOpeningBalancePosted(command.Amount);
-            await supplierRepository.UpdateAsync(aggregate, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            if (!result.IsSuccess || result.Value is null)
+                return ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>.Failure(result.ErrorMessage ?? "فشل ترحيل الرصيد الافتتاحي.");
 
             return ApplicationResult<Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto>.Success(
                 new Application.DTOs.Suppliers.SupplierOpeningBalanceResultDto
                 {
-                    JournalEntryNumber = entryNumber,
-                    PostedDate = command.PostingDate,
+                    JournalEntryNumber = result.Value.JournalEntryNumber,
+                    PostedDate = result.Value.PostedAt,
                     Amount = command.Amount
                 });
         }

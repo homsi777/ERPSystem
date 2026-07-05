@@ -26,6 +26,11 @@ public interface IAccountingReportRepository
         Guid accountId,
         DateTime beforeDate,
         CancellationToken cancellationToken = default);
+
+    Task<decimal> GetPartyOpeningBalanceAsync(
+        Guid partyId,
+        DocumentType sourceType,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class TrialBalanceRow

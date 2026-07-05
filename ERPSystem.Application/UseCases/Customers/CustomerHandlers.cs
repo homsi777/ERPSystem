@@ -113,6 +113,57 @@ public sealed class UpdateCustomerHandler(
     }
 }
 
+/// <summary>
+/// Thin adapter: delegates to <see cref="IOpeningBalanceEngine.PostPartyOpeningBalanceAsync"/>.
+/// Prefer calling the engine (or unified opening balance UI service) directly from WPF.
+/// </summary>
+public sealed class PostCustomerOpeningBalanceHandler(
+    IOpeningBalanceEngine openingBalanceEngine,
+    IPermissionService permissionService)
+    : ICommandHandler<PostCustomerOpeningBalanceCommand, ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>>
+{
+    public async Task<ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>> HandleAsync(
+        PostCustomerOpeningBalanceCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.CustomerId == Guid.Empty)
+            return ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>.ValidationFailed(nameof(command.CustomerId), "Customer is required.");
+        if (command.Amount <= 0)
+            return ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>.ValidationFailed(nameof(command.Amount), "Opening balance must be greater than zero.");
+
+        if (!await permissionService.CanAsync("customers.opening-balance", cancellationToken))
+            return ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>.PermissionDenied("Not allowed to post customer opening balances.");
+
+        try
+        {
+            var result = await openingBalanceEngine.PostPartyOpeningBalanceAsync(
+                new Application.Commands.Finance.PostPartyOpeningBalanceCommand
+                {
+                    Type = Domain.Entities.Finance.OpeningBalanceType.CustomerReceivable,
+                    PartyId = command.CustomerId,
+                    Amount = command.Amount,
+                    OpeningDate = command.PostingDate,
+                    ReferenceNote = command.ReferenceNote
+                }, cancellationToken);
+
+            if (!result.IsSuccess || result.Value is null)
+                return ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>.Failure(result.ErrorMessage ?? "فشل ترحيل الرصيد الافتتاحي.");
+
+            return ApplicationResult<DTOs.Customers.CustomerOpeningBalanceResultDto>.Success(
+                new DTOs.Customers.CustomerOpeningBalanceResultDto
+                {
+                    JournalEntryNumber = result.Value.JournalEntryNumber,
+                    PostedDate = result.Value.PostedAt,
+                    Amount = command.Amount
+                });
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult<DTOs.Customers.CustomerOpeningBalanceResultDto>();
+        }
+    }
+}
+
 public sealed class DeactivateCustomerHandler(
     ICustomerRepository customerRepository,
     IUnitOfWork unitOfWork,

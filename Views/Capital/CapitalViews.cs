@@ -11,6 +11,7 @@ public static class CapitalViews
 {
     public static UserControl Create(string key) => key switch
     {
+        "Dashboard" => Wrap(new CapitalDashboardControl()),
         "List" => Wrap(new CapitalPartnerListPageControl()),
         "Transactions" => Wrap(new CapitalTransactionListPageControl()),
         "Investment" => Wrap(new CapitalInvestmentFormControl()),

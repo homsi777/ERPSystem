@@ -45,7 +45,7 @@ public static class SalesDocumentService
     private static void EnsureLicense()
     {
         if (_licenseInitialized) return;
-        Settings.License = LicenseType.Community;
+        QuestPDF.Settings.License = LicenseType.Community;
         _licenseInitialized = true;
     }
 

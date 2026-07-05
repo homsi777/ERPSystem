@@ -1,0 +1,59 @@
+/* ============================================================================
+   fonts.css  —  Professional font loading (Arabic + Latin)
+   ----------------------------------------------------------------------------
+   Drop the actual .woff2 files next to this file to enable custom fonts.
+   Until then, high-quality system fonts are used automatically via the
+   font stacks defined in variables.css (--font-arabic / --font-latin).
+
+   Expected files (optional):
+     Cairo-Regular.woff2, Cairo-SemiBold.woff2, Cairo-Bold.woff2
+     Inter-Regular.woff2, Inter-SemiBold.woff2, Inter-Bold.woff2
+   ============================================================================ */
+
+@font-face {
+  font-family: "Cairo";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("Cairo"), url("./Cairo-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cairo";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local("Cairo SemiBold"), url("./Cairo-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cairo";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("Cairo Bold"), url("./Cairo-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("Inter"), url("./Inter-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local("Inter SemiBold"), url("./Inter-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("Inter Bold"), url("./Inter-Bold.woff2") format("woff2");
+}

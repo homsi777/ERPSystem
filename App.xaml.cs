@@ -64,12 +64,18 @@ public partial class App : System.Windows.Application
             services.AddSingleton<CapitalPartnerUiService>();
             services.AddSingleton<AccountingUiService>();
             services.AddSingleton<FinanceUiService>();
+            services.AddSingleton<OpeningBalanceUiService>();
             services.AddSingleton<ModuleReportUiService>();
+            services.AddSingleton<ERPSystem.Services.Settings.SettingsUiService>();
+            services.AddSingleton<ERPSystem.Services.Search.GlobalSearchUiService>();
+            services.AddSingleton<ERPSystem.Services.Hr.HrUiService>();
 
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);
 
             await provider.MigrateAndSeedAsync();
+
+            await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
 
             new MainWindow().Show();
         }

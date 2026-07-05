@@ -11,6 +11,7 @@ public static class ExpenseViews
 {
     public static UserControl Create(string key) => key switch
     {
+        "Dashboard" => Wrap(new ExpenseDashboardControl()),
         "Entries" => Wrap(new ExpenseEntryListPageControl()),
         "Entry" => Wrap(new ExpenseEntryFormControl()),
         "List" => Wrap(new ExpenseListPageControl()),

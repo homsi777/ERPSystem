@@ -29,6 +29,8 @@ public partial class CustomerAccountStatementControl : UserControl
 {
     private Guid? _customerId;
     private string _customerName = "";
+    private decimal _openingBalance;
+    private decimal _closingBalance;
     private readonly List<AccountLedgerRow> _allLines = new();
 
     public CustomerAccountStatementControl()
@@ -100,6 +102,8 @@ public partial class CustomerAccountStatementControl : UserControl
             RunningBalance = l.RunningBalance
         }));
 
+        _openingBalance = dto.OpeningBalance;
+        _closingBalance = dto.ClosingBalance;
         TxtOpeningBalance.Text = $"{dto.OpeningBalance:N2} $";
         TxtClosingBalance.Text = $"{dto.ClosingBalance:N2} $";
         TxtTotalDebit.Text = $"{_allLines.Sum(x => x.Debit):N2} $";
@@ -134,14 +138,27 @@ public partial class CustomerAccountStatementControl : UserControl
     private void BtnReceipt_Click(object sender, RoutedEventArgs e) =>
         MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
 
-    private void BtnPrint_Click(object sender, RoutedEventArgs e) =>
-        MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "طباعة");
+    private void BtnPrint_Click(object sender, RoutedEventArgs e) => ShowStatement(false);
 
-    private void BtnPdf_Click(object sender, RoutedEventArgs e) =>
-        MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "PDF");
+    private void BtnPdf_Click(object sender, RoutedEventArgs e) => ShowStatement(true);
+
+    private void ShowStatement(bool exportPdf)
+    {
+        if (_customerId is null)
+        {
+            MockInteractionService.ShowWarning("اختر عميلاً أولاً.", "كشف حساب");
+            return;
+        }
+
+        var lines = _allLines.Select(l => new ERPSystem.Services.Documents.StatementLine(
+            l.EntryDate, l.DocumentNumber, l.DocumentTypeDisplay, l.Debit, l.Credit, l.RunningBalance)).ToList();
+
+        ERPSystem.Services.Documents.StatementDocumentService.ShowStatementPreview(
+            _customerName, "عميل", DpFrom.SelectedDate, DpTo.SelectedDate, _openingBalance, _closingBalance, lines, exportPdf);
+    }
 
     private void BtnExcel_Click(object sender, RoutedEventArgs e) =>
-        MockInteractionService.ShowDocumentPreview(TxtTableTitle.Text, "Excel");
+        ERPSystem.Services.Documents.ListExportService.ExportGrid(LinesGrid, $"كشف حساب - {_customerName}");
 
     private void DocumentNumber_Click(object sender, MouseButtonEventArgs e)
     {

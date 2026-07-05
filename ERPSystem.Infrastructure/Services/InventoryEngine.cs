@@ -1,6 +1,6 @@
-using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Domain.Entities.Purchasing;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Domain.Exceptions;
@@ -13,7 +13,8 @@ namespace ERPSystem.Infrastructure.Services;
 
 internal sealed class InventoryEngine(
     ErpDbContext context,
-    IIntegratedAccountingService accountingService) : IInventoryEngine
+    IIntegratedAccountingService accountingService,
+    INumberingService numberingService) : IInventoryEngine
 {
     public async Task PostContainerImportAsync(
         Guid warehouseId,
@@ -345,6 +346,78 @@ internal sealed class InventoryEngine(
             movementLines, now, cancellationToken);
     }
 
+    public async Task ReversePurchaseInvoiceAsync(
+        PurchaseInvoice invoice,
+        CancellationToken cancellationToken = default)
+    {
+        if (!invoice.WarehouseId.HasValue)
+            return;
+
+        var warehouseId = invoice.WarehouseId.Value;
+        var lotCode = $"PINV-{invoice.InvoiceNumber}";
+        var now = DateTime.UtcNow;
+        var movementId = Guid.NewGuid();
+        var movementLines = new List<StockMovementLineEntity>();
+
+        foreach (var line in invoice.Items.Where(l => l.LineType == PurchaseLineType.Inventory))
+        {
+            if (line.FabricItemId is not Guid fabricItemId || line.Quantity.Value <= 0)
+                continue;
+
+            var colorId = line.FabricColorId ?? await ResolveDefaultColorIdAsync(fabricItemId, cancellationToken);
+            var rolls = await context.FabricRolls
+                .Where(r => r.LotCode == lotCode &&
+                            r.FabricItemId == fabricItemId &&
+                            r.FabricColorId == colorId &&
+                            r.RemainingLengthMeters > 0)
+                .OrderByDescending(r => r.RemainingLengthMeters)
+                .ToListAsync(cancellationToken);
+
+            var remaining = line.Quantity.Value;
+            foreach (var roll in rolls)
+            {
+                if (remaining <= 0) break;
+                var deduct = Math.Min(remaining, roll.RemainingLengthMeters);
+                roll.RemainingLengthMeters -= deduct;
+                if (roll.RemainingLengthMeters <= 0)
+                    roll.Status = (int)FabricRollStatus.Wasted;
+                remaining -= deduct;
+            }
+
+            var stock = await context.WarehouseStocks.FirstOrDefaultAsync(
+                s => s.WarehouseId == warehouseId &&
+                     s.FabricItemId == fabricItemId &&
+                     s.FabricColorId == colorId &&
+                     s.ContainerId == Guid.Empty, cancellationToken);
+            if (stock is not null)
+            {
+                stock.AvailableMeters = Math.Max(0, stock.AvailableMeters - line.Quantity.Value);
+                stock.TotalMeters = Math.Max(0, stock.TotalMeters - line.Quantity.Value);
+                stock.UpdatedAt = now;
+            }
+
+            movementLines.Add(new StockMovementLineEntity
+            {
+                Id = Guid.NewGuid(),
+                MovementId = movementId,
+                FabricItemId = fabricItemId,
+                FabricColorId = colorId,
+                QuantityMeters = -line.Quantity.Value,
+                UnitCost = line.UnitPrice.Amount,
+                TotalValue = -line.Quantity.Value * line.UnitPrice.Amount,
+                CurrencyCode = invoice.CurrencyCode,
+                CreatedAt = now
+            });
+        }
+
+        if (movementLines.Count == 0)
+            return;
+
+        await PostMovementAsync(movementId, $"PINVREV-{invoice.InvoiceNumber}-{now:yyyyMMddHHmmss}",
+            MovementType.PurchaseReturn, warehouseId, DocumentType.PurchaseInvoiceReversal, invoice.Id,
+            movementLines, now, cancellationToken);
+    }
+
     public async Task ReserveForInvoiceAsync(
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default)
@@ -657,7 +730,17 @@ internal sealed class InventoryEngine(
             ?? throw new ValidationException("Opening stock document not found.");
 
         if (doc.Status == (int)InventoryDocumentStatus.Posted)
-            throw new ValidationException("Opening stock already posted.");
+        {
+            var existingMovementId = await context.StockMovements.AsNoTracking()
+                .Where(m => m.ReferenceType == (int)DocumentType.OpeningBalance &&
+                            m.ReferenceId == documentId &&
+                            m.Type == (int)MovementType.OpeningBalance &&
+                            m.Status == (int)StockMovementStatus.Posted)
+                .Select(m => m.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (existingMovementId != Guid.Empty)
+                return existingMovementId;
+        }
 
         var lines = await context.OpeningStockLines
             .Where(l => l.DocumentId == documentId)
@@ -727,6 +810,84 @@ internal sealed class InventoryEngine(
         doc.PostedAt = now;
         await RecordValuationSnapshotAsync(doc.WarehouseId, movementId, ValuationMethod.AverageCost, cancellationToken);
         return movementId;
+    }
+
+    public async Task<IReadOnlyList<Guid>> PostFinanceOpeningBalanceStockAsync(
+        Guid openingBalanceDocumentId,
+        CancellationToken cancellationToken = default)
+    {
+        var obDoc = await context.OpeningBalanceDocuments.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == openingBalanceDocumentId, cancellationToken)
+            ?? throw new ValidationException("Opening balance document not found.");
+
+        if (obDoc.Type != (int)OpeningBalanceType.OpeningStock)
+            throw new ValidationException("Document is not an opening stock balance.");
+
+        var obLines = await context.OpeningBalanceLines.AsNoTracking()
+            .Where(l => l.DocumentId == openingBalanceDocumentId)
+            .OrderBy(l => l.LineNumber)
+            .ToListAsync(cancellationToken);
+        if (obLines.Count == 0)
+            throw new ValidationException("Opening balance has no stock lines.");
+
+        var movementIds = new List<Guid>();
+        foreach (var warehouseGroup in obLines.GroupBy(l => l.WarehouseId ?? Guid.Empty))
+        {
+            if (warehouseGroup.Key == Guid.Empty)
+                throw new ValidationException("Warehouse is required on every opening stock line.");
+
+            var warehouseId = warehouseGroup.Key;
+            var stockRef = $"OB-FIN-{openingBalanceDocumentId:N}-{warehouseId:N}";
+            var stockDoc = await context.OpeningStockDocuments
+                .FirstOrDefaultAsync(d => d.Reference == stockRef, cancellationToken);
+
+            if (stockDoc is null)
+            {
+                var stockDocId = Guid.NewGuid();
+                var stockNumber = await numberingService.NextOpeningStockNumberAsync(obDoc.BranchId, cancellationToken);
+                await context.OpeningStockDocuments.AddAsync(new OpeningStockDocumentEntity
+                {
+                    Id = stockDocId,
+                    DocumentNumber = stockNumber,
+                    WarehouseId = warehouseId,
+                    OpeningDate = obDoc.OpeningDate,
+                    Reference = stockRef,
+                    CurrencyCode = obDoc.CurrencyCode,
+                    Status = (int)InventoryDocumentStatus.Draft,
+                    Notes = $"من رصيد افتتاحي {obDoc.Number}",
+                    CreatedAt = DateTime.UtcNow
+                }, cancellationToken);
+
+                foreach (var line in warehouseGroup)
+                {
+                    var (fabricItemId, fabricColorId) = await ResolveFabricByNameAsync(
+                        obDoc.CompanyId, line.ItemName, line.ColorName, cancellationToken);
+                    var qty = line.Quantity ?? 0;
+                    var unitCost = line.UnitCost ?? (qty > 0 ? line.Debit / qty : 0);
+                    var rolls = Math.Max(1, (int)(line.RollCount ?? 1));
+
+                    await context.OpeningStockLines.AddAsync(new OpeningStockLineEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        DocumentId = stockDocId,
+                        FabricItemId = fabricItemId,
+                        FabricColorId = fabricColorId,
+                        QuantityMeters = qty,
+                        RollCount = rolls,
+                        UnitCost = unitCost,
+                        TotalValue = qty * unitCost,
+                        CreatedAt = DateTime.UtcNow
+                    }, cancellationToken);
+                }
+
+                stockDoc = await context.OpeningStockDocuments
+                    .FirstAsync(d => d.Id == stockDocId, cancellationToken);
+            }
+
+            movementIds.Add(await PostOpeningStockAsync(stockDoc.Id, cancellationToken));
+        }
+
+        return movementIds;
     }
 
     public async Task<Guid> CompleteTransferAsync(Guid transferId, CancellationToken cancellationToken = default)
@@ -985,6 +1146,41 @@ internal sealed class InventoryEngine(
         if (color is null)
             throw new ValidationException("Fabric color is required for inventory lines.");
         return color.Id;
+    }
+
+    private async Task<(Guid FabricItemId, Guid FabricColorId)> ResolveFabricByNameAsync(
+        Guid companyId,
+        string? itemName,
+        string? colorName,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(itemName))
+            throw new ValidationException("Fabric item name is required.");
+
+        var items = await context.FabricItems.AsNoTracking()
+            .Where(i => i.CompanyId == companyId)
+            .ToListAsync(cancellationToken);
+
+        var item = items.FirstOrDefault(i =>
+            i.NameAr.Equals(itemName, StringComparison.OrdinalIgnoreCase) ||
+            i.NameEn.Equals(itemName, StringComparison.OrdinalIgnoreCase) ||
+            i.Code.Equals(itemName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ValidationException($"Fabric item not found: {itemName}");
+
+        if (!string.IsNullOrWhiteSpace(colorName))
+        {
+            var colors = await context.FabricColors.AsNoTracking()
+                .Where(c => c.FabricItemId == item.Id)
+                .ToListAsync(cancellationToken);
+            var color = colors.FirstOrDefault(c =>
+                c.NameAr.Equals(colorName, StringComparison.OrdinalIgnoreCase) ||
+                c.NameEn.Equals(colorName, StringComparison.OrdinalIgnoreCase) ||
+                c.Code.Equals(colorName, StringComparison.OrdinalIgnoreCase));
+            if (color is not null)
+                return (item.Id, color.Id);
+        }
+
+        return (item.Id, await ResolveDefaultColorIdAsync(item.Id, cancellationToken));
     }
 
     private static decimal CalculateContainerCostPerMeter(ContainerAggregate container)

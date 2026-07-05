@@ -1,0 +1,112 @@
+/* ============================================================================
+   layout.css  —  Page shell, document grid, header / body / footer regions
+   ============================================================================ */
+
+/* The scrollable canvas that hosts one or more printable pages */
+.doc-canvas {
+  padding: var(--page-gap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--page-gap);
+  min-height: 100vh;
+}
+
+/* A single A4 page / sheet */
+.doc-page {
+  position: relative;
+  width: var(--page-width);
+  min-height: var(--page-height);
+  max-width: 100%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Inner padded region that respects print margins */
+.doc-page__inner {
+  position: relative;
+  z-index: var(--z-content);
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: var(--page-margin);
+  gap: var(--space-5);
+}
+
+/* Region roles */
+.doc-header {
+  flex: 0 0 auto;
+}
+
+.doc-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.doc-footer {
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: var(--border);
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* ---- Generic flex / grid helpers used by components --------------------- */
+.doc-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.doc-row--between {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.doc-col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.doc-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.doc-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.doc-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.doc-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* A titled section band */
+.doc-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.doc-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-primary);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--color-primary-soft);
+}
+
+.doc-section__title::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-secondary);
+}

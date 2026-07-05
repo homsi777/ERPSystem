@@ -3,6 +3,7 @@ using ERPSystem.Controls.Accounting;
 using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Services.Finance;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -17,11 +18,23 @@ namespace ERPSystem.Views.Finance
             "Payments" => Wrap(new PaymentVoucherPageControl()),
             "Cashboxes" => new CashboxListPageControl(),
             "Transfers" => new CashboxTransferListPageControl(),
-            "Receivables" => DevelopmentPage("الذمم المدينة"),
-            "Payables" => DevelopmentPage("الذمم الدائنة"),
+            "Receivables" => Wrap(new ReceivablesAgingControl()),
+            "Payables" => Wrap(new PayablesAgingControl()),
             "TrialBalance" => DevelopmentPage("ميزان المراجعة"),
+            "OpeningBalances" => Wrap(new OpeningBalanceListPageControl()),
+            "OpeningBalanceDashboard" => Wrap(new OpeningBalanceDashboardControl()),
+            "OpeningBalanceWorkspace" => CreateOpeningBalanceWorkspace(),
             _ => Wrap(new JournalEntryListPageControl())
         };
+
+        private static UserControl CreateOpeningBalanceWorkspace()
+        {
+            var (id, tab) = OpeningBalanceNavigationContext.TakeWorkspaceContext();
+            var ctrl = new OpeningBalanceOperationsCenterControl();
+            if (id is Guid documentId)
+                ctrl.Initialize(documentId, tab);
+            return Wrap(ctrl);
+        }
 
         private static UserControl DevelopmentPage(string title)
         {

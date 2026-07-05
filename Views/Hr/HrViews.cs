@@ -1,4 +1,5 @@
 using ERPSystem.Controls;
+using ERPSystem.Controls.Hr;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Helpers;
@@ -14,7 +15,7 @@ namespace ERPSystem.Views.Hr
     {
         public static UserControl Create(string key) => key switch
         {
-            "Departments" => DevelopmentTab("الأقسام"),
+            "Departments" => new UserControl { Content = new DepartmentListPageControl() },
             "Attendance" => DevelopmentTab("الحضور والانصراف"),
             "Leaves" => DevelopmentTab("الإجازات"),
             "Shifts" => DevelopmentTab("الورديات"),
@@ -22,20 +23,8 @@ namespace ERPSystem.Views.Hr
             "Payroll" => DevelopmentTab("الرواتب"),
             "Advances" => DevelopmentTab("السلف والخصومات"),
             "Reports" => ModuleReportsViews.CreateHub(AppModule.HR),
-            _ => EmployeeList()
+            _ => new UserControl { Content = new EmployeeListPageControl() }
         };
-
-        private static UserControl EmployeeList()
-        {
-            var page = new ErpListModuleControl();
-            page.Configure(EntityType.Employee, AppModule.HR);
-            page.SetHeader("الموظفون", "الموارد البشرية", "\uE716", B("AccentCustomersBrush"));
-            page.SetPrimaryButton("إضافة موظف");
-            page.SetEmptyState("لا يوجد موظفون مضافون بعد", "إضافة موظف", "\uE716");
-            page.PrimaryActionRequested += (_, _) => MockInteractionService.ShowComingSoon("إضافة موظف");
-            page.BindData([]);
-            return page;
-        }
 
         private static UserControl DevelopmentTab(string title)
         {
@@ -46,7 +35,5 @@ namespace ERPSystem.Views.Hr
             root.Content = stack;
             return new UserControl { Content = root };
         }
-
-        private static SolidColorBrush B(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
     }
 }

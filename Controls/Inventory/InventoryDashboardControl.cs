@@ -14,6 +14,14 @@ public sealed class InventoryDashboardControl : UserControl
     {
         Content = new TextBlock { Text = "جاري التحميل...", Margin = new Thickness(24) };
         Loaded += async (_, _) => await LoadAsync();
+        Loaded += (_, _) => ErpDataRefreshHub.DataChanged += OnDataChanged;
+        Unloaded += (_, _) => ErpDataRefreshHub.DataChanged -= OnDataChanged;
+    }
+
+    private void OnDataChanged(ErpDataRefreshScope scope)
+    {
+        if ((scope & (ErpDataRefreshScope.Inventory | ErpDataRefreshScope.Dashboard)) == 0) return;
+        _ = LoadAsync();
     }
 
     private async Task LoadAsync()
