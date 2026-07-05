@@ -16,12 +16,15 @@
     <Compile Remove="ERPSystem.Domain/**" />
     <Compile Remove="ERPSystem.Infrastructure/**" />
     <Compile Remove="ERPSystem.DocumentEngine/**" />
+    <Compile Remove="ERPSystem.Api/**" />
+    <Compile Remove="ERPSystem.Web/**" />
     <Compile Remove="tools/**" />
     <None Remove="ERPSystem.Application/**" />
     <None Remove="ERPSystem.Domain/**" />
     <None Remove="ERPSystem.Infrastructure/**" />
     <None Remove="ERPSystem.DocumentEngine/**" />
-    <None Remove="tools/**" />
+    <None Remove="ERPSystem.Api/**" />
+    <None Remove="ERPSystem.Web/**" />
   </ItemGroup>
 
   <ItemGroup>
