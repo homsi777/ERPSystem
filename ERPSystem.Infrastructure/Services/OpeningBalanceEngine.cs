@@ -54,6 +54,9 @@ internal sealed class OpeningBalanceEngine(
         if (command.ExchangeRate <= 0)
             errors.Add(new() { RowNumber = 0, Field = "ExchangeRate", Message = "سعر الصرف يجب أن يكون أكبر من صفر." });
 
+        if (string.IsNullOrWhiteSpace(command.CurrencyCode) || command.CurrencyCode.Trim().Length != 3)
+            errors.Add(new() { RowNumber = 0, Field = "Currency", Message = "رمز العملة غير صالح (3 أحرف)." });
+
         var row = 0;
         foreach (var input in command.Lines)
         {
@@ -748,8 +751,12 @@ internal sealed class OpeningBalanceEngine(
             case OpeningBalanceType.CustomerReceivable:
                 if (string.IsNullOrWhiteSpace(input.PartyName) && input.PartyId is null)
                     errors.Add(new() { RowNumber = row, Field = "Customer", Message = "العميل مطلوب." });
+                if (input.Debit < 0 || input.Credit < 0)
+                    errors.Add(new() { RowNumber = row, Field = "Amount", Message = "لا يُسمح بقيم سالبة." });
                 if (input.Debit <= 0 && input.Credit <= 0)
                     errors.Add(new() { RowNumber = row, Field = "Amount", Message = "المبلغ يجب أن يكون أكبر من صفر." });
+                if (input.Debit > 0 && input.Credit > 0)
+                    errors.Add(new() { RowNumber = row, Field = "Amount", Message = "أدخل مديناً أو دائناً — وليس كليهما." });
                 break;
 
             case OpeningBalanceType.SupplierPayable:
@@ -792,7 +799,7 @@ internal sealed class OpeningBalanceEngine(
                 c.Name.Equals(input.PartyName, StringComparison.OrdinalIgnoreCase) ||
                 c.Code.Equals(input.PartyName, StringComparison.OrdinalIgnoreCase));
             if (!found)
-                errors.Add(new() { RowNumber = row, Field = "Customer", Message = $"العميل غير موجود: {input.PartyName}" });
+                errors.Add(new() { RowNumber = row, Field = "CustomerCode", Message = $"كود/اسم العميل غير معروف: {input.PartyName}" });
         }
     }
 

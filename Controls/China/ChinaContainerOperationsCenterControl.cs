@@ -142,7 +142,7 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
             [
                 Tab("Overview", "نظرة عامة", OverviewTab(c, cost)),
                 Tab("Items", "أصناف الحاوية", ItemsTab(c)),
-                Tab("LandingCost", "Landing Cost", LandingCostTab(cost)),
+                Tab("LandingCost", "Landing Cost", LandingCostTab(cost, data)),
                 Tab("Timeline", "الخط الزمني", TimelineTab(audit)),
             ],
             QuickActions = BuildQuickActions(data, row),
@@ -171,6 +171,9 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
 
         if (data.CanApprove)
             actions.Add(Q("اعتماد الحاوية", false, null, actionKey: "china:Approve"));
+
+        if (data.CanSetSalePrices)
+            actions.Add(Q("أسعار البيع", false, null, actionKey: "china:SalePrice"));
 
         if (data.CanMoveToWarehouse)
             actions.Add(Q("تحويل للمخزن", false, null, actionKey: "china:MoveToWarehouse"));
@@ -218,12 +221,13 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         return ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows));
     }
 
-    private static UIElement LandingCostTab(LandingCostDto? cost)
+    private static UIElement LandingCostTab(LandingCostDto? cost, ContainerOperationsCenterDto? ops = null)
     {
         if (cost is null)
             return ErpUxFactory.InfoBanner("لم تُحسب تكاليف الوصول بعد.", "warning");
 
-        return ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
+        var stack = new StackPanel();
+        stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("إجمالي الطول", ErpUiFactory.FormField($"{cost.TotalLengthMeters:N0} م")),
             ("وزن الحاوية", ErpUiFactory.FormField($"{cost.ContainerWeightKg:N0} كغ")),
             ("الجمارك", ErpUiFactory.FormField($"{cost.CustomsAmount:N0}")),
@@ -233,7 +237,18 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
             ("مصاريف أخرى", ErpUiFactory.FormField($"{cost.OtherExpenses:N0}")),
             ("إجمالي المصاريف", ErpUiFactory.FormField($"{cost.TotalImportExpenses:N0}")),
             ("تكلفة المصاريف/م", ErpUiFactory.FormField($"{cost.ExpenseCostPerMeter:N4}")),
-            ("متوسط غرام/م", ErpUiFactory.FormField($"{cost.AvgGramPerMeter:N2}"))));
+            ("متوسط غرام/م", ErpUiFactory.FormField($"{cost.AvgGramPerMeter:N2}")))));
+
+        if (ops is { CanApprove: true } or { CanSetSalePrices: true })
+        {
+            stack.Children.Add(ErpUxFactory.InfoBanner(
+                ops.CanApprove
+                    ? "الحاوية جاهزة للاعتماد. استخدم الإجراء السريع «اعتماد الحاوية» أو افتح شاشة الاعتماد الكاملة من القائمة."
+                    : "أدخل أسعار البيع لكل نوع قماش قبل الاعتماد.",
+                ops.CanApprove ? "success" : "warning"));
+        }
+
+        return stack;
     }
 
     private static UIElement TimelineTab(IReadOnlyList<AuditLog> audit)

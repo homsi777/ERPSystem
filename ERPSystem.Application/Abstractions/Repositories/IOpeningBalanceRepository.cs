@@ -43,6 +43,11 @@ public interface IOpeningBalanceRepository
     Task<IReadOnlyList<OpeningBalanceJournalLineDto>> GetJournalLinesAsync(
         Guid documentId,
         CancellationToken cancellationToken = default);
+
+    Task<CustomerOpeningBalanceSummaryDto> GetSummaryAsync(
+        Guid companyId,
+        OpeningBalanceListFilter filter,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

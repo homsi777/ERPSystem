@@ -9,7 +9,17 @@ public sealed class OpeningBalanceListFilter
     public string? Search { get; init; }
     public DateTime? From { get; init; }
     public DateTime? To { get; init; }
+    public Guid? PartyId { get; init; }
+    public string? PartySearch { get; init; }
+    public decimal? AmountFrom { get; init; }
+    public decimal? AmountTo { get; init; }
     public bool IncludeArchived { get; init; }
+}
+
+public sealed class GetCustomerOpeningBalanceSummaryQuery
+{
+    public Guid CompanyId { get; init; }
+    public OpeningBalanceListFilter Filter { get; init; } = new();
 }
 
 public sealed class GetOpeningBalanceListQuery

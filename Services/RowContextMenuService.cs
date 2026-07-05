@@ -199,6 +199,9 @@ namespace ERPSystem.Services
             if (CashboxActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                 return;
 
+            if (ChinaContainerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
+                return;
+
             WorkspaceWindowManager.Instance.OpenAction(
                 captured.Id, entityType, entity, sourceModule);
         }

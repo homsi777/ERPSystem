@@ -72,7 +72,7 @@ public sealed class ContainerListPageControl : UserControl
 {
     private readonly ErpListModuleControl _page = new();
     private readonly ComboBox _statusFilter = ErpUiFactory.FilterCombo(
-        ["الكل", "بالطريق", "واصلة", "قيد المراجعة", "معتمدة", "مغلقة", "مؤرشفة"], 130);
+        ["الكل", "بالطريق", "واصلة", "قيد المراجعة", "مراجعة التكلفة", "معتمدة", "في المخزن", "مغلقة", "مؤرشفة"], 130);
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private string _pendingSearch = "";
     private int _totalCount;

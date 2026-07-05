@@ -44,7 +44,11 @@ namespace ERPSystem.Controls.Workspace
             var specialized = EntityWorkspaceContentFactory.TryBuild(_request);
             if (specialized != null)
             {
-                if (UsesOperationsCenterChrome(_request))
+                if (UsesOperationsCenterChrome(_request)
+                    || _request.ActionId is EntityActionId.ContainerApprove
+                        or EntityActionId.ContainerCosts
+                        or EntityActionId.ContainerDistribution
+                        or EntityActionId.ContainerStocktake)
                     ApplyOperationsCenterLayout();
                 ContentPanel.Children.Add(specialized);
                 return;

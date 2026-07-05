@@ -234,3 +234,28 @@ public sealed class GetOpeningBalanceLookupsHandler(IOpeningBalanceLookupService
         ApplicationResult<OpeningBalanceLookupsDto>.Success(
             await lookups.GetLookupsAsync(query.CompanyId, cancellationToken));
 }
+
+public sealed class GetCustomerOpeningBalanceSummaryHandler(IOpeningBalanceRepository repository)
+    : IQueryHandler<GetCustomerOpeningBalanceSummaryQuery, ApplicationResult<CustomerOpeningBalanceSummaryDto>>
+{
+    public async Task<ApplicationResult<CustomerOpeningBalanceSummaryDto>> HandleAsync(
+        GetCustomerOpeningBalanceSummaryQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = new OpeningBalanceListFilter
+        {
+            Type = OpeningBalanceType.CustomerReceivable,
+            Status = query.Filter.Status,
+            Search = query.Filter.Search,
+            From = query.Filter.From,
+            To = query.Filter.To,
+            PartyId = query.Filter.PartyId,
+            PartySearch = query.Filter.PartySearch,
+            AmountFrom = query.Filter.AmountFrom,
+            AmountTo = query.Filter.AmountTo,
+            IncludeArchived = query.Filter.IncludeArchived
+        };
+        var summary = await repository.GetSummaryAsync(query.CompanyId, filter, cancellationToken);
+        return ApplicationResult<CustomerOpeningBalanceSummaryDto>.Success(summary);
+    }
+}

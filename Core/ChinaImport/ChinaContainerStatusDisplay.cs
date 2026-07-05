@@ -24,7 +24,9 @@ public static class ChinaContainerStatusDisplay
         "بالطريق" => ChinaContainerStatus.InTransit,
         "واصلة" => ChinaContainerStatus.Arrived,
         "قيد المراجعة" => ChinaContainerStatus.UnderReview,
+        "مراجعة التكلفة" => ChinaContainerStatus.LandingCostReviewed,
         "معتمدة" => ChinaContainerStatus.Approved,
+        "في المخزن" => ChinaContainerStatus.InWarehouse,
         "مغلقة" => ChinaContainerStatus.Closed,
         "مؤرشفة" => ChinaContainerStatus.Archived,
         _ => null

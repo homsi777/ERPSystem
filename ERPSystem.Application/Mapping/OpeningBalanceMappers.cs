@@ -29,8 +29,20 @@ public static class OpeningBalanceMappers
         JournalEntryNumber = doc.JournalEntryNumber,
         CreatedAt = doc.CreatedAt,
         UpdatedAt = doc.UpdatedAt,
-        PostedAt = doc.PostedAt
+        PostedAt = doc.PostedAt,
+        PrimaryPartyDisplay = FormatPrimaryParty(doc),
+        DisplayNotes = doc.Notes ?? doc.Lines.FirstOrDefault()?.Notes ?? doc.Description
     };
+
+    private static string FormatPrimaryParty(OpeningBalanceDocument doc)
+    {
+        if (doc.Lines.Count == 0)
+            return "—";
+        if (doc.Lines.Count == 1)
+            return doc.Lines[0].PartyName ?? "—";
+        var first = doc.Lines[0].PartyName ?? "—";
+        return $"{first} (+{doc.Lines.Count - 1})";
+    }
 
     public static OpeningBalanceLineDto ToLineDto(OpeningBalanceLine line) => new()
     {

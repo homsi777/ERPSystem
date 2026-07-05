@@ -81,10 +81,11 @@ public static class OpeningBalanceExcelParser
             },
             OpeningBalanceType.CustomerReceivable => new OpeningBalanceLineInput
             {
-                PartyName = G("Customer"),
-                Reference = G("Reference"),
-                Debit = D("OpeningAmount"),
-                Description = G("Description"),
+                PartyName = ResolveCustomerKey(headers, row),
+                Reference = FirstNonEmpty(G("Reference"), G("Ref")),
+                Debit = ResolveCustomerDebit(headers, row),
+                Credit = ResolveCustomerCredit(headers, row),
+                Description = FirstNonEmpty(G("Description"), G("Notes")),
                 Notes = G("Notes")
             },
             OpeningBalanceType.SupplierPayable => new OpeningBalanceLineInput
@@ -139,12 +140,48 @@ public static class OpeningBalanceExcelParser
         return idx < 0 ? "" : row.Cell(idx + 1).GetString().Trim();
     }
 
+    private static string ResolveCustomerKey(IReadOnlyList<string> headers, IXLRow row)
+    {
+        string G(string name) => GetCell(headers, row, name);
+        var code = G("CustomerCode");
+        if (!string.IsNullOrWhiteSpace(code))
+            return code;
+        var legacy = G("Customer");
+        if (!string.IsNullOrWhiteSpace(legacy))
+            return legacy;
+        return G("CustomerName");
+    }
+
+    private static decimal ResolveCustomerDebit(IReadOnlyList<string> headers, IXLRow row)
+    {
+        string G(string name) => GetCell(headers, row, name);
+        decimal D(string name) => decimal.TryParse(G(name), out var v) ? v : 0m;
+        var debit = D("Debit");
+        return debit > 0 ? debit : D("OpeningAmount");
+    }
+
+    private static decimal ResolveCustomerCredit(IReadOnlyList<string> headers, IXLRow row)
+    {
+        string G(string name) => GetCell(headers, row, name);
+        return decimal.TryParse(G("Credit"), out var v) ? v : 0m;
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        foreach (var v in values)
+        {
+            if (!string.IsNullOrWhiteSpace(v))
+                return v;
+        }
+        return "";
+    }
+
     public static IReadOnlyList<string> ExpectedHeaders(OpeningBalanceType type) => type switch
     {
         OpeningBalanceType.OpeningStock =>
             ["Warehouse", "Fabric", "Color", "Batch", "RollCount", "Meters", "Cost", "Location", "Notes"],
         OpeningBalanceType.CustomerReceivable =>
-            ["Customer", "Reference", "OpeningAmount", "Currency", "OpeningDate", "Description", "Notes"],
+            ["CustomerCode", "CustomerName", "Debit", "Credit", "Currency", "Reference", "Notes"],
         OpeningBalanceType.SupplierPayable =>
             ["Supplier", "Amount", "Currency", "Reference", "Description", "Notes"],
         OpeningBalanceType.Cash =>

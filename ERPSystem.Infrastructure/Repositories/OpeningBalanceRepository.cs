@@ -1,4 +1,5 @@
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Domain.Entities.Finance;
@@ -58,17 +59,38 @@ internal sealed class OpeningBalanceRepository(ErpDbContext context) : IOpeningB
         if (!filter.IncludeArchived)
             query = query.Where(d => d.Status != (int)OpeningBalanceStatus.Archived);
         if (filter.From is { } from)
-            query = query.Where(d => d.OpeningDate >= from);
+            query = query.Where(d => d.OpeningDate >= ApplicationDateNormalizer.ToUtcDate(from));
         if (filter.To is { } to)
-            query = query.Where(d => d.OpeningDate <= to);
+        {
+            var toExclusive = ApplicationDateNormalizer.ToUtcDate(to).AddDays(1);
+            query = query.Where(d => d.OpeningDate < toExclusive);
+        }
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             var s = filter.Search.Trim();
             query = query.Where(d =>
                 EF.Functions.ILike(d.Number, $"%{s}%") ||
                 (d.Reference != null && EF.Functions.ILike(d.Reference, $"%{s}%")) ||
-                (d.Description != null && EF.Functions.ILike(d.Description, $"%{s}%")));
+                (d.Description != null && EF.Functions.ILike(d.Description, $"%{s}%")) ||
+                (d.Notes != null && EF.Functions.ILike(d.Notes, $"%{s}%")) ||
+                d.Lines.Any(l => l.PartyName != null && EF.Functions.ILike(l.PartyName, $"%{s}%")));
         }
+
+        if (filter.PartyId is Guid partyId)
+            query = query.Where(d => d.Lines.Any(l => l.PartyId == partyId));
+
+        if (!string.IsNullOrWhiteSpace(filter.PartySearch))
+        {
+            var ps = filter.PartySearch.Trim();
+            query = query.Where(d => d.Lines.Any(l =>
+                l.PartyName != null && EF.Functions.ILike(l.PartyName, $"%{ps}%")));
+        }
+
+        if (filter.AmountFrom is decimal amountFrom)
+            query = query.Where(d => d.TotalBaseAmount >= amountFrom);
+
+        if (filter.AmountTo is decimal amountTo)
+            query = query.Where(d => d.TotalBaseAmount <= amountTo);
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query
@@ -178,5 +200,74 @@ internal sealed class OpeningBalanceRepository(ErpDbContext context) : IOpeningB
                 Credit = l.Credit,
                 Narrative = l.Narrative
             }).ToListAsync(cancellationToken);
+    }
+
+    public async Task<CustomerOpeningBalanceSummaryDto> GetSummaryAsync(
+        Guid companyId,
+        OpeningBalanceListFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.OpeningBalanceDocuments.AsNoTracking()
+            .Where(d => d.CompanyId == companyId);
+
+        if (filter.Type is { } type)
+            query = query.Where(d => d.Type == (int)type);
+        if (filter.Status is { } status)
+            query = query.Where(d => d.Status == (int)status);
+        if (!filter.IncludeArchived)
+            query = query.Where(d => d.Status != (int)OpeningBalanceStatus.Archived);
+        if (filter.From is { } from)
+            query = query.Where(d => d.OpeningDate >= ApplicationDateNormalizer.ToUtcDate(from));
+        if (filter.To is { } to)
+        {
+            var toExclusive = ApplicationDateNormalizer.ToUtcDate(to).AddDays(1);
+            query = query.Where(d => d.OpeningDate < toExclusive);
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var s = filter.Search.Trim();
+            query = query.Where(d =>
+                EF.Functions.ILike(d.Number, $"%{s}%") ||
+                (d.Reference != null && EF.Functions.ILike(d.Reference, $"%{s}%")) ||
+                (d.Description != null && EF.Functions.ILike(d.Description, $"%{s}%")) ||
+                (d.Notes != null && EF.Functions.ILike(d.Notes, $"%{s}%")) ||
+                context.OpeningBalanceLines.Any(l =>
+                    l.DocumentId == d.Id &&
+                    l.PartyName != null &&
+                    EF.Functions.ILike(l.PartyName, $"%{s}%")));
+        }
+
+        if (filter.PartyId is Guid partyId)
+            query = query.Where(d => context.OpeningBalanceLines.Any(l =>
+                l.DocumentId == d.Id && l.PartyId == partyId));
+
+        if (!string.IsNullOrWhiteSpace(filter.PartySearch))
+        {
+            var ps = filter.PartySearch.Trim();
+            query = query.Where(d => context.OpeningBalanceLines.Any(l =>
+                l.DocumentId == d.Id &&
+                l.PartyName != null &&
+                EF.Functions.ILike(l.PartyName, $"%{ps}%")));
+        }
+
+        if (filter.AmountFrom is decimal amountFrom)
+            query = query.Where(d => d.TotalBaseAmount >= amountFrom);
+        if (filter.AmountTo is decimal amountTo)
+            query = query.Where(d => d.TotalBaseAmount <= amountTo);
+
+        var docs = await query.ToListAsync(cancellationToken);
+        return new CustomerOpeningBalanceSummaryDto
+        {
+            TotalCount = docs.Count,
+            TotalDebit = docs.Sum(d => d.TotalDebit),
+            TotalCredit = docs.Sum(d => d.TotalCredit),
+            NetBalance = docs.Sum(d => d.TotalDebit - d.TotalCredit),
+            PendingApprovalCount = docs.Count(d =>
+                d.Status == (int)OpeningBalanceStatus.PendingApproval ||
+                d.Status == (int)OpeningBalanceStatus.Draft),
+            PostedCount = docs.Count(d =>
+                d.Status == (int)OpeningBalanceStatus.Posted ||
+                d.Status == (int)OpeningBalanceStatus.Locked)
+        };
     }
 }

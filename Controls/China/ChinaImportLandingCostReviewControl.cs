@@ -201,9 +201,16 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ChinaContainerStatus.InWarehouse => "معتمدة ✓",
             _ => "اعتماد الحاوية"
         };
-        _approveButton.Visibility = ops.CanApprove || c.Status is ChinaContainerStatus.Approved or ChinaContainerStatus.InWarehouse
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        _approveButton.Visibility = c.Status is ChinaContainerStatus.Archived or ChinaContainerStatus.Cancelled
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        if (!ops.CanApprove && c.Status == ChinaContainerStatus.LandingCostReviewed)
+        {
+            var reason = ResolveApproveBlockedReason(ops, c);
+            if (!string.IsNullOrWhiteSpace(reason))
+                _detailsHost.Children.Add(ErpUxFactory.InfoBanner(reason, "warning"));
+        }
 
         _salePriceButton.Visibility = ops.CanSetSalePrices ? Visibility.Visible : Visibility.Collapsed;
         if (ops.CanSetSalePrices && !ops.CanApprove)
@@ -233,10 +240,13 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
                 return;
 
             MessageBox.Show(
-                "تم اعتماد الحاوية.\nتم تسجيل احتياطي 2% ضريبة مالية (محلي) في سجل الاستيراد.",
+                "تم اعتماد الحاوية بنجاح.",
                 "اعتماد الحاوية",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+
+            ContainerListRefreshHub.RequestRefresh();
+            ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.OperationsCenter);
 
             ChinaImportNavigationContext.SetActiveContainer(_loaded.Container.Id);
             await LoadAsync();
@@ -282,5 +292,30 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
         }
         return g;
+    }
+
+    private static string? ResolveApproveBlockedReason(ContainerOperationsCenterDto ops, ContainerDetailsDto c)
+    {
+        if (c.LandingCost is null)
+            return "لم تُحسب تكاليف الوصول بعد. أكمل إدخال التكلفة أولاً.";
+
+        if (c.Status != ChinaContainerStatus.LandingCostReviewed)
+            return $"الحاوية في حالة «{c.Status.ToArabic()}». الاعتماد متاح فقط عند «مراجعة التكلفة».";
+
+        if (ops.CanSetSalePrices && c.FabricTypeLines.Any(l => l.SalePricePerMeterUsd <= 0))
+        {
+            var missing = c.FabricTypeLines
+                .Where(l => l.SalePricePerMeterUsd <= 0)
+                .Select(l => l.TypeDisplayName)
+                .Take(3)
+                .ToList();
+            var suffix = missing.Count > 0 ? $": {string.Join("، ", missing)}" : "";
+            return $"يجب إدخال سعر البيع لكل نوع قماش قبل الاعتماد{suffix}. استخدم زر «إدخال أسعار البيع».";
+        }
+
+        if (c.Items.Any(i => !i.IsValid))
+            return "توجد بنود غير صالحة في الحاوية. راجع مراجعة الاستيراد وأصلح الأكواد.";
+
+        return "تعذّر تفعيل الاعتماد. تحقق من الصلاحيات أو أعد تحميل الشاشة.";
     }
 }

@@ -37,6 +37,10 @@ public static class ChinaContainerQuickActionRouter
                 ChinaImportNavigationContext.SetActiveContainer(row.Id);
                 ChinaImportNavigation.Navigate("MoveToWarehouse", row.Status);
                 return true;
+            case "china:SalePrice":
+                ChinaImportNavigationContext.SetActiveContainer(row.Id);
+                ChinaImportNavigation.Navigate("SalePrice", row.Status);
+                return true;
             case "nav:ChinaImport:NewImport":
                 ChinaImportNavigation.Navigate("NewImport");
                 return true;
@@ -56,11 +60,19 @@ public static class ChinaContainerQuickActionRouter
         if (!AppServices.IsInitialized)
             return;
 
-        var result = await ContainerUiService.Instance.ApproveContainerAsync(containerId);
-        if (ApplicationResultPresenter.Present(result))
+        try
         {
-            ContainerListRefreshHub.RequestRefresh();
-            MockInteractionService.ShowSuccess("تم اعتماد الحاوية بنجاح.", "اعتماد الحاوية");
+            var result = await ContainerUiService.Instance.ApproveContainerAsync(containerId);
+            if (ApplicationResultPresenter.Present(result))
+            {
+                ContainerListRefreshHub.RequestRefresh();
+                ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.OperationsCenter);
+                MockInteractionService.ShowSuccess("تم اعتماد الحاوية بنجاح.", "اعتماد الحاوية");
+            }
+        }
+        catch (Exception ex)
+        {
+            MockInteractionService.ShowWarning($"تعذّر اعتماد الحاوية.\n\n{ex.Message}", "اعتماد الحاوية");
         }
     }
 
@@ -69,11 +81,19 @@ public static class ChinaContainerQuickActionRouter
         if (!AppServices.IsInitialized)
             return;
 
-        var result = await ContainerUiService.Instance.ArchiveContainerAsync(containerId);
-        if (ApplicationResultPresenter.Present(result))
+        try
         {
-            ContainerListRefreshHub.RequestRefresh();
-            MockInteractionService.ShowSuccess("تم أرشفة الحاوية.", "أرشفة");
+            var result = await ContainerUiService.Instance.ArchiveContainerAsync(containerId);
+            if (ApplicationResultPresenter.Present(result))
+            {
+                ContainerListRefreshHub.RequestRefresh();
+                ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.OperationsCenter);
+                MockInteractionService.ShowSuccess("تم أرشفة الحاوية.", "أرشفة");
+            }
+        }
+        catch (Exception ex)
+        {
+            MockInteractionService.ShowWarning($"تعذّر أرشفة الحاوية.\n\n{ex.Message}", "أرشفة");
         }
     }
 

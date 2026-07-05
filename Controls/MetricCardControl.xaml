@@ -27,7 +27,7 @@
                            Style="{StaticResource CaptionTextStyle}"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource TextSecondaryBrush}"
-                           TextTrimming="CharacterEllipsis"/>
+                           TextWrapping="Wrap"/>
                 <Border Grid.Column="1" x:Name="IconBorder"
                         Width="36" Height="36" CornerRadius="8">
                     <TextBlock x:Name="TxtIcon"

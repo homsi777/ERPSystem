@@ -26,6 +26,7 @@ using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Views.Sales;
 using ERPSystem.Services;
+using ERPSystem.Services.China;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -68,8 +69,14 @@ namespace ERPSystem.Views.OperationsCenters
             if (request.ActionId == EntityActionId.InvoiceDetailLengths)
                 return BuildDetailingPanel(request);
 
-            if (request.ActionId == EntityActionId.ContainerCosts)
-                return BuildContainer(request, "LandingCost");
+            if (request.ActionId is EntityActionId.ContainerApprove or EntityActionId.ContainerCosts)
+                return BuildContainerLandingCostWorkspace(request);
+
+            if (request.ActionId == EntityActionId.ContainerDistribution)
+                return BuildContainerWorkflowWorkspace(request, stocktake: false);
+
+            if (request.ActionId == EntityActionId.ContainerStocktake)
+                return BuildContainerWorkflowWorkspace(request, stocktake: true);
 
             return null;
         }
@@ -156,6 +163,46 @@ namespace ERPSystem.Views.OperationsCenters
                     Margin = new Thickness(24),
                     FontSize = 14
                 }
+            };
+        }
+
+        private static UserControl BuildContainerLandingCostWorkspace(WorkspaceOpenRequest req)
+        {
+            if (req.EntityRow is not ContainerListRow row)
+                return NoEntityContextControl();
+
+            ChinaImportNavigationContext.SetActiveContainer(row.Id);
+            return new UserControl
+            {
+                Content = new ChinaImportLandingCostReviewControl(),
+                Background = Br("AppBgBrush") as SolidColorBrush
+            };
+        }
+
+        private static UserControl BuildContainerWorkflowWorkspace(WorkspaceOpenRequest req, bool stocktake)
+        {
+            if (req.EntityRow is not ContainerListRow row)
+                return NoEntityContextControl();
+
+            ChinaImportNavigationContext.SetActiveContainer(row.Id);
+            var summary = stocktake
+                ? new ContainerWorkflowSummaryControl(
+                    "جرد الحاوية",
+                    "مقارنة النظام مع العد الفعلي داخل الحاوية",
+                    stocktakeMode: true)
+                : new ContainerWorkflowSummaryControl(
+                    "توزيع الكميات على العملاء",
+                    "توزيع أثواب الحاوية على المشترين والحجوزات");
+
+            return new UserControl
+            {
+                Content = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    Padding = new Thickness(8),
+                    Content = summary
+                },
+                Background = Br("AppBgBrush") as SolidColorBrush
             };
         }
 

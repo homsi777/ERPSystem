@@ -48,6 +48,21 @@ public static class OpeningBalanceListRefreshHub
     public static void RequestRefresh() => RefreshRequested?.Invoke(null, EventArgs.Empty);
 }
 
+public static class CustomerOpeningBalanceRefreshHub
+{
+    public static event EventHandler? RefreshRequested;
+    public static void RequestRefresh() => RefreshRequested?.Invoke(null, EventArgs.Empty);
+}
+
+public static class CustomerOpeningBalanceNavigationContext
+{
+    public static Guid? EditDocumentId { get; set; }
+
+    public static void BeginCreate() => EditDocumentId = null;
+
+    public static void BeginEdit(Guid documentId) => EditDocumentId = documentId;
+}
+
 public sealed class OpeningBalanceUiService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -70,7 +85,7 @@ public sealed class OpeningBalanceUiService
         return await permissions.CanAsync(permission, cancellationToken);
     }
 
-    public Task<ApplicationResult<PagedResult<OpeningBalanceListDto>>> GetListAsync(
+    public async Task<ApplicationResult<PagedResult<OpeningBalanceListDto>>> GetListAsync(
         OpeningBalanceListFilter filter,
         int page = 1,
         int pageSize = 50,
@@ -78,7 +93,7 @@ public sealed class OpeningBalanceUiService
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<GetOpeningBalanceListHandler>();
-        return handler.HandleAsync(new GetOpeningBalanceListQuery
+        return await handler.HandleAsync(new GetOpeningBalanceListQuery
         {
             CompanyId = CompanyId,
             Filter = filter,
@@ -87,29 +102,29 @@ public sealed class OpeningBalanceUiService
         }, cancellationToken);
     }
 
-    public Task<ApplicationResult<OpeningBalanceDetailsDto>> GetDetailsAsync(
+    public async Task<ApplicationResult<OpeningBalanceDetailsDto>> GetDetailsAsync(
         Guid documentId,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<GetOpeningBalanceDetailsHandler>();
-        return handler.HandleAsync(new GetOpeningBalanceDetailsQuery { DocumentId = documentId }, cancellationToken);
+        return await handler.HandleAsync(new GetOpeningBalanceDetailsQuery { DocumentId = documentId }, cancellationToken);
     }
 
-    public Task<ApplicationResult<OpeningBalanceDashboardDto>> GetDashboardAsync(
+    public async Task<ApplicationResult<OpeningBalanceDashboardDto>> GetDashboardAsync(
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<GetOpeningBalanceDashboardHandler>();
-        return handler.HandleAsync(new GetOpeningBalanceDashboardQuery { CompanyId = CompanyId }, cancellationToken);
+        return await handler.HandleAsync(new GetOpeningBalanceDashboardQuery { CompanyId = CompanyId }, cancellationToken);
     }
 
-    public Task<ApplicationResult<OpeningBalanceLookupsDto>> GetLookupsAsync(
+    public async Task<ApplicationResult<OpeningBalanceLookupsDto>> GetLookupsAsync(
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<GetOpeningBalanceLookupsHandler>();
-        return handler.HandleAsync(new GetOpeningBalanceLookupsQuery { CompanyId = CompanyId }, cancellationToken);
+        return await handler.HandleAsync(new GetOpeningBalanceLookupsQuery { CompanyId = CompanyId }, cancellationToken);
     }
 
     public Task<ApplicationResult<OpeningBalanceListDto>> CreateAsync(
@@ -166,6 +181,19 @@ public sealed class OpeningBalanceUiService
         using var scope = _scopeFactory.CreateScope();
         var engine = scope.ServiceProvider.GetRequiredService<IOpeningBalanceEngine>();
         return engine.BuildImportTemplate(type);
+    }
+
+    public async Task<ApplicationResult<CustomerOpeningBalanceSummaryDto>> GetCustomerSummaryAsync(
+        OpeningBalanceListFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetCustomerOpeningBalanceSummaryHandler>();
+        return await handler.HandleAsync(new GetCustomerOpeningBalanceSummaryQuery
+        {
+            CompanyId = CompanyId,
+            Filter = filter
+        }, cancellationToken);
     }
 
     /// <summary>

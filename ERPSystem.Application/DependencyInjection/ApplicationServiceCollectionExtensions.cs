@@ -219,6 +219,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetOpeningBalanceDetailsHandler>();
         services.AddScoped<GetOpeningBalanceDashboardHandler>();
         services.AddScoped<GetOpeningBalanceLookupsHandler>();
+        services.AddScoped<GetCustomerOpeningBalanceSummaryHandler>();
     }
 
     private static void RegisterSalesHandlers(IServiceCollection services)

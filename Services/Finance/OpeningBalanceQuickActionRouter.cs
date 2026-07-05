@@ -1,6 +1,8 @@
 using ERPSystem.Application.DTOs.Finance;
+using ERPSystem.Controls.Customers;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Core;
+using ERPSystem.Dialogs;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Services.Documents;
 
@@ -24,6 +26,8 @@ public static class OpeningBalanceQuickActionRouter
         "ob:archive" => Run(() => ArchiveAsync(row)),
         "ob:export" => Run(() => ExportAsync(row)),
         "ob:open" => Run(() => OpenAsync(row)),
+        "ob:edit" => Run(() => EditAsync(row)),
+        "ob:audit" => Run(() => AuditAsync(row)),
         "nav:Accounting:OpeningBalances" => NavigateList(),
         "nav:Accounting:OpeningBalanceWorkspace" => NavigateWorkspace(row),
         _ => false
@@ -54,6 +58,37 @@ public static class OpeningBalanceQuickActionRouter
         return Task.CompletedTask;
     }
 
+    private static Task EditAsync(OpeningBalanceListDto row)
+    {
+        if (row.Status is not (OpeningBalanceStatus.Draft or OpeningBalanceStatus.Rejected))
+        {
+            MockInteractionService.ShowWarning("لا يمكن تعديل المستند في حالته الحالية.");
+            return Task.CompletedTask;
+        }
+
+        if (row.LineCount <= 1)
+        {
+            CustomerOpeningBalanceNavigationContext.BeginEdit(row.Id);
+            ErpModalWindow.Show(
+                "تعديل رصيد افتتاحي",
+                row.Number,
+                new CustomerOpeningBalanceFormControl(),
+                "\uE70F", 640, 720);
+        }
+        else
+        {
+            OpeningBalancePopupService.ShowOperationsCenter(row);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task AuditAsync(OpeningBalanceListDto row)
+    {
+        OpeningBalancePopupService.ShowOperationsCenter(row, "Audit");
+        return Task.CompletedTask;
+    }
+
     private static async Task SubmitAsync(OpeningBalanceListDto row)
     {
         if (row.Status is not (OpeningBalanceStatus.Draft or OpeningBalanceStatus.Rejected))
@@ -66,6 +101,7 @@ public static class OpeningBalanceQuickActionRouter
         if (ApplicationResultPresenter.Present(result))
         {
             OpeningBalanceListRefreshHub.RequestRefresh();
+            CustomerOpeningBalanceRefreshHub.RequestRefresh();
             MockInteractionService.ShowSuccess("تم إرسال المستند للاعتماد.");
         }
     }
@@ -82,6 +118,7 @@ public static class OpeningBalanceQuickActionRouter
         if (ApplicationResultPresenter.Present(result))
         {
             OpeningBalanceListRefreshHub.RequestRefresh();
+            CustomerOpeningBalanceRefreshHub.RequestRefresh();
             MockInteractionService.ShowSuccess("تم اعتماد المستند.");
         }
     }
@@ -98,6 +135,7 @@ public static class OpeningBalanceQuickActionRouter
         if (ApplicationResultPresenter.Present(result))
         {
             OpeningBalanceListRefreshHub.RequestRefresh();
+            CustomerOpeningBalanceRefreshHub.RequestRefresh();
             MockInteractionService.ShowSuccess(
                 result.Value?.JournalEntryNumber is { Length: > 0 } num
                     ? $"تم الترحيل — القيد {num}"
@@ -117,6 +155,7 @@ public static class OpeningBalanceQuickActionRouter
         if (ApplicationResultPresenter.Present(result))
         {
             OpeningBalanceListRefreshHub.RequestRefresh();
+            CustomerOpeningBalanceRefreshHub.RequestRefresh();
             MockInteractionService.ShowSuccess("تم أرشفة المستند.");
         }
     }

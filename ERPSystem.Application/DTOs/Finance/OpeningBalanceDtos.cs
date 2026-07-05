@@ -26,6 +26,20 @@ public sealed class OpeningBalanceListDto
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public DateTime? PostedAt { get; init; }
+    public string? PrimaryPartyDisplay { get; init; }
+    public string? DisplayNotes { get; init; }
+    public decimal NetBalance => TotalDebit - TotalCredit;
+}
+
+/// <summary>KPI strip for customer opening balance submodule.</summary>
+public sealed class CustomerOpeningBalanceSummaryDto
+{
+    public int TotalCount { get; init; }
+    public decimal TotalDebit { get; init; }
+    public decimal TotalCredit { get; init; }
+    public decimal NetBalance { get; init; }
+    public int PendingApprovalCount { get; init; }
+    public int PostedCount { get; init; }
 }
 
 /// <summary>One line of an opening balance document.</summary>
