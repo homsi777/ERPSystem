@@ -1,3 +1,4 @@
+using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
 using ERPSystem.Domain.Common;
 using ERPSystem.Domain.Enums;
@@ -18,6 +19,9 @@ namespace ERPSystem.Infrastructure.Seed;
 
 public static class DatabaseSeeder
 {
+    public const string DefaultAdminPassword = "Admin@123";
+    private const string LegacyPlaintextPassword = "CHANGE_ME";
+
     public static readonly Guid DefaultCompanyId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid DefaultBranchId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     public static readonly Guid AdminUserId = Guid.Parse("33333333-3333-3333-3333-333333333333");
@@ -26,9 +30,14 @@ public static class DatabaseSeeder
     public static readonly Guid DefaultCashboxId = Guid.Parse("66666666-6666-6666-6666-666666666666");
     public static readonly Guid DefaultChinaSupplierId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
-    public static async Task SeedAsync(ErpDbContext context, ILogger logger, CancellationToken cancellationToken = default)
+    public static async Task SeedAsync(
+        ErpDbContext context,
+        ILogger logger,
+        IPasswordHasher passwordHasher,
+        CancellationToken cancellationToken = default)
     {
         await EnsureSchemasAsync(context, cancellationToken);
+        await EnsureAdminPasswordAsync(context, passwordHasher, logger, cancellationToken);
         await EnsureChinaImportReferenceDataAsync(context, cancellationToken);
         await EnsureIntegratedAccountingAccountsAsync(context, cancellationToken);
         await EnsureJournalBooksAsync(context, cancellationToken);
@@ -78,7 +87,7 @@ public static class DatabaseSeeder
             Username = "admin",
             FullNameAr = "مدير النظام",
             FullNameEn = "System Administrator",
-            PasswordHash = "CHANGE_ME"
+            PasswordHash = passwordHasher.HashPassword(DefaultAdminPassword)
         });
 
         context.Roles.Add(new RoleEntity
@@ -521,6 +530,24 @@ public static class DatabaseSeeder
             ("hr.employee.manage", "hr", "employee.manage"),
             ("hr.department.manage", "hr", "department.manage")
         ], cancellationToken);
+    }
+
+    private static async Task EnsureAdminPasswordAsync(
+        ErpDbContext context,
+        IPasswordHasher passwordHasher,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var admin = await context.Users.FirstOrDefaultAsync(u => u.Id == AdminUserId, cancellationToken);
+        if (admin is null)
+            return;
+
+        if (admin.PasswordHash == LegacyPlaintextPassword || string.IsNullOrWhiteSpace(admin.PasswordHash))
+        {
+            admin.PasswordHash = passwordHasher.HashPassword(DefaultAdminPassword);
+            await context.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Updated default admin password hash.");
+        }
     }
 
     private static async Task EnsureSchemasAsync(ErpDbContext context, CancellationToken cancellationToken)

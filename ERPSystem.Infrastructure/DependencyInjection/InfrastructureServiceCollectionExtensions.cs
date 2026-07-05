@@ -6,6 +6,7 @@ using ERPSystem.Infrastructure.Notifications;
 using ERPSystem.Infrastructure.Numbering;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Repositories;
+using ERPSystem.Infrastructure.Security;
 using ERPSystem.Infrastructure.Services;
 using ERPSystem.Infrastructure.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
@@ -93,6 +94,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<INotificationService, InMemoryNotificationService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddSingleton<IDocumentPreviewService, NullDocumentPreviewService>();
+        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 
         return services;
     }
@@ -109,7 +111,11 @@ public static class InfrastructureServiceCollectionExtensions
         if (configuration?.GetValue<bool>("Development:CleanupImportCatalogOnStartup") == true)
             await Seed.ImportCatalogDevelopmentCleanup.RunAsync(context, logger, cancellationToken);
 
-        await Seed.DatabaseSeeder.SeedAsync(context, logger, cancellationToken);
+        await Seed.DatabaseSeeder.SeedAsync(
+            context,
+            logger,
+            scope.ServiceProvider.GetRequiredService<IPasswordHasher>(),
+            cancellationToken);
 
         await Services.AccountingHealth.ValidateAsync(context, cancellationToken);
     }

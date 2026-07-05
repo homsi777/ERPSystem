@@ -1,26 +1,13 @@
-using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
-using Microsoft.Extensions.DependencyInjection;
+using ERPSystem.Application.Services;
 
 namespace ERPSystem.Services;
 
-public sealed class WpfPermissionService(
-    ICurrentUserService currentUser,
-    IServiceScopeFactory scopeFactory) : IPermissionService
+public sealed class WpfPermissionService(PermissionService permissionService) : IPermissionService
 {
-    public async Task<bool> CanAsync(string permissionCode, CancellationToken cancellationToken = default)
-    {
-        if (currentUser.UserId is not Guid userId)
-            return false;
+    public Task<bool> CanAsync(string permissionCode, CancellationToken cancellationToken = default) =>
+        permissionService.CanAsync(permissionCode, cancellationToken);
 
-        using var scope = scopeFactory.CreateScope();
-        var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-        return await users.HasPermissionAsync(userId, permissionCode, cancellationToken);
-    }
-
-    public async Task EnsureCanAsync(string permissionCode, CancellationToken cancellationToken = default)
-    {
-        if (!await CanAsync(permissionCode, cancellationToken))
-            throw new UnauthorizedAccessException($"Permission denied: {permissionCode}");
-    }
+    public Task EnsureCanAsync(string permissionCode, CancellationToken cancellationToken = default) =>
+        permissionService.EnsureCanAsync(permissionCode, cancellationToken);
 }

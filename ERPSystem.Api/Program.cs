@@ -10,7 +10,6 @@ builder.Services.AddApplication();
 
 builder.Services.AddSingleton<ICurrentUserService, ApiCurrentUserService>();
 builder.Services.AddSingleton<ICurrentBranchService, ApiCurrentBranchService>();
-builder.Services.AddScoped<IPermissionService, ApiPermissionService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

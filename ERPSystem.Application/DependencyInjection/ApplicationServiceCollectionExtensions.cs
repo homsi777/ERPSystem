@@ -12,7 +12,10 @@ using ERPSystem.Application.Commands.Suppliers;
 using ERPSystem.Application.Commands.Inventory;
 using ERPSystem.Application.Commands.HR;
 using ERPSystem.Application.Queries.HR;
+using ERPSystem.Application.Queries.Identity;
 using ERPSystem.Application.UseCases.HR;
+using ERPSystem.Application.UseCases.Identity;
+using ERPSystem.Application.Services;
 using ERPSystem.Application.Queries.Inventory;
 using ERPSystem.Application.Queries.Accounting;
 using ERPSystem.Application.Queries.Capital;
@@ -48,6 +51,8 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IDomainEventDispatcher, DomainEvents.DomainEventDispatcher>();
+        services.AddScoped<PermissionService>();
+        services.AddScoped<IPermissionService>(sp => sp.GetRequiredService<PermissionService>());
         RegisterCustomerHandlers(services);
         RegisterSupplierHandlers(services);
         RegisterPurchaseHandlers(services);
@@ -340,5 +345,6 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetSalesWarehouseStockHandler>();
         services.AddScoped<GetReportPreviewHandler>();
         services.AddScoped<GetModuleReportHandler>();
+        services.AddScoped<AuthenticateUserHandler>();
     }
 }

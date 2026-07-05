@@ -1,6 +1,7 @@
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Catalog;
+using ERPSystem.Application.DTOs.Identity;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Catalog;
 using ERPSystem.Domain.Entities.Finance;
@@ -974,6 +975,23 @@ internal sealed class UserRepository(ErpDbContext context) : IUserRepository
         return entity is null ? null : ToUser(entity);
     }
 
+    public async Task<UserCredentialDto?> GetCredentialByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
+        if (entity is null)
+            return null;
+
+        return new UserCredentialDto
+        {
+            UserId = entity.Id,
+            Username = entity.Username,
+            FullNameAr = entity.FullNameAr,
+            PasswordHash = entity.PasswordHash,
+            IsActive = entity.IsActive
+        };
+    }
+
     public async Task<IReadOnlyList<Role>> GetRolesForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var roleIds = await context.UserRoles.AsNoTracking()
@@ -986,6 +1004,20 @@ internal sealed class UserRepository(ErpDbContext context) : IUserRepository
             DomainHydrator.Set(role, nameof(Role.Id), r.Id);
             return role;
         }).ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> GetPermissionCodesForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var roleIds = await context.UserRoles.AsNoTracking()
+            .Where(ur => ur.UserId == userId).Select(ur => ur.RoleId).ToListAsync(cancellationToken);
+        var permissionIds = await context.RolePermissions.AsNoTracking()
+            .Where(rp => roleIds.Contains(rp.RoleId)).Select(rp => rp.PermissionId).ToListAsync(cancellationToken);
+        return await context.Permissions.AsNoTracking()
+            .Where(p => permissionIds.Contains(p.Id))
+            .Select(p => p.Code)
+            .Distinct()
+            .OrderBy(code => code)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<bool> HasPermissionAsync(Guid userId, string permissionCode, CancellationToken cancellationToken = default)
