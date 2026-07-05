@@ -5,6 +5,7 @@ using ERPSystem.Services;
 using ERPSystem.Services.Customers;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace ERPSystem.Controls.Customers;
 
@@ -14,11 +15,25 @@ public sealed class CustomerFormControl : UserControl
     private readonly TextBox _txtNameAr = ErpUiFactory.FormField("");
     private readonly TextBox _txtNameEn = ErpUiFactory.FormField("");
     private readonly ComboBox _cmbType = ErpUiFactory.FilterCombo(["نقدي", "آجل"]);
+    private readonly CheckBox _chkCreditLimitEnabled = new()
+    {
+        Content = "تفعيل حد الائتمان",
+        Margin = new Thickness(0, 4, 0, 0),
+        VerticalAlignment = VerticalAlignment.Center
+    };
     private readonly TextBox _txtCreditLimit = ErpUiFactory.FormField("0");
     private readonly TextBox _txtPaymentTerms = ErpUiFactory.FormField("0");
     private readonly Button _btnSave = new() { Content = "حفظ", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 36 };
     private readonly Button _btnCancel = new() { Content = "إلغاء", Style = S("SecondaryButtonStyle"), MinWidth = 100, Height = 36, Margin = new Thickness(8, 0, 0, 0) };
     private readonly TextBlock _txtTitle = ErpUiFactory.SectionTitle("إضافة / تعديل عميل");
+    private readonly TextBlock _txtCreditLimitHint = new()
+    {
+        Text = "عند التعطيل: بيع آجل بدون سقف — عند التفعيل: يُفحص الحد عند اعتماد الفاتورة.",
+        FontSize = 11,
+        Foreground = Brushes.Gray,
+        TextWrapping = TextWrapping.Wrap,
+        Margin = new Thickness(0, 4, 0, 0)
+    };
 
     private Guid? _editId;
     private bool _isSaving;
@@ -29,6 +44,11 @@ public sealed class CustomerFormControl : UserControl
         actions.Children.Add(_btnSave);
         actions.Children.Add(_btnCancel);
 
+        var creditPanel = new StackPanel();
+        creditPanel.Children.Add(_chkCreditLimitEnabled);
+        creditPanel.Children.Add(_txtCreditLimit);
+        creditPanel.Children.Add(_txtCreditLimitHint);
+
         var stack = new StackPanel();
         stack.Children.Add(_txtTitle);
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
@@ -36,11 +56,15 @@ public sealed class CustomerFormControl : UserControl
             ("الاسم (عربي)", _txtNameAr),
             ("الاسم (إنجليزي)", _txtNameEn),
             ("نوع العميل", _cmbType),
-            ("حد الائتمان", _txtCreditLimit),
+            ("حد الائتمان", creditPanel),
             ("أيام السداد", _txtPaymentTerms))));
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { Padding = new Thickness(16), Content = stack };
+
+        _cmbType.SelectionChanged += (_, _) => UpdateCreditLimitFields();
+        _chkCreditLimitEnabled.Checked += (_, _) => UpdateCreditLimitFields();
+        _chkCreditLimitEnabled.Unchecked += (_, _) => UpdateCreditLimitFields();
 
         Loaded += OnLoaded;
         _btnSave.Click += async (_, _) => await SaveAsync();
@@ -64,6 +88,7 @@ public sealed class CustomerFormControl : UserControl
             _txtNameAr.Text = c.NameAr;
             _txtNameEn.Text = c.NameEn;
             _cmbType.SelectedIndex = c.Type == CustomerType.Credit ? 1 : 0;
+            _chkCreditLimitEnabled.IsChecked = c.CreditLimitEnabled;
             _txtCreditLimit.Text = c.CreditLimit.ToString("0.##");
             _txtPaymentTerms.Text = c.PaymentTermsDays.ToString();
         }
@@ -79,7 +104,29 @@ public sealed class CustomerFormControl : UserControl
 
             _txtCode.Text = await CustomerUiService.Instance.NextCustomerCodeAsync();
             _cmbType.SelectedIndex = 1;
+            _chkCreditLimitEnabled.IsChecked = false;
         }
+
+        UpdateCreditLimitFields();
+    }
+
+    private void UpdateCreditLimitFields()
+    {
+        var isCredit = _cmbType.SelectedIndex == 1;
+        _chkCreditLimitEnabled.IsEnabled = isCredit;
+        _txtCreditLimitHint.Visibility = isCredit ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!isCredit)
+        {
+            _chkCreditLimitEnabled.IsChecked = false;
+            _txtCreditLimit.IsEnabled = false;
+            return;
+        }
+
+        var enabled = _chkCreditLimitEnabled.IsChecked == true;
+        _txtCreditLimit.IsEnabled = enabled;
+        if (!enabled)
+            _txtCreditLimit.Text = "0";
     }
 
     private async Task SaveAsync()
@@ -87,12 +134,20 @@ public sealed class CustomerFormControl : UserControl
         if (_isSaving)
             return;
 
+        var type = _cmbType.SelectedIndex == 1 ? CustomerType.Credit : CustomerType.Cash;
+        var creditLimitEnabled = type == CustomerType.Credit && _chkCreditLimitEnabled.IsChecked == true;
+
         if (!decimal.TryParse(_txtCreditLimit.Text, out var creditLimit))
             creditLimit = 0;
         if (!int.TryParse(_txtPaymentTerms.Text, out var paymentTerms))
             paymentTerms = 0;
 
-        var type = _cmbType.SelectedIndex == 1 ? CustomerType.Credit : CustomerType.Cash;
+        if (creditLimitEnabled && creditLimit <= 0)
+        {
+            MockInteractionService.ShowWarning("يجب إدخال حد ائتمان أكبر من صفر عند تفعيل الحد.", "تحقق من البيانات");
+            return;
+        }
+
         _isSaving = true;
         _btnSave.IsEnabled = false;
 
@@ -101,7 +156,7 @@ public sealed class CustomerFormControl : UserControl
             if (_editId is Guid id)
             {
                 var result = await CustomerUiService.Instance.UpdateAsync(
-                    id, _txtNameAr.Text.Trim(), _txtNameEn.Text.Trim(), creditLimit, paymentTerms);
+                    id, _txtNameAr.Text.Trim(), _txtNameEn.Text.Trim(), creditLimit, paymentTerms, creditLimitEnabled);
                 if (ApplicationResultPresenter.Present(result))
                 {
                     CustomerListRefreshHub.RequestRefresh();
@@ -115,7 +170,8 @@ public sealed class CustomerFormControl : UserControl
                     _txtNameAr.Text.Trim(),
                     _txtNameEn.Text.Trim(),
                     type,
-                    creditLimit);
+                    creditLimit,
+                    creditLimitEnabled);
                 if (ApplicationResultPresenter.Present(result))
                 {
                     CustomerListRefreshHub.RequestRefresh();

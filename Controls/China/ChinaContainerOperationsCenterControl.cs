@@ -143,10 +143,11 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
                 Tab("Overview", "نظرة عامة", OverviewTab(c, cost)),
                 Tab("Items", "أصناف الحاوية", ItemsTab(c)),
                 Tab("LandingCost", "Landing Cost", LandingCostTab(cost, data)),
+                Tab("Documentation", "التوثيق", new ContainerDocumentationControl(c.Id, c.ContainerNumber)),
                 Tab("Timeline", "الخط الزمني", TimelineTab(audit)),
             ],
             QuickActions = BuildQuickActions(data, row),
-            InitialTabIndex = ResolveTabIndex(initialTab, "Overview", "Items", "LandingCost", "Timeline"),
+            InitialTabIndex = ResolveTabIndex(initialTab, "Overview", "Items", "LandingCost", "Documentation", "Timeline"),
             Context = new OperationsCenterContext
             {
                 EntityType = EntityType.ImportContainer,
@@ -166,6 +167,7 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
             Q("مراجعة الاستيراد", true, "Items"),
             Q("استيراد Excel", false, null, actionKey: "nav:ChinaImport:NewImport"),
             Q("Landing Cost", false, "LandingCost", actionKey: "ws:LandingCost"),
+            Q("ملفات التوثيق", false, "Documentation", actionKey: "china:Documentation"),
             Q("طباعة ملخص", false, null, actionKey: "preview:ملخص الحاوية"),
         };
 

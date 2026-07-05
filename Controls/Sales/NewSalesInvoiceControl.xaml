@@ -2,6 +2,7 @@
              x:Name="InvoiceRoot"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ERPSystem.Controls.Sales"
              FlowDirection="RightToLeft"
              Background="{StaticResource AppBgBrush}">
 
@@ -103,13 +104,13 @@
         </Style>
 
         <Style x:Key="InvoiceItemsHeader" TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#F0FDFA"/>
-            <Setter Property="Foreground" Value="#0F766E"/>
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="10,8"/>
             <Setter Property="Height" Value="36"/>
-            <Setter Property="BorderBrush" Value="#CCFBF1"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
         </Style>
@@ -118,14 +119,50 @@
         </Style>
 
         <Style x:Key="InvoiceGridCellText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource InputTextBrush}"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Padding" Value="10,0"/>
         </Style>
 
+        <Style x:Key="InvoiceGridRow" TargetType="DataGridRow">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="MinHeight" Value="44"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#F5F5F5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InvoiceGridCell" TargetType="DataGridCell">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="BorderBrush" Value="#E8E8E8"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#F5F5F5"/>
+                    <Setter Property="Foreground" Value="#1A1A1A"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InvoiceGridCombo" TargetType="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsEditable" Value="False"/>
+            <Setter Property="MaxDropDownHeight" Value="260"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="6,0"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
         <Style x:Key="InvoiceGridEditText" TargetType="TextBox">
-            <Setter Property="Foreground" Value="{StaticResource InputTextBrush}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource InputTextBrush}"/>
+            <Setter Property="Foreground" Value="#1A1A1A"/>
+            <Setter Property="CaretBrush" Value="#1A1A1A"/>
             <Setter Property="Background" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -168,10 +205,13 @@
                     </Button>
                     <Button Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
                             Click="BtnCancel_Click" Content="إلغاء"/>
-                    <Button Style="{StaticResource InvoiceSaveDraftBtn}" Margin="0,0,8,0"
+                    <Button x:Name="BtnSaveDraft" Style="{StaticResource InvoiceSaveDraftBtn}" Margin="0,0,8,0"
                             Content="حفظ مسودة" Click="BtnSaveDraft_Click"/>
-                    <Button Style="{StaticResource InvoiceApproveBtn}" Content="اعتماد الفاتورة"
-                            Click="BtnApprove_Click"/>
+                    <Button x:Name="BtnSendToWarehouse" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0"
+                            Height="36" Padding="16,0" Content="إرسال للمستودع"
+                            Click="BtnSendToWarehouse_Click" IsEnabled="False"/>
+                    <Button x:Name="BtnApprove" Style="{StaticResource InvoiceApproveBtn}" Content="اعتماد وتسليم"
+                            Click="BtnApprove_Click" IsEnabled="False"/>
                 </StackPanel>
             </Grid>
 
@@ -240,8 +280,8 @@
                                            Foreground="{StaticResource TextMutedBrush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <TextBlock Text="تسليم — قريباً" FontSize="11"
-                                       Foreground="{StaticResource TextMutedBrush}"
+                            <TextBlock Text="تسليم للعميل" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
                                        FontFamily="Segoe UI, Tahoma, Arial" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
@@ -264,6 +304,27 @@
                             <TextBlock x:Name="TxtStatusBadge" Text="مسودة" FontSize="11" FontWeight="SemiBold"/>
                         </Border>
                     </StackPanel>
+
+                    <Border x:Name="DetailingCompleteBanner" Visibility="Collapsed"
+                            Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1"
+                            CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="تم تفنيد الأطوال في المستودع"
+                                       FontSize="13" FontWeight="SemiBold" Foreground="#047857"
+                                       FontFamily="Segoe UI, Tahoma, Arial"/>
+                            <TextBlock x:Name="TxtDetailingCompleteMessage"
+                                       FontSize="12" Foreground="#065F46" Margin="0,4,0,0"
+                                       FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="AwaitingDetailingBanner" Visibility="Collapsed"
+                            Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1"
+                            CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+                        <TextBlock x:Name="TxtAwaitingDetailingMessage"
+                                   FontSize="12" Foreground="#92400E" FontWeight="SemiBold"
+                                   FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"/>
+                    </Border>
 
                     <!-- Header fields — single bar (8 columns) -->
                     <Border Background="{StaticResource SurfaceAltBrush}"
@@ -298,9 +359,12 @@
                             <!-- 2. رقم الفاتورة -->
                             <StackPanel Grid.Column="2" Style="{StaticResource InvoiceHeaderCell}">
                                 <TextBlock Text="رقم الفاتورة" Style="{StaticResource InvoiceFieldLabel}"/>
-                                <TextBox x:Name="TxtInvoiceNumber" Text="جديد" IsReadOnly="True"
+                                <TextBox x:Name="TxtInvoiceNumber"
                                          Style="{StaticResource EnterpriseInputStyle}" Height="36"
-                                         Background="White"/>
+                                         Background="White" ToolTip="اتركه فارغاً للترقيم التلقائي عند الحفظ"/>
+                                <TextBlock Text="فارغ = ترقيم تلقائي"
+                                           FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                           Margin="0,2,0,0"/>
                             </StackPanel>
 
                             <!-- 3. العميل -->
@@ -331,10 +395,10 @@
                             <StackPanel Grid.Column="10" Style="{StaticResource InvoiceHeaderCell}">
                                 <TextBlock Text="الصندوق" Style="{StaticResource InvoiceFieldLabel}"/>
                                 <ComboBox x:Name="CmbCashbox" Height="36"
-                                          Style="{StaticResource EnterpriseComboBoxStyle}" SelectedIndex="0">
-                                    <ComboBoxItem Content="الخزينة العامة"/>
-                                    <ComboBoxItem Content="صندوق جدة"/>
-                                </ComboBox>
+                                          Style="{StaticResource EnterpriseComboBoxStyle}"
+                                          DisplayMemberPath="Display"
+                                          SelectedValuePath="Id"
+                                          IsEditable="False"/>
                             </StackPanel>
 
                             <!-- 7. نوع الدفع -->
@@ -397,16 +461,21 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid Grid.Row="0" Margin="12,10,12,8">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="أصناف الفاتورة" Style="{StaticResource SectionTitleTextStyle}"
-                                   VerticalAlignment="Center" Margin="0,0,0,8"/>
-                        <Button Grid.Row="1" HorizontalAlignment="Left" Style="{StaticResource SecondaryButtonStyle}"
+                                   VerticalAlignment="Center" Margin="0,0,0,4"/>
+                        <TextBlock Grid.Row="1" Text="اضغط خانة التوب — تنسدل القائمة — اكتب للتصفية — اختر بالماوس أو أسهم الكيبورد ثم Enter"
+                                   FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                   FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,0,8"/>
+                        <Button Grid.Row="2" HorizontalAlignment="Left" Style="{StaticResource SecondaryButtonStyle}"
                                 Click="BtnAddLine_Click">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12"
@@ -415,31 +484,51 @@
                             </StackPanel>
                         </Button>
                     </Grid>
-                    <Border Grid.Row="1" x:Name="SalePriceWarningBanner" Visibility="Collapsed"
+                    <Border Grid.Row="1" x:Name="StockEmptyBanner" Visibility="Collapsed"
+                            Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1"
+                            CornerRadius="8" Padding="12,8" Margin="12,0,12,8">
+                        <TextBlock x:Name="TxtStockEmptyMessage"
+                                   FontSize="12" Foreground="#1D4ED8" FontWeight="SemiBold"
+                                   FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"/>
+                    </Border>
+                    <Border Grid.Row="2" x:Name="SalePriceWarningBanner" Visibility="Collapsed"
                             Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1"
                             CornerRadius="8" Padding="12,8" Margin="12,0,12,8">
                         <TextBlock Text="سعر البيع غير محدد لهذا التوب — يرجى إدخاله يدوياً"
                                    FontSize="12" Foreground="#92400E" FontWeight="SemiBold"
                                    FontFamily="Segoe UI, Tahoma, Arial"/>
                     </Border>
-                    <DataGrid Grid.Row="2" x:Name="ItemsGrid"
+                    <DataGrid Grid.Row="3" x:Name="ItemsGrid"
                               AutoGenerateColumns="False" IsReadOnly="False"
                               CanUserAddRows="False" CanUserDeleteRows="False"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="{StaticResource BorderLightBrush}"
+                              HorizontalGridLinesBrush="#E8E8E8"
                               BorderThickness="0" Background="White"
                               RowHeight="44" FontSize="12"
+                              Foreground="#1A1A1A"
                               FontFamily="Segoe UI, Tahoma, Arial"
+                              RowStyle="{StaticResource InvoiceGridRow}"
+                              CellStyle="{StaticResource InvoiceGridCell}"
                               ColumnHeaderStyle="{StaticResource InvoiceItemsHeader}"
                               CellEditEnding="ItemsGrid_CellEditEnding"
                               BeginningEdit="ItemsGrid_BeginningEdit"
                               PreparingCellForEdit="ItemsGrid_PreparingCellForEdit">
                         <DataGrid.Columns>
-                            <DataGridComboBoxColumn Header="اختيار من المخزون"
-                                                    Width="240"
-                                                    ItemsSource="{Binding StockOptions, ElementName=InvoiceRoot}"
-                                                    SelectedItemBinding="{Binding SelectedStock, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                    DisplayMemberPath="Display"/>
+                            <DataGridTemplateColumn Header="اختر التوب" Width="320">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StockSelectionDisplay}"
+                                                   Style="{StaticResource InvoiceGridCellText}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <local:FabricStockAutocompleteEditor
+                                            StockOptions="{Binding StockOptions, ElementName=InvoiceRoot}"
+                                            SelectedStock="{Binding SelectedStock, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding GoodsType}" Width="*"
                                                 IsReadOnly="True"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"/>
@@ -455,11 +544,9 @@
                             <DataGridTemplateColumn Header="الأطوال" Width="130" IsReadOnly="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Border Background="#FFEDD5" CornerRadius="100"
-                                                Padding="8,3" HorizontalAlignment="Center">
-                                            <TextBlock Text="{Binding LengthStatus}" FontSize="10"
-                                                       Foreground="#C2410C" FontWeight="SemiBold"/>
-                                        </Border>
+                                        <TextBlock Text="{Binding LengthStatus}"
+                                                   Style="{StaticResource InvoiceGridCellText}"
+                                                   HorizontalAlignment="Center"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -487,9 +574,140 @@
             <!-- Summary -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
-                    <TextBlock Text="ملخص الأثواب" Style="{StaticResource SectionTitleTextStyle}"/>
+                    <TextBlock Text="ملخص الفاتورة" Style="{StaticResource SectionTitleTextStyle}"/>
                     <WrapPanel x:Name="SummaryPills" Margin="0,4,0,8"/>
-                    <TextBlock Text="لا يمكن حساب المبلغ قبل أن يُدخل أمين المستودع طول كل ثوب على حدة"
+
+                    <!-- Discount entry (draft / before approval) -->
+                    <Border x:Name="DiscountEntryPanel" Visibility="Collapsed"
+                            Background="#FFF1F2" BorderBrush="#FECDD3" BorderThickness="1"
+                            CornerRadius="10" Padding="14,10" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="خصم على الفاتورة" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="#BE123C" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                <TextBlock Text="مبلغ يُخصم من إجمالي الفاتورة" FontSize="10"
+                                           Foreground="#E11D48" FontFamily="Segoe UI, Tahoma, Arial"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Text="$" FontSize="14" FontWeight="Bold" Foreground="#BE123C"
+                                           VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <TextBox x:Name="TxtDiscount" Height="34" Style="{StaticResource EnterpriseInputStyle}"
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" x:Name="BtnApplyDiscount" Content="تطبيق الخصم"
+                                    Style="{StaticResource SecondaryButtonStyle}" Height="34"
+                                    Padding="14,0" Margin="10,0,0,0" Click="BtnApplyDiscount_Click"/>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="FinancialSummaryPanel" Visibility="Collapsed"
+                            Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Total meters -->
+                            <Border Grid.Column="0" Background="#EFF6FF" BorderBrush="#BFDBFE"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                                   Foreground="#2563EB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="إجمالي الأطوال" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#1E40AF" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="TxtTotalMeters" FontSize="22" FontWeight="Bold"
+                                                   Foreground="#1D4ED8" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                        <TextBlock Text=" متر" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="#3B82F6" VerticalAlignment="Bottom"
+                                                   Margin="4,0,0,2" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Subtotal -->
+                            <Border Grid.Column="2" Background="#FFFBEB" BorderBrush="#FDE68A"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="$" FontSize="14" FontWeight="Bold"
+                                                   Foreground="#B45309" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="المجموع الفرعي" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#92400E" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="16" FontWeight="Bold"
+                                                   Foreground="#B45309" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtSubTotal" FontSize="22" FontWeight="Bold"
+                                                   Foreground="#92400E" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtSubTotalCurrency" Text="USD — دولار أمريكي"
+                                               FontSize="10" Foreground="#D97706" Margin="0,4,0,0"
+                                               FontFamily="Segoe UI, Tahoma, Arial"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Discount -->
+                            <Border Grid.Column="4" Background="#FFF1F2" BorderBrush="#FECDD3"
+                                    BorderThickness="1" CornerRadius="10" Padding="14,12">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="− $" FontSize="14" FontWeight="Bold"
+                                                   Foreground="#BE123C" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="الخصم" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#BE123C" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="16" FontWeight="Bold"
+                                                   Foreground="#BE123C" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtDiscountApplied" FontSize="22" FontWeight="Bold"
+                                                   Foreground="#E11D48" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <TextBlock Text="USD — يُخصم من المجموع" FontSize="10"
+                                               Foreground="#F43F5E" Margin="0,4,0,0"
+                                               FontFamily="Segoe UI, Tahoma, Arial"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Grand total -->
+                            <Border Grid.Column="6" Background="#ECFDF5" BorderBrush="#6EE7B7"
+                                    BorderThickness="2" CornerRadius="10" Padding="14,12">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="$" FontSize="15" FontWeight="Bold"
+                                                   Foreground="#047857" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="الإجمالي النهائي" FontSize="11" FontWeight="Bold"
+                                                   Foreground="#065F46" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="18" FontWeight="Bold"
+                                                   Foreground="#047857" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtGrandTotal" FontSize="26" FontWeight="Bold"
+                                                   Foreground="#059669" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtGrandTotalCurrency" Text="USD — دولار أمريكي"
+                                               FontSize="10" FontWeight="SemiBold" Foreground="#10B981"
+                                               Margin="0,4,0,0" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <TextBlock x:Name="TxtPendingLengthsMessage"
+                               Text="لا يمكن حساب المبلغ قبل أن يُدخل أمين المستودع طول كل ثوب على حدة"
                                FontSize="11" Foreground="{StaticResource TextMutedBrush}"
                                FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"/>
                 </StackPanel>

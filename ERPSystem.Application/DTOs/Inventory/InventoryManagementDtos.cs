@@ -64,6 +64,7 @@ public sealed class FabricStockBalanceDto
     public string FabricName { get; init; } = "";
     public Guid FabricColorId { get; init; }
     public string ColorName { get; init; } = "";
+    public Guid ContainerId { get; init; }
     public string ContainerNumber { get; init; } = "";
     public int RollCount { get; init; }
     public decimal TotalMeters { get; init; }

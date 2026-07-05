@@ -32,6 +32,10 @@ public static class SalesActionRouter
                 _ = SalesPopupService.ApproveAsync(row);
                 break;
 
+            case EntityActionId.InvoiceApproveAndDeliver:
+                _ = SalesPopupService.ApproveAndDeliverAsync(row);
+                break;
+
             case EntityActionId.InvoiceCancel:
                 _ = SalesPopupService.CancelAsync(row);
                 break;
@@ -89,7 +93,8 @@ public static class SalesActionRouter
                 _ = SalesPopupService.SendToWarehouseAsync(row);
                 return true;
             case "sales:approve":
-                _ = SalesPopupService.ApproveAsync(row);
+            case "sales:approve-deliver":
+                _ = SalesPopupService.ApproveAndDeliverAsync(row);
                 return true;
             case "sales:cancel":
                 _ = SalesPopupService.CancelAsync(row);

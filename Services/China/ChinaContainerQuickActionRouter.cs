@@ -41,6 +41,9 @@ public static class ChinaContainerQuickActionRouter
                 ChinaImportNavigationContext.SetActiveContainer(row.Id);
                 ChinaImportNavigation.Navigate("SalePrice", row.Status);
                 return true;
+            case "china:Documentation":
+                ContainerDocumentationPopupService.Show(row);
+                return true;
             case "nav:ChinaImport:NewImport":
                 ChinaImportNavigation.Navigate("NewImport");
                 return true;

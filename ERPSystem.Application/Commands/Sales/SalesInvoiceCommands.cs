@@ -6,10 +6,12 @@ public sealed class CreateSalesInvoiceDraftCommand
 {
     public Guid CompanyId { get; init; }
     public Guid BranchId { get; init; }
+    public string? InvoiceNumber { get; init; }
     public Guid CustomerId { get; init; }
     public Guid WarehouseId { get; init; }
     public Guid ChinaContainerId { get; init; }
     public PaymentType PaymentType { get; init; }
+    public decimal DiscountAmount { get; init; }
     public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
 }
 
@@ -29,7 +31,14 @@ public sealed class UpdateSalesInvoiceDraftCommand
     public Guid WarehouseId { get; init; }
     public Guid ChinaContainerId { get; init; }
     public PaymentType PaymentType { get; init; }
+    public decimal DiscountAmount { get; init; }
     public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
+}
+
+public sealed class UpdateSalesInvoiceDiscountCommand
+{
+    public Guid InvoiceId { get; init; }
+    public decimal DiscountAmount { get; init; }
 }
 
 public sealed class SendSalesInvoiceToWarehouseCommand

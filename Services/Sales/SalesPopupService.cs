@@ -61,6 +61,44 @@ public static class SalesPopupService
         SalesListRefreshHub.RequestRefresh();
     }
 
+    public static async Task ApproveAndDeliverAsync(SalesInvoiceListRow row)
+    {
+        if (row.Status is not (SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval))
+        {
+            MockInteractionService.ShowWarning(
+                "يجب إكمال تفصيل الأطوال أولاً قبل الاعتماد والتسليم.",
+                "اعتماد وتسليم");
+            return;
+        }
+
+        if (!ConfirmationDialogService.ConfirmDangerous(
+            "اعتماد وتسليم الفاتورة (قيود GL + خصم مخزون + تأكيد التسليم)",
+            $"{row.InvoiceNumber} — {row.CustomerName}"))
+            return;
+
+        if (!AppServices.IsInitialized) return;
+        if (!await SalesUiService.Instance.CanApproveAsync())
+        {
+            MockInteractionService.ShowWarning("لا تملك صلاحية الاعتماد.", "صلاحية");
+            return;
+        }
+
+        if (!await SalesUiService.Instance.CanDeliverAsync())
+        {
+            MockInteractionService.ShowWarning("لا تملك صلاحية التسليم.", "صلاحية");
+            return;
+        }
+
+        var result = await SalesUiService.Instance.ApproveAndDeliverAsync(row.Id, row.CustomerName);
+        if (ApplicationResultPresenter.Present(result))
+        {
+            MockInteractionService.ShowSuccess(
+                $"تم اعتماد وتسليم الفاتورة {row.InvoiceNumber} بنجاح.",
+                "اعتماد وتسليم");
+            SalesListRefreshHub.RequestRefresh();
+        }
+    }
+
     public static async Task ApproveAsync(SalesInvoiceListRow row)
     {
         if (row.Status is not (SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval))

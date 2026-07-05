@@ -9,6 +9,7 @@ namespace ERPSystem.Core.Actions
         CustomerReceipt,
         CustomerPayment,
         CustomerInvoices,
+        CustomerSalesDetails,
         CustomerDetails,
         CustomerEdit,
         CustomerDeactivate,
@@ -22,6 +23,7 @@ namespace ERPSystem.Core.Actions
         InvoiceCancel,
         InvoiceSendToWarehouse,
         InvoiceApprove,
+        InvoiceApproveAndDeliver,
         InvoiceDeliver,
         InvoiceCallCustomer,
         InvoiceViewReturns,
@@ -57,6 +59,7 @@ namespace ERPSystem.Core.Actions
         ContainerItems,
         ContainerCosts,
         ContainerExcelImport,
+        ContainerDocumentation,
 
         EmployeeProfile,
         EmployeeAttendance,

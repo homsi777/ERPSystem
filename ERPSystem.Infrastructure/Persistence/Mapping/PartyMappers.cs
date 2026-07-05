@@ -22,6 +22,7 @@ internal static class CustomerMapper
             Status = (int)c.Status,
             CreditLimit = c.CreditLimit.Amount,
             CreditLimitCurrency = c.CreditLimit.Currency,
+            CreditLimitEnabled = c.CreditLimitEnabled,
             Balance = c.Balance.Amount,
             BalanceCurrency = c.Balance.Currency,
             PaymentTermsDays = c.PaymentTermsDays,
@@ -46,6 +47,7 @@ internal static class CustomerMapper
         DomainHydrator.Set(customer, nameof(Customer.Type), (CustomerType)entity.Type);
         DomainHydrator.Set(customer, nameof(Customer.Status), (CustomerStatus)entity.Status);
         DomainHydrator.Set(customer, nameof(Customer.CreditLimit), new Money(entity.CreditLimit, entity.CreditLimitCurrency));
+        DomainHydrator.Set(customer, nameof(Customer.CreditLimitEnabled), entity.CreditLimitEnabled);
         DomainHydrator.Set(customer, nameof(Customer.Balance), new Money(entity.Balance, entity.BalanceCurrency));
         DomainHydrator.Set(customer, nameof(Customer.PaymentTermsDays), entity.PaymentTermsDays);
         DomainHydrator.Set(customer, nameof(Customer.IsActive), entity.IsActive);
@@ -70,6 +72,7 @@ internal static class CustomerMapper
         entity.NameEn = mapped.NameEn;
         entity.Status = mapped.Status;
         entity.CreditLimit = mapped.CreditLimit;
+        entity.CreditLimitEnabled = mapped.CreditLimitEnabled;
         entity.Balance = mapped.Balance;
         entity.PaymentTermsDays = mapped.PaymentTermsDays;
         entity.Phone = mapped.Phone;

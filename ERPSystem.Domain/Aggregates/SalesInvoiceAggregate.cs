@@ -161,7 +161,7 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
             item.RecalculateTotal(_rollDetails);
 
         SubTotal = _items.Aggregate(Money.Zero(), (sum, i) => sum.Add(i.LineTotal));
-        GrandTotal = SubTotal.Add(TaxTotal).Subtract(DiscountTotal);
+        RecalculateGrandTotal();
         Status = SalesInvoiceStatus.Detailed;
         DetailedAt = DateTime.UtcNow;
         Raise(new SalesInvoiceDetailed(Id, InvoiceNumber.Value, GrandTotal.Amount));
@@ -213,6 +213,30 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         if (warehouseId == Guid.Empty)
             throw new ValidationException("Warehouse is required.");
         WarehouseId = warehouseId;
+    }
+
+    public void SetDiscountTotal(Money discount)
+    {
+        if (Status is SalesInvoiceStatus.Approved or SalesInvoiceStatus.Printed
+            or SalesInvoiceStatus.Delivered or SalesInvoiceStatus.Cancelled
+            or SalesInvoiceStatus.Returned or SalesInvoiceStatus.PartiallyReturned)
+            throw new InvalidInvoiceWorkflowException("Cannot change discount after the invoice is approved or closed.");
+
+        if (discount.Amount < 0)
+            throw new ValidationException("Discount amount cannot be negative.");
+
+        DiscountTotal = discount;
+        RecalculateGrandTotal();
+    }
+
+    private void RecalculateGrandTotal()
+    {
+        if (SubTotal.Amount <= 0)
+            return;
+
+        GrandTotal = SubTotal.Add(TaxTotal).Subtract(DiscountTotal);
+        if (GrandTotal.Amount < 0)
+            throw new ValidationException("Discount amount exceeds invoice subtotal.");
     }
 
     public void ApplyReturn(bool isFullyReturned)

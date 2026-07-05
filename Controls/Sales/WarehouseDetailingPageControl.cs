@@ -1,5 +1,6 @@
 using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.DTOs.Sales;
+using ERPSystem.Application.DTOs.Warehouses;
 using ERPSystem.Controls.Workspace;
 using ERPSystem.Core.Sales;
 using ERPSystem.Helpers;
@@ -19,9 +20,11 @@ public sealed class WarehouseDetailingPageControl : UserControl
     private Border? _bannerBorder;
     private readonly Border _workspaceHost;
     private readonly TextBlock _emptyText;
+    private readonly ComboBox _cmbWarehouse;
     private readonly DataGrid _grid;
     private readonly WarehouseDetailingWorkspaceControl _workspace = new();
     private Dictionary<Guid, string> _containerNames = [];
+    private List<WarehouseListDto> _warehouses = [];
     private List<DetailingQueueRow> _queue = [];
     private bool _isLoading;
 
@@ -29,6 +32,25 @@ public sealed class WarehouseDetailingPageControl : UserControl
     {
         _root.Margin = new Thickness(16);
         _root.Children.Add(ErpUiFactory.SectionTitle("مهام المستودع — تفصيل الأطوال"));
+
+        var warehouseRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        warehouseRow.Children.Add(new TextBlock
+        {
+            Text = "المستودع:",
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
+            Foreground = Br("TextSecondaryBrush")
+        });
+        _cmbWarehouse = new ComboBox
+        {
+            MinWidth = 220,
+            Height = 36,
+            DisplayMemberPath = nameof(WarehouseListDto.NameAr)
+        };
+        _cmbWarehouse.SelectionChanged += (_, _) => _ = LoadQueueAsync();
+        warehouseRow.Children.Add(_cmbWarehouse);
+        _root.Children.Add(warehouseRow);
 
         _bannerBorder = ErpUxFactory.InfoBanner("جاري التحميل...", "warning");
         _root.Children.Add(_bannerBorder);
@@ -39,7 +61,7 @@ public sealed class WarehouseDetailingPageControl : UserControl
 
         _emptyText = new TextBlock
         {
-            Text = "لا توجد فواتير بانتظار التفصيل حالياً.\nأرسل مسودة فاتورة من شاشة «فاتورة بيع جديدة».",
+            Text = "لا توجد فواتير بانتظار التفصيل حالياً.\nأرسل مسودة فاتورة من شاشة «فاتورة بيع جديدة» ثم اضغط «إرسال للمستودع».",
             Foreground = Br("TextSecondaryBrush"),
             Margin = new Thickness(8),
             TextWrapping = TextWrapping.Wrap,
@@ -87,23 +109,63 @@ public sealed class WarehouseDetailingPageControl : UserControl
         SalesListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e) =>
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await LoadWarehousesAsync();
         await LoadQueueAsync();
+    }
 
     private void OnRefreshRequested(object? sender, EventArgs e) =>
         _ = LoadQueueAsync();
+
+    private async Task LoadWarehousesAsync()
+    {
+        if (!AppServices.IsInitialized)
+            return;
+
+        var result = await SalesUiService.Instance.GetWarehousesAsync();
+        if (!result.IsSuccess || result.Value is null || result.Value.Count == 0)
+        {
+            _warehouses =
+            [
+                new WarehouseListDto
+                {
+                    Id = DatabaseSeeder.DefaultWarehouseId,
+                    Code = "WH-MAIN",
+                    NameAr = "المستودع الرئيسي",
+                    IsActive = true
+                }
+            ];
+        }
+        else
+        {
+            _warehouses = result.Value.ToList();
+        }
+
+        _cmbWarehouse.ItemsSource = _warehouses;
+        if (_cmbWarehouse.SelectedItem is null && _warehouses.Count > 0)
+            _cmbWarehouse.SelectedIndex = 0;
+    }
+
+    private Guid GetSelectedWarehouseId() =>
+        _cmbWarehouse.SelectedItem is WarehouseListDto wh
+            ? wh.Id
+            : DatabaseSeeder.DefaultWarehouseId;
 
     private async Task LoadQueueAsync()
     {
         if (_isLoading || !AppServices.IsInitialized)
             return;
 
+        if (_cmbWarehouse.SelectedItem is null && _warehouses.Count > 0)
+            _cmbWarehouse.SelectedIndex = 0;
+
         _isLoading = true;
         try
         {
             await LoadContainerNamesAsync();
 
-            var result = await SalesUiService.Instance.GetDetailingQueueAsync(DatabaseSeeder.DefaultWarehouseId);
+            var result = await SalesUiService.Instance.GetDetailingQueueAsync(GetSelectedWarehouseId());
             if (!ApplicationResultPresenter.Present(result))
                 return;
 
@@ -176,12 +238,13 @@ public sealed class WarehouseDetailingPageControl : UserControl
         if (_bannerBorder is not null)
             _root.Children.Remove(_bannerBorder);
 
+        var warehouseName = _cmbWarehouse.SelectedItem is WarehouseListDto wh ? wh.NameAr : "المستودع";
         _bannerBorder = ErpUxFactory.InfoBanner(
             count > 0
-                ? $"لديك {count} فاتورة بانتظار التفصيل. اختر فاتورة من القائمة أو انقر مرتين لفتحها."
-                : "لا توجد فواتير بانتظار التفصيل في المستودع.",
+                ? $"لديك {count} فاتورة بانتظار التفصيل في {warehouseName}. اختر فاتورة من القائمة."
+                : $"لا توجد فواتير بانتظار التفصيل في {warehouseName}.",
             count > 0 ? "warning" : "info");
-        _root.Children.Insert(1, _bannerBorder);
+        _root.Children.Insert(2, _bannerBorder);
     }
 
     private void OnQueueSelectionChanged(object sender, SelectionChangedEventArgs e)

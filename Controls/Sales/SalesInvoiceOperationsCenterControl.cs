@@ -81,7 +81,7 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             : data.CollectedAmount > 0 ? "محصّلة جزئياً" : "غير مُحصّلة";
 
         UIElement detailingContent;
-        if (data.Detailing is not null)
+        if (data.Detailing is not null && invoice.Status == SalesInvoiceStatus.AwaitingDetailing)
         {
             var detailing = new WarehouseDetailingWorkspaceControl();
             detailing.LoadFromDatabase(
@@ -92,6 +92,10 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
                 data.Detailing.Rolls,
                 invoice.Lines.FirstOrDefault()?.UnitPrice ?? 0m);
             detailingContent = WrapDetailing(detailing);
+        }
+        else if (data.Detailing is not null)
+        {
+            detailingContent = BuildDetailingReadOnlySummary(data.Detailing, invoice);
         }
         else
         {
@@ -167,7 +171,7 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         }
 
         if (data.CanApprove)
-            actions.Add(Q("اعتماد الفاتورة", true, null, actionKey: "sales:approve", confirm: true));
+            actions.Add(Q("اعتماد وتسليم", true, null, actionKey: "sales:approve-deliver", confirm: true));
 
         if (s is SalesInvoiceStatus.Approved or SalesInvoiceStatus.Printed)
             actions.Add(Q("تأكيد التسليم", false, null, actionKey: "sales:deliver"));
@@ -425,6 +429,39 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         if (!any) card.Children.Add(EmptyMessage("لا توجد أحداث مسجّلة."));
 
         stack.Children.Add(ErpUiFactory.Card(card));
+        return stack;
+    }
+
+    private static UIElement BuildDetailingReadOnlySummary(WarehouseDetailingDto detailing, SalesInvoiceDto invoice)
+    {
+        var stack = new StackPanel { Margin = new Thickness(12) };
+        stack.Children.Add(ErpUiFactory.SectionTitle("أطوال الأثواب — مُدخلة"));
+        stack.Children.Add(ErpUxFactory.InfoBanner("تم إكمال التفصيل. الأطوال أدناه للعرض فقط.", "success"));
+
+        var grid = ErpUiFactory.BuildGrid(
+            detailing.Rolls.Select(r => new
+            {
+                r.RollSequence,
+                Fabric = string.IsNullOrWhiteSpace(r.FabricDisplayName) ? r.FabricCode : r.FabricDisplayName,
+                r.ColorDisplayName,
+                Length = r.HasValidLength ? $"{r.LengthMeters:N2} م" : "—"
+            }).ToList(),
+            false);
+        grid.IsReadOnly = true;
+        grid.AutoGenerateColumns = false;
+        foreach (var (h, p, w) in new (string, string, object)[]
+        {
+            ("#", "RollSequence", 50),
+            ("التوب", "Fabric", 160),
+            ("اللون", "ColorDisplayName", 100),
+            ("الطول", "Length", 100)
+        })
+            ErpUiFactory.AddGridColumn(grid, h, p, w, null);
+
+        stack.Children.Add(ErpUiFactory.Card(grid));
+        stack.Children.Add(BuildInfo("إجمالي الأطوال",
+            $"{detailing.Rolls.Where(r => r.HasValidLength).Sum(r => r.LengthMeters):N2} م"));
+        stack.Children.Add(BuildInfo("إجمالي الفاتورة", $"{invoice.GrandTotal:N2}"));
         return stack;
     }
 

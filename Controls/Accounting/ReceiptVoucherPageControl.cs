@@ -1,5 +1,6 @@
 using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
@@ -78,6 +79,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = stack, MaxWidth = 720 };
+        CashboxDropdownBinder.WireRefresh(_cashbox);
         Loaded += OnLoaded;
         _createDraft.Click += async (_, _) => await CreateDraftAsync();
         _post.Click += async (_, _) => await PostAsync();
@@ -213,14 +215,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
 
         await LoadOpenInvoicesAsync();
 
-        var boxes = await FinanceUiService.Instance.GetCashboxesAsync();
-        if (ApplicationResultPresenter.Present(boxes) && boxes.Value is { Count: > 0 })
-        {
-            _cashbox.ItemsSource = boxes.Value;
-            _cashbox.DisplayMemberPath = nameof(CashboxOptionDto.Name);
-            _cashbox.SelectedValuePath = nameof(CashboxOptionDto.Id);
-            _cashbox.SelectedIndex = 0;
-        }
+        CashboxDropdownBinder.WireRefresh(_cashbox);
+        await CashboxDropdownBinder.LoadAsync(_cashbox);
     }
 
     private async Task CreateDraftAsync()

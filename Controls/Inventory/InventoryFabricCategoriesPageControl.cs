@@ -75,16 +75,16 @@ internal sealed class ImportedFabricClassificationPanel : UserControl
         var g = _page.Grid;
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
-        foreach (var (h, p, w) in new (string, string, object)[]
+        foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
-            ("الحاوية", nameof(ImportedFabricClassificationDto.ContainerNumber), 110),
-            ("كود التوب", nameof(ImportedFabricClassificationDto.FabricCode), 90),
-            ("التصنيف", nameof(ImportedFabricClassificationDto.NameAr), "*"),
-            ("اللون", nameof(ImportedFabricClassificationDto.ColorNameAr), 100),
-            ("التوب", nameof(ImportedFabricClassificationDto.RollCount), 70),
-            ("الأمتار", nameof(ImportedFabricClassificationDto.LengthMeters), 90)
+            ("الحاوية", nameof(ImportedFabricClassificationDto.ContainerNumber), 110, null),
+            ("كود التوب", nameof(ImportedFabricClassificationDto.FabricCode), 90, null),
+            ("التصنيف", nameof(ImportedFabricClassificationDto.NameAr), "*", null),
+            ("اللون", nameof(ImportedFabricClassificationDto.ColorNameAr), 100, null),
+            ("التوب", nameof(ImportedFabricClassificationDto.RollCount), 70, null),
+            ("الأمتار", nameof(ImportedFabricClassificationDto.LengthMeters), 90, "N2")
         })
-            ErpUiFactory.AddGridColumn(g, h, p, w, null);
+            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
 
         g.MouseDoubleClick += (_, _) =>
         {

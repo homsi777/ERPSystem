@@ -42,8 +42,14 @@ public sealed class CreateSalesInvoiceDraftHandler(
                 command.Lines.Select(l => (l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
                 cancellationToken);
 
-            var invoiceNumber = new InvoiceNumber(
-                await numberingService.NextInvoiceNumberAsync(command.BranchId, cancellationToken));
+            var invoiceNumberText = string.IsNullOrWhiteSpace(command.InvoiceNumber)
+                ? await numberingService.NextInvoiceNumberAsync(command.BranchId, cancellationToken)
+                : command.InvoiceNumber.Trim();
+
+            if (await invoiceRepository.GetByNumberAsync(invoiceNumberText, cancellationToken) is not null)
+                return ApplicationResult<Guid>.ValidationFailed(nameof(command.InvoiceNumber), "رقم الفاتورة مستخدم مسبقاً.");
+
+            var invoiceNumber = new InvoiceNumber(invoiceNumberText);
 
             var userId = currentUserService.UserId ?? Guid.Empty;
             var aggregate = SalesInvoiceAggregate.CreateDraft(
@@ -66,6 +72,8 @@ public sealed class CreateSalesInvoiceDraftHandler(
                     new Money(line.UnitPrice));
                 aggregate.AddItem(item);
             }
+
+            aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
 
             Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
 
@@ -128,8 +136,45 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                 .ToList();
 
             aggregate.ReplaceDraftLines(items);
+            aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
             Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
 
+            await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult();
+        }
+    }
+}
+
+public sealed class UpdateSalesInvoiceDiscountHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
+    : ICommandHandler<UpdateSalesInvoiceDiscountCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        UpdateSalesInvoiceDiscountCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.InvoiceId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.InvoiceId), "Invoice is required.");
+        if (command.DiscountAmount < 0)
+            return ApplicationResult.ValidationFailed(nameof(command.DiscountAmount), "Discount cannot be negative.");
+
+        if (!await permissionService.CanAsync("sales.create", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to update sales invoices.");
+
+        var aggregate = await invoiceRepository.GetByIdAsync(command.InvoiceId, cancellationToken);
+        if (aggregate is null)
+            return ApplicationResult.NotFound("Invoice not found.");
+
+        try
+        {
+            aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult.Success();

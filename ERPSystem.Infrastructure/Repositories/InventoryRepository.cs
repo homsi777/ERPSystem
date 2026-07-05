@@ -102,6 +102,27 @@ internal sealed class InventoryRepository(ErpDbContext context) : IInventoryRepo
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<Guid>> GetWarehousesWithContainerStockAsync(
+        Guid containerId,
+        CancellationToken cancellationToken = default) =>
+        await context.FabricRolls.AsNoTracking()
+            .Where(r => r.ContainerId == containerId &&
+                        r.Status == (int)FabricRollStatus.Available &&
+                        r.RemainingLengthMeters > 0)
+            .Select(r => r.WarehouseId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetSellableContainerIdsAsync(
+        CancellationToken cancellationToken = default) =>
+        await context.FabricRolls.AsNoTracking()
+            .Where(r => r.ContainerId != Guid.Empty &&
+                        r.Status == (int)FabricRollStatus.Available &&
+                        r.RemainingLengthMeters > 0)
+            .Select(r => r.ContainerId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
     public async Task<int> CountLowStockItemsAsync(
         Guid branchId,
         decimal thresholdMeters = 50m,

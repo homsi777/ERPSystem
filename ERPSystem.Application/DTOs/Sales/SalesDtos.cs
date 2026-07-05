@@ -42,6 +42,7 @@ public sealed class SalesInvoiceLineDto
     public string ColorDisplayName { get; init; } = "";
     public int RollCount { get; init; }
     public decimal UnitPrice { get; init; }
+    public decimal TotalLengthMeters { get; init; }
     public decimal LineTotal { get; init; }
 }
 

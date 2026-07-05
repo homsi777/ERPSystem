@@ -12,6 +12,7 @@ public class Customer
     public CustomerType Type { get; private set; }
     public CustomerStatus Status { get; private set; }
     public Money CreditLimit { get; private set; } = Money.Zero();
+    public bool CreditLimitEnabled { get; private set; }
     public Money Balance { get; private set; } = Money.Zero();
     public int PaymentTermsDays { get; private set; }
     public PhoneNumber? Phone { get; private set; }
@@ -30,8 +31,10 @@ public class Customer
         string nameAr,
         string nameEn,
         CustomerType type,
-        Money? creditLimit = null)
+        Money? creditLimit = null,
+        bool creditLimitEnabled = false)
     {
+        var limit = creditLimit ?? Money.Zero();
         return new Customer
         {
             Id = Guid.NewGuid(),
@@ -40,7 +43,8 @@ public class Customer
             NameAr = nameAr,
             NameEn = nameEn,
             Type = type,
-            CreditLimit = creditLimit ?? Money.Zero(),
+            CreditLimit = limit,
+            CreditLimitEnabled = type == CustomerType.Credit && creditLimitEnabled,
             Status = CustomerStatus.Active
         };
     }
@@ -65,19 +69,22 @@ public class Customer
     }
 
     public bool WouldExceedCreditLimit(Money additionalAmount) =>
-        Type == CustomerType.Credit && Balance.Add(additionalAmount).Amount > CreditLimit.Amount;
+        Type == CustomerType.Credit
+        && CreditLimitEnabled
+        && Balance.Add(additionalAmount).Amount > CreditLimit.Amount;
 
     public void Suspend() => Status = CustomerStatus.Suspended;
     public void Block() => Status = CustomerStatus.Blocked;
     public void Activate() => Status = CustomerStatus.Active;
     public void Deactivate() => IsActive = false;
 
-    public void UpdateProfile(string nameAr, string nameEn, Money creditLimit, int paymentTermsDays)
+    public void UpdateProfile(string nameAr, string nameEn, Money creditLimit, int paymentTermsDays, bool creditLimitEnabled)
     {
         NameAr = nameAr;
         NameEn = nameEn;
         CreditLimit = creditLimit;
         PaymentTermsDays = paymentTermsDays;
+        CreditLimitEnabled = Type == CustomerType.Credit && creditLimitEnabled;
     }
 }
 

@@ -37,19 +37,19 @@ public sealed class InventoryWarehouseListPageControl : UserControl
         var g = _page.Grid;
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
-        foreach (var (h, p, w) in new (string, string, object)[]
+        foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
-            ("الكود", nameof(WarehouseListExtendedDto.Code), 90),
-            ("الاسم", nameof(WarehouseListExtendedDto.NameAr), "*"),
-            ("المدينة", nameof(WarehouseListExtendedDto.City), 100),
-            ("المدير", nameof(WarehouseListExtendedDto.Manager), 120),
-            ("Rolls", nameof(WarehouseListExtendedDto.RollCount), 80),
-            ("الأمتار", nameof(WarehouseListExtendedDto.TotalMeters), 100),
-            ("القيمة $", nameof(WarehouseListExtendedDto.InventoryValue), 110),
-            ("افتراضي", nameof(WarehouseListExtendedDto.IsDefault), 70),
-            ("الحالة", nameof(WarehouseListExtendedDto.IsActive), 80)
+            ("الكود", nameof(WarehouseListExtendedDto.Code), 90, null),
+            ("الاسم", nameof(WarehouseListExtendedDto.NameAr), "*", null),
+            ("المدينة", nameof(WarehouseListExtendedDto.City), 100, null),
+            ("المدير", nameof(WarehouseListExtendedDto.Manager), 120, null),
+            ("Rolls", nameof(WarehouseListExtendedDto.RollCount), 80, null),
+            ("الأمتار", nameof(WarehouseListExtendedDto.TotalMeters), 100, "N2"),
+            ("القيمة $", nameof(WarehouseListExtendedDto.InventoryValue), 110, "N2"),
+            ("افتراضي", nameof(WarehouseListExtendedDto.IsDefault), 70, null),
+            ("الحالة", nameof(WarehouseListExtendedDto.IsActive), 80, null)
         })
-            ErpUiFactory.AddGridColumn(g, h, p, w, null);
+            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
 
         AddActionsColumn(g);
 

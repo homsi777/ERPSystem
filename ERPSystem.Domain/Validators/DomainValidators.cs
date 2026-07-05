@@ -18,6 +18,8 @@ public static class CustomerValidator
             throw new ValidationException("Customer must belong to a company.");
         if (customer.Type == CustomerType.Credit && customer.CreditLimit.Amount < 0)
             throw new ValidationException("Credit limit cannot be negative.");
+        if (customer.Type == CustomerType.Credit && customer.CreditLimitEnabled && customer.CreditLimit.Amount <= 0)
+            throw new ValidationException("Credit limit must be greater than zero when enforcement is enabled.");
     }
 }
 

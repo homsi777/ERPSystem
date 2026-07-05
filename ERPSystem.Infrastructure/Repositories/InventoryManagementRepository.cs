@@ -231,6 +231,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 FabricName = fabrics.GetValueOrDefault(s.FabricItemId)?.NameAr ?? "—",
                 FabricColorId = s.FabricColorId,
                 ColorName = colors.GetValueOrDefault(s.FabricColorId)?.NameAr ?? "—",
+                ContainerId = s.ContainerId,
                 ContainerNumber = s.ContainerId != Guid.Empty && containers.TryGetValue(s.ContainerId, out var c)
                     ? c.ContainerNumber : "—",
                 RollCount = s.RollCount,

@@ -135,7 +135,7 @@ namespace ERPSystem.Controls.Workspace
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
             _btnSave = new Button
             {
-                Content = "حفظ التفصيل", Style = S("SecondaryButtonStyle"),
+                Content = "التحقق من الأطوال", Style = S("SecondaryButtonStyle"),
                 Height = 38, Padding = new Thickness(18, 0, 18, 0), Margin = new Thickness(0, 0, 8, 0), IsEnabled = false
             };
             _btnSave.Click += async (_, _) => await TryCompleteAsync(saveOnly: true);
@@ -196,13 +196,16 @@ namespace ERPSystem.Controls.Workspace
                 return;
             }
 
-            if (saveOnly || _invoiceId is null || !AppServices.IsInitialized)
+            if (saveOnly)
             {
                 MockInteractionService.ShowSuccess(
-                    saveOnly ? "تم حفظ التفصيل محلياً." : "تم التحقق من الأطوال.",
-                    saveOnly ? "حفظ التفصيل" : "إكمال التفصيل");
+                    "جميع الأطوال مُدخلة بشكل صحيح.\nاضغط «إكمال التفصيل وإرسال للمحاسب» للحفظ النهائي.",
+                    "التحقق من الأطوال");
                 return;
             }
+
+            if (_invoiceId is null || !AppServices.IsInitialized)
+                return;
 
             if (!saveOnly && !MockInteractionService.Confirm("إكمال التفصيل وحفظ الأطوال في النظام؟", "إكمال التفصيل"))
                 return;

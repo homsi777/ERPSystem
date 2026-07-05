@@ -83,7 +83,7 @@ public static class SalesContextMenuService
         SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval =>
         [
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
-            new("سير العمل", "\uE73E", "اعتماد الفاتورة", EntityActionId.InvoiceApprove, false),
+            new("سير العمل", "\uE73E", "اعتماد وتسليم", EntityActionId.InvoiceApproveAndDeliver, false),
             new("طباعة", "\uE749", "طباعة", EntityActionId.InvoicePrint, false),
             new("طباعة", "\uE896", "تصدير PDF", EntityActionId.InvoiceExportPdf, false),
             new("خطر", "\uE711", "إلغاء الفاتورة", EntityActionId.InvoiceCancel, true)

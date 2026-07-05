@@ -34,6 +34,10 @@ public static class ChinaContainerActionRouter
                 WorkspaceWindowManager.Instance.OpenAction(actionId, entityType, row, sourceModule);
                 return true;
 
+            case EntityActionId.ContainerDocumentation:
+                ContainerDocumentationPopupService.Show(row);
+                return true;
+
             default:
                 return false;
         }

@@ -536,38 +536,38 @@ internal static class WarehouseExecutiveWorkspaceBuilder
     {
         var tabs = new TabControl { FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"), Margin = new Thickness(0, 8, 0, 0) };
         tabs.Items.Add(Tab("Stock", "الأرصدة", DataTab(oc.Stock,
-            ("القماش", nameof(FabricStockBalanceDto.FabricName)),
-            ("اللون", nameof(FabricStockBalanceDto.ColorName)),
-            ("Rolls", nameof(FabricStockBalanceDto.RollCount)),
-            ("متاح", nameof(FabricStockBalanceDto.AvailableMeters)),
-            ("قيمة", nameof(FabricStockBalanceDto.InventoryValue)))));
+            ("القماش", nameof(FabricStockBalanceDto.FabricName), null),
+            ("اللون", nameof(FabricStockBalanceDto.ColorName), null),
+            ("Rolls", nameof(FabricStockBalanceDto.RollCount), null),
+            ("متاح", nameof(FabricStockBalanceDto.AvailableMeters), "N2"),
+            ("قيمة", nameof(FabricStockBalanceDto.InventoryValue), "N2"))));
         tabs.Items.Add(Tab("Rolls", "Rolls", DataTab(oc.Rolls,
-            ("#", nameof(FabricRollListDto.RollNumber)),
-            ("القماش", nameof(FabricRollListDto.FabricName)),
-            ("متبقي", nameof(FabricRollListDto.RemainingLengthMeters)),
-            ("قيمة", nameof(FabricRollListDto.CurrentValue)),
-            ("حالة", nameof(FabricRollListDto.Status)))));
+            ("#", nameof(FabricRollListDto.RollNumber), null),
+            ("القماش", nameof(FabricRollListDto.FabricName), null),
+            ("متبقي", nameof(FabricRollListDto.RemainingLengthMeters), "N2"),
+            ("قيمة", nameof(FabricRollListDto.CurrentValue), "N2"),
+            ("حالة", nameof(FabricRollListDto.Status), null))));
         if (oc.Locations.Count > 0)
             tabs.Items.Add(Tab("Locations", "المواقع", DataTab(oc.Locations,
-                ("كود", nameof(StorageLocationDto.Code)),
-                ("اسم", nameof(StorageLocationDto.Name)),
-                ("نوع", nameof(StorageLocationDto.LocationType)),
-                ("حالة", nameof(StorageLocationDto.Status)))));
+                ("كود", nameof(StorageLocationDto.Code), null),
+                ("اسم", nameof(StorageLocationDto.Name), null),
+                ("نوع", nameof(StorageLocationDto.LocationType), null),
+                ("حالة", nameof(StorageLocationDto.Status), null))));
         tabs.Items.Add(Tab("Movements", "كل الحركات", DataTab(oc.RecentMovements,
-            ("رقم", nameof(StockMovementListDto.MovementNumber)),
-            ("نوع", nameof(StockMovementListDto.Type)),
-            ("أمتار", nameof(StockMovementListDto.TotalMeters)),
-            ("قيمة", nameof(StockMovementListDto.TotalValue)))));
+            ("رقم", nameof(StockMovementListDto.MovementNumber), null),
+            ("نوع", nameof(StockMovementListDto.Type), null),
+            ("أمتار", nameof(StockMovementListDto.TotalMeters), "N2"),
+            ("قيمة", nameof(StockMovementListDto.TotalValue), "N2"))));
         if (oc.RecentAudit.Count > 0)
             tabs.Items.Add(Tab("Audit", "التدقيق", DataTab(oc.RecentAudit,
-                ("تاريخ", nameof(InventoryAuditDto.RecordedAt)),
-                ("إجراء", nameof(InventoryAuditDto.Action)),
-                ("مستخدم", nameof(InventoryAuditDto.Username)))));
+                ("تاريخ", nameof(InventoryAuditDto.RecordedAt), null),
+                ("إجراء", nameof(InventoryAuditDto.Action), null),
+                ("مستخدم", nameof(InventoryAuditDto.Username), null))));
         if (oc.Timeline.Count > 0)
             tabs.Items.Add(Tab("Timeline", "الخط الزمني", DataTab(oc.Timeline,
-                ("تاريخ", nameof(InventoryTimelineDto.OccurredAt)),
-                ("حدث", nameof(InventoryTimelineDto.Title)),
-                ("مستخدم", nameof(InventoryTimelineDto.Username)))));
+                ("تاريخ", nameof(InventoryTimelineDto.OccurredAt), null),
+                ("حدث", nameof(InventoryTimelineDto.Title), null),
+                ("مستخدم", nameof(InventoryTimelineDto.Username), null))));
         return tabs;
     }
 
@@ -599,13 +599,13 @@ internal static class WarehouseExecutiveWorkspaceBuilder
     private static TabItem Tab(string key, string label, UIElement content) =>
         new() { Header = label, Tag = key, Content = new ScrollViewer { Content = content, Padding = new Thickness(12) } };
 
-    private static UIElement DataTab<T>(IReadOnlyList<T> data, params (string, string)[] cols)
+    private static UIElement DataTab<T>(IReadOnlyList<T> data, params (string Header, string Path, string? Format)[] cols)
     {
         if (data.Count == 0)
             return EmptyPanel("لا بيانات", "لا توجد سجلات في PostgreSQL لهذا القسم.");
         var g = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, ItemsSource = data, MaxHeight = 400 };
-        foreach (var (h, p) in cols)
-            ErpUiFactory.AddGridColumn(g, h, p, "*", null);
+        foreach (var (h, p, fmt) in cols)
+            ErpUiFactory.AddGridColumn(g, h, p, "*", fmt);
         return g;
     }
 

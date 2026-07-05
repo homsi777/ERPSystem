@@ -121,7 +121,7 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.SalesInvoiceItemId), r.SalesInvoiceItemId);
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.RollSequence), new RollNumber(r.RollSequence));
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.FabricRollId), r.FabricRollId);
-            DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.LengthMeters), new LengthInMeters(r.LengthMeters));
+            DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.LengthMeters), LengthInMeters.FromDecimal(r.LengthMeters));
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.EnteredByUserId), r.EnteredByUserId);
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.EnteredAt), r.EnteredAt);
             return roll;
@@ -311,7 +311,7 @@ internal static class ContainerMapper
             DomainHydrator.Set(lc, nameof(LandingCost.Status), (LandingCostStatus)landingCost.Status);
             DomainHydrator.Set(lc, nameof(LandingCost.CalculatedAt), landingCost.CalculatedAt);
             DomainHydrator.Set(lc, nameof(LandingCost.CalculatedByUserId), landingCost.CalculatedByUserId);
-            DomainHydrator.Set(aggregate, "_landingCost", lc);
+            DomainHydrator.Set(aggregate, "LandingCost", lc);
         }
 
         if (fabricTypeLines.Count > 0)
@@ -393,8 +393,8 @@ internal static class WarehouseMapper
                 stock.RollCount,
                 new LengthInMeters(stock.TotalMeters));
             DomainHydrator.Set(balance, nameof(WarehouseStockBalance.Id), stock.Id);
-            DomainHydrator.Set(balance, nameof(WarehouseStockBalance.ReservedMeters), new LengthInMeters(stock.ReservedMeters));
-            DomainHydrator.Set(balance, nameof(WarehouseStockBalance.AvailableMeters), new LengthInMeters(stock.AvailableMeters));
+            DomainHydrator.Set(balance, nameof(WarehouseStockBalance.ReservedMeters), LengthInMeters.FromDecimal(stock.ReservedMeters));
+            DomainHydrator.Set(balance, nameof(WarehouseStockBalance.AvailableMeters), LengthInMeters.FromDecimal(stock.AvailableMeters));
             aggregate.AddOrUpdateBalance(balance);
         }
 

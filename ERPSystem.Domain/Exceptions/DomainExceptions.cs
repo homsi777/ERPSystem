@@ -13,8 +13,15 @@ public sealed class ValidationException : DomainException
 
 public sealed class CreditLimitExceededException : DomainException
 {
+    public decimal Limit { get; }
+    public decimal ProjectedBalance { get; }
+
     public CreditLimitExceededException(decimal limit, decimal projectedBalance)
-        : base($"Credit limit exceeded. Limit: {limit:N2}, projected balance: {projectedBalance:N2}.") { }
+        : base($"Credit limit exceeded. Limit: {limit:N2}, projected balance: {projectedBalance:N2}.")
+    {
+        Limit = limit;
+        ProjectedBalance = projectedBalance;
+    }
 }
 
 public sealed class InvalidInvoiceWorkflowException : DomainException

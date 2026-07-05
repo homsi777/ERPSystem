@@ -44,6 +44,13 @@ namespace ERPSystem
             _dashboard.NavigationRequested += (_, m) => NavigateTo(new NavigationRequest(m));
             _dashboard.ActionRequested += (_, req) => NavigateTo(new NavigationRequest(req.Module, req.SubPage));
             Loaded += OnLoaded;
+            Closing += OnClosing;
+        }
+
+        private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!UnsavedWorkGuard.TryConfirmLeave())
+                e.Cancel = true;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -75,6 +82,12 @@ namespace ERPSystem
 
         private void NavigateTo(NavigationRequest req)
         {
+            var currentModule = ResolveActiveModule();
+            if (currentModule.HasValue
+                && currentModule.Value != req.Module
+                && !UnsavedWorkGuard.TryConfirmLeave())
+                return;
+
             WorkspaceHost.Content = req.Module switch
             {
                 AppModule.Dashboard   => _dashboard,
@@ -140,5 +153,23 @@ namespace ERPSystem
 
         private void TopBar_SettingsRequested(object? sender, EventArgs e) =>
             NavigateTo(new NavigationRequest(AppModule.Settings, "Company"));
+
+        private AppModule? ResolveActiveModule() => WorkspaceHost.Content switch
+        {
+            DashboardModule => AppModule.Dashboard,
+            ChinaImportModule => AppModule.ChinaImport,
+            SalesModule => AppModule.Sales,
+            InventoryModule => AppModule.Inventory,
+            CustomersModule => AppModule.Customers,
+            SuppliersModule => AppModule.Suppliers,
+            AccountingModule => AppModule.Accounting,
+            ExpensesModule => AppModule.Expenses,
+            CapitalPartnersModule => AppModule.CapitalPartners,
+            ReportsModule => AppModule.Reports,
+            PurchasesModule => AppModule.Purchases,
+            HRModule => AppModule.HR,
+            SettingsModule => AppModule.Settings,
+            _ => null
+        };
     }
 }

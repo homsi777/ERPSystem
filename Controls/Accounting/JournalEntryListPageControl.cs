@@ -2,12 +2,16 @@ using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Accounting;
 using ERPSystem.Application.Queries.Accounting;
+using ERPSystem.Controls;
+using ERPSystem.Core;
+using ERPSystem.Core.Actions;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Accounting;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfApplication = System.Windows.Application;
@@ -18,171 +22,127 @@ public sealed class JournalEntryListPageControl : UserControl
 {
     private sealed record StatusFilterOption(JournalEntryStatus? Status, string Label);
 
-    private readonly TextBox _search = new() { Style = S("EnterpriseSearchInputStyle"), Tag = "بحث برقم القيد أو البيان..." };
-    private readonly ComboBox _statusFilter = new() { MinWidth = 140, Style = S("EnterpriseComboBoxStyle") };
+    private readonly ErpListModuleControl _page = new();
+    private readonly ComboBox _statusFilter = ErpUiFactory.FilterCombo(["— كل الحالات —"], 150);
     private readonly DatePicker _fromDate = ErpUiFactory.FormDate(DateTime.Today.AddMonths(-1));
     private readonly DatePicker _toDate = ErpUiFactory.FormDate(DateTime.Today);
-    private readonly Button _btnPrimary = new() { Style = S("PrimaryButtonStyle"), Height = 32, Padding = new Thickness(12, 0, 12, 0) };
-    private readonly WrapPanel _cardsHost = new() { Margin = new Thickness(16) };
-    private readonly TextBlock _recordCount = new() { FontSize = 11, Foreground = Br("TextMutedBrush") };
-    private readonly Border _emptyState = new() { Visibility = Visibility.Collapsed, Background = Brushes.White };
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    private string _pendingSearch = "";
     private bool _isLoading;
 
     public JournalEntryListPageControl()
     {
-        Background = Br("AppBgBrush");
-        Content = BuildLayout();
+        ConfigureList();
+        Content = _page;
         Loaded += OnLoaded;
         Unloaded += (_, _) => AccountingListRefreshHub.RefreshRequested -= OnRefreshRequested;
         AccountingListRefreshHub.RefreshRequested += OnRefreshRequested;
-        _searchTimer.Tick += async (_, _) => { _searchTimer.Stop(); await LoadAsync(); };
-        _search.TextChanged += (_, _) => { _searchTimer.Stop(); _searchTimer.Start(); };
+        _searchTimer.Tick += async (_, _) =>
+        {
+            _searchTimer.Stop();
+            await LoadAsync();
+        };
+    }
+
+    private void ConfigureList()
+    {
+        _page.Configure(EntityType.JournalEntry, AppModule.Accounting);
+        _page.SetHeader("دفتر اليومية", "قيود اليومية — انقر مرتين على السطر لعرض التفاصيل", "\uE8C1", B("AccentPrimaryBrush"));
+        _page.SetPrimaryButton("قيد جديد");
+        _page.SetEmptyState("لا توجد قيود يومية", "قيد جديد", "\uE8C1");
+        _page.EnableServerSideSearch();
+
+        var filterPanel = new StackPanel { Orientation = Orientation.Horizontal };
+        filterPanel.Children.Add(WrapFilter("من", _fromDate));
+        filterPanel.Children.Add(WrapFilter("إلى", _toDate));
+        filterPanel.Children.Add(WrapFilter("الحالة", _statusFilter));
+        _page.SetFilterExtras(filterPanel);
+
+        _page.PrimaryActionRequested += (_, _) => AccountingPopupService.ShowCreateJournal();
+        _page.SearchChanged += (_, term) =>
+        {
+            _pendingSearch = term;
+            _searchTimer.Stop();
+            _searchTimer.Start();
+        };
+
         _statusFilter.SelectionChanged += (_, _) => _ = LoadAsync();
         _fromDate.SelectedDateChanged += (_, _) => _ = LoadAsync();
         _toDate.SelectedDateChanged += (_, _) => _ = LoadAsync();
-        _btnPrimary.Click += (_, _) => AccountingPopupService.ShowCreateJournal();
+
+        _page.Grid.MouseDoubleClick += (_, _) =>
+        {
+            if (_page.Grid.SelectedItem is JournalEntryListDto row)
+                AccountingPopupService.ShowJournalDetails(row);
+        };
+
+        _page.Grid.PreviewMouseRightButtonDown += OnGridRightClick;
+
+        ConfigureGridColumns();
     }
 
-    private UIElement BuildLayout()
+    private void ConfigureGridColumns()
     {
-        var root = new Grid();
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var g = _page.Grid;
+        g.AutoGenerateColumns = false;
+        g.IsReadOnly = true;
+        g.CanUserAddRows = false;
+        g.SelectionMode = DataGridSelectionMode.Single;
 
-        var toolbar = new Border
+        foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
-            Background = Br("SurfaceBrush"),
-            BorderBrush = Br("BorderBrush"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 12, 16, 12),
-            Child = BuildPrimaryButton()
-        };
-        Grid.SetRow(toolbar, 0);
-
-        var filterRow = new StackPanel { Orientation = Orientation.Horizontal };
-        filterRow.Children.Add(Labeled("من", _fromDate));
-        filterRow.Children.Add(Labeled("إلى", _toDate));
-        filterRow.Children.Add(Labeled("الحالة", _statusFilter));
-        filterRow.Children.Add(new Border
-        {
-            Width = 220,
-            Margin = new Thickness(12, 0, 0, 0),
-            Background = Br("SurfaceBrush"),
-            BorderBrush = Br("BorderBrush"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 4, 8, 4),
-            Child = _search
-        });
-
-        var filters = new Border
-        {
-            Background = Br("SurfaceBrush"),
-            BorderBrush = Br("BorderBrush"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(16, 10, 16, 10),
-            Child = filterRow
-        };
-        Grid.SetRow(filters, 1);
-
-        var body = new Border { Background = Brushes.White };
-        var bodyGrid = new Grid();
-        bodyGrid.Children.Add(new ScrollViewer
-        {
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            Content = _cardsHost
-        });
-
-        var emptyBtn = new Button
-        {
-            Content = "قيد جديد",
-            Style = S("PrimaryButtonStyle"),
-            Height = 32,
-            Margin = new Thickness(0, 10, 0, 0)
-        };
-        emptyBtn.Click += (_, _) => AccountingPopupService.ShowCreateJournal();
-
-        _emptyState.VerticalAlignment = VerticalAlignment.Center;
-        _emptyState.HorizontalAlignment = HorizontalAlignment.Center;
-        _emptyState.Child = new StackPanel
-        {
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Children =
-            {
-                new TextBlock
-                {
-                    Text = "\uE8C1",
-                    FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                    FontSize = 28,
-                    Foreground = Br("TextMutedBrush"),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 0, 0, 6)
-                },
-                new TextBlock
-                {
-                    Text = "لا توجد قيود يومية",
-                    FontSize = 12,
-                    Foreground = Br("TextSecondaryBrush"),
-                    HorizontalAlignment = HorizontalAlignment.Center
-                },
-                emptyBtn
-            }
-        };
-        bodyGrid.Children.Add(_emptyState);
-        body.Child = bodyGrid;
-        Grid.SetRow(body, 2);
-
-        var footer = new Border
-        {
-            Background = Br("SurfaceAltBrush"),
-            BorderBrush = Br("BorderBrush"),
-            BorderThickness = new Thickness(0, 1, 0, 0),
-            Padding = new Thickness(16, 8, 16, 8),
-            Child = _recordCount
-        };
-        Grid.SetRow(footer, 3);
-
-        root.Children.Add(toolbar);
-        root.Children.Add(filters);
-        root.Children.Add(body);
-        root.Children.Add(footer);
-        return root;
+            ("رقم القيد", nameof(JournalEntryListDto.EntryNumber), 120, null),
+            ("التاريخ", nameof(JournalEntryListDto.EntryDate), 100, "yyyy/MM/dd"),
+            ("البيان", nameof(JournalEntryListDto.Description), "*", null),
+            ("مدين", nameof(JournalEntryListDto.DebitTotal), 110, "N2"),
+            ("دائن", nameof(JournalEntryListDto.CreditTotal), 110, "N2"),
+            ("الحالة", nameof(JournalEntryListDto.StatusDisplay), 110, null),
+            ("المصدر", nameof(JournalEntryListDto.SourceTypeDisplay), 120, null),
+            ("سطور", nameof(JournalEntryListDto.LineCount), 60, null)
+        })
+            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
     }
 
-    private UIElement BuildPrimaryButton()
+    private static UIElement WrapFilter(string label, UIElement control)
     {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        sp.Children.Add(new TextBlock
-        {
-            Text = "\uE710",
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            FontSize = 12,
-            Margin = new Thickness(0, 0, 5, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        sp.Children.Add(new TextBlock { Text = "قيد جديد", FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
-        _btnPrimary.Content = sp;
-        return _btnPrimary;
-    }
-
-    private static UIElement Labeled(string label, UIElement control)
-    {
-        var sp = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+        var sp = new StackPanel { Margin = new Thickness(0, 0, 10, 0) };
         sp.Children.Add(new TextBlock
         {
             Text = label,
             FontSize = 11,
-            Foreground = Br("TextMutedBrush")
+            Foreground = Br("TextMutedBrush"),
+            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial")
         });
         sp.Children.Add(control);
         return sp;
     }
 
+    private static void OnGridRightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (FindParent<DataGridRow>(e.OriginalSource as DependencyObject) is not { Item: JournalEntryListDto row } dgRow)
+            return;
+
+        e.Handled = true;
+        dgRow.IsSelected = true;
+        AccountingContextMenuService.ShowJournal(row, dgRow);
+    }
+
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child != null)
+        {
+            if (child is T match) return match;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Loaded -= OnLoaded;
+        ConfigureGridColumns();
+
         var statusOptions = new List<StatusFilterOption> { new(null, "— كل الحالات —") };
         foreach (JournalEntryStatus status in Enum.GetValues(typeof(JournalEntryStatus)))
             statusOptions.Add(new(status, status.ToDisplay()));
@@ -191,7 +151,7 @@ public sealed class JournalEntryListPageControl : UserControl
         _statusFilter.DisplayMemberPath = nameof(StatusFilterOption.Label);
         _statusFilter.SelectedIndex = 0;
 
-        _btnPrimary.IsEnabled = await AccountingUiService.Instance.CanCreateJournalAsync();
+        _page.SetPrimaryButtonEnabled(await AccountingUiService.Instance.CanCreateJournalAsync());
         await LoadAsync();
     }
 
@@ -199,33 +159,43 @@ public sealed class JournalEntryListPageControl : UserControl
 
     private async Task LoadAsync()
     {
-        if (_isLoading || !AppServices.IsInitialized) return;
+        if (_isLoading || !AppServices.IsInitialized)
+        {
+            _page.BindData([]);
+            return;
+        }
+
         _isLoading = true;
+        _page.SetLoadingState(true);
         try
         {
             JournalEntryStatus? status = _statusFilter.SelectedItem is StatusFilterOption opt ? opt.Status : null;
             var filter = new JournalEntryListFilter
             {
-                Search = string.IsNullOrWhiteSpace(_search.Text) ? null : _search.Text.Trim(),
+                Search = string.IsNullOrWhiteSpace(_pendingSearch) ? null : _pendingSearch.Trim(),
                 Status = status,
                 FromDate = _fromDate.SelectedDate,
                 ToDate = _toDate.SelectedDate
             };
 
             var result = await AccountingUiService.Instance.GetJournalEntriesAsync(filter, 1, 500);
-            if (!ApplicationResultPresenter.Present(result)) return;
+            if (!ApplicationResultPresenter.Present(result))
+            {
+                _page.BindData([]);
+                return;
+            }
 
             var list = result.Value?.Items ?? [];
-            _cardsHost.Children.Clear();
-            foreach (var entry in list)
-                _cardsHost.Children.Add(new JournalEntryCardControl(entry));
-
-            _emptyState.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            _recordCount.Text = $"عرض {list.Count} قيد";
+            _page.BindData(list.Cast<object>().ToList());
+            _page.SetFilterSummary($"عرض {list.Count} قيد");
         }
-        finally { _isLoading = false; }
+        finally
+        {
+            _page.SetLoadingState(false);
+            _isLoading = false;
+        }
     }
 
     private static Brush Br(string key) => (Brush)WpfApplication.Current.Resources[key]!;
-    private static Style S(string key) => (Style)WpfApplication.Current.Resources[key]!;
+    private static SolidColorBrush B(string key) => (SolidColorBrush)WpfApplication.Current.Resources[key]!;
 }

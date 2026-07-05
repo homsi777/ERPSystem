@@ -25,6 +25,7 @@ public static class CustomerMapper
         Status = aggregate.Customer.Status,
         Balance = aggregate.Customer.Balance.Amount,
         CreditLimit = aggregate.Customer.CreditLimit.Amount,
+        CreditLimitEnabled = aggregate.Customer.CreditLimitEnabled,
         IsActive = aggregate.Customer.IsActive,
         OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted
     };
@@ -39,6 +40,7 @@ public static class CustomerMapper
         Status = aggregate.Customer.Status,
         Balance = aggregate.Customer.Balance.Amount,
         CreditLimit = aggregate.Customer.CreditLimit.Amount,
+        CreditLimitEnabled = aggregate.Customer.CreditLimitEnabled,
         PaymentTermsDays = aggregate.Customer.PaymentTermsDays,
         Phone = aggregate.Customer.Phone?.Value,
         Email = aggregate.Customer.Email?.Value,
@@ -219,15 +221,21 @@ public static class SalesInvoiceMapper
         DeliveryDriverName = aggregate.DeliveryDriverName,
         DeliveryNotes = aggregate.DeliveryNotes,
         CancelReason = aggregate.CancelReason,
-        Lines = aggregate.Items.Select(i => new SalesInvoiceLineDto
+        Lines = aggregate.Items.Select(i =>
         {
-            Id = i.Id,
-            LineNumber = i.LineNumber,
-            FabricItemId = i.FabricItemId,
-            FabricColorId = i.FabricColorId,
-            RollCount = i.RollCount,
-            UnitPrice = i.UnitPrice.Amount,
-            LineTotal = i.LineTotal.Amount
+            var lineRolls = aggregate.RollDetails.Where(r => r.SalesInvoiceItemId == i.Id);
+            var totalLength = lineRolls.Where(r => r.HasValidLength).Sum(r => r.LengthMeters.Value);
+            return new SalesInvoiceLineDto
+            {
+                Id = i.Id,
+                LineNumber = i.LineNumber,
+                FabricItemId = i.FabricItemId,
+                FabricColorId = i.FabricColorId,
+                RollCount = i.RollCount,
+                UnitPrice = i.UnitPrice.Amount,
+                TotalLengthMeters = totalLength,
+                LineTotal = i.LineTotal.Amount
+            };
         }).ToList()
     };
 

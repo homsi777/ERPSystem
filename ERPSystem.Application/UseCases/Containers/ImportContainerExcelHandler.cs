@@ -71,7 +71,7 @@ public sealed class ImportContainerExcelHandler(
 
             PackingListImportLogger.Stage("fabric-lookup-start", $"groups={parsed.Groups.Count}");
             var groups = new List<PackingListGroupDto>();
-            var catalogMutated = false;
+            var catalogBatch = new FabricCatalogImportBatch();
 
             foreach (var group in parsed.Groups)
             {
@@ -91,14 +91,12 @@ public sealed class ImportContainerExcelHandler(
 
                 try
                 {
-                    var (fabricItem, fabricColor, created) = await FabricCatalogImportProvisioner.EnsureAsync(
+                    var (fabricItem, fabricColor, _) = await catalogBatch.EnsureAsync(
                         fabricCatalogRepository,
                         query.CompanyId,
                         fabricCode,
                         colorKey,
                         cancellationToken);
-                    if (created)
-                        catalogMutated = true;
                     fabricResolved = true;
                     colorResolved = true;
                     fabricItemId = fabricItem.Id;
@@ -151,7 +149,7 @@ public sealed class ImportContainerExcelHandler(
                     ResolutionIssues = issues
                 });
             }
-            if (catalogMutated)
+            if (catalogBatch.HasPendingChanges)
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 
             var hasUnresolved = groups.Any(g => !g.FabricResolved || !g.ColorResolved);
@@ -202,9 +200,11 @@ public sealed class ImportContainerExcelHandler(
         catch (Exception ex)
         {
             PackingListImportLogger.Stage("import-failed", ex.GetType().Name + ": " + ex.Message);
-            return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed(
-                "File",
-                ExcelFileFormatDetector.UnreadableFileMessage);
+            var failure = ex.ToFailureResult<ContainerExcelParseResultDto>();
+            var message = !string.IsNullOrWhiteSpace(failure.ErrorMessage)
+                ? failure.ErrorMessage
+                : ExcelFileFormatDetector.UnreadableFileMessage;
+            return ApplicationResult<ContainerExcelParseResultDto>.ValidationFailed("File", message);
         }
     }
 }

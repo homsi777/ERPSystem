@@ -143,6 +143,8 @@ public sealed class SalesUiService
         Guid chinaContainerId,
         PaymentType paymentType,
         IReadOnlyList<SalesInvoiceLineCommand> lines,
+        string? invoiceNumber = null,
+        decimal discountAmount = 0,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -151,10 +153,12 @@ public sealed class SalesUiService
         {
             CompanyId = CompanyId,
             BranchId = BranchId,
+            InvoiceNumber = invoiceNumber,
             CustomerId = customerId,
             WarehouseId = warehouseId,
             ChinaContainerId = chinaContainerId,
             PaymentType = paymentType,
+            DiscountAmount = discountAmount,
             Lines = lines
         }, cancellationToken);
     }
@@ -166,6 +170,7 @@ public sealed class SalesUiService
         Guid chinaContainerId,
         PaymentType paymentType,
         IReadOnlyList<SalesInvoiceLineCommand> lines,
+        decimal discountAmount = 0,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -177,7 +182,22 @@ public sealed class SalesUiService
             WarehouseId = warehouseId,
             ChinaContainerId = chinaContainerId,
             PaymentType = paymentType,
+            DiscountAmount = discountAmount,
             Lines = lines
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult> ApplyDiscountAsync(
+        Guid invoiceId,
+        decimal discountAmount,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<UpdateSalesInvoiceDiscountCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new UpdateSalesInvoiceDiscountCommand
+        {
+            InvoiceId = invoiceId,
+            DiscountAmount = discountAmount
         }, cancellationToken);
     }
 
@@ -211,6 +231,24 @@ public sealed class SalesUiService
             InvoiceId = invoiceId,
             Reason = reason
         }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult> ApproveAndDeliverAsync(
+        Guid invoiceId,
+        string? receivedByName = null,
+        CancellationToken cancellationToken = default)
+    {
+        var approve = await ApproveAsync(invoiceId, cancellationToken);
+        if (!approve.IsSuccess)
+            return approve;
+
+        return await DeliverAsync(
+            invoiceId,
+            DateTime.UtcNow,
+            receivedByName,
+            driverName: null,
+            notes: null,
+            cancellationToken);
     }
 
     public async Task<ApplicationResult> DeliverAsync(

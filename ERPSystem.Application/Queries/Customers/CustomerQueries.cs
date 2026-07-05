@@ -24,3 +24,10 @@ public sealed class GetCustomerStatementQuery
     public DateTime? FromDate { get; init; }
     public DateTime? ToDate { get; init; }
 }
+
+public sealed class GetCustomerSalesDetailsQuery
+{
+    public Guid CustomerId { get; init; }
+    public DateTime? FromDate { get; init; }
+    public DateTime? ToDate { get; init; }
+}

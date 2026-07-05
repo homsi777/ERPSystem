@@ -4,6 +4,7 @@ using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Customers;
 using DomainCustomerStatus = ERPSystem.Domain.Enums.CustomerStatus;
+using DomainCustomerType = ERPSystem.Domain.Enums.CustomerType;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -81,7 +82,7 @@ public sealed class CustomerOperationsCenterControl : UserControl
             HeaderFields =
             [
                 ("كود العميل", c.Code),
-                ("حد الائتمان", $"{c.CreditLimit:N0} $"),
+                ("حد الائتمان", FormatCreditLimit(c)),
                 ("الرصيد الحالي", $"{c.Balance:N0} $"),
                 ("فواتير مفتوحة", data.OpenInvoicesCount.ToString()),
                 ("الهاتف", c.Phone ?? "—"),
@@ -171,7 +172,7 @@ public sealed class CustomerOperationsCenterControl : UserControl
         return PlaceholderUi.MockGrid(new[]
         {
             new { المؤشر = "الرصيد الحالي", القيمة = $"{c.Balance:N0} $" },
-            new { المؤشر = "حد الائتمان", القيمة = $"{c.CreditLimit:N0} $" },
+            new { المؤشر = "حد الائتمان", القيمة = FormatCreditLimit(c) },
             new { المؤشر = "فواتير مفتوحة", القيمة = data.OpenInvoicesCount.ToString() },
             new { المؤشر = "إجمالي المستحق", القيمة = $"{data.TotalOutstanding:N0} $" },
         });
@@ -202,4 +203,11 @@ public sealed class CustomerOperationsCenterControl : UserControl
         };
 
     private static SolidColorBrush Br(string k) => (SolidColorBrush)System.Windows.Application.Current.Resources[k]!;
+
+    private static string FormatCreditLimit(CustomerDetailsDto c) => c.Type switch
+    {
+        DomainCustomerType.Cash => "—",
+        DomainCustomerType.Credit when !c.CreditLimitEnabled => "بدون حد",
+        _ => $"{c.CreditLimit:N0} $"
+    };
 }

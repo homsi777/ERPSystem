@@ -80,6 +80,23 @@ public sealed class NewChinaImportControl : UserControl
         Background = (SolidColorBrush)WpfApplication.Current.Resources["AppBgBrush"]!;
 
         Loaded += async (_, _) => await LoadSuppliersAsync();
+        Loaded += (_, _) => UnsavedWorkGuard.Register(this, "استيراد حاوية جديدة", HasUnsavedImportWork);
+        Unloaded += (_, _) => UnsavedWorkGuard.Unregister(this);
+    }
+
+    private bool HasUnsavedImportWork()
+    {
+        if (ChinaImportNavigationContext.CreatedContainerId is not null)
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(_containerNumber.Text)
+            || !string.IsNullOrWhiteSpace(_notes.Text))
+            return true;
+
+        return ChinaImportNavigationContext.LastParseResult is not null
+            || ChinaImportNavigationContext.LastInvoiceParse is not null
+            || ChinaImportNavigationContext.LastPackingSummaryParse is not null
+            || ChinaImportNavigationContext.HeaderDraft is not null;
     }
 
     private static TextBlock StatusLabel(string text) => new()
@@ -187,19 +204,13 @@ public sealed class NewChinaImportControl : UserControl
 
     private async Task UploadDplAsync()
     {
-        var header = BuildHeaderDraft();
-        if (header is null)
-        {
-            MessageBox.Show("يرجى اختيار المورد وإدخال سعر صرف صالح.", "استيراد حاوية",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         var bytes = await PickExcelBytes("اختر ملف DPL (تفاصيل الأثواب)");
         if (bytes is null)
             return;
 
         var (fileName, content) = bytes.Value;
+        var header = BuildHeaderDraft() ?? BuildDefaultHeaderDraft();
+
         Mouse.OverrideCursor = Cursors.Wait;
         try
         {
@@ -208,14 +219,46 @@ public sealed class NewChinaImportControl : UserControl
                 return;
 
             ChinaImportNavigationContext.SetParseSession(result.Value, header, fileName);
-            _dplStatus.Text = $"✅ {fileName} ({result.Value.Groups.Count} مجموعة)";
+            _dplStatus.Text = $"✅ {fileName} ({result.Value.Groups.Count} مجموعة، {result.Value.GrandTotal.ParsedTotalRolls} توب)";
             _dplStatus.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
             UpdateContinueState();
+
+            if (BuildHeaderDraft() is null)
+            {
+                MessageBox.Show(
+                    "تم تحليل ملف DPL بنجاح.\nأكمل رقم الحاوية والمورد وسعر الصرف قبل إدخال التكلفة.",
+                    "تحليل DPL",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
         finally
         {
             Mouse.OverrideCursor = null;
         }
+    }
+
+    private ChinaImportHeaderDraft BuildDefaultHeaderDraft()
+    {
+        var supplierId = _supplierCombo.SelectedValue is Guid g && g != Guid.Empty
+            ? g
+            : DatabaseSeeder.DefaultChinaSupplierId;
+
+        decimal.TryParse(_exchangeRate.Text.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var rate);
+        if (rate <= 0)
+            decimal.TryParse(_exchangeRate.Text.Trim(), out rate);
+        if (rate <= 0)
+            rate = 1m;
+
+        return new ChinaImportHeaderDraft
+        {
+            ContainerNumber = _containerNumber.Text.Trim(),
+            SupplierId = supplierId,
+            ShipmentDate = _shipmentDate.SelectedDate ?? DateTime.Today,
+            ExpectedArrival = _expectedArrival.SelectedDate,
+            ExchangeRateToLocalCurrency = rate,
+            Notes = string.IsNullOrWhiteSpace(_notes.Text) ? null : _notes.Text.Trim()
+        };
     }
 
     private void UpdateContinueState() =>

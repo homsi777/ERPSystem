@@ -30,6 +30,7 @@ public static class SalesInvoiceCatalogEnricher
                 ColorDisplayName = color?.NameAr ?? "—",
                 RollCount = line.RollCount,
                 UnitPrice = line.UnitPrice,
+                TotalLengthMeters = line.TotalLengthMeters,
                 LineTotal = line.LineTotal
             });
         }

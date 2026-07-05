@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
@@ -51,6 +52,7 @@ public sealed class PaymentVoucherPageControl : UserControl
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = stack, MaxWidth = 640 };
+        CashboxDropdownBinder.WireRefresh(_cashbox);
         Loaded += OnLoaded;
         _createDraft.Click += async (_, _) => await CreateDraftAsync();
         _post.Click += async (_, _) => await PostAsync();
@@ -66,14 +68,7 @@ public sealed class PaymentVoucherPageControl : UserControl
             _supplier.SelectedValuePath = nameof(FinancePartyOption.Id);
         }
 
-        var boxes = await FinanceUiService.Instance.GetCashboxesAsync();
-        if (ApplicationResultPresenter.Present(boxes) && boxes.Value is { Count: > 0 })
-        {
-            _cashbox.ItemsSource = boxes.Value;
-            _cashbox.DisplayMemberPath = nameof(CashboxOptionDto.Name);
-            _cashbox.SelectedValuePath = nameof(CashboxOptionDto.Id);
-            _cashbox.SelectedIndex = 0;
-        }
+        await CashboxDropdownBinder.LoadAsync(_cashbox);
 
         ApplyPurchasePaymentContext();
     }

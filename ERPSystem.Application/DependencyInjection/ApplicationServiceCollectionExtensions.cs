@@ -226,6 +226,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<ICommandHandler<CreateSalesInvoiceDraftCommand, ApplicationResult<Guid>>, CreateSalesInvoiceDraftHandler>();
         services.AddScoped<ICommandHandler<UpdateSalesInvoiceDraftCommand, ApplicationResult>, UpdateSalesInvoiceDraftHandler>();
+        services.AddScoped<ICommandHandler<UpdateSalesInvoiceDiscountCommand, ApplicationResult>, UpdateSalesInvoiceDiscountHandler>();
         services.AddScoped<ICommandHandler<SendSalesInvoiceToWarehouseCommand, ApplicationResult>, SendSalesInvoiceToWarehouseHandler>();
         services.AddScoped<ICommandHandler<CompleteWarehouseDetailingCommand, ApplicationResult>, CompleteWarehouseDetailingHandler>();
         services.AddScoped<ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>, ApproveSalesInvoiceHandler>();
@@ -312,6 +313,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCustomerDetailsHandler>();
         services.AddScoped<GetCustomerOperationsCenterHandler>();
         services.AddScoped<GetCustomerStatementHandler>();
+        services.AddScoped<GetCustomerSalesDetailsHandler>();
         services.AddScoped<GetSupplierListHandler>();
         services.AddScoped<GetSupplierDetailsHandler>();
         services.AddScoped<GetSupplierOperationsCenterHandler>();

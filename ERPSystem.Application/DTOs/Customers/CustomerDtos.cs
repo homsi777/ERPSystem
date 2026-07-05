@@ -12,6 +12,7 @@ public sealed class CustomerListDto
     public CustomerStatus Status { get; init; }
     public decimal Balance { get; init; }
     public decimal CreditLimit { get; init; }
+    public bool CreditLimitEnabled { get; init; }
     public bool IsActive { get; init; }
     public bool OpeningBalancePosted { get; init; }
 }
@@ -33,6 +34,7 @@ public sealed class CustomerDetailsDto
     public CustomerStatus Status { get; init; }
     public decimal Balance { get; init; }
     public decimal CreditLimit { get; init; }
+    public bool CreditLimitEnabled { get; init; }
     public int PaymentTermsDays { get; init; }
     public string? Phone { get; init; }
     public string? Email { get; init; }
@@ -65,4 +67,13 @@ public sealed class CustomerOperationsCenterDto
     public int OpenInvoicesCount { get; init; }
     public decimal TotalOutstanding { get; init; }
     public int PendingReceiptsCount { get; init; }
+}
+
+public sealed class CustomerSalesDetailDto
+{
+    public DateTime SaleDate { get; init; }
+    public string FabricName { get; init; } = "";
+    public string FabricCode { get; init; } = "";
+    public string ColorName { get; init; } = "";
+    public decimal UnitPrice { get; init; }
 }

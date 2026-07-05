@@ -17,6 +17,7 @@ public sealed class CustomerListRow
     public string NameEn => Dto.NameEn;
     public decimal Balance => Dto.Balance;
     public decimal CreditLimit => Dto.CreditLimit;
+    public bool CreditLimitEnabled => Dto.CreditLimitEnabled;
     public DomainCustomerType Type => Dto.Type;
     public DomainCustomerStatus Status => Dto.Status;
     public bool IsActive => Dto.IsActive;
@@ -36,6 +37,13 @@ public sealed class CustomerListRow
         _ => Status.ToString()
     };
 
+    public string CreditLimitDisplay => Type switch
+    {
+        DomainCustomerType.Cash => "—",
+        DomainCustomerType.Credit when !CreditLimitEnabled => "بدون حد",
+        _ => CreditLimit.ToString("N2")
+    };
+
     public static CustomerListRow FromDto(CustomerListDto dto) => new(dto);
 
     public static CustomerListRow FromDetails(CustomerDetailsDto dto) => new(new CustomerListDto
@@ -48,6 +56,7 @@ public sealed class CustomerListRow
         Status = dto.Status,
         Balance = dto.Balance,
         CreditLimit = dto.CreditLimit,
+        CreditLimitEnabled = dto.CreditLimitEnabled,
         IsActive = dto.IsActive,
         OpeningBalancePosted = dto.OpeningBalancePosted
     });

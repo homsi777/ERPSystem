@@ -13,7 +13,9 @@ if (multi126c)
     var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
     var invoice = Path.Combine(root, "INVOICE-(126C).xlsx");
     var pl = Path.Combine(root, "PL-(126C).xlsx");
-    var dpl = Path.Combine(root, "DPL.xls");
+    var dpl = Path.Combine(root, "DPL-(126C).xls");
+    if (!File.Exists(dpl))
+        dpl = Path.Combine(root, "DPL.xls");
     foreach (var f in new[] { invoice, pl, dpl })
     {
         if (!File.Exists(f))

@@ -141,7 +141,21 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
 
         if (lc is null)
         {
-            _detailsHost.Children.Add(ErpUxFactory.InfoBanner("لم تُحسب تكاليف الوصول بعد.", "warning"));
+            _detailsHost.Children.Add(ErpUxFactory.InfoBanner(
+                c.Status == ChinaContainerStatus.LandingCostReviewed
+                    ? "تعذّر عرض تكاليف الوصول. أعد تحميل الشاشة أو أكمل إدخال التكلفة من الخطوة السابقة."
+                    : "لم تُحسب تكاليف الوصول بعد. أكمل «إدخال التكلفة» (الخطوة 3) قبل الاعتماد.",
+                "warning"));
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
+            var costBtn = new Button
+            {
+                Content = "الخطوة 3 — إدخال التكلفة",
+                Style = (Style)WpfApplication.Current.Resources["PrimaryButtonStyle"]!
+            };
+            costBtn.Click += (_, _) => ChinaImportNavigation.Navigate("CostEntry", c.Status);
+            actions.Children.Add(costBtn);
+            _detailsHost.Children.Add(actions);
             return;
         }
 

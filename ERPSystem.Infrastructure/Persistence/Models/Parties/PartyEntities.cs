@@ -10,6 +10,7 @@ public class CustomerEntity : PersistenceEntity
     public int Status { get; set; }
     public decimal CreditLimit { get; set; }
     public string CreditLimitCurrency { get; set; } = "USD";
+    public bool CreditLimitEnabled { get; set; }
     public decimal Balance { get; set; }
     public string BalanceCurrency { get; set; } = "USD";
     public int PaymentTermsDays { get; set; }

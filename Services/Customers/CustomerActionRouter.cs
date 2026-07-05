@@ -39,6 +39,10 @@ public static class CustomerActionRouter
                 MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
                 return true;
 
+            case EntityActionId.CustomerSalesDetails:
+                CustomerSalesDetailsPopupService.Show(row);
+                return true;
+
             default:
                 return false;
         }

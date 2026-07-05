@@ -38,7 +38,8 @@ public sealed class CreateCustomerHandler(
                 command.NameAr,
                 command.NameEn,
                 command.Type,
-                new Money(command.CreditLimit));
+                new Money(command.CreditLimit),
+                command.CreditLimitEnabled);
 
             Domain.Validators.CustomerValidator.Validate(customer);
 
@@ -91,7 +92,8 @@ public sealed class UpdateCustomerHandler(
                 command.NameAr,
                 command.NameEn,
                 new Money(command.CreditLimit),
-                command.PaymentTermsDays);
+                command.PaymentTermsDays,
+                command.CreditLimitEnabled);
 
             Domain.Validators.CustomerValidator.Validate(aggregate.Customer);
 

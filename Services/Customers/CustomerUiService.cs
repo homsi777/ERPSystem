@@ -106,6 +106,22 @@ public sealed class CustomerUiService
         }, cancellationToken);
     }
 
+    public async Task<ApplicationResult<IReadOnlyList<CustomerSalesDetailDto>>> GetSalesDetailsAsync(
+        Guid customerId,
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetCustomerSalesDetailsHandler>();
+        return await handler.HandleAsync(new GetCustomerSalesDetailsQuery
+        {
+            CustomerId = customerId,
+            FromDate = fromDate,
+            ToDate = toDate
+        }, cancellationToken);
+    }
+
     public async Task<string> NextCustomerCodeAsync(CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -120,6 +136,7 @@ public sealed class CustomerUiService
         string nameEn,
         CustomerType type,
         decimal creditLimit,
+        bool creditLimitEnabled,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -131,7 +148,8 @@ public sealed class CustomerUiService
             NameAr = nameAr,
             NameEn = nameEn,
             Type = type,
-            CreditLimit = creditLimit
+            CreditLimit = creditLimit,
+            CreditLimitEnabled = creditLimitEnabled
         }, cancellationToken);
     }
 
@@ -141,6 +159,7 @@ public sealed class CustomerUiService
         string nameEn,
         decimal creditLimit,
         int paymentTermsDays,
+        bool creditLimitEnabled,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -151,7 +170,8 @@ public sealed class CustomerUiService
             NameAr = nameAr,
             NameEn = nameEn,
             CreditLimit = creditLimit,
-            PaymentTermsDays = paymentTermsDays
+            PaymentTermsDays = paymentTermsDays,
+            CreditLimitEnabled = creditLimitEnabled
         }, cancellationToken);
     }
 

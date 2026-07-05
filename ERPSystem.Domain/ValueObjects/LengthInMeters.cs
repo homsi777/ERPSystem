@@ -17,6 +17,14 @@ public sealed record LengthInMeters
 
     public static LengthInMeters Zero { get; } = new(0, allowZero: true);
 
+    /// <summary>Maps a persisted decimal; zero is valid for balances and reservations.</summary>
+    public static LengthInMeters FromDecimal(decimal value)
+    {
+        if (value < 0)
+            throw new ValidationException("Length in meters cannot be negative.");
+        return value > 0 ? new LengthInMeters(value) : Zero;
+    }
+
     public static LengthInMeters? TryCreate(decimal value) =>
         value > 0 ? new LengthInMeters(value) : null;
 

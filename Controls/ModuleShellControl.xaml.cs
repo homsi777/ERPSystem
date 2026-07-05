@@ -48,6 +48,9 @@ namespace ERPSystem.Controls
                 return;
             }
 
+            if (!UnsavedWorkGuard.TryConfirmLeave())
+                return;
+
             _activeKey = resolved;
             UpdatePageHeader(resolved);
             ContentHost.Content = SubmoduleViewFactory.Create(Module, _activeKey);

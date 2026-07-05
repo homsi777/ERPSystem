@@ -131,7 +131,7 @@ namespace ERPSystem.Controls.Workspace
                 {
                     ("كود العميل", c.Code), ("اسم العميل", c.NameAr),
                     ("الرصيد", $"{c.Balance:N2} $"),
-                    ("الحد الائتماني", $"{c.CreditLimit:N2} $"),
+                    ("الحد الائتماني", c.CreditLimitDisplay),
                     ("النوع", c.TypeDisplay),
                     ("الحالة", c.StatusDisplay),
                 },

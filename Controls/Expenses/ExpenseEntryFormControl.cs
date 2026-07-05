@@ -1,6 +1,7 @@
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Commands.Expenses;
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Controls.Finance;
 using ERPSystem.Core;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
@@ -121,6 +122,7 @@ public sealed class ExpenseEntryFormControl : UserControl
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { Padding = new Thickness(16), Content = stack, MaxWidth = 640 };
+        CashboxDropdownBinder.WireRefresh(_cashbox);
         Loaded += OnLoaded;
         _save.Click += async (_, _) => await SaveAsync();
         _define.Click += (_, _) => ExpensePopupService.ShowCreate();
@@ -172,15 +174,9 @@ public sealed class ExpenseEntryFormControl : UserControl
             MockInteractionService.ShowWarning("لا يوجد مصروف معرّف. أنشئ تعريفاً أولاً.", "المصاريف");
         }
 
-        var boxes = await ExpenseUiService.Instance.GetCashboxesAsync();
-        if (ApplicationResultPresenter.Present(boxes))
-        {
-            var list = boxes.Value ?? [];
-            _cashbox.ItemsSource = list;
-            _cashbox.DisplayMemberPath = nameof(CashboxOptionDto.Name);
-            if (list.Count > 0) _cashbox.SelectedIndex = 0;
-            if (list.Count == 0) _save.IsEnabled = false;
-        }
+        CashboxDropdownBinder.WireRefresh(_cashbox);
+        var hasCashbox = await CashboxDropdownBinder.LoadAsync(_cashbox);
+        if (!hasCashbox) _save.IsEnabled = false;
 
         if (!await ExpenseUiService.Instance.CanEditAsync())
         {

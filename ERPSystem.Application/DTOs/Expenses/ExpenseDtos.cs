@@ -70,6 +70,7 @@ public sealed class CashboxOptionDto
     public Guid Id { get; init; }
     public string Code { get; init; } = "";
     public string Name { get; init; } = "";
+    public string Display => string.IsNullOrWhiteSpace(Code) ? Name : $"{Code} — {Name}";
 }
 
 public sealed class ExpenseDetailsDto

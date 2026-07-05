@@ -208,6 +208,16 @@ public sealed class ContainerUiService
                         $"الحاوية «{containerNumber}» مسجّلة مسبقاً. افتحها من قائمة الحاويات للمتابعة.");
                 }
 
+                if (existing.Status is ChinaContainerStatus.Approved
+                    or ChinaContainerStatus.InWarehouse
+                    or ChinaContainerStatus.Closed
+                    or ChinaContainerStatus.Archived)
+                {
+                    await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return ApplicationResult<Guid>.Conflict(
+                        $"الحاوية «{containerNumber}» في حالة «{existing.Status}» ولا يمكن تعديل تكلفتها.");
+                }
+
                 existing.SetChinaInvoiceFinancials(input.ChinaInvoiceAmountUsd, header.ExchangeRateToLocalCurrency);
                 await containerRepository.UpdateAsync(existing, cancellationToken);
                 containerId = existing.Id;

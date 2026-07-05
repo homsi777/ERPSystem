@@ -3,6 +3,7 @@ using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Customers;
 using ERPSystem.Application.DTOs.Dashboard;
+using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Mapping;
 using ERPSystem.Application.Queries.Customers;
 using ERPSystem.Application.Queries.Dashboard;
@@ -243,5 +244,78 @@ public sealed class GetCustomerDetailsHandler(ICustomerRepository customerReposi
             return ApplicationResult<CustomerDetailsDto>.NotFound("Customer not found.");
 
         return ApplicationResult<CustomerDetailsDto>.Success(CustomerMapper.ToDetailsDto(aggregate));
+    }
+}
+
+public sealed class GetCustomerSalesDetailsHandler(
+    ICustomerRepository customerRepository,
+    ISalesInvoiceRepository invoiceRepository,
+    IFabricCatalogRepository fabricCatalogRepository)
+    : IQueryHandler<GetCustomerSalesDetailsQuery, ApplicationResult<IReadOnlyList<CustomerSalesDetailDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<CustomerSalesDetailDto>>> HandleAsync(
+        GetCustomerSalesDetailsQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var customer = await customerRepository.GetByIdAsync(query.CustomerId, cancellationToken);
+        if (customer is null)
+            return ApplicationResult<IReadOnlyList<CustomerSalesDetailDto>>.NotFound("Customer not found.");
+
+        var invoices = await invoiceRepository.GetListAsync(
+            customer.Customer.CompanyId,
+            customerId: query.CustomerId,
+            cancellationToken: cancellationToken);
+
+        var soldStatuses = new HashSet<SalesInvoiceStatus>
+        {
+            SalesInvoiceStatus.Approved,
+            SalesInvoiceStatus.Printed,
+            SalesInvoiceStatus.Delivered,
+            SalesInvoiceStatus.PartiallyReturned,
+            SalesInvoiceStatus.Returned
+        };
+
+        var datedLines = new List<(DateTime SaleDate, SalesInvoiceLineDto Line)>();
+        foreach (var invoice in invoices.Where(i => soldStatuses.Contains(i.Status)))
+        {
+            var saleDate = invoice.InvoiceDate.Date;
+            if (query.FromDate.HasValue && saleDate < query.FromDate.Value.Date)
+                continue;
+            if (query.ToDate.HasValue && saleDate > query.ToDate.Value.Date)
+                continue;
+
+            var dto = SalesInvoiceMapper.ToDto(invoice, customer.Customer.NameAr);
+            foreach (var line in dto.Lines)
+                datedLines.Add((saleDate, line));
+        }
+
+        if (datedLines.Count == 0)
+            return ApplicationResult<IReadOnlyList<CustomerSalesDetailDto>>.Success([]);
+
+        var lines = datedLines.Select(x => x.Line).ToList();
+        var enriched = await SalesInvoiceCatalogEnricher.EnrichLinesAsync(
+            lines, fabricCatalogRepository, cancellationToken);
+
+        var enrichedById = enriched.ToDictionary(l => l.Id);
+        var rows = datedLines
+            .Select(entry =>
+            {
+                var line = enrichedById.GetValueOrDefault(entry.Line.Id, entry.Line);
+                return new CustomerSalesDetailDto
+                {
+                    SaleDate = entry.SaleDate,
+                    FabricName = line.FabricDisplayName,
+                    FabricCode = line.FabricCode,
+                    ColorName = line.ColorDisplayName,
+                    UnitPrice = line.UnitPrice
+                };
+            })
+            .OrderByDescending(r => r.SaleDate)
+            .ThenBy(r => r.FabricName)
+            .ThenBy(r => r.ColorName)
+            .ThenBy(r => r.UnitPrice)
+            .ToList();
+
+        return ApplicationResult<IReadOnlyList<CustomerSalesDetailDto>>.Success(rows);
     }
 }

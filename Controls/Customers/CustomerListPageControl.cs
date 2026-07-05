@@ -75,11 +75,11 @@ public sealed class CustomerListPageControl : UserControl
             ("الاسم", "NameAr", "*"),
             ("النوع", "TypeDisplay", 80),
             ("الرصيد", "Balance", 100),
-            ("حد الائتمان", "CreditLimit", 110),
+            ("حد الائتمان", "CreditLimitDisplay", 110),
             ("الحالة", "StatusDisplay", 80)
         })
         {
-            AddCol(g, h, p, w, p is "Balance" or "CreditLimit" ? "N2" : null);
+            AddCol(g, h, p, w, p is "Balance" ? "N2" : null);
         }
     }
 

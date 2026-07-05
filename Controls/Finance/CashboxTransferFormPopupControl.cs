@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
@@ -40,6 +41,8 @@ public sealed class CashboxTransferFormPopupControl : UserControl
         actions.Children.Add(_btnCancel);
         stack.Children.Add(actions);
         Content = stack;
+        CashboxDropdownBinder.WireRefresh(_from);
+        CashboxDropdownBinder.WireRefresh(_to);
         Loaded += OnLoaded;
         _btnSave.Click += async (_, _) => await SaveAsync();
         _btnCancel.Click += (_, _) => CashboxPopupService.CancelActive();
@@ -58,9 +61,9 @@ public sealed class CashboxTransferFormPopupControl : UserControl
         _boxes = result.Value.ToList();
         _from.ItemsSource = _boxes;
         _to.ItemsSource = _boxes;
-        _from.DisplayMemberPath = nameof(CashboxOptionDto.Name);
+        _from.DisplayMemberPath = nameof(CashboxOptionDto.Display);
         _from.SelectedValuePath = nameof(CashboxOptionDto.Id);
-        _to.DisplayMemberPath = nameof(CashboxOptionDto.Name);
+        _to.DisplayMemberPath = nameof(CashboxOptionDto.Display);
         _to.SelectedValuePath = nameof(CashboxOptionDto.Id);
 
         if (CashboxNavigationContext.TransferFromCashboxId is Guid fromId)

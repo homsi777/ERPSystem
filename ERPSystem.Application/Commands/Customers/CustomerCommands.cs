@@ -10,6 +10,7 @@ public sealed class CreateCustomerCommand
     public string NameEn { get; init; } = "";
     public CustomerType Type { get; init; }
     public decimal CreditLimit { get; init; }
+    public bool CreditLimitEnabled { get; init; }
 }
 
 public sealed class UpdateCustomerCommand
@@ -18,6 +19,7 @@ public sealed class UpdateCustomerCommand
     public string NameAr { get; init; } = "";
     public string NameEn { get; init; } = "";
     public decimal CreditLimit { get; init; }
+    public bool CreditLimitEnabled { get; init; }
     public int PaymentTermsDays { get; init; }
 }
 

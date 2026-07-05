@@ -9,7 +9,8 @@ public static class ApplicationExceptionMapper
         exception switch
         {
             ValidationException ex => ApplicationResult.ValidationFailed("_", ex.Message),
-            CreditLimitExceededException ex => ApplicationResult.Conflict(ex.Message),
+            CreditLimitExceededException ex => ApplicationResult.Conflict(
+                $"تجاوز حد الائتمان — الحد: {ex.Limit:N2} $ | الرصيد المتوقع بعد الفاتورة: {ex.ProjectedBalance:N2} $"),
             InvalidInvoiceWorkflowException ex => ApplicationResult.Conflict(ex.Message),
             ContainerApprovalException ex => ApplicationResult.Conflict(ex.Message),
             WarehouseDetailingException ex => ApplicationResult.Conflict(ex.Message),
