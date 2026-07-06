@@ -85,6 +85,7 @@ app.MapGet("/health", () => "OK").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapInventoryEndpoints();
 app.MapCustomerEndpoints();
+app.MapLookupEndpoints();
 app.MapContainerEndpoints();
 
 app.Run();

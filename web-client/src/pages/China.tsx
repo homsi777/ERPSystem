@@ -14,6 +14,7 @@ import {
   parseContainerDpl,
   setContainerSalePrices
 } from '../api/containers.ts';
+import { getSupplierLookups, getWarehouseLookups } from '../api/lookups.ts';
 import { ApiError } from '../api/client.ts';
 import type {
   CalculateLandingCostRequest,
@@ -266,8 +267,39 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
     onError: (error) => onToast(errorToast(error))
   });
 
+  const suppliersQuery = useQuery({
+    queryKey: ['lookups', 'suppliers'],
+    queryFn: getSupplierLookups
+  });
+
   const importLines = useMemo(() => (dplResult ? buildImportLines(dplResult.groups) : []), [dplResult]);
-  const canCreate = Boolean(dplResult) && importLines.length > 0 && form.supplierId.trim().length > 0 && !dplResult?.hasUnresolvedGroups;
+
+  const createBlockReason = useMemo(() => {
+    if (!dplResult) {
+      return 'ارفع ملف DPL / Packing أولاً.';
+    }
+    if (dplResult.hasUnresolvedGroups) {
+      return 'يجب حل كل مجموعات القماش غير المربوطة في ملف DPL.';
+    }
+    if (importLines.length === 0) {
+      return 'لا توجد أسطر صالحة للاستيراد — تأكد من ربط الأقمشة والألوان في الملف.';
+    }
+    if (suppliersQuery.isLoading) {
+      return 'جاري تحميل قائمة الموردين...';
+    }
+    if (suppliersQuery.isError) {
+      return 'تعذر تحميل قائمة الموردين.';
+    }
+    if ((suppliersQuery.data?.length ?? 0) === 0) {
+      return 'لا يوجد موردون نشطون في النظام.';
+    }
+    if (!form.supplierId.trim()) {
+      return 'اختر المورد من القائمة.';
+    }
+    return null;
+  }, [dplResult, importLines.length, form.supplierId, suppliersQuery.data, suppliersQuery.isError, suppliersQuery.isLoading]);
+
+  const canCreate = createBlockReason === null;
 
   function updateForm(field: keyof ImportFormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -286,7 +318,7 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
   function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dplResult || !canCreate) {
-      onToast({ tone: 'error', message: 'يجب رفع DPL محلول بالكامل وإدخال معرف المورد قبل الإنشاء.' });
+      onToast({ tone: 'error', message: createBlockReason ?? 'أكمل البيانات المطلوبة قبل إنشاء الحاوية.' });
       return;
     }
 
@@ -345,8 +377,23 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
 
       <form className="form-grid" onSubmit={submitCreate}>
         <label>
-          معرف المورد
-          <input value={form.supplierId} onChange={(event) => updateForm('supplierId', event.target.value)} placeholder="Supplier UUID" />
+          المورد
+          <select
+            value={form.supplierId}
+            onChange={(event) => updateForm('supplierId', event.target.value)}
+            disabled={suppliersQuery.isLoading || suppliersQuery.isError}
+            required
+          >
+            <option value="">اختر المورد...</option>
+            {(suppliersQuery.data ?? []).map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
+          {suppliersQuery.isError ? (
+            <span className="field-note">{getErrorMessage(suppliersQuery.error)}</span>
+          ) : null}
         </label>
         <label>
           رقم الحاوية
@@ -380,9 +427,17 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
           ملاحظات
           <input value={form.notes} onChange={(event) => updateForm('notes', event.target.value)} />
         </label>
-        <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={!canCreate || createMutation.isPending}>
+        <button
+          className="primary-button primary-button--wide form-grid__wide"
+          type="submit"
+          disabled={!canCreate || createMutation.isPending}
+          title={createBlockReason ?? undefined}
+        >
           {createMutation.isPending ? 'جار إنشاء الحاوية...' : 'إنشاء الحاوية'}
         </button>
+        {createBlockReason && !createMutation.isPending ? (
+          <p className="field-note form-grid__wide">{createBlockReason}</p>
+        ) : null}
       </form>
     </section>
   );
@@ -599,16 +654,38 @@ function SalePricesForm({ container, onDone, onToast }: { container: ContainerDe
 
 function MoveToWarehouseForm({ containerId, onDone, onToast }: { containerId: string; onDone: (message: string) => void; onToast: (toast: ToastState) => void }) {
   const [warehouseId, setWarehouseId] = useState('');
+  const warehousesQuery = useQuery({
+    queryKey: ['lookups', 'warehouses'],
+    queryFn: getWarehouseLookups
+  });
   const mutation = useMutation({
     mutationFn: () => moveContainerToWarehouse(containerId, { warehouseId: warehouseId.trim() }),
     onSuccess: () => onDone('تم نقل الحاوية إلى المستودع.'),
     onError: (error) => onToast(errorToast(error))
   });
 
+  const moveBlockReason = useMemo(() => {
+    if (warehousesQuery.isLoading) {
+      return 'جاري تحميل قائمة المستودعات...';
+    }
+    if (warehousesQuery.isError) {
+      return 'تعذر تحميل قائمة المستودعات.';
+    }
+    if ((warehousesQuery.data?.length ?? 0) === 0) {
+      return 'لا توجد مستودعات نشطة في النظام.';
+    }
+    if (!warehouseId.trim()) {
+      return 'اختر المستودع من القائمة.';
+    }
+    return null;
+  }, [warehouseId, warehousesQuery.data, warehousesQuery.isError, warehousesQuery.isLoading]);
+
+  const canMove = moveBlockReason === null;
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!warehouseId.trim()) {
-      onToast({ tone: 'error', message: 'أدخل معرف المستودع قبل النقل.' });
+    if (!canMove) {
+      onToast({ tone: 'error', message: moveBlockReason ?? 'اختر المستودع قبل النقل.' });
       return;
     }
     if (window.confirm('هل تريد نقل الحاوية إلى المستودع المحدد؟')) {
@@ -621,12 +698,35 @@ function MoveToWarehouseForm({ containerId, onDone, onToast }: { containerId: st
       <h2>نقل إلى المستودع</h2>
       <form className="form-grid" onSubmit={submit}>
         <label className="form-grid__wide">
-          معرف المستودع
-          <input value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} placeholder="Warehouse UUID" />
+          المستودع
+          <select
+            value={warehouseId}
+            onChange={(event) => setWarehouseId(event.target.value)}
+            disabled={warehousesQuery.isLoading || warehousesQuery.isError}
+            required
+          >
+            <option value="">اختر المستودع...</option>
+            {(warehousesQuery.data ?? []).map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name}
+              </option>
+            ))}
+          </select>
+          {warehousesQuery.isError ? (
+            <span className="field-note">{getErrorMessage(warehousesQuery.error)}</span>
+          ) : null}
         </label>
-        <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
+        <button
+          className="primary-button primary-button--wide form-grid__wide"
+          type="submit"
+          disabled={!canMove || mutation.isPending}
+          title={moveBlockReason ?? undefined}
+        >
           {mutation.isPending ? 'جار النقل...' : 'نقل إلى المستودع'}
         </button>
+        {moveBlockReason && !mutation.isPending ? (
+          <p className="field-note form-grid__wide">{moveBlockReason}</p>
+        ) : null}
       </form>
     </section>
   );

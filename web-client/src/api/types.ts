@@ -9,6 +9,11 @@ export type ValidationError = {
   message: string;
 };
 
+export type LookupItemDto = {
+  id: string;
+  name: string;
+};
+
 export type AuthenticatedUserDto = {
   userId: string;
   username: string;

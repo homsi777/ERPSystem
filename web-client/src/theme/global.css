@@ -489,6 +489,7 @@ svg {
 }
 
 .form-grid input,
+.form-grid select,
 .price-row input {
   min-height: 44px;
   width: 100%;
@@ -501,6 +502,7 @@ svg {
 }
 
 .form-grid input:focus,
+.form-grid select:focus,
 .price-row input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.12);
