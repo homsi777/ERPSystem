@@ -1,7 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getFabricStock } from '../api/inventory.ts';
+import { Link } from 'react-router-dom';
+import {
+  getFabricStock,
+  getInventoryAlerts,
+  getInventoryDashboard,
+  getInventoryWarehouses
+} from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
+import type { InventoryAlertDto } from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
@@ -13,31 +20,77 @@ import { formatCurrency, formatMeters, formatNumber } from '../lib/format.ts';
 import { inventoryStatusLabels } from '../lib/enums.ts';
 
 export function InventoryPage() {
-  const stockQuery = useQuery({
-    queryKey: ['inventory', 'stock'],
-    queryFn: () => getFabricStock()
+  const [warehouseId, setWarehouseId] = useState('');
+
+  const warehousesQuery = useQuery({
+    queryKey: ['inventory', 'warehouses'],
+    queryFn: () => getInventoryWarehouses()
   });
 
-  const summary = useMemo(() => {
-    const rows = stockQuery.data ?? [];
-    // Display-only sums for the field PWA. Business summary totals should later come from a dedicated API endpoint.
-    return {
-      totalValue: rows.reduce((sum, row) => sum + row.inventoryValue, 0),
-      totalRolls: rows.reduce((sum, row) => sum + row.rollCount, 0),
-      itemCount: rows.length
-    };
+  const dashboardQuery = useQuery({
+    queryKey: ['inventory', 'dashboard'],
+    queryFn: () => getInventoryDashboard()
+  });
+
+  const alertsQuery = useQuery({
+    queryKey: ['inventory', 'alerts'],
+    queryFn: () => getInventoryAlerts()
+  });
+
+  const stockQuery = useQuery({
+    queryKey: ['inventory', 'stock', warehouseId],
+    queryFn: () => getFabricStock(warehouseId || undefined)
+  });
+
+  const itemCount = useMemo(() => {
+    // عرض فقط: عدد بنود المخزون (صنف/لون/مستودع) ضمن الصفحة الحالية.
+    // لوحة GET /inventory/dashboard لا تعيد رقمًا مكافئًا لهذا العدد (فقط قيمة/أثواب/أمتار إجمالية)،
+    // لذلك بقي هذا الرقم محسوبًا في الواجهة من نتيجة GET /inventory/stock نفسها.
+    return (stockQuery.data ?? []).length;
   }, [stockQuery.data]);
+
+  const dashboard = dashboardQuery.data;
 
   const headerSummary = (
     <>
-      <SummaryCard label="قيمة المخزون" value={formatCurrency(summary.totalValue)} />
-      <SummaryCard label="عدد الأتواب" value={formatNumber(summary.totalRolls)} tone="green" />
-      <SummaryCard label="الأصناف" value={formatNumber(summary.itemCount)} tone="amber" />
+      <SummaryCard
+        label="قيمة المخزون"
+        value={formatCurrency(dashboard?.totalInventoryValue ?? 0)}
+      />
+      <SummaryCard label="عدد الأثواب" value={formatNumber(dashboard?.totalRolls ?? 0)} tone="green" />
+      <SummaryCard label="الأصناف" value={formatNumber(itemCount)} tone="amber" />
     </>
   );
 
   return (
     <AppShell title="المخزون" summary={headerSummary}>
+      {alertsQuery.isSuccess && alertsQuery.data.length > 0 ? (
+        <section className="card-list" aria-label="تنبيهات المخزون">
+          {alertsQuery.data.map((alert) => (
+            <AlertCard key={alert.id} alert={alert} />
+          ))}
+        </section>
+      ) : null}
+
+      <section className="toolbar-row toolbar-row--start">
+        <label className="inline-field">
+          المستودع
+          <select
+            value={warehouseId}
+            onChange={(event) => setWarehouseId(event.target.value)}
+            disabled={warehousesQuery.isLoading || warehousesQuery.isError}
+          >
+            <option value="">كل المستودعات</option>
+            {(warehousesQuery.data ?? []).map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.nameAr}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Link className="ghost-button" to="/inventory/movements">حركة المخزون</Link>
+      </section>
+
       {stockQuery.isLoading ? <LoadingState /> : null}
 
       {stockQuery.isError ? (
@@ -72,5 +125,18 @@ export function InventoryPage() {
         </section>
       ) : null}
     </AppShell>
+  );
+}
+
+function AlertCard({ alert }: { alert: InventoryAlertDto }) {
+  return (
+    <DataCard
+      icon={<Icon name="alert" />}
+      title={alert.title}
+      subtitle={alert.message}
+      meta={alert.warehouseName ?? 'كل المستودعات'}
+      value=""
+      tone={alert.severity === 'Critical' ? 'danger' : 'low'}
+    />
   );
 }

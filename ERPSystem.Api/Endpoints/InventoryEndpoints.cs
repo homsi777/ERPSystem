@@ -17,6 +17,18 @@ public static class InventoryEndpoints
         group.MapGet("/stock", GetFabricStockAsync)
             .WithName("GetFabricStockBalances");
 
+        group.MapGet("/warehouses", GetWarehouseListAsync)
+            .WithName("GetInventoryWarehouseList");
+
+        group.MapGet("/dashboard", GetDashboardAsync)
+            .WithName("GetInventoryDashboard");
+
+        group.MapGet("/movements", GetMovementsAsync)
+            .WithName("GetInventoryMovements");
+
+        group.MapGet("/alerts", GetAlertsAsync)
+            .WithName("GetInventoryAlerts");
+
         return app;
     }
 
@@ -35,6 +47,75 @@ public static class InventoryEndpoints
 
         var result = await handler.HandleAsync(
             new GetFabricStockBalancesQuery(branchId, warehouseId),
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetWarehouseListAsync(
+        ICurrentBranchService branchService,
+        GetInventoryWarehouseListHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(new GetInventoryWarehouseListQuery(branchId), cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetDashboardAsync(
+        ICurrentBranchService branchService,
+        GetInventoryDashboardHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(new GetInventoryDashboardQuery(branchId), cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetMovementsAsync(
+        [FromQuery] Guid? warehouseId,
+        ICurrentBranchService branchService,
+        GetInventoryMovementsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(new GetInventoryMovementsQuery(branchId, warehouseId), cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetAlertsAsync(
+        [FromQuery] bool? unacknowledgedOnly,
+        ICurrentBranchService branchService,
+        GetInventoryAlertsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(
+            new GetInventoryAlertsQuery(branchId, unacknowledgedOnly ?? true),
             cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);

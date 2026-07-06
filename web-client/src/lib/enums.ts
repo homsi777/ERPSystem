@@ -52,3 +52,70 @@ export function getChinaContainerStatusTone(status: ContainerStatusValue) {
   }
   return 'gray';
 }
+
+export const customerTypeLabels = {
+  0: 'نقدي',
+  1: 'آجل'
+} as const;
+
+export const customerStatusLabels = {
+  0: 'نشط',
+  1: 'موقوف',
+  2: 'محظور'
+} as const;
+
+type CustomerStatusValue = keyof typeof customerStatusLabels;
+
+export function getCustomerStatusTone(status: CustomerStatusValue) {
+  if (status === 0) {
+    return 'green';
+  }
+  if (status === 1) {
+    return 'amber';
+  }
+  return 'red';
+}
+
+export const warehouseDetailingStatusLabels = {
+  0: 'بانتظار التفصيل',
+  1: 'قيد التفصيل',
+  2: 'تم التفصيل',
+  3: 'مرفوض'
+} as const;
+
+type WarehouseDetailingStatusValue = keyof typeof warehouseDetailingStatusLabels;
+
+export function getWarehouseDetailingStatusTone(status: WarehouseDetailingStatusValue) {
+  if (status === 2) {
+    return 'green';
+  }
+  if (status === 1) {
+    return 'blue';
+  }
+  if (status === 3) {
+    return 'red';
+  }
+  return 'amber';
+}
+
+export const documentTypeLabels = {
+  0: 'فاتورة بيع',
+  1: 'مرتجع بيع',
+  2: 'فاتورة شراء',
+  3: 'مرتجع شراء',
+  4: 'سند قبض',
+  5: 'سند صرف',
+  6: 'قيد يومية',
+  7: 'حركة مخزون',
+  8: 'إشعار تسليم',
+  9: 'حاوية صين',
+  10: 'دفعة مصروف',
+  11: 'رصيد افتتاحي مورد',
+  12: 'رصيد افتتاحي',
+  13: 'تحويل مخزون',
+  14: 'جرد',
+  15: 'عكس فاتورة شراء',
+  16: 'رصيد افتتاحي عميل',
+  17: 'تحويل صندوق',
+  18: 'رصيد افتتاحي مالي'
+} as const;

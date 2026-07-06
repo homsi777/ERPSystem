@@ -348,3 +348,169 @@ export type ChinaPackingSummaryParseResultDto = {
   totalGrossWeightKg: number;
   totalNetWeightKg: number;
 };
+
+export type CustomerType = 0 | 1;
+
+export type CustomerStatus = 0 | 1 | 2;
+
+export type DocumentType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
+
+export type CustomerListDto = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  type: CustomerType;
+  status: CustomerStatus;
+  balance: number;
+  creditLimit: number;
+  creditLimitEnabled: boolean;
+  isActive: boolean;
+  openingBalancePosted: boolean;
+};
+
+export type CustomerDetailsDto = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  type: CustomerType;
+  status: CustomerStatus;
+  balance: number;
+  creditLimit: number;
+  creditLimitEnabled: boolean;
+  paymentTermsDays: number;
+  phone: string | null;
+  email: string | null;
+  isActive: boolean;
+  openingBalancePosted: boolean;
+};
+
+export type CustomerStatementLineDto = {
+  entryDate: string;
+  documentType: DocumentType;
+  documentNumber: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+};
+
+export type CustomerStatementDto = {
+  customerId: string;
+  customerName: string;
+  openingBalance: number;
+  closingBalance: number;
+  lines: CustomerStatementLineDto[];
+};
+
+export type CustomerSalesDetailDto = {
+  saleDate: string;
+  fabricName: string;
+  fabricCode: string;
+  colorName: string;
+  unitPrice: number;
+};
+
+export type WarehouseListExtendedDto = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string | null;
+  city: string;
+  manager: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  rollCount: number;
+  totalMeters: number;
+  inventoryValue: number;
+};
+
+export type InventoryAlertDto = {
+  id: string;
+  alertType: string;
+  severity: string;
+  title: string;
+  message: string;
+  warehouseName: string | null;
+  createdAt: string;
+  isAcknowledged: boolean;
+};
+
+export type InventoryDashboardDto = {
+  totalInventoryValue: number;
+  warehouseCount: number;
+  totalRolls: number;
+  totalMeters: number;
+  reservedMeters: number;
+  lowStockCount: number;
+  pendingTransfers: number;
+  pendingStocktakes: number;
+  activeAlerts: number;
+  topFabrics: FabricStockBalanceDto[];
+  recentAlerts: InventoryAlertDto[];
+};
+
+export type StockMovementListDto = {
+  id: string;
+  movementNumber: string;
+  movementDate: string;
+  type: string;
+  warehouseName: string;
+  reference: string | null;
+  totalMeters: number;
+  totalValue: number;
+  status: string;
+};
+
+export type DashboardActivityDto = {
+  occurredAt: string;
+  entityType: string;
+  entityId: string;
+  description: string;
+};
+
+export type WarehouseDetailingStatus = 0 | 1 | 2 | 3;
+
+export type WarehouseDetailingRollDto = {
+  rollDetailId: string;
+  salesInvoiceItemId: string;
+  rollSequence: number;
+  fabricDisplayName: string;
+  fabricCode: string;
+  colorDisplayName: string;
+  lengthMeters: number;
+  hasValidLength: boolean;
+};
+
+export type WarehouseDetailingDto = {
+  invoiceId: string;
+  invoiceNumber: string;
+  customerName: string;
+  chinaContainerId: string;
+  sentToWarehouseAt: string | null;
+  representativeUnitPrice: number | null;
+  status: WarehouseDetailingStatus;
+  rolls: WarehouseDetailingRollDto[];
+};
+
+export type RollLengthEntryRequest = {
+  rollDetailId: string;
+  lengthMeters: number;
+};
+
+export type CompleteWarehouseDetailingRequest = {
+  rollEntries: RollLengthEntryRequest[];
+};
+
+export type DashboardSummaryDto = {
+  pendingContainersCount: number;
+  awaitingDetailingCount: number;
+  readyForApprovalInvoicesCount: number;
+  openReceiptsCount: number;
+  totalCustomerOutstanding: number;
+  totalSupplierPayables: number;
+  activeCustomersCount: number;
+  todaySalesTotal: number;
+  lowStockItemsCount: number;
+  recentActivity: DashboardActivityDto[];
+};

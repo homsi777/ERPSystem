@@ -106,5 +106,7 @@ app.MapInventoryEndpoints();
 app.MapCustomerEndpoints();
 app.MapLookupEndpoints();
 app.MapContainerEndpoints();
+app.MapDetailingEndpoints();
+app.MapDashboardEndpoints();
 
 app.Run();

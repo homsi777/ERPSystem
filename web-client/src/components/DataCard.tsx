@@ -6,7 +6,7 @@ type DataCardProps = {
   subtitle: string;
   meta: string;
   value: ReactNode;
-  tone?: 'available' | 'low' | 'neutral';
+  tone?: 'available' | 'low' | 'neutral' | 'danger';
 };
 
 export function DataCard({ icon, title, subtitle, meta, value, tone = 'neutral' }: DataCardProps) {
