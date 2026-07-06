@@ -13,6 +13,7 @@ public class SalesInvoiceItem
     public Money UnitPrice { get; private set; } = Money.Zero();
     public string Unit { get; private set; } = "meter";
     public Money LineTotal { get; private set; } = Money.Zero();
+    public string? Notes { get; private set; }
 
     private SalesInvoiceItem() { }
 
@@ -21,14 +22,16 @@ public class SalesInvoiceItem
         Guid fabricItemId,
         Guid fabricColorId,
         int rollCount,
-        Money unitPrice) => new()
+        Money unitPrice,
+        string? notes = null) => new()
     {
         Id = Guid.NewGuid(),
         LineNumber = lineNumber,
         FabricItemId = fabricItemId,
         FabricColorId = fabricColorId,
         RollCount = rollCount,
-        UnitPrice = unitPrice
+        UnitPrice = unitPrice,
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
     };
 
     public void RecalculateTotal(IReadOnlyList<SalesInvoiceRollDetail> rollDetails)

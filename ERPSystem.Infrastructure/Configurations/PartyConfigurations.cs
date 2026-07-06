@@ -16,6 +16,7 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<CustomerE
         builder.Property(x => x.NameEn).HasMaxLength(200).IsRequired();
         builder.Property(x => x.CreditLimit).HasPrecision(18, 2);
         builder.Property(x => x.Balance).HasPrecision(18, 2);
+        builder.Property(x => x.LastReconciliationBalance).HasPrecision(18, 2);
         builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
         builder.HasQueryFilter(x => x.IsActive && !x.IsArchived);
     }

@@ -32,7 +32,10 @@ internal static class CustomerMapper
             AddressCity = c.Address?.City,
             SalesRepUserId = c.SalesRepUserId,
             OpeningBalancePosted = c.OpeningBalancePosted,
-            IsActive = c.IsActive
+            IsActive = c.IsActive,
+            LastReconciliationDate = c.LastReconciliationDate,
+            LastReconciliationBalance = c.LastReconciliationBalance,
+            LastReconciliationDocumentId = c.LastReconciliationDocumentId
         };
     }
 
@@ -52,6 +55,13 @@ internal static class CustomerMapper
         DomainHydrator.Set(customer, nameof(Customer.PaymentTermsDays), entity.PaymentTermsDays);
         DomainHydrator.Set(customer, nameof(Customer.IsActive), entity.IsActive);
         DomainHydrator.Set(customer, nameof(Customer.OpeningBalancePosted), entity.OpeningBalancePosted);
+
+        if (entity.LastReconciliationDate.HasValue)
+            DomainHydrator.Set(customer, nameof(Customer.LastReconciliationDate), entity.LastReconciliationDate);
+        if (entity.LastReconciliationBalance.HasValue)
+            DomainHydrator.Set(customer, nameof(Customer.LastReconciliationBalance), entity.LastReconciliationBalance);
+        if (entity.LastReconciliationDocumentId.HasValue)
+            DomainHydrator.Set(customer, nameof(Customer.LastReconciliationDocumentId), entity.LastReconciliationDocumentId);
 
         if (!string.IsNullOrWhiteSpace(entity.Phone))
             DomainHydrator.Set(customer, nameof(Customer.Phone), new PhoneNumber(entity.Phone));
@@ -81,6 +91,9 @@ internal static class CustomerMapper
         entity.AddressCity = mapped.AddressCity;
         entity.IsActive = mapped.IsActive;
         entity.OpeningBalancePosted = mapped.OpeningBalancePosted;
+        entity.LastReconciliationDate = mapped.LastReconciliationDate;
+        entity.LastReconciliationBalance = mapped.LastReconciliationBalance;
+        entity.LastReconciliationDocumentId = mapped.LastReconciliationDocumentId;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }

@@ -122,6 +122,40 @@ public sealed class CustomerUiService
         }, cancellationToken);
     }
 
+    public async Task<ApplicationResult<CustomerAccountLedgerDto>> GetAccountLedgerAsync(
+        Guid customerId,
+        DateTime? from,
+        DateTime? to,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetCustomerAccountLedgerHandler>();
+        return await handler.HandleAsync(new GetCustomerAccountLedgerQuery
+        {
+            CustomerId = customerId,
+            FromDate = from,
+            ToDate = to
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult> ReconcileAccountAsync(
+        Guid customerId,
+        DateTime reconciliationDate,
+        Guid documentId,
+        decimal balanceAtReconciliation,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<ReconcileCustomerAccountCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new ReconcileCustomerAccountCommand
+        {
+            CustomerId = customerId,
+            ReconciliationDate = reconciliationDate,
+            DocumentId = documentId,
+            BalanceAtReconciliation = balanceAtReconciliation
+        }, cancellationToken);
+    }
+
     public async Task<string> NextCustomerCodeAsync(CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();

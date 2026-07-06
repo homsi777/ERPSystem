@@ -79,6 +79,7 @@ public class SalesInvoiceItemEntity : PersistenceEntity
     public decimal UnitPrice { get; set; }
     public string Unit { get; set; } = "meter";
     public decimal LineTotal { get; set; }
+    public string? Notes { get; set; }
 }
 
 public class SalesInvoiceRollDetailEntity : PersistenceEntity

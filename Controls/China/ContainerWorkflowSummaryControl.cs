@@ -1,3 +1,4 @@
+using ERPSystem.Core;
 using ERPSystem.Core.ChinaImport;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -54,7 +55,7 @@ public sealed class ContainerWorkflowSummaryControl : UserControl
         {
             _stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildGrid(new[]
             {
-                new { البند = "الأثواب في النظام", القيمة = c.TotalRolls.ToString("N0") },
+                new { البند = "الأثواب في النظام", القيمة = AppFormats.Number(c.TotalRolls) },
                 new { البند = "الأمتار في النظام", القيمة = $"{c.TotalMeters:N0} م" },
                 new { البند = "الوزن", القيمة = c.TotalWeightKg.HasValue ? $"{c.TotalWeightKg:N0} كغ" : "—" },
                 new { البند = "الحالة", القيمة = c.Status.ToArabic() },

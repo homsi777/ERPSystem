@@ -135,7 +135,7 @@ internal static class WarehouseExecutiveWorkspaceBuilder
         var wrap = new WrapPanel { Margin = new Thickness(0, 0, 0, ErpDesignTokens.SpaceMd) };
         foreach (var (title, value, icon, desc, tab) in new (string, string, string, string, string?)[]
         {
-            ("Rolls", q.TotalRolls.ToString("N0"), "\uE8B7", "إجمالي", "Rolls"),
+            ("Rolls", AppFormats.Number(q.TotalRolls), "\uE8B7", "إجمالي", "Rolls"),
             ("أمتار", $"{q.TotalMeters:N1}", "\uE8CB", "إجمالي", "Stock"),
             ("متاح", $"{q.AvailableMeters:N1}", "\uE73E", "م", "Stock"),
             ("محجوز", $"{q.ReservedMeters:N1}", "\uE8F1", "م", "Stock"),

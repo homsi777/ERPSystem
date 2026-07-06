@@ -69,7 +69,8 @@ public sealed class CreateSalesInvoiceDraftHandler(
                     line.FabricItemId,
                     line.FabricColorId,
                     line.RollCount,
-                    new Money(line.UnitPrice));
+                    new Money(line.UnitPrice),
+                    line.Notes);
                 aggregate.AddItem(item);
             }
 
@@ -132,7 +133,8 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                     line.FabricItemId,
                     line.FabricColorId,
                     line.RollCount,
-                    new Money(line.UnitPrice)))
+                    new Money(line.UnitPrice),
+                    line.Notes))
                 .ToList();
 
             aggregate.ReplaceDraftLines(items);

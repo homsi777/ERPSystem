@@ -212,6 +212,8 @@
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
     </Style>
 
     <!-- ═══════════════════════════════════════════════════ -->
@@ -443,6 +445,8 @@
         <Setter Property="Padding" Value="12,0"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="Transparent"/>
@@ -456,6 +460,8 @@
         <Setter Property="CaretBrush" Value="{StaticResource InputTextBrush}"/>
         <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
         <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
     </Style>
 
     <Style TargetType="{x:Type DatePickerTextBox}">
@@ -697,6 +703,20 @@
         <Setter Property="Height" Value="40"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
+    </Style>
+
+    <!-- Latin digits (0-9) across Arabic RTL UI -->
+    <Style TargetType="{x:Type TextBlock}">
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
+    </Style>
+    <Style TargetType="{x:Type Label}">
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
+    </Style>
+    <Style TargetType="{x:Type DataGridCell}">
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
     </Style>
 
 </ResourceDictionary>

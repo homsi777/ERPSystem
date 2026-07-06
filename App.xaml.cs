@@ -1,4 +1,5 @@
-﻿using ERPSystem.Application.DependencyInjection;
+﻿using ERPSystem.Core;
+using ERPSystem.Application.DependencyInjection;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Services;
@@ -16,7 +17,6 @@ using ERPSystem.Services.Reports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Globalization;
 using System.Windows;
 
 namespace ERPSystem;
@@ -25,9 +25,12 @@ public partial class App : System.Windows.Application
 {
     protected override async void OnStartup(StartupEventArgs e)
     {
-        base.OnStartup(e);
+        AppCulture.ConfigureWpfPresentation();
+        AppCulture.Apply();
+        LocalizationManager.Instance.LanguageChanged += (_, _) =>
+            AppCulture.ApplyForLanguage(LocalizationManager.Instance.CurrentLanguage);
 
-        Thread.CurrentThread.CurrentUICulture = new CultureInfo("ar-SA");
+        base.OnStartup(e);
 
         try
         {

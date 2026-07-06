@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Accounting;
+using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Accounting;
@@ -107,13 +108,13 @@ public sealed class AccountLedgerReportControl : UserControl
 
         var rows = result.Value.Select(r => new LedgerRow
         {
-            EntryDateDisplay = r.EntryDate.ToString("yyyy/MM/dd"),
+            EntryDateDisplay = AppFormats.Date(r.EntryDate),
             EntryNumber = r.EntryNumber,
             Description = r.Description,
             LineNarrative = string.IsNullOrWhiteSpace(r.LineNarrative) ? "—" : r.LineNarrative,
-            DebitDisplay = r.Debit > 0 ? r.Debit.ToString("N2") : "—",
-            CreditDisplay = r.Credit > 0 ? r.Credit.ToString("N2") : "—",
-            BalanceDisplay = r.RunningBalance.ToString("N2")
+            DebitDisplay = AppFormats.AmountOrDash(r.Debit),
+            CreditDisplay = AppFormats.AmountOrDash(r.Credit),
+            BalanceDisplay = AppFormats.Amount(r.RunningBalance)
         }).ToList();
 
         _grid.ItemsSource = rows;
@@ -121,7 +122,7 @@ public sealed class AccountLedgerReportControl : UserControl
         var totalDebit = result.Value.Sum(r => r.Debit);
         var totalCredit = result.Value.Sum(r => r.Credit);
         var closing = rows.Count > 0 ? result.Value[^1].RunningBalance : 0m;
-        _footer.Text = $"إجمالي مدين {totalDebit:N2} | إجمالي دائن {totalCredit:N2} | الرصيد الختامي {closing:N2}";
+        _footer.Text = $"إجمالي مدين {AppFormats.Amount(totalDebit)} | إجمالي دائن {AppFormats.Amount(totalCredit)} | الرصيد الختامي {AppFormats.Amount(closing)}";
     }
 
     private static Style S(string k) => (Style)WpfApplication.Current.Resources[k]!;

@@ -6,23 +6,57 @@ using ERPSystem.Services.Customers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ERPSystem.Controls.Customers;
 
-public class AccountLedgerRow
+public sealed class CustomerLedgerRow
 {
-    public DateTime EntryDate { get; init; }
-    public string DocumentTypeDisplay { get; init; } = "";
+    public CustomerAccountMovementType MovementType { get; init; }
+    public Guid DocumentId { get; init; }
+    public Guid EntryId { get; init; }
     public string DocumentNumber { get; init; } = "";
-    public decimal Debit { get; init; }
-    public decimal Credit { get; init; }
+    public DateTime TransactionDate { get; init; }
+    public string FabricDescription { get; init; } = "";
+    public int? RollCount { get; init; }
+    public decimal? TotalMeters { get; init; }
+    public decimal? UnitPrice { get; init; }
+    public decimal LineAmount { get; init; }
+    public string? Notes { get; init; }
     public decimal RunningBalance { get; init; }
-    public DocumentType DocumentType { get; init; }
+    public bool IsReconciled { get; init; }
 
-    public string DateDisplay => EntryDate.ToString("yyyy/MM/dd");
-    public string DebitDisplay => Debit > 0 ? Debit.ToString("N2") : "—";
-    public string CreditDisplay => Credit > 0 ? Credit.ToString("N2") : "—";
-    public string BalanceDisplay => RunningBalance.ToString("N2");
+    public string DateDisplay => AppFormats.Date(TransactionDate);
+    public string RollCountDisplay => RollCount.HasValue ? RollCount.Value.ToString() : "—";
+    public string TotalMetersDisplay => TotalMeters.HasValue ? AppFormats.Number(TotalMeters.Value, 2) : "—";
+    public string UnitPriceDisplay => UnitPrice.HasValue ? AppFormats.Amount(UnitPrice.Value) : "—";
+    public string LineAmountDisplay => AppFormats.Amount(LineAmount);
+    public string RunningBalanceDisplay => AppFormats.Amount(RunningBalance);
+    public string NotesDisplay => string.IsNullOrWhiteSpace(Notes) ? "—" : Notes;
+    public string MovementTypeDisplay => MovementType switch
+    {
+        CustomerAccountMovementType.SalesInvoice => "فاتورة بيع",
+        CustomerAccountMovementType.SalesReturn => "مرتجع",
+        CustomerAccountMovementType.ReceiptVoucher => "سند قبض",
+        _ => MovementType.ToString()
+    };
+
+    public static CustomerLedgerRow FromDto(CustomerAccountLedgerLineDto dto, bool isReconciled) => new()
+    {
+        MovementType = dto.MovementType,
+        DocumentId = dto.DocumentId,
+        EntryId = dto.EntryId,
+        DocumentNumber = dto.DocumentNumber,
+        TransactionDate = dto.TransactionDate,
+        FabricDescription = string.IsNullOrWhiteSpace(dto.FabricDescription) ? "—" : dto.FabricDescription,
+        RollCount = dto.RollCount,
+        TotalMeters = dto.TotalMeters,
+        UnitPrice = dto.UnitPrice,
+        LineAmount = dto.LineAmount,
+        Notes = dto.Notes,
+        RunningBalance = dto.RunningBalance,
+        IsReconciled = isReconciled
+    };
 }
 
 public partial class CustomerAccountStatementControl : UserControl
@@ -31,7 +65,10 @@ public partial class CustomerAccountStatementControl : UserControl
     private string _customerName = "";
     private decimal _openingBalance;
     private decimal _closingBalance;
-    private readonly List<AccountLedgerRow> _allLines = new();
+    private DateTime? _lastReconciliationDate;
+    private decimal? _lastReconciliationBalance;
+    private Guid? _lastReconciliationDocumentId;
+    private readonly List<CustomerLedgerRow> _allLines = new();
 
     public CustomerAccountStatementControl()
     {
@@ -82,7 +119,7 @@ public partial class CustomerAccountStatementControl : UserControl
         if (_customerId is not Guid id || !AppServices.IsInitialized)
             return;
 
-        var result = await CustomerUiService.Instance.GetStatementAsync(
+        var result = await CustomerUiService.Instance.GetAccountLedgerAsync(
             id, DpFrom.SelectedDate, DpTo.SelectedDate);
 
         if (!ApplicationResultPresenter.Present(result))
@@ -90,84 +127,130 @@ public partial class CustomerAccountStatementControl : UserControl
 
         var dto = result.Value!;
         SetCustomerName(dto.CustomerName);
-        _allLines.Clear();
-        _allLines.AddRange(dto.Lines.Select(l => new AccountLedgerRow
-        {
-            EntryDate = l.EntryDate,
-            DocumentType = l.DocumentType,
-            DocumentTypeDisplay = MapDocumentType(l.DocumentType),
-            DocumentNumber = l.DocumentNumber,
-            Debit = l.Debit,
-            Credit = l.Credit,
-            RunningBalance = l.RunningBalance
-        }));
-
         _openingBalance = dto.OpeningBalance;
         _closingBalance = dto.ClosingBalance;
+        _lastReconciliationDate = dto.LastReconciliationDate;
+        _lastReconciliationBalance = dto.LastReconciliationBalance;
+        _lastReconciliationDocumentId = dto.LastReconciliationDocumentId;
+
         TxtOpeningBalance.Text = $"{dto.OpeningBalance:N2} $";
         TxtClosingBalance.Text = $"{dto.ClosingBalance:N2} $";
-        TxtTotalDebit.Text = $"{_allLines.Sum(x => x.Debit):N2} $";
-        TxtTotalCredit.Text = $"{_allLines.Sum(x => x.Credit):N2} $";
+        TxtReconciliationBalance.Text = dto.LastReconciliationBalance.HasValue
+            ? $"{dto.LastReconciliationBalance.Value:N2} $"
+            : "—";
+        TxtReconciliationDate.Text = dto.LastReconciliationDate.HasValue
+            ? AppFormats.Date(dto.LastReconciliationDate.Value)
+            : "—";
+
+        _allLines.Clear();
+        var reconciledCutoffIndex = ResolveReconciledCutoffIndex(dto.Lines, dto.LastReconciliationDocumentId);
+        for (var i = 0; i < dto.Lines.Count; i++)
+        {
+            var isReconciled = reconciledCutoffIndex >= 0 && i <= reconciledCutoffIndex;
+            _allLines.Add(CustomerLedgerRow.FromDto(dto.Lines[i], isReconciled));
+        }
 
         ApplyFilters();
+    }
+
+    private static int ResolveReconciledCutoffIndex(
+        IReadOnlyList<CustomerAccountLedgerLineDto> lines,
+        Guid? reconciliationDocumentId)
+    {
+        if (!reconciliationDocumentId.HasValue || lines.Count == 0)
+            return -1;
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].EntryId == reconciliationDocumentId.Value)
+                return i;
+        }
+
+        return -1;
     }
 
     private void ApplyFilters()
     {
         var term = TxtSearch?.Text?.Trim() ?? "";
-        IEnumerable<AccountLedgerRow> rows = _allLines;
+        IEnumerable<CustomerLedgerRow> rows = _allLines;
 
         if (!string.IsNullOrEmpty(term))
         {
             rows = rows.Where(r =>
                 r.DocumentNumber.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                r.DocumentTypeDisplay.Contains(term, StringComparison.OrdinalIgnoreCase));
+                r.FabricDescription.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                r.MovementTypeDisplay.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                (r.Notes?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
         LinesGrid.ItemsSource = rows.ToList();
     }
 
-    private static string MapDocumentType(DocumentType type) => type switch
-    {
-        DocumentType.SalesInvoice => "فاتورة بيع",
-        DocumentType.ReceiptVoucher => "سند قبض",
-        DocumentType.PaymentVoucher => "سند دفع",
-        _ => type.ToString()
-    };
-
     private void BtnReceipt_Click(object sender, RoutedEventArgs e) =>
         MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
 
-    private void BtnPrint_Click(object sender, RoutedEventArgs e) => ShowStatement(false);
-
-    private void BtnPdf_Click(object sender, RoutedEventArgs e) => ShowStatement(true);
-
-    private void ShowStatement(bool exportPdf)
+    private async void BtnReconcile_Click(object sender, RoutedEventArgs e)
     {
-        if (_customerId is null)
+        if (_customerId is not Guid customerId)
         {
-            MockInteractionService.ShowWarning("اختر عميلاً أولاً.", "كشف حساب");
+            MockInteractionService.ShowWarning("اختر عميلاً أولاً.", "مطابقة الكشف");
             return;
         }
 
-        var lines = _allLines.Select(l => new ERPSystem.Services.Documents.StatementLine(
-            l.EntryDate, l.DocumentNumber, l.DocumentTypeDisplay, l.Debit, l.Credit, l.RunningBalance)).ToList();
+        var visibleRows = (LinesGrid.ItemsSource as IEnumerable<CustomerLedgerRow>)?.ToList() ?? _allLines;
+        if (visibleRows.Count == 0)
+        {
+            MockInteractionService.ShowWarning("لا توجد حركات للمطابقة في الفترة المحددة.", "مطابقة الكشف");
+            return;
+        }
 
-        ERPSystem.Services.Documents.StatementDocumentService.ShowStatementPreview(
-            _customerName, "عميل", DpFrom.SelectedDate, DpTo.SelectedDate, _openingBalance, _closingBalance, lines, exportPdf);
+        var selected = LinesGrid.SelectedItem as CustomerLedgerRow;
+        var target = selected ?? visibleRows[^1];
+
+        var confirm = MockInteractionService.Confirm(
+            $"مطابقة الكشف حتى السطر:\n{target.MovementTypeDisplay} — {target.DocumentNumber}\n" +
+            $"التاريخ: {target.DateDisplay}\nالرصيد: {target.RunningBalanceDisplay}\n\n" +
+            "المطابقة الجديدة تحل محل السابقة.",
+            "مطابقة الكشف");
+        if (!confirm)
+            return;
+
+        var result = await CustomerUiService.Instance.ReconcileAccountAsync(
+            customerId,
+            target.TransactionDate,
+            target.EntryId,
+            target.RunningBalance);
+
+        if (!ApplicationResultPresenter.Present(result))
+            return;
+
+        MockInteractionService.ShowInfo("تم حفظ مطابقة الكشف بنجاح.", "مطابقة الكشف");
+        await ReloadAsync();
     }
+
+    private void BtnPrint_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.ShowInfo("الطباعة من كشف الحساب التفصيلي قيد التطوير.", "طباعة");
+
+    private void BtnPdf_Click(object sender, RoutedEventArgs e) =>
+        MockInteractionService.ShowInfo("تصدير PDF من كشف الحساب التفصيلي قيد التطوير.", "PDF");
 
     private void BtnExcel_Click(object sender, RoutedEventArgs e) =>
         ERPSystem.Services.Documents.ListExportService.ExportGrid(LinesGrid, $"كشف حساب - {_customerName}");
 
     private void DocumentNumber_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement fe || fe.DataContext is not AccountLedgerRow row)
+        if (sender is not FrameworkElement fe || fe.DataContext is not CustomerLedgerRow row)
             return;
 
-        if (row.DocumentType == DocumentType.SalesInvoice)
+        if (row.MovementType == CustomerAccountMovementType.SalesInvoice)
             MockInteractionService.OpenInvoiceOperationsCenter(row.DocumentNumber);
-        else if (row.DocumentType == DocumentType.ReceiptVoucher)
+        else if (row.MovementType == CustomerAccountMovementType.ReceiptVoucher)
             MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
+    }
+
+    private void LinesGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+    {
+        if (e.Row.Item is CustomerLedgerRow row && row.IsReconciled)
+            e.Row.Background = new SolidColorBrush(Color.FromRgb(254, 226, 226));
     }
 }

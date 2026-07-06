@@ -52,6 +52,7 @@ namespace ERPSystem.Controls.Sales
         private string _unit = "متر";
         private decimal _unitPrice;
         private string _unitPriceText = "";
+        private string _notes = "";
         private SalesWarehouseStockOptionDto? _selectedStock;
         private bool _missingSalePrice;
 
@@ -155,6 +156,12 @@ namespace ERPSystem.Controls.Sales
         {
             get => _unitPriceText;
             set => SetField(ref _unitPriceText, value ?? "");
+        }
+
+        public string Notes
+        {
+            get => _notes;
+            set => SetField(ref _notes, value ?? "");
         }
 
         internal static string FormatUnitPriceDisplay(decimal value) =>
@@ -314,6 +321,20 @@ namespace ERPSystem.Controls.Sales
         public Guid? SelectedContainerId =>
             CmbContainer.SelectedItem is ContainerPickItem item ? item.Id : null;
 
+        private void ItemsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ItemsGrid.SelectedItem is SalesInvoiceLineRow row)
+                TxtLineNotes.Text = row.Notes;
+            else
+                TxtLineNotes.Text = "";
+        }
+
+        private void TxtLineNotes_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (ItemsGrid.SelectedItem is SalesInvoiceLineRow row)
+                row.Notes = TxtLineNotes.Text.Trim();
+        }
+
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
             if (!_initialized)
@@ -323,6 +344,8 @@ namespace ERPSystem.Controls.Sales
                 DpDate.SelectedDate = DateTime.Today;
                 ItemsGrid.ItemsSource = _lines;
                 ItemsGrid.PreviewMouseLeftButtonDown += ItemsGrid_PreviewMouseLeftButtonDown;
+                ItemsGrid.SelectionChanged += ItemsGrid_SelectionChanged;
+                TxtLineNotes.LostFocus += TxtLineNotes_LostFocus;
                 foreach (var row in _lines)
                     row.PropertyChanged += OnLinePropertyChanged;
             }
@@ -617,7 +640,8 @@ namespace ERPSystem.Controls.Sales
                     RollCount = line.RollCount,
                     UnitPrice = line.UnitPrice,
                     MissingSalePrice = line.UnitPrice <= 0,
-                    LengthStatus = BuildLengthStatus(line, _domainStatus)
+                    LengthStatus = BuildLengthStatus(line, _domainStatus),
+                    Notes = line.Notes ?? ""
                 };
                 row.RefreshStockSelectionDisplay();
                 _lines.Add(row);
@@ -1142,7 +1166,8 @@ namespace ERPSystem.Controls.Sales
                     FabricItemId = row.FabricItemId,
                     FabricColorId = row.FabricColorId,
                     RollCount = row.RollCount,
-                    UnitPrice = row.UnitPrice
+                    UnitPrice = row.UnitPrice,
+                    Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
                 });
             }
             return commands;

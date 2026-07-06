@@ -41,7 +41,7 @@ public sealed class CustomerListRow
     {
         DomainCustomerType.Cash => "—",
         DomainCustomerType.Credit when !CreditLimitEnabled => "بدون حد",
-        _ => CreditLimit.ToString("N2")
+        _ => AppFormats.Amount(CreditLimit)
     };
 
     public static CustomerListRow FromDto(CustomerListDto dto) => new(dto);

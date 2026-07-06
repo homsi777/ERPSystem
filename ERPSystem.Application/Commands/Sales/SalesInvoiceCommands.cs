@@ -22,6 +22,7 @@ public sealed class SalesInvoiceLineCommand
     public Guid FabricColorId { get; init; }
     public int RollCount { get; init; }
     public decimal UnitPrice { get; init; }
+    public string? Notes { get; init; }
 }
 
 public sealed class UpdateSalesInvoiceDraftCommand

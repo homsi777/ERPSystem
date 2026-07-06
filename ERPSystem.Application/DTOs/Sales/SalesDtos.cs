@@ -44,6 +44,7 @@ public sealed class SalesInvoiceLineDto
     public decimal UnitPrice { get; init; }
     public decimal TotalLengthMeters { get; init; }
     public decimal LineTotal { get; init; }
+    public string? Notes { get; init; }
 }
 
 public sealed class WarehouseDetailingDto

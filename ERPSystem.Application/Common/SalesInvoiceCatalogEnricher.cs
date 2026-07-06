@@ -31,7 +31,8 @@ public static class SalesInvoiceCatalogEnricher
                 RollCount = line.RollCount,
                 UnitPrice = line.UnitPrice,
                 TotalLengthMeters = line.TotalLengthMeters,
-                LineTotal = line.LineTotal
+                LineTotal = line.LineTotal,
+                Notes = line.Notes
             });
         }
 

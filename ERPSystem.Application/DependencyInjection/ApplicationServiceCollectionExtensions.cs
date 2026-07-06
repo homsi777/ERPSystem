@@ -86,6 +86,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CreateCustomerCommand, ApplicationResult<Guid>>, CreateCustomerHandler>();
         services.AddScoped<ICommandHandler<UpdateCustomerCommand, ApplicationResult>, UpdateCustomerHandler>();
         services.AddScoped<ICommandHandler<DeactivateCustomerCommand, ApplicationResult>, DeactivateCustomerHandler>();
+        services.AddScoped<ICommandHandler<ReconcileCustomerAccountCommand, ApplicationResult>, ReconcileCustomerAccountHandler>();
         services.AddScoped<ICommandHandler<PostCustomerOpeningBalanceCommand, ApplicationResult<Application.DTOs.Customers.CustomerOpeningBalanceResultDto>>, PostCustomerOpeningBalanceHandler>();
     }
 
@@ -319,6 +320,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCustomerOperationsCenterHandler>();
         services.AddScoped<GetCustomerStatementHandler>();
         services.AddScoped<GetCustomerSalesDetailsHandler>();
+        services.AddScoped<GetCustomerAccountLedgerHandler>();
         services.AddScoped<GetSupplierListHandler>();
         services.AddScoped<GetSupplierDetailsHandler>();
         services.AddScoped<GetSupplierOperationsCenterHandler>();

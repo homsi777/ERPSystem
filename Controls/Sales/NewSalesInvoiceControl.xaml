@@ -448,9 +448,10 @@
                     </Border>
 
                     <StackPanel>
-                        <TextBlock Text="ملاحظات" Style="{StaticResource InvoiceFieldLabel}"/>
-                        <TextBox Style="{StaticResource EnterpriseInputStyle}" Height="36"
-                                 VerticalContentAlignment="Center"/>
+                        <TextBlock Text="ملاحظات السطر" Style="{StaticResource InvoiceFieldLabel}"/>
+                        <TextBox x:Name="TxtLineNotes" Style="{StaticResource EnterpriseInputStyle}" Height="36"
+                                 VerticalContentAlignment="Center"
+                                 ToolTip="تُطبَّق على السطر المحدد في الجدول — أو أدخل الملاحظة مباشرة في عمود «ملاحظة»"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -554,6 +555,9 @@
                                                 IsReadOnly="True"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"/>
                             <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPriceText, UpdateSourceTrigger=PropertyChanged}" Width="90"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"
+                                                EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
+                            <DataGridTextColumn Header="ملاحظة" Binding="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Width="120"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
                             <DataGridTemplateColumn Header="إجراءات" Width="60" IsReadOnly="True">

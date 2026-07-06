@@ -2,6 +2,7 @@ using ERPSystem.Controls;
 using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
+using ERPSystem.Core;
 using System.Windows.Data;
 using System.Windows.Media;
 
@@ -120,7 +121,10 @@ namespace ERPSystem.Helpers
 
         public static void AddGridColumn(DataGrid grid, string header, string path, object width, string? format = null)
         {
-            var binding = new Binding(path);
+            var binding = new Binding(path)
+            {
+                ConverterCulture = AppCulture.FormatCulture
+            };
             if (format != null) binding.StringFormat = format;
             grid.Columns.Add(new DataGridTextColumn
             {

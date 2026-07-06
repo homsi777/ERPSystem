@@ -111,6 +111,7 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.RollCount), i.RollCount);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.UnitPrice), new Money(i.UnitPrice));
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.LineTotal), new Money(i.LineTotal));
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.Notes), i.Notes);
             return item;
         }).ToList();
 

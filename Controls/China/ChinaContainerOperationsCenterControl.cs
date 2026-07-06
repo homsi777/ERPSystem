@@ -119,16 +119,16 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
                 ("المورد", row.SupplierName),
                 ("تاريخ الشحن", c.ShipmentDate.ToString("yyyy/MM/dd")),
                 ("الوصول", c.ArrivalDate?.ToString("yyyy/MM/dd") ?? "—"),
-                ("الأثواب", c.TotalRolls.ToString("N0")),
+                ("الأثواب", AppFormats.Number(c.TotalRolls)),
                 ("الأطوال", $"{c.TotalMeters:N0} م"),
                 ("الوزن", c.TotalWeightKg.HasValue ? $"{c.TotalWeightKg:N0} كغ" : "—"),
-                ("سعر الصرف", c.ExchangeRateToLocalCurrency.ToString("N4")),
+                ("سعر الصرف", AppFormats.Number(c.ExchangeRateToLocalCurrency, 4)),
             ],
             Kpis =
             [
                 ("أنواع الأقمشة", row.CodeCount.ToString(), "\uECA5"),
                 ("الألوان", row.ColorCount.ToString(), "\uE790"),
-                ("الأثواب", c.TotalRolls.ToString("N0"), "\uE7C3"),
+                ("الأثواب", AppFormats.Number(c.TotalRolls), "\uE7C3"),
                 ("الأطوال", $"{c.TotalMeters:N0} م", "\uE821"),
                 ("محجوز", $"{reservedRolls:N0} ({reservedMeters:N0} م)", "\uE823"),
                 ("مباع", $"{soldRolls:N0} ({soldMeters:N0} م)", "\uE8F1"),
@@ -200,7 +200,7 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
 
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("الحالة", ErpUiFactory.FormField(c.Status.ToArabic())),
-            ("إجمالي الأثواب", ErpUiFactory.FormField(c.TotalRolls.ToString("N0"))),
+            ("إجمالي الأثواب", ErpUiFactory.FormField(AppFormats.Number(c.TotalRolls))),
             ("إجمالي الأطوال", ErpUiFactory.FormField($"{c.TotalMeters:N0} م")),
             ("بنود الحاوية", ErpUiFactory.FormField(c.Items.Count.ToString())),
             ("Landing Cost", ErpUiFactory.FormField(cost is null ? "غير محسوب" : "محسوب")))));

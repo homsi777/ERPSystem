@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Accounting;
+using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Accounting;
@@ -19,9 +20,9 @@ public sealed class TrialBalanceReportControl : UserControl
         public decimal DebitTotal { get; init; }
         public decimal CreditTotal { get; init; }
         public decimal Balance { get; init; }
-        public string DebitDisplay => DebitTotal > 0 ? DebitTotal.ToString("N2") : "—";
-        public string CreditDisplay => CreditTotal > 0 ? CreditTotal.ToString("N2") : "—";
-        public string BalanceDisplay => Balance.ToString("N2");
+        public string DebitDisplay => AppFormats.AmountOrDash(DebitTotal);
+        public string CreditDisplay => AppFormats.AmountOrDash(CreditTotal);
+        public string BalanceDisplay => AppFormats.Amount(Balance);
     }
 
     private readonly DatePicker _asOf = ErpUiFactory.FormDate(DateTime.Today);

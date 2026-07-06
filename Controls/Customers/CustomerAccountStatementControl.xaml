@@ -70,7 +70,7 @@
         </Border>
 
         <ScrollViewer x:Name="StatementContent" VerticalScrollBarVisibility="Auto" Padding="16,12">
-        <StackPanel MaxWidth="1280">
+        <StackPanel MaxWidth="1400">
             <TextBlock x:Name="TxtTableTitle" Text="كشف حساب"
                        FontSize="20" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}"
@@ -106,6 +106,8 @@
                     <WrapPanel>
                         <Button Style="{StaticResource StmtActionBtn}" Background="#10B981" Margin="0,0,8,0"
                                 Click="BtnReceipt_Click" Content="سند قبض"/>
+                        <Button x:Name="BtnReconcile" Style="{StaticResource StmtActionBtn}" Background="#DC2626" Margin="0,0,8,0"
+                                Click="BtnReconcile_Click" Content="مطابقة الكشف"/>
                         <Button Style="{StaticResource StmtActionBtn}" Background="White"
                                 Foreground="{StaticResource TextPrimaryBrush}"
                                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
@@ -119,26 +121,29 @@
                                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                 Margin="0,0,8,0" Click="BtnExcel_Click" Content="Excel"/>
                     </WrapPanel>
+                    <TextBlock Text="المطابقة الجديدة تحل محل السابقة — لا يوجد تراجع تلقائي."
+                               FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                               Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
 
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
-                <UniformGrid Columns="4">
-                    <StackPanel Margin="0,0,8,0">
+                <UniformGrid Columns="4" Rows="2">
+                    <StackPanel Margin="0,0,8,8">
                         <TextBlock Text="رصيد افتتاحي" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
                         <TextBlock x:Name="TxtOpeningBalance" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                     </StackPanel>
-                    <StackPanel Margin="0,0,8,0">
-                        <TextBlock Text="إجمالي مدين" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TxtTotalDebit" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,0,8,0">
-                        <TextBlock Text="إجمالي دائن" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TxtTotalCredit" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                    </StackPanel>
-                    <StackPanel>
+                    <StackPanel Margin="0,0,8,8">
                         <TextBlock Text="رصيد ختامي" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
                         <TextBlock x:Name="TxtClosingBalance" Text="0.00 $" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,8,8">
+                        <TextBlock Text="رصيد المطابقة" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock x:Name="TxtReconciliationBalance" Text="—" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="تاريخ آخر مطابقة" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock x:Name="TxtReconciliationDate" Text="—" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
                     </StackPanel>
                 </UniformGrid>
             </Border>
@@ -150,11 +155,15 @@
                           RowStyle="{StaticResource EnterpriseDataGridRowStyle}"
                           CellStyle="{StaticResource EnterpriseDataGridCellStyle}"
                           AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
-                          MinHeight="240">
+                          SelectionMode="Single" MinHeight="320"
+                          LoadingRow="LinesGrid_LoadingRow">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="التاريخ" Binding="{Binding DateDisplay}" Width="100"/>
-                        <DataGridTextColumn Header="نوع المستند" Binding="{Binding DocumentTypeDisplay}" Width="120"/>
-                        <DataGridTemplateColumn Header="رقم المستند" Width="130">
+                        <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding FabricDescription}" Width="*" MinWidth="160"/>
+                        <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCountDisplay}" Width="90"/>
+                        <DataGridTextColumn Header="مجموع الأطوال" Binding="{Binding TotalMetersDisplay}" Width="110"/>
+                        <DataGridTextColumn Header="السعر" Binding="{Binding UnitPriceDisplay}" Width="90"/>
+                        <DataGridTextColumn Header="مجموع المبلغ" Binding="{Binding LineAmountDisplay}" Width="110"/>
+                        <DataGridTemplateColumn Header="رقم المستند" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DocumentNumber}" Foreground="#DC2626"
@@ -163,9 +172,9 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="مدين" Binding="{Binding DebitDisplay}" Width="100"/>
-                        <DataGridTextColumn Header="دائن" Binding="{Binding CreditDisplay}" Width="100"/>
-                        <DataGridTextColumn Header="الرصيد" Binding="{Binding BalanceDisplay}" Width="*"/>
+                        <DataGridTextColumn Header="التاريخ" Binding="{Binding DateDisplay}" Width="100"/>
+                        <DataGridTextColumn Header="ملاحظة" Binding="{Binding NotesDisplay}" Width="120"/>
+                        <DataGridTextColumn Header="الرصيد المتراكم" Binding="{Binding RunningBalanceDisplay}" Width="110"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>

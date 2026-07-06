@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Inventory;
+using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Inventory;
@@ -136,7 +137,7 @@ public sealed class InventoryDashboardControl : UserControl
             new("#EFF6FF", "#BFDBFE", "#2563EB", "#1D4ED8", "#1E40AF")));
         kpis.Children.Add(InventoryContainerFilterUi.CreateMetricCard(
             "إجمالي Rolls",
-            stock.Sum(s => s.RollCount).ToString("N0"),
+            AppFormats.Number(stock.Sum(s => s.RollCount)),
             "\uE8CB",
             new("#F5F3FF", "#DDD6FE", "#7C3AED", "#5B21B6", "#6D28D9")));
         kpis.Children.Add(InventoryContainerFilterUi.CreateMetricCard(

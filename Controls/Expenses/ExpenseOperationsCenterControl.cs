@@ -135,7 +135,7 @@ public sealed class ExpenseOperationsCenterControl : UserControl
     private static UIElement FinancialTab(ExpenseFinancialSummaryDto f, ExpenseDetailsDto d) =>
         ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("العملة الأصلية", ReadOnly($"{f.OriginalAmount:N2} {f.OriginalCurrency}")),
-            ("سعر الصرف", ReadOnly(d.ExchangeRate.ToString("N4"))),
+            ("سعر الصرف", ReadOnly(AppFormats.Number(d.ExchangeRate, 4))),
             ("بالعملة الأساس", ReadOnly($"{f.BaseAmount:N2} {f.BaseCurrency}")),
             ("المدفوع", ReadOnly($"{f.PaidAmountBase:N2} {f.BaseCurrency}")),
             ("المتبقي", ReadOnly($"{f.RemainingBalanceBase:N2} {f.BaseCurrency}")),
@@ -168,9 +168,9 @@ public sealed class ExpenseOperationsCenterControl : UserControl
         {
             التاريخ = p.PaymentDate.ToString("yyyy/MM/dd"),
             الاستحقاق = p.DueDate?.ToString("yyyy/MM/dd") ?? "—",
-            المبلغ = p.AmountOriginal.ToString("N2"),
+            المبلغ = AppFormats.Amount(p.AmountOriginal),
             العملة = p.Currency,
-            بالأساس = p.AmountBase.ToString("N2"),
+            بالأساس = AppFormats.Amount(p.AmountBase),
             الطريقة = p.PaymentMethodDisplay,
             المصدر = p.FundingSourceDisplay,
             الحالة = p.StatusDisplay,
@@ -187,8 +187,8 @@ public sealed class ExpenseOperationsCenterControl : UserControl
         {
             القسط = i.InstallmentNumber,
             الاستحقاق = i.DueDate.ToString("yyyy/MM/dd"),
-            المبلغ = i.AmountOriginal.ToString("N2"),
-            بالأساس = i.AmountBase.ToString("N2"),
+            المبلغ = AppFormats.Amount(i.AmountOriginal),
+            بالأساس = AppFormats.Amount(i.AmountBase),
             الحالة = i.StatusDisplay
         }).ToList(), false));
     }

@@ -180,12 +180,12 @@ namespace ERPSystem.Modules
                     return;
 
                 var dto = result.Value;
-                CardSales.CardValue = $"{dto.TodaySalesTotal:N0} $";
-                CardOrders.CardValue = dto.AwaitingDetailingCount.ToString();
-                CardInventory.CardValue = dto.PendingContainersCount.ToString();
-                CardReceivables.CardValue = $"{dto.TotalCustomerOutstanding:N0} $";
-                CardPayables.CardValue = $"{dto.TotalSupplierPayables:N0} $";
-                CardCustomers.CardValue = dto.ActiveCustomersCount.ToString();
+                CardSales.CardValue = AppFormats.CurrencyUsd(dto.TodaySalesTotal);
+                CardOrders.CardValue = AppFormats.Number(dto.AwaitingDetailingCount);
+                CardInventory.CardValue = AppFormats.Number(dto.PendingContainersCount);
+                CardReceivables.CardValue = AppFormats.CurrencyUsd(dto.TotalCustomerOutstanding);
+                CardPayables.CardValue = AppFormats.CurrencyUsd(dto.TotalSupplierPayables);
+                CardCustomers.CardValue = AppFormats.Number(dto.ActiveCustomersCount);
 
                 PopulateActivityFeed(dto.RecentActivity);
             }

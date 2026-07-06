@@ -234,7 +234,8 @@ public static class SalesInvoiceMapper
                 RollCount = i.RollCount,
                 UnitPrice = i.UnitPrice.Amount,
                 TotalLengthMeters = totalLength,
-                LineTotal = i.LineTotal.Amount
+                LineTotal = i.LineTotal.Amount,
+                Notes = i.Notes
             };
         }).ToList()
     };

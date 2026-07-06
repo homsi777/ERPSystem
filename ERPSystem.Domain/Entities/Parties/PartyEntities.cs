@@ -22,6 +22,9 @@ public class Customer
     public bool IsActive { get; private set; } = true;
     public bool OpeningBalancePosted { get; private set; }
     public Guid CompanyId { get; private set; }
+    public DateTime? LastReconciliationDate { get; private set; }
+    public decimal? LastReconciliationBalance { get; private set; }
+    public Guid? LastReconciliationDocumentId { get; private set; }
 
     private Customer() { }
 
@@ -85,6 +88,13 @@ public class Customer
         CreditLimit = creditLimit;
         PaymentTermsDays = paymentTermsDays;
         CreditLimitEnabled = Type == CustomerType.Credit && creditLimitEnabled;
+    }
+
+    public void RecordReconciliation(DateTime reconciliationDate, decimal balanceAtReconciliation, Guid documentId)
+    {
+        LastReconciliationDate = reconciliationDate;
+        LastReconciliationBalance = balanceAtReconciliation;
+        LastReconciliationDocumentId = documentId;
     }
 }
 

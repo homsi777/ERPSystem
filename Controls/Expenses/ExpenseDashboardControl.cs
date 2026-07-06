@@ -230,8 +230,8 @@ public sealed class ExpenseDashboardControl : UserControl
         return ErpUiFactory.BuildGrid(points.Select(p => new
         {
             العملة = p.Currency,
-            الأصلي = p.AmountOriginal.ToString("N2"),
-            بالأساس = p.AmountBase.ToString("N2")
+            الأصلي = AppFormats.Amount(p.AmountOriginal),
+            بالأساس = AppFormats.Amount(p.AmountBase)
         }).ToList(), false);
     }
 

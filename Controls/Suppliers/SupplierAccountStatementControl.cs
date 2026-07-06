@@ -123,12 +123,12 @@ public sealed class SupplierAccountStatementControl : UserControl
 
         public static SupplierStatementLineVm FromDto(SupplierStatementLineDto dto) => new()
         {
-            DateDisplay = dto.EntryDate.ToString("yyyy/MM/dd"),
+            DateDisplay = AppFormats.Date(dto.EntryDate),
             DocumentNumber = dto.DocumentNumber,
             Description = dto.Description,
-            DebitDisplay = dto.Debit > 0 ? dto.Debit.ToString("N2") : "—",
-            CreditDisplay = dto.Credit > 0 ? dto.Credit.ToString("N2") : "—",
-            BalanceDisplay = dto.RunningBalance.ToString("N2")
+            DebitDisplay = AppFormats.AmountOrDash(dto.Debit),
+            CreditDisplay = AppFormats.AmountOrDash(dto.Credit),
+            BalanceDisplay = AppFormats.Amount(dto.RunningBalance)
         };
     }
 }

@@ -1,6 +1,7 @@
 using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Finance;
+using ERPSystem.Core;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -100,12 +101,12 @@ public sealed class CustomerOpeningBalanceFormControl : UserControl
             if (line.Credit > line.Debit)
             {
                 _rbCredit.IsChecked = true;
-                _txtAmount.Text = line.Credit.ToString("N2");
+                _txtAmount.Text = AppFormats.Amount(line.Credit);
             }
             else
             {
                 _rbDebit.IsChecked = true;
-                _txtAmount.Text = line.Debit.ToString("N2");
+                _txtAmount.Text = AppFormats.Amount(line.Debit);
             }
 
             if (line.PartyId is Guid pid)

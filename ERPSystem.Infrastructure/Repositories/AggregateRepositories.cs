@@ -323,7 +323,8 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             RollCount = i.RollCount,
             UnitPrice = i.UnitPrice.Amount,
             Unit = i.Unit,
-            LineTotal = i.LineTotal.Amount
+            LineTotal = i.LineTotal.Amount,
+            Notes = i.Notes
         }), ct);
 
         var existingRolls = await context.SalesInvoiceRollDetails.Where(r => r.SalesInvoiceId == aggregate.Id).ToListAsync(ct);

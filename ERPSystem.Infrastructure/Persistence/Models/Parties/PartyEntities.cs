@@ -20,6 +20,9 @@ public class CustomerEntity : PersistenceEntity
     public string? AddressCity { get; set; }
     public Guid? SalesRepUserId { get; set; }
     public bool OpeningBalancePosted { get; set; }
+    public DateTime? LastReconciliationDate { get; set; }
+    public decimal? LastReconciliationBalance { get; set; }
+    public Guid? LastReconciliationDocumentId { get; set; }
 }
 
 public class SupplierEntity : PersistenceEntity

@@ -1,6 +1,8 @@
 using ERPSystem.Application.DTOs.Inventory;
+using ERPSystem.Core;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace ERPSystem.Controls.Inventory;
@@ -162,15 +164,7 @@ internal static class InventoryContainerFilterUi
                     FontSize = 16,
                     Foreground = HexBrush(theme.Icon)
                 },
-                new TextBlock
-                {
-                    Text = value,
-                    FontSize = 22,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = HexBrush(theme.Value),
-                    Margin = new Thickness(0, 8, 0, 4),
-                    FontFamily = new FontFamily("Segoe UI, Tahoma, Arial")
-                },
+                CreateMetricValueTextBlock(value, theme.Value),
                 new TextBlock
                 {
                     Text = label,
@@ -195,24 +189,39 @@ internal static class InventoryContainerFilterUi
         panel.Children.Clear();
         panel.Children.Add(CreateMetricCard(
             "إجمالي Rolls",
-            stock.Sum(s => s.RollCount).ToString("N0"),
+            AppFormats.Number(stock.Sum(s => s.RollCount)),
             "\uE8CB",
             new("#F5F3FF", "#DDD6FE", "#7C3AED", "#5B21B6", "#6D28D9")));
         panel.Children.Add(CreateMetricCard(
             "الأمتار",
-            $"{stock.Sum(s => s.TotalMeters):N0}",
+            AppFormats.Number(stock.Sum(s => s.TotalMeters), 0),
             "\uE81E",
             new("#EFF6FF", "#BFDBFE", "#2563EB", "#1D4ED8", "#1E40AF")));
         panel.Children.Add(CreateMetricCard(
             "المتاح",
-            $"{stock.Sum(s => s.AvailableMeters):N0}",
+            AppFormats.Number(stock.Sum(s => s.AvailableMeters), 0),
             "\uE73E",
             new("#ECFDF5", "#A7F3D0", "#059669", "#047857", "#065F46")));
         panel.Children.Add(CreateMetricCard(
             "قيمة المخزون",
-            $"${stock.Sum(s => s.InventoryValue):N0}",
+            AppFormats.CurrencyUsd(stock.Sum(s => s.InventoryValue)),
             "\uE8C1",
             new("#FFFBEB", "#FDE68A", "#D97706", "#B45309", "#92400E")));
+    }
+
+    private static TextBlock CreateMetricValueTextBlock(string value, string themeValueHex)
+    {
+        var textBlock = new TextBlock
+        {
+            Text = value,
+            FontSize = 22,
+            FontWeight = FontWeights.Bold,
+            Foreground = HexBrush(themeValueHex),
+            Margin = new Thickness(0, 8, 0, 4),
+            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
+            Language = XmlLanguage.GetLanguage("en-US")
+        };
+        return textBlock;
     }
 
     public static StackPanel CreateFilterRow(
