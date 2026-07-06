@@ -15,11 +15,12 @@ import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
+import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import { formatCurrency, formatDateOnly, formatNumber } from '../lib/format.ts';
 import { customerStatusLabels, customerTypeLabels, documentTypeLabels, getCustomerStatusTone } from '../lib/enums.ts';
 
-const PAGE_SIZE = 10;
+const LIST_PAGE_SIZE = 500;
 
 export function CustomersPage() {
   const { customerId } = useParams();
@@ -34,33 +35,30 @@ export function CustomersPage() {
 function CustomerListPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
 
   const customersQuery = useQuery({
-    queryKey: ['customers', search, page],
-    queryFn: () => getCustomers({ search: search || undefined, page, pageSize: PAGE_SIZE })
+    queryKey: ['customers', search],
+    queryFn: () => getCustomers({ search: search || undefined, page: 1, pageSize: LIST_PAGE_SIZE })
   });
 
-  const pageSummary = useMemo(() => {
+  const listSummary = useMemo(() => {
     const rows = customersQuery.data?.items ?? [];
-    // عرض فقط: مجموع صفحة النتائج الحالية، وليس إجمالي كل العملاء.
     return {
-      count: rows.length,
+      count: customersQuery.data?.totalCount ?? rows.length,
       outstanding: rows.reduce((sum, row) => sum + row.balance, 0)
     };
-  }, [customersQuery.data?.items]);
+  }, [customersQuery.data?.items, customersQuery.data?.totalCount]);
 
   const headerSummary = (
     <>
-      <SummaryCard label="عملاء هذه الصفحة" value={formatNumber(pageSummary.count)} />
-      <SummaryCard label="إجمالي الأرصدة (الصفحة)" value={formatCurrency(pageSummary.outstanding)} tone="amber" />
+      <SummaryCard label="عدد العملاء" value={formatNumber(listSummary.count)} />
+      <SummaryCard label="إجمالي الأرصدة" value={formatCurrency(listSummary.outstanding)} tone="amber" />
     </>
   );
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSearch(searchInput.trim());
-    setPage(1);
   }
 
   return (
@@ -90,22 +88,13 @@ function CustomerListPage() {
       ) : null}
 
       {customersQuery.isSuccess && customersQuery.data.items.length > 0 ? (
-        <>
-          <section className="card-list" aria-label="قائمة العملاء">
-            {customersQuery.data.items.map((customer) => (
-              <Link className="card-link" key={customer.id} to={`/customers/${customer.id}`}>
-                <CustomerListCard customer={customer} />
-              </Link>
-            ))}
-          </section>
-          <Pagination
-            page={customersQuery.data.page}
-            totalPages={customersQuery.data.totalPages}
-            totalCount={customersQuery.data.totalCount}
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
-          />
-        </>
+        <section className="card-list" aria-label="قائمة العملاء">
+          {customersQuery.data.items.map((customer) => (
+            <Link className="card-link" key={customer.id} to={`/customers/${customer.id}`}>
+              <CustomerListCard customer={customer} />
+            </Link>
+          ))}
+        </section>
       ) : null}
     </AppShell>
   );
@@ -156,7 +145,7 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
   ) : undefined;
 
   return (
-    <AppShell title={customer ? customer.nameAr : 'تفاصيل العميل'} summary={headerSummary}>
+    <AppShell title="تفاصيل العميل" summary={headerSummary}>
       {detailsQuery.isLoading ? <LoadingState /> : null}
 
       {detailsQuery.isError ? (
@@ -165,23 +154,31 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
 
       {customer ? (
         <div className="details-stack">
+          <section className="detail-card detail-card--hero">
+            <div className="detail-card__lead">
+              <p className="detail-card__eyebrow">{customer.code}</p>
+              <h2>{customer.nameAr}</h2>
+              <CustomerStatusPill status={customer.status} />
+            </div>
+          </section>
+
           <section className="detail-card">
             <h2>بيانات العميل</h2>
             <dl className="detail-grid">
-              <DetailItem label="الكود" value={customer.code} />
               <DetailItem label="النوع" value={customerTypeLabels[customer.type as CustomerType]} />
-              <DetailItem label="الحالة" value={customerStatusLabels[customer.status as CustomerStatus]} />
               <DetailItem label="شروط الدفع" value={`${formatNumber(customer.paymentTermsDays)} يوم`} />
               <DetailItem label="الهاتف" value={customer.phone ?? 'غير محدد'} />
               <DetailItem label="البريد" value={customer.email ?? 'غير محدد'} />
             </dl>
           </section>
 
-          <section className="detail-card">
-            <div className="section-title-row tab-row">
+          <section className="detail-card detail-card--tabs">
+            <div className="tab-strip" role="tablist" aria-label="تبويبات العميل">
               <button
                 className={`filter-chip ${activeTab === 'statement' ? 'filter-chip--active' : ''}`}
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'statement'}
                 onClick={() => setActiveTab('statement')}
               >
                 كشف الحساب
@@ -189,13 +186,15 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
               <button
                 className={`filter-chip ${activeTab === 'sales' ? 'filter-chip--active' : ''}`}
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'sales'}
                 onClick={() => setActiveTab('sales')}
               >
                 تفاصيل المبيعات
               </button>
             </div>
 
-            <div className="form-grid">
+            <div className="form-grid form-grid--dates">
               <label>
                 من تاريخ
                 <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
@@ -248,32 +247,50 @@ function CustomerStatementPanel({ customerId, from, to }: { customerId: string; 
       {statement.lines.length === 0 ? (
         <EmptyState title="لا توجد حركات" description="لا توجد حركات ضمن الفترة المحددة." />
       ) : (
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>التاريخ</th>
-                <th>نوع المستند</th>
-                <th>رقم المستند</th>
-                <th>مدين</th>
-                <th>دائن</th>
-                <th>الرصيد</th>
-              </tr>
-            </thead>
-            <tbody>
-              {statement.lines.map((line, index) => (
-                <tr key={`${line.documentNumber}-${index}`}>
-                  <td>{formatDateOnly(line.entryDate)}</td>
-                  <td>{documentTypeLabels[line.documentType] ?? line.documentType}</td>
-                  <td>{line.documentNumber}</td>
-                  <td>{line.debit > 0 ? formatCurrency(line.debit) : '—'}</td>
-                  <td>{line.credit > 0 ? formatCurrency(line.credit) : '—'}</td>
-                  <td>{formatCurrency(line.runningBalance)}</td>
+        <>
+          <div className="record-list mobile-only" aria-label="حركات كشف الحساب">
+            {statement.lines.map((line, index) => (
+              <article className="record-card" key={`${line.documentNumber}-${index}`}>
+                <div className="record-card__head">
+                  <strong className="record-card__title">{formatDateOnly(line.entryDate)}</strong>
+                  <span className="record-card__badge">{line.documentNumber}</span>
+                </div>
+                <p className="record-card__meta">{documentTypeLabels[line.documentType] ?? line.documentType}</p>
+                <dl className="record-card__grid">
+                  <RecordField label="مدين" value={line.debit > 0 ? formatCurrency(line.debit) : '—'} />
+                  <RecordField label="دائن" value={line.credit > 0 ? formatCurrency(line.credit) : '—'} />
+                  <RecordField label="الرصيد" value={formatCurrency(line.runningBalance)} emphasis />
+                </dl>
+              </article>
+            ))}
+          </div>
+          <div className="table-scroll desktop-only">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>التاريخ</th>
+                  <th>نوع المستند</th>
+                  <th>رقم المستند</th>
+                  <th>مدين</th>
+                  <th>دائن</th>
+                  <th>الرصيد</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {statement.lines.map((line, index) => (
+                  <tr key={`${line.documentNumber}-${index}`}>
+                    <td>{formatDateOnly(line.entryDate)}</td>
+                    <td>{documentTypeLabels[line.documentType] ?? line.documentType}</td>
+                    <td>{line.documentNumber}</td>
+                    <td>{line.debit > 0 ? formatCurrency(line.debit) : '—'}</td>
+                    <td>{line.credit > 0 ? formatCurrency(line.credit) : '—'}</td>
+                    <td>{formatCurrency(line.runningBalance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </>
   );
@@ -302,30 +319,48 @@ function CustomerSalesDetailsPanel({ customerId, from, to }: { customerId: strin
   }
 
   return (
-    <div className="table-scroll">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>التاريخ</th>
-            <th>الصنف</th>
-            <th>الكود</th>
-            <th>اللون</th>
-            <th>سعر الوحدة</th>
-          </tr>
-        </thead>
-        <tbody>
-          {salesQuery.data.map((line, index) => (
-            <tr key={index}>
-              <td>{formatDateOnly(line.saleDate)}</td>
-              <td>{line.fabricName}</td>
-              <td>{line.fabricCode}</td>
-              <td>{line.colorName}</td>
-              <td>{formatCurrency(line.unitPrice)}</td>
+    <>
+      <div className="record-list mobile-only" aria-label="تفاصيل المبيعات">
+        {salesQuery.data.map((line, index) => (
+          <article className="record-card" key={index}>
+            <div className="record-card__head">
+              <strong className="record-card__title">{line.fabricName}</strong>
+              <span className="record-card__badge">{formatDateOnly(line.saleDate)}</span>
+            </div>
+            <p className="record-card__meta">
+              {line.fabricCode} • {line.colorName}
+            </p>
+            <dl className="record-card__grid record-card__grid--single">
+              <RecordField label="سعر الوحدة" value={formatCurrency(line.unitPrice)} emphasis />
+            </dl>
+          </article>
+        ))}
+      </div>
+      <div className="table-scroll desktop-only">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>الصنف</th>
+              <th>الكود</th>
+              <th>اللون</th>
+              <th>سعر الوحدة</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {salesQuery.data.map((line, index) => (
+              <tr key={index}>
+                <td>{formatDateOnly(line.saleDate)}</td>
+                <td>{line.fabricName}</td>
+                <td>{line.fabricCode}</td>
+                <td>{line.colorName}</td>
+                <td>{formatCurrency(line.unitPrice)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -335,31 +370,6 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>
-  );
-}
-
-function Pagination({
-  page,
-  totalPages,
-  totalCount,
-  onPrevious,
-  onNext
-}: {
-  page: number;
-  totalPages: number;
-  totalCount: number;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  const hasPreviousPage = page > 1;
-  const hasNextPage = page < totalPages;
-
-  return (
-    <nav className="pagination" aria-label="تنقل الصفحات">
-      <button className="primary-button" type="button" disabled={!hasPreviousPage} onClick={onPrevious}>السابق</button>
-      <span>صفحة {formatNumber(page)} من {formatNumber(Math.max(totalPages, 1))} • {formatNumber(totalCount)} عميل</span>
-      <button className="primary-button" type="button" disabled={!hasNextPage} onClick={onNext}>التالي</button>
-    </nav>
   );
 }
 
