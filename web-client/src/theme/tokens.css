@@ -1,0 +1,20 @@
+:root {
+  color-scheme: light;
+  --color-primary: #185fa5;
+  --color-primary-dark: #124c86;
+  --color-primary-soft: rgba(255, 255, 255, 0.16);
+  --color-background: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-border: #dce5ef;
+  --color-text: #152238;
+  --color-muted: #6a778a;
+  --color-good: #1d9e75;
+  --color-warning: #ba7517;
+  --color-danger: #c94343;
+  --shadow-soft: 0 12px 30px rgba(24, 95, 165, 0.09);
+  --radius-card: 14px;
+  --radius-control: 12px;
+  --spacing-page: clamp(16px, 4vw, 28px);
+  --content-max-width: 1080px;
+  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+}

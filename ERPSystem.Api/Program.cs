@@ -22,8 +22,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("WebClient", policy =>
         policy.WithOrigins(
-                "http://localhost:5269",
-                "https://localhost:7161")
+                "http://localhost:5173",
+                "https://localhost:5173"
+                // Add the production web-client origin here when the domain is ready.
+                )
             .AllowAnyHeader()
             .AllowAnyMethod());
 });

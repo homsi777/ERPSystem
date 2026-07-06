@@ -1,0 +1,25 @@
+{
+  "name": "web-client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && node scripts/run-vite.mjs preview --host 0.0.0.0 --port 5173",
+    "build": "tsc --noEmit && node scripts/run-vite.mjs build",
+    "preview": "node scripts/run-vite.mjs preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.62.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.7",
+    "vite-plugin-pwa": "^0.21.1"
+  }
+}
