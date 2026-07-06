@@ -50,8 +50,10 @@ public sealed class GetCustomerAccountLedgerHandler(
             var enriched = await SalesInvoiceCatalogEnricher.EnrichLinesAsync(
                 dto.Lines, fabricCatalogRepository, cancellationToken);
 
+            var lineSubTotal = 0m;
             foreach (var line in enriched)
             {
+                lineSubTotal += line.LineTotal;
                 var fabricPart = string.IsNullOrWhiteSpace(line.FabricDisplayName) ? "—" : line.FabricDisplayName;
                 var colorPart = string.IsNullOrWhiteSpace(line.ColorDisplayName) ? "—" : line.ColorDisplayName;
                 rawLines.Add(new CustomerAccountLedgerLineDto
@@ -67,6 +69,26 @@ public sealed class GetCustomerAccountLedgerHandler(
                     UnitPrice = line.UnitPrice,
                     LineAmount = line.LineTotal,
                     Notes = line.Notes
+                });
+            }
+
+            // GrandTotal = SubTotal - DiscountTotal + TaxTotal — align with legacy statement debit per invoice.
+            var invoiceAdjustment = invoice.GrandTotal.Amount - lineSubTotal;
+            if (Math.Abs(invoiceAdjustment) >= 0.01m)
+            {
+                rawLines.Add(new CustomerAccountLedgerLineDto
+                {
+                    MovementType = CustomerAccountMovementType.SalesInvoice,
+                    DocumentId = invoice.Id,
+                    EntryId = InvoiceLedgerAdjustmentEntryId(invoice.Id),
+                    DocumentNumber = invoice.InvoiceNumber.Value,
+                    TransactionDate = invoice.InvoiceDate,
+                    FabricDescription = BuildInvoiceAdjustmentDescription(invoice),
+                    RollCount = null,
+                    TotalMeters = null,
+                    UnitPrice = null,
+                    LineAmount = invoiceAdjustment,
+                    Notes = null
                 });
             }
         }
@@ -176,5 +198,25 @@ public sealed class GetCustomerAccountLedgerHandler(
             LastReconciliationDocumentId = aggregate.Customer.LastReconciliationDocumentId,
             Lines = lines
         });
+    }
+
+    private static Guid InvoiceLedgerAdjustmentEntryId(Guid invoiceId)
+    {
+        var bytes = invoiceId.ToByteArray();
+        bytes[15] = (byte)(bytes[15] ^ 0xAD);
+        return new Guid(bytes);
+    }
+
+    private static string BuildInvoiceAdjustmentDescription(Domain.Aggregates.SalesInvoiceAggregate invoice)
+    {
+        var hasDiscount = invoice.DiscountTotal.Amount > 0;
+        var hasTax = invoice.TaxTotal.Amount > 0;
+        if (hasDiscount && hasTax)
+            return $"خصم وضريبة — {invoice.InvoiceNumber.Value}";
+        if (hasDiscount)
+            return $"خصم — {invoice.InvoiceNumber.Value}";
+        if (hasTax)
+            return $"ضريبة — {invoice.InvoiceNumber.Value}";
+        return $"تسوية — {invoice.InvoiceNumber.Value}";
     }
 }

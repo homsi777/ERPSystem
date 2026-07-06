@@ -1913,6 +1913,16 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastReconciliationDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("LastReconciliationBalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("LastReconciliationDocumentId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("NameAr")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -2256,6 +2266,10 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<decimal>("LineTotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<int>("RollCount")
                         .HasColumnType("integer");

@@ -1,7 +1,9 @@
 using ERPSystem.Api.Mapping;
 using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Application.Queries.Suppliers;
 using ERPSystem.Application.Queries.Warehouses;
+using ERPSystem.Application.UseCases.Finance;
 using ERPSystem.Application.UseCases.Queries;
 
 namespace ERPSystem.Api.Endpoints;
@@ -19,6 +21,9 @@ public static class LookupEndpoints
 
         group.MapGet("/warehouses", GetWarehousesAsync)
             .WithName("GetWarehouseLookups");
+
+        group.MapGet("/cashboxes", GetCashboxesAsync)
+            .WithName("GetCashboxLookups");
 
         return app;
     }
@@ -69,6 +74,28 @@ public static class LookupEndpoints
                 .Where(w => w.IsActive)
                 .Select(w => new LookupItemResponse(w.Id, w.NameAr))
                 .OrderBy(w => w.Name)
+                .ToList()));
+    }
+
+    private static async Task<IResult> GetCashboxesAsync(
+        ICurrentBranchService branchService,
+        GetCashboxListHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(new GetCashboxListQuery { BranchId = branchId }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result, cashboxes => Results.Ok(
+            cashboxes
+                .Where(c => c.IsActive)
+                .Select(c => new LookupItemResponse(c.Id, c.Name))
+                .OrderBy(c => c.Name)
                 .ToList()));
     }
 
