@@ -21,15 +21,34 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("WebClient", policy =>
-        policy.WithOrigins(
+    {
+        var cors = policy.AllowAnyHeader().AllowAnyMethod();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            // Allow any device on the local network (IP may change between Wi-Fi sessions).
+            cors.SetIsOriginAllowed(static origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host is "localhost" or "127.0.0.1"
+                    || uri.Host.StartsWith("192.168.", StringComparison.Ordinal)
+                    || uri.Host.StartsWith("10.", StringComparison.Ordinal);
+            });
+        }
+        else
+        {
+            cors.WithOrigins(
                 "http://localhost:5173",
                 "https://localhost:5173",
                 "http://localhost:5174",
-                "https://localhost:5174"
-                // Add the production web-client origin here when the domain is ready.
-                )
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+                "https://localhost:5174");
+            // Add the production web-client origin here when the domain is ready.
+        }
+    });
 });
 
 builder.Services.AddEndpointsApiExplorer();

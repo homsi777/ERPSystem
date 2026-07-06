@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-type IconName = 'home' | 'inventory' | 'customers' | 'china' | 'delivery' | 'logout' | 'box' | 'chart' | 'alert';
+type IconName = 'home' | 'inventory' | 'customers' | 'china' | 'delivery' | 'logout' | 'box' | 'chart' | 'alert' | 'back';
 
 type IconProps = {
   name: IconName;
@@ -58,5 +58,6 @@ const paths: Record<IconName, ReactElement> = {
   ),
   box: <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5zm8 4.5 8-4.5M12 12 4 7.5m8 4.5V21" />,
   chart: <path d="M5 19V5m0 14h14M9 16v-5m4 5V8m4 8v-7" />,
-  alert: <path d="M12 4 3.5 19h17zM12 9v4m0 3h.01" />
+  alert: <path d="M12 4 3.5 19h17zM12 9v4m0 3h.01" />,
+  back: <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
 };

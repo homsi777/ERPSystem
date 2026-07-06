@@ -1,6 +1,6 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   approveContainer,
   archiveContainer,
@@ -87,6 +87,11 @@ type SalePriceFormState = Record<string, string>;
 
 export function ChinaPage() {
   const { containerId } = useParams();
+  const location = useLocation();
+
+  if (location.pathname === '/china/new') {
+    return <ChinaImportWizardPage />;
+  }
 
   if (containerId) {
     return <ChinaContainerDetailsPage containerId={containerId} />;
@@ -95,11 +100,23 @@ export function ChinaPage() {
   return <ChinaContainerListPage />;
 }
 
+function ChinaImportWizardPage() {
+  const navigate = useNavigate();
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  return (
+    <AppShell title="استيراد حاوية جديدة">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+      <ImportWizard onDone={() => navigate('/china')} onToast={setToast} />
+    </AppShell>
+  );
+}
+
 function ChinaContainerListPage() {
   const { can } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<ChinaContainerStatus | undefined>();
   const [page, setPage] = useState(1);
-  const [showImportWizard, setShowImportWizard] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const containersQuery = useQuery({
@@ -136,13 +153,11 @@ function ChinaContainerListPage() {
 
       <section className="toolbar-row">
         {can('containers.create') ? (
-          <button className="primary-button" type="button" onClick={() => setShowImportWizard((current) => !current)}>
+          <button className="primary-button" type="button" onClick={() => navigate('/china/new')}>
             استيراد حاوية جديدة
           </button>
         ) : null}
       </section>
-
-      {showImportWizard ? <ImportWizard onDone={() => setShowImportWizard(false)} onToast={setToast} /> : null}
 
       <section className="filter-strip" aria-label="تصفية حالة الحاوية">
         <button
@@ -208,6 +223,7 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
   const [dplStep, setDplStep] = useState<UploadStepState>({ fileName: null, error: null });
   const [invoiceStep, setInvoiceStep] = useState<UploadStepState>({ fileName: null, error: null });
   const [packingStep, setPackingStep] = useState<UploadStepState>({ fileName: null, error: null });
+  const [manualContainerWeightKg, setManualContainerWeightKg] = useState('0');
   const [form, setForm] = useState<ImportFormState>({
     supplierId: '',
     containerNumber: '',
@@ -272,7 +288,18 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
     queryFn: getSupplierLookups
   });
 
-  const importLines = useMemo(() => (dplResult ? buildImportLines(dplResult.groups) : []), [dplResult]);
+  const resolvedContainerWeightKg = useMemo(() => {
+    if (packingResult) {
+      return packingResult.totalGrossWeightKg;
+    }
+    const manual = toNumber(manualContainerWeightKg);
+    return manual > 0 ? manual : null;
+  }, [packingResult, manualContainerWeightKg]);
+
+  const importLines = useMemo(
+    () => (dplResult ? buildImportLines(dplResult.groups, resolvedContainerWeightKg) : []),
+    [dplResult, resolvedContainerWeightKg]
+  );
 
   const createBlockReason = useMemo(() => {
     if (!dplResult) {
@@ -346,8 +373,8 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
 
       <div className="wizard-grid">
         <FileStep
-          title="1. ملف DPL / Packing"
-          description="هذا الملف مطلوب لإنشاء الحاوية."
+          title="1. DPL"
+          description="ملف تفاصيل الأثواب (DPL) — مطلوب لإنشاء الحاوية."
           pending={dplMutation.isPending}
           fileName={dplStep.fileName}
           error={dplStep.error}
@@ -355,15 +382,15 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
         />
         <FileStep
           title="2. فاتورة الصين"
-          description="اختياري، للعرض والمراجعة."
+          description="فاتورة الصين (Invoice) — اختياري، لجلب قيمة الفاتورة تلقائيًا."
           pending={invoiceMutation.isPending}
           fileName={invoiceStep.fileName}
           error={invoiceStep.error}
           onChange={handleFileChange((file) => invoiceMutation.mutate(file))}
         />
         <FileStep
-          title="3. ملخص Packing"
-          description="اختياري، للوزن وCBM."
+          title="3. PL"
+          description="ملخص التعبئة (Packing List) — اختياري، لجلب وزن الحاوية وCBM تلقائيًا."
           pending={packingMutation.isPending}
           fileName={packingStep.fileName}
           error={packingStep.error}
@@ -421,6 +448,18 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
             قيمة فاتورة الصين
             <input inputMode="decimal" value={form.chinaInvoiceAmountUsd} onChange={(event) => updateForm('chinaInvoiceAmountUsd', event.target.value)} />
             <span className="field-note">لم يُرفع ملف الفاتورة — أدخل القيمة يدوياً</span>
+          </label>
+        )}
+        {packingResult ? (
+          <label>
+            وزن الحاوية (كغ) — من الملف
+            <input readOnly value={formatNumber(packingResult.totalGrossWeightKg)} />
+          </label>
+        ) : (
+          <label>
+            وزن الحاوية (كغ)
+            <input inputMode="decimal" value={manualContainerWeightKg} onChange={(event) => setManualContainerWeightKg(event.target.value)} />
+            <span className="field-note">لم يُرفع ملف PL — أدخل الوزن يدويًا</span>
           </label>
         )}
         <label className="form-grid__wide">
@@ -539,14 +578,14 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
 function LandingCostForm({ container, onDone, onToast }: { container: ContainerDetailsDto; onDone: (message: string) => void; onToast: (toast: ToastState) => void }) {
   const [form, setForm] = useState<LandingCostFormState>({
     containerWeightKg: String(container.totalWeightKg ?? container.landingCost?.containerWeightKg ?? 0),
-    customsAmount: String(container.landingCost?.customsAmount ?? 0),
-    clearance: String(container.landingCost?.clearance ?? 0),
-    shipping: String(container.landingCost?.shipping ?? 0),
-    insurance: String(container.landingCost?.insurance ?? 0),
-    otherExpense1: String(container.landingCost?.otherExpense1 ?? 0),
-    otherExpense2: String(container.landingCost?.otherExpense2 ?? 0),
-    otherExpense3: String(container.landingCost?.otherExpense3 ?? 0),
-    otherExpense4: String(container.landingCost?.otherExpense4 ?? 0),
+    customsAmount: emptyIfZero(container.landingCost?.customsAmount),
+    clearance: emptyIfZero(container.landingCost?.clearance),
+    shipping: emptyIfZero(container.landingCost?.shipping),
+    insurance: emptyIfZero(container.landingCost?.insurance),
+    otherExpense1: emptyIfZero(container.landingCost?.otherExpense1),
+    otherExpense2: emptyIfZero(container.landingCost?.otherExpense2),
+    otherExpense3: emptyIfZero(container.landingCost?.otherExpense3),
+    otherExpense4: emptyIfZero(container.landingCost?.otherExpense4),
     usesWeightedAllocation: container.landingCost?.usesWeightedAllocation ?? false
   });
 
@@ -1043,21 +1082,28 @@ function Toast({ toast, onClose }: { toast: ToastState | null; onClose: () => vo
   );
 }
 
-function buildImportLines(groups: PackingListGroupDto[]): ImportContainerLineCommand[] {
+function buildImportLines(groups: PackingListGroupDto[], containerWeightKg: number | null): ImportContainerLineCommand[] {
+  let weightAssigned = false;
   return groups.flatMap((group) => {
     if (!group.fabricItemId || !group.fabricColorId) {
       return [];
     }
-    return group.rolls.map((roll) => ({
-      lineNumber: roll.sequenceNumber,
-      fabricItemId: group.fabricItemId ?? '',
-      fabricColorId: group.fabricColorId ?? '',
-      rollCount: 1,
-      lengthMeters: roll.quantityMeters,
-      weightKg: null,
-      lotCode: nullableText(roll.lotCode),
-      buyerCustomerId: null
-    }));
+    return group.rolls.map((roll) => {
+      const weightKg = !weightAssigned && containerWeightKg !== null ? containerWeightKg : null;
+      if (weightKg !== null) {
+        weightAssigned = true;
+      }
+      return {
+        lineNumber: roll.sequenceNumber,
+        fabricItemId: group.fabricItemId ?? '',
+        fabricColorId: group.fabricColorId ?? '',
+        rollCount: 1,
+        lengthMeters: roll.quantityMeters,
+        weightKg,
+        lotCode: nullableText(roll.lotCode),
+        buyerCustomerId: null
+      };
+    });
   });
 }
 
@@ -1084,6 +1130,10 @@ function mapDetailsLineToCommand(line: ContainerDetailsDto['fabricTypeLines'][nu
 function toNumber(value: string) {
   const normalized = Number(value.replace(',', '.'));
   return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function emptyIfZero(value: number | undefined | null) {
+  return value ? String(value) : '';
 }
 
 function nullableText(value: string) {

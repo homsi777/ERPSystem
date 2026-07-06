@@ -1,6 +1,8 @@
 import type { ApiErrorResponse } from './types.ts';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5218';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  `${window.location.protocol}//${window.location.hostname}:5218`;
 
 type RequestBody = BodyInit | Record<string, unknown> | unknown[] | null;
 
@@ -45,20 +47,38 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
 async function sendRequest<T>(path: string, options: RequestOptions, allowRefresh: boolean): Promise<T> {
   const token = options.skipAuth ? null : authController?.getAccessToken() ?? null;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: buildHeaders(options, token),
-    body: serializeBody(options.body)
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: buildHeaders(options, token),
+      body: serializeBody(options.body)
+    });
+  } catch {
+    throw new ApiError(0, {
+      code: 'NETWORK_ERROR',
+      message: 'تعذر الاتصال بالخادم. تأكد أن الخادم يعمل وأنك على نفس الشبكة.',
+      validationErrors: []
+    });
+  }
 
   if (response.status === 401 && allowRefresh && authController && !options.skipAuth) {
     const refreshedToken = await authController.refreshAccessToken();
     if (refreshedToken) {
-      const retryResponse = await fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        headers: buildHeaders(options, refreshedToken),
-        body: serializeBody(options.body)
-      });
+      let retryResponse: Response;
+      try {
+        retryResponse = await fetch(`${API_BASE_URL}${path}`, {
+          ...options,
+          headers: buildHeaders(options, refreshedToken),
+          body: serializeBody(options.body)
+        });
+      } catch {
+        throw new ApiError(0, {
+          code: 'NETWORK_ERROR',
+          message: 'تعذر الاتصال بالخادم. تأكد أن الخادم يعمل وأنك على نفس الشبكة.',
+          validationErrors: []
+        });
+      }
       return parseResponse<T>(retryResponse);
     }
 
