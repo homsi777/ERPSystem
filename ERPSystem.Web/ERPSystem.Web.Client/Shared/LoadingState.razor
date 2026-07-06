@@ -1,0 +1,8 @@
+<MudStack AlignItems="AlignItems.Center" Class="py-8">
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    <MudText Typo="Typo.body1" Class="mt-3">@Message</MudText>
+</MudStack>
+
+@code {
+    [Parameter] public string Message { get; set; } = "جاري التحميل...";
+}

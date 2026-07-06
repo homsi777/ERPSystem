@@ -12,6 +12,7 @@ using ERPSystem.Infrastructure.Persistence.Models.Identity;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
 using ERPSystem.Infrastructure.Persistence.Models.Parties;
 using ERPSystem.Infrastructure.Persistence.Models.Settings;
+using ERPSystem.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +21,7 @@ namespace ERPSystem.Infrastructure.Seed;
 public static class DatabaseSeeder
 {
     public const string DefaultAdminPassword = "Admin@123";
-    private const string LegacyPlaintextPassword = "CHANGE_ME";
+    internal const string LegacyPlaintextPassword = "CHANGE_ME";
 
     public static readonly Guid DefaultCompanyId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     public static readonly Guid DefaultBranchId = Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -532,22 +533,26 @@ public static class DatabaseSeeder
         ], cancellationToken);
     }
 
-    private static async Task EnsureAdminPasswordAsync(
+    /// <summary>
+    /// Ensures the seeded admin account has a valid BCrypt hash (idempotent).
+    /// Only updates the admin user when the stored hash is missing or not BCrypt format.
+    /// </summary>
+    public static async Task EnsureAdminPasswordAsync(
         ErpDbContext context,
         IPasswordHasher passwordHasher,
         ILogger logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var admin = await context.Users.FirstOrDefaultAsync(u => u.Id == AdminUserId, cancellationToken);
         if (admin is null)
             return;
 
-        if (admin.PasswordHash == LegacyPlaintextPassword || string.IsNullOrWhiteSpace(admin.PasswordHash))
-        {
-            admin.PasswordHash = passwordHasher.HashPassword(DefaultAdminPassword);
-            await context.SaveChangesAsync(cancellationToken);
-            logger.LogInformation("Updated default admin password hash.");
-        }
+        if (PasswordHashFormat.IsBcryptHash(admin.PasswordHash))
+            return;
+
+        admin.PasswordHash = passwordHasher.HashPassword(DefaultAdminPassword);
+        await context.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Repaired default admin password hash (legacy or invalid format detected).");
     }
 
     private static async Task EnsureSchemasAsync(ErpDbContext context, CancellationToken cancellationToken)

@@ -1,20 +1,71 @@
+using ERPSystem.Api.Auth;
+using ERPSystem.Api.Endpoints;
 using ERPSystem.Api.Services;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.DependencyInjection;
 using ERPSystem.Infrastructure.DependencyInjection;
+using ERPSystem.Infrastructure.Seed;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 
-builder.Services.AddSingleton<ICurrentUserService, ApiCurrentUserService>();
-builder.Services.AddSingleton<ICurrentBranchService, ApiCurrentBranchService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
+builder.Services.AddScoped<ICurrentBranchService, HttpContextBranchService>();
+
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("WebClient", policy =>
+        policy.WithOrigins(
+                "http://localhost:5269",
+                "https://localhost:7161")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ERPSystem.Infrastructure.Persistence.ErpDbContext>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await DatabaseSeeder.EnsureAdminPasswordAsync(context, passwordHasher, logger);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -22,6 +73,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/health", () => "OK");
+app.UseCors("WebClient");
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet("/health", () => "OK").AllowAnonymous();
+app.MapAuthEndpoints();
+app.MapInventoryEndpoints();
+app.MapCustomerEndpoints();
 
 app.Run();

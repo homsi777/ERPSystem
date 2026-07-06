@@ -1,0 +1,14 @@
+<MudPaper Class="pa-6 erp-state-card" Elevation="0">
+    <MudAlert Severity="Severity.Error" Class="mb-4">@Message</MudAlert>
+    @if (OnRetry.HasDelegate)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnRetry" Class="erp-touch-target">
+            إعادة المحاولة
+        </MudButton>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Message { get; set; } = "";
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

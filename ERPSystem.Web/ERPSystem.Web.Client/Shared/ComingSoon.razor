@@ -1,0 +1,9 @@
+<MudPaper Class="pa-8 text-center erp-state-card" Elevation="0">
+    <MudIcon Icon="@Icons.Material.Outlined.Construction" Size="Size.Large" Color="Color.Primary" Class="mb-3" />
+    <MudText Typo="Typo.h5" Class="mb-2">@Title</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary">قيد الإنشاء</MudText>
+</MudPaper>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+}
