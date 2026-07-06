@@ -2,8 +2,10 @@ import type { ApiErrorResponse } from './types.ts';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5218';
 
+type RequestBody = BodyInit | Record<string, unknown> | unknown[] | null;
+
 type RequestOptions = Omit<RequestInit, 'body'> & {
-  body?: unknown;
+  body?: RequestBody;
   skipAuth?: boolean;
 };
 
@@ -46,7 +48,7 @@ async function sendRequest<T>(path: string, options: RequestOptions, allowRefres
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: buildHeaders(options, token),
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
+    body: serializeBody(options.body)
   });
 
   if (response.status === 401 && allowRefresh && authController && !options.skipAuth) {
@@ -55,7 +57,7 @@ async function sendRequest<T>(path: string, options: RequestOptions, allowRefres
       const retryResponse = await fetch(`${API_BASE_URL}${path}`, {
         ...options,
         headers: buildHeaders(options, refreshedToken),
-        body: options.body === undefined ? undefined : JSON.stringify(options.body)
+        body: serializeBody(options.body)
       });
       return parseResponse<T>(retryResponse);
     }
@@ -72,13 +74,26 @@ function buildHeaders(options: RequestOptions, token: string | null): HeadersIni
   if (!headers.has('Accept')) {
     headers.set('Accept', 'application/json');
   }
-  if (options.body !== undefined && !headers.has('Content-Type')) {
+  if (options.body !== undefined && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
   return headers;
+}
+
+function serializeBody(body: RequestBody | undefined): BodyInit | null | undefined {
+  if (body === undefined) {
+    return undefined;
+  }
+  if (body === null) {
+    return null;
+  }
+  if (body instanceof FormData || body instanceof Blob || body instanceof URLSearchParams || typeof body === 'string') {
+    return body;
+  }
+  return JSON.stringify(body);
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {

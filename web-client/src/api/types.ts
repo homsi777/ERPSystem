@@ -123,6 +123,10 @@ export type LandingCostDto = {
   insurance: number;
   clearance: number;
   otherExpenses: number;
+  otherExpense1: number;
+  otherExpense2: number;
+  otherExpense3: number;
+  otherExpense4: number;
   usesWeightedAllocation: boolean;
   totalImportExpenses: number;
   customsCostPerMeter: number;
@@ -135,6 +139,8 @@ export type ContainerFabricTypeLineDto = {
   id: string;
   lineNumber: number;
   typeDisplayName: string;
+  fabricItemId: string | null;
+  fabricColorId: string | null;
   lengthMeters: number;
   rollCount: number;
   netWeightKg: number;
@@ -164,4 +170,176 @@ export type ContainerInventoryMetricsDto = {
   costPerMeter: number;
   inventoryValuation: number;
   isStockPosted: boolean;
+};
+
+export type CreateChinaContainerRequest = {
+  supplierId: string;
+  containerNumber: string;
+  shipmentDate: string;
+  expectedArrival: string | null;
+  notes: string | null;
+  exchangeRateToLocalCurrency: number;
+  chinaInvoiceAmountUsd: number;
+  importFileName: string | null;
+  lines: ImportContainerLineCommand[];
+};
+
+export type ImportContainerLineCommand = {
+  lineNumber: number;
+  fabricItemId: string;
+  fabricColorId: string;
+  rollCount: number;
+  lengthMeters: number;
+  weightKg: number | null;
+  lotCode: string | null;
+  buyerCustomerId: string | null;
+};
+
+export type CalculateLandingCostRequest = {
+  totalLengthMeters: number;
+  containerWeightKg: number;
+  customsClearanceAmount: number;
+  shipping: number;
+  insurance: number;
+  otherExpense1: number;
+  otherExpense2: number;
+  otherExpense3: number;
+  otherExpense4: number;
+  usesWeightedAllocation: boolean;
+  typeLines: ContainerFabricTypeLineCommand[];
+  customsAmount: number;
+  clearance: number;
+  otherExpenses: number;
+};
+
+export type ContainerFabricTypeLineCommand = {
+  lineNumber: number;
+  typeDisplayName: string;
+  matchKey: string;
+  fabricItemId: string | null;
+  fabricColorId: string | null;
+  lengthMeters: number;
+  rollCount: number;
+  netWeightKg: number;
+  cbm: number;
+  chinaUnitPriceUsd: number;
+  invoiceLineAmountUsd: number;
+  hasInvoiceMatch: boolean;
+  hasPlMatch: boolean;
+  hasDplMatch: boolean;
+  matchWarnings: string | null;
+};
+
+export type SetContainerSalePricesRequest = {
+  lines: ContainerTypeSalePriceCommand[];
+};
+
+export type ContainerTypeSalePriceCommand = {
+  typeLineId: string;
+  marginPerMeterUsd: number;
+};
+
+export type MoveContainerToWarehouseRequest = {
+  warehouseId: string;
+};
+
+export type PackingListGrandTotalDto = {
+  declaredTotalMeters: number | null;
+  declaredTotalRolls: number | null;
+  parsedTotalMeters: number;
+  parsedTotalRolls: number;
+  metersMatch: boolean;
+  rollsMatch: boolean;
+  matchIndicator: string;
+  summaryText: string;
+};
+
+export type PackingListRollDto = {
+  sequenceNumber: number;
+  groupIndex: number;
+  rollNumber: number;
+  quantityMeters: number;
+  lotCode: string;
+  isValid: boolean;
+  invalidReason: string | null;
+};
+
+export type PackingListResolutionIssueDto = {
+  groupIndex: number;
+  fabricCode: string;
+  color: string;
+  rollNumber: number | null;
+  reason: string;
+};
+
+export type PackingListGroupDto = {
+  groupIndex: number;
+  fabricCode: string;
+  color: string;
+  declaredTotalMeters: number;
+  declaredTotalRolls: number;
+  parsedTotalMeters: number;
+  parsedTotalRolls: number;
+  metersMatch: boolean;
+  rollsMatch: boolean;
+  metersMatchIndicator: string;
+  rollsMatchIndicator: string;
+  fabricResolved: boolean;
+  colorResolved: boolean;
+  fabricItemId: string | null;
+  fabricColorId: string | null;
+  resolutionError: string | null;
+  rolls: PackingListRollDto[];
+  resolutionIssues: PackingListResolutionIssueDto[];
+};
+
+export type ContainerExcelParseResultDto = {
+  fileName: string;
+  supplierNameFromFile: string | null;
+  grandTotal: PackingListGrandTotalDto;
+  groups: PackingListGroupDto[];
+  hasUnresolvedGroups: boolean;
+};
+
+export type ChinaInvoiceLineDto = {
+  lineIndex: number;
+  description: string;
+  matchKey: string;
+  lengthMeters: number;
+  rollCount: number;
+  unitPriceUsd: number;
+  lineAmountUsd: number;
+};
+
+export type ChinaInvoiceParseResultDto = {
+  fileName: string;
+  lines: ChinaInvoiceLineDto[];
+  seaFreightUsd: number;
+  insuranceUsd: number;
+  grandTotalUsd: number;
+  declaredTotalMeters: number;
+  declaredTotalRolls: number;
+  lineAmountsMatchTotal: boolean;
+  totalValidationWarning: string | null;
+};
+
+export type ChinaPackingSummaryLineDto = {
+  lineIndex: number;
+  description: string;
+  matchKey: string;
+  rollCount: number;
+  lengthMeters: number;
+  cbm: number;
+  grossWeightKg: number;
+  netWeightKg: number;
+};
+
+export type ChinaPackingSummaryParseResultDto = {
+  fileName: string;
+  lines: ChinaPackingSummaryLineDto[];
+  declaredTotalMeters: number;
+  declaredTotalRolls: number;
+  totalCbm: number;
+  totalGrossWeightKg: number;
+  totalNetWeightKg: number;
 };
