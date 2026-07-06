@@ -23,7 +23,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("WebClient", policy =>
         policy.WithOrigins(
                 "http://localhost:5173",
-                "https://localhost:5173"
+                "https://localhost:5173",
+                "http://localhost:5174",
+                "https://localhost:5174"
                 // Add the production web-client origin here when the domain is ready.
                 )
             .AllowAnyHeader()
@@ -83,5 +85,6 @@ app.MapGet("/health", () => "OK").AllowAnonymous();
 app.MapAuthEndpoints();
 app.MapInventoryEndpoints();
 app.MapCustomerEndpoints();
+app.MapContainerEndpoints();
 
 app.Run();

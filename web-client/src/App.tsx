@@ -17,6 +17,7 @@ export function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/china" element={<ChinaPage />} />
+        <Route path="/china/:containerId" element={<ChinaPage />} />
         <Route path="/delivery" element={<DeliveryPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/inventory" replace />} />

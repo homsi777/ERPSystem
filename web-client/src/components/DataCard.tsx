@@ -5,7 +5,7 @@ type DataCardProps = {
   title: string;
   subtitle: string;
   meta: string;
-  value: string;
+  value: ReactNode;
   tone?: 'available' | 'low' | 'neutral';
 };
 
