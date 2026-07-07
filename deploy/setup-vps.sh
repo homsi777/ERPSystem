@@ -174,6 +174,9 @@ step "6) جلب الشيفرة وبناء المشروع"
 id -u "$SERVICE_USER" >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin "$SERVICE_USER"
 mkdir -p "$APP_ROOT"
 
+# ملكية المجلد قد تكون للمستخدم erpapi (بعد نشر سابق) بينما git يعمل كـ root → تفادي خطأ dubious ownership
+git config --global --add safe.directory "$SRC_DIR" 2>/dev/null || true
+
 if [[ -d "$SRC_DIR/.git" ]]; then
   log "تحديث المستودع..."
   git -C "$SRC_DIR" fetch --all --prune
