@@ -105,7 +105,9 @@ await using (var scope = app.Services.CreateAsyncScope())
     logger.LogInformation("Applying database migrations...");
     await context.Database.MigrateAsync();
 
-    await DatabaseSeeder.EnsureAdminPasswordAsync(context, passwordHasher, logger);
+    // Full idempotent seed (company, branch, admin user, roles, permissions).
+    // Safe to run on every startup; it no-ops once the database is seeded.
+    await DatabaseSeeder.SeedAsync(context, logger, passwordHasher);
 }
 
 if (app.Environment.IsDevelopment())
