@@ -36,7 +36,7 @@ source "$ENV_FILE"
 : "${DOMAIN:?DOMAIN مطلوب في .env}"
 : "${LETSENCRYPT_EMAIL:?LETSENCRYPT_EMAIL مطلوب}"
 : "${DB_NAME:?}"; : "${DB_APP_USER:?}"; : "${DB_APP_PASSWORD:?}"
-: "${REPO_URL:?}"; : "${API_PORT:=5218}"; : "${DB_PORT:=5432}"
+: "${REPO_URL:?}"; : "${API_PORT:=5218}"; : "${DB_PORT:=5432}"; : "${WEB_LISTEN_PORT:=80}"
 : "${SERVICE_USER:=erpapi}"; : "${REPO_BRANCH:=main}"
 : "${ENABLE_REMOTE_DB:=yes}"; : "${BUILD_WEB_CLIENT:=yes}"
 : "${DB_REMOTE_ALLOWED_CIDRS:=0.0.0.0/0}"; : "${MANAGE_SSL:=yes}"
@@ -282,8 +282,19 @@ read -r -d '' NGINX_LOCATIONS <<LOC || true
 LOC
 
 CERT_DIR="/etc/letsencrypt/live/${DOMAIN}"
-if [[ "$MANAGE_SSL" == "no" && -f "${CERT_DIR}/fullchain.pem" ]]; then
-  # الشهادة مثبتة مسبقاً → اكتب إعداداً كامل HTTPS يشير إليها
+if [[ "$MANAGE_SSL" == "yes" ]]; then
+  # HTTP على 80؛ سيضيف certbot كتلة 443 في الخطوة 9
+  cat > "/etc/nginx/sites-available/${DOMAIN}" <<NGINX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN} ${WWW_DOMAIN:-};
+
+${NGINX_LOCATIONS}
+}
+NGINX
+elif [[ -f "${CERT_DIR}/fullchain.pem" && "$WEB_LISTEN_PORT" == "443" ]]; then
+  # شهادة محلية موجودة ونريد TLS مباشرة من Nginx على 443
   log "استخدام الشهادة الموجودة: ${CERT_DIR}"
   cat > "/etc/nginx/sites-available/${DOMAIN}" <<NGINX
 server {
@@ -305,13 +316,13 @@ ${NGINX_LOCATIONS}
 }
 NGINX
 else
-  # إعداد HTTP فقط (سيتولّى certbot إضافة HTTPS في الخطوة 9)
-  [[ "$MANAGE_SSL" == "no" ]] && warn "MANAGE_SSL=no لكن لا توجد شهادة في ${CERT_DIR} — سأكتب إعداد HTTP فقط."
+  # طبقة SSL خارجية (Cloudflare/بروكسي/لوحة استضافة) تُنهي TLS وتوجّه إلى منفذ HTTP داخلي
+  log "Nginx يستمع على المنفذ ${WEB_LISTEN_PORT} (طبقة SSL خارجية تدير الدومين)."
   cat > "/etc/nginx/sites-available/${DOMAIN}" <<NGINX
 server {
-    listen 80;
-    listen [::]:80;
-    server_name ${DOMAIN} ${WWW_DOMAIN:-};
+    listen ${WEB_LISTEN_PORT};
+    listen [::]:${WEB_LISTEN_PORT};
+    server_name ${DOMAIN} ${WWW_DOMAIN:-} _;
 
 ${NGINX_LOCATIONS}
 }
@@ -343,6 +354,10 @@ step "10) جدار الحماية (ufw)"
 # ==========================================================================
 ufw allow OpenSSH >/dev/null 2>&1 || ufw allow 22/tcp
 ufw allow 'Nginx Full' >/dev/null 2>&1 || { ufw allow 80/tcp; ufw allow 443/tcp; }
+# فتح منفذ Nginx الخارجي المخصّص (إن كان غير 80/443)
+if [[ "$WEB_LISTEN_PORT" != "80" && "$WEB_LISTEN_PORT" != "443" ]]; then
+  ufw allow "${WEB_LISTEN_PORT}/tcp"
+fi
 if [[ "$ENABLE_REMOTE_DB" == "yes" ]]; then
   if [[ "$DB_REMOTE_ALLOWED_CIDRS" == "0.0.0.0/0" ]]; then
     ufw allow "${DB_PORT}/tcp"
@@ -364,9 +379,10 @@ cat <<SUMMARY
 ========================================================================
  ✅ اكتمل النشر
 ------------------------------------------------------------------------
- الواجهة   : https://${DOMAIN}
+ الواجهة   : https://${DOMAIN}   (Nginx يستمع على المنفذ ${WEB_LISTEN_PORT})
  الـ API   : https://${DOMAIN}/api   (داخلياً 127.0.0.1:${API_PORT})
  الصحة     : https://${DOMAIN}/health
+ توجيه الطبقة الخارجية:  alamal-ab.org  →  ${PUBLIC_IP}:${WEB_LISTEN_PORT}
 
  قاعدة البيانات (لتطبيق سطح المكتب — Connection String):
    Host=${DOMAIN};Port=${DB_PORT};Database=${DB_NAME};Username=${DB_APP_USER};Password=<كلمة المرور>;SSL Mode=Require;Trust Server Certificate=true
