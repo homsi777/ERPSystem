@@ -221,7 +221,8 @@ After=network.target postgresql.service
 Wants=postgresql.service
 
 [Service]
-Type=notify
+# simple: لا يعتمد على إشارة sd_notify (التطبيق لا يرسلها افتراضياً)
+Type=simple
 User=${SERVICE_USER}
 WorkingDirectory=${API_DIR}
 ExecStart=${DOTNET_BIN:-/usr/bin/dotnet} ${API_DIR}/ERPSystem.Api.dll
