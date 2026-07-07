@@ -49,6 +49,10 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     public IReadOnlyList<SalesInvoiceRollDetail> RollDetails => _rollDetails.AsReadOnly();
     public WarehouseDetailingSession? DetailingSession => _detailingSession;
 
+    /// <summary>Total contra-revenue sales discount across all lines (gross price − applied price).</summary>
+    public Money TotalLineDiscount =>
+        _items.Aggregate(Money.Zero(), (sum, item) => sum.Add(item.DiscountAmount));
+
     private SalesInvoiceAggregate() { }
 
     public static SalesInvoiceAggregate CreateDraft(

@@ -35,6 +35,7 @@ public class ChinaContainerItem
     public WeightInKg? WeightKg { get; private set; }
     public string? LotCode { get; private set; }
     public Guid? BuyerCustomerId { get; private set; }
+    public int? SupplierRollNumber { get; private set; }
     public string RowStatus { get; private set; } = "Valid";
 
     private ChinaContainerItem() { }
@@ -47,7 +48,8 @@ public class ChinaContainerItem
         LengthInMeters lengthMeters,
         WeightInKg? weightKg = null,
         string? lotCode = null,
-        Guid? buyerCustomerId = null) => new()
+        Guid? buyerCustomerId = null,
+        int? supplierRollNumber = null) => new()
     {
         Id = Guid.NewGuid(),
         LineNumber = lineNumber,
@@ -58,6 +60,7 @@ public class ChinaContainerItem
         WeightKg = weightKg,
         LotCode = lotCode,
         BuyerCustomerId = buyerCustomerId,
+        SupplierRollNumber = supplierRollNumber,
         RowStatus = ContainerImportRowStatus.Valid
     };
 

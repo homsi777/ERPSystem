@@ -411,6 +411,81 @@ export type CustomerSalesDetailDto = {
   unitPrice: number;
 };
 
+export type CustomerAccountMovementType = 0 | 1 | 2;
+
+export type CustomerAccountLedgerLineDto = {
+  movementType: CustomerAccountMovementType;
+  documentId: string;
+  entryId: string;
+  documentNumber: string;
+  transactionDate: string;
+  fabricDescription: string;
+  rollCount: number | null;
+  totalMeters: number | null;
+  unitPrice: number | null;
+  lineAmount: number;
+  notes: string | null;
+  runningBalance: number;
+};
+
+export type CustomerAccountLedgerDto = {
+  customerId: string;
+  customerName: string;
+  openingBalance: number;
+  closingBalance: number;
+  lastReconciliationDate: string | null;
+  lastReconciliationBalance: number | null;
+  lastReconciliationDocumentId: string | null;
+  lines: CustomerAccountLedgerLineDto[];
+};
+
+export type CustomerOpeningBalanceResultDto = {
+  journalEntryNumber: string;
+  postedDate: string;
+  amount: number;
+};
+
+export type CreateCustomerRequest = {
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  type: CustomerType;
+  creditLimit: number;
+  creditLimitEnabled: boolean;
+};
+
+export type UpdateCustomerRequest = {
+  nameAr: string;
+  nameEn: string;
+  creditLimit: number;
+  creditLimitEnabled: boolean;
+  paymentTermsDays: number;
+};
+
+export type PostCustomerOpeningBalanceRequest = {
+  amount: number;
+  postingDate: string;
+  referenceNote: string | null;
+};
+
+export type ReconcileCustomerAccountRequest = {
+  reconciliationDate: string;
+  documentId: string;
+  balanceAtReconciliation: number;
+};
+
+export type ReceiptAllocationRequest = {
+  salesInvoiceId: string;
+  amount: number;
+};
+
+export type CreateReceiptVoucherRequest = {
+  customerId: string;
+  cashboxId: string;
+  amount: number;
+  allocations: ReceiptAllocationRequest[];
+};
+
 export type WarehouseListExtendedDto = {
   id: string;
   code: string;

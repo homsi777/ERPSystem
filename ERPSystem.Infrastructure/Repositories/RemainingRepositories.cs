@@ -1,4 +1,5 @@
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Catalog;
 using ERPSystem.Application.DTOs.Identity;
@@ -58,14 +59,17 @@ internal sealed class WarehouseRepository(ErpDbContext context) : IWarehouseRepo
             CapacityRolls = aggregate.Warehouse.CapacityRolls,
             IsActive = aggregate.Warehouse.IsActive
         }, cancellationToken);
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public Task UpdateAsync(WarehouseAggregate aggregate, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 }
 
-internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCatalogRepository
+internal sealed class FabricCatalogRepository(ErpDbContext context, ICacheService cache) : IFabricCatalogRepository
 {
+    private const string FabricCatalogCachePrefix = "lookup:fabric-catalog:";
+
     public async Task<FabricItem?> GetItemByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await context.FabricItems.AsNoTracking().FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
@@ -83,6 +87,14 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        var cacheKey = $"{FabricCatalogCachePrefix}items:{companyId}:all";
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            var cached = await cache.GetAsync<IReadOnlyList<FabricItem>>(cacheKey, cancellationToken);
+            if (cached is not null)
+                return cached;
+        }
+
         var query = context.FabricItems.AsNoTracking().Where(i => i.CompanyId == companyId);
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -91,7 +103,10 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         }
 
         var entities = await query.OrderBy(i => i.Code).ToListAsync(cancellationToken);
-        return entities.Select(ToFabricItem).ToList();
+        var items = entities.Select(ToFabricItem).ToList();
+        if (string.IsNullOrWhiteSpace(search))
+            await cache.SetAsync(cacheKey, items, TimeSpan.FromMinutes(30), cancellationToken);
+        return items;
     }
 
     public async Task<FabricItem?> GetItemByCodeAsync(
@@ -140,11 +155,18 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         Guid fabricItemId,
         CancellationToken cancellationToken = default)
     {
+        var cacheKey = $"{FabricCatalogCachePrefix}colors:{fabricItemId}";
+        var cached = await cache.GetAsync<IReadOnlyList<FabricColor>>(cacheKey, cancellationToken);
+        if (cached is not null)
+            return cached;
+
         var entities = await context.FabricColors.AsNoTracking()
             .Where(c => c.FabricItemId == fabricItemId && c.IsActive)
             .OrderBy(c => c.Code)
             .ToListAsync(cancellationToken);
-        return entities.Select(ToFabricColor).ToList();
+        var colors = entities.Select(ToFabricColor).ToList();
+        await cache.SetAsync(cacheKey, colors, TimeSpan.FromMinutes(30), cancellationToken);
+        return colors;
     }
 
     public async Task<FabricCategory?> GetCategoryByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -261,6 +283,7 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         entity.NameEn = category.NameEn;
         entity.IsActive = category.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public async Task AddItemAsync(FabricItem item, Guid companyId, CancellationToken cancellationToken = default)
@@ -277,6 +300,7 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
             IsActive = item.IsActive,
             CreatedAt = DateTime.UtcNow
         }, cancellationToken);
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public async Task UpdateItemAsync(FabricItem item, CancellationToken cancellationToken = default)
@@ -289,6 +313,7 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         entity.DefaultUnit = item.DefaultUnit;
         entity.IsActive = item.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public async Task AddColorAsync(FabricColor color, CancellationToken cancellationToken = default)
@@ -303,6 +328,7 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
             IsActive = color.IsActive,
             CreatedAt = DateTime.UtcNow
         }, cancellationToken);
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public async Task UpdateColorAsync(FabricColor color, CancellationToken cancellationToken = default)
@@ -313,6 +339,7 @@ internal sealed class FabricCatalogRepository(ErpDbContext context) : IFabricCat
         entity.NameEn = color.NameEn;
         entity.IsActive = color.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public async Task<IReadOnlyList<ImportedFabricClassificationDto>> GetImportedClassificationsAsync(

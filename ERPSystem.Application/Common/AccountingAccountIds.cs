@@ -7,6 +7,7 @@ public static class AccountingAccountIds
     public static readonly Guid AccountsPayable = Guid.Parse("a1000002-0002-0002-0002-000000000002");
     public static readonly Guid CostOfGoodsSold = Guid.Parse("a1000003-0003-0003-0003-000000000003");
     public static readonly Guid SalesRevenue = Guid.Parse("a1000004-0004-0004-0004-000000000004");
+    public static readonly Guid SalesDiscounts = Guid.Parse("a1000011-0011-0011-0011-000000000011");
     public static readonly Guid AccountsReceivable = Guid.Parse("a1000005-0005-0005-0005-000000000005");
     public static readonly Guid LandingCostClearing = Guid.Parse("a1000006-0006-0006-0006-000000000006");
     public static readonly Guid CashUsd = Guid.Parse("a1000007-0007-0007-0007-000000000007");

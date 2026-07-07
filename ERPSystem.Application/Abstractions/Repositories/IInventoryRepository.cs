@@ -17,4 +17,9 @@ public interface IInventoryRepository
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Guid>> GetSellableContainerIdsAsync(CancellationToken cancellationToken = default);
     Task<int> CountLowStockItemsAsync(Guid branchId, decimal thresholdMeters = 50m, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the cost-per-meter for the given fabric roll ids.</summary>
+    Task<IReadOnlyDictionary<Guid, decimal>> GetRollCostsAsync(
+        IReadOnlyCollection<Guid> rollIds,
+        CancellationToken cancellationToken = default);
 }

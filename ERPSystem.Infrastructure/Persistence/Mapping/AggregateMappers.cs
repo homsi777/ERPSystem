@@ -110,7 +110,13 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.FabricColorId), i.FabricColorId);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.RollCount), i.RollCount);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.UnitPrice), new Money(i.UnitPrice));
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.OriginalUnitPrice),
+                new Money(i.OriginalUnitPrice > 0 ? i.OriginalUnitPrice : i.UnitPrice));
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.LineTotal), new Money(i.LineTotal));
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.DiscountAmount), new Money(i.DiscountAmount));
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.DiscountReason), i.DiscountReason);
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.PriceModifiedByUserId), i.PriceModifiedByUserId);
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.PriceModifiedAt), i.PriceModifiedAt);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.Notes), i.Notes);
             return item;
         }).ToList();
@@ -288,6 +294,7 @@ internal static class ContainerMapper
                 DomainHydrator.Set(item, nameof(ChinaContainerItem.WeightKg), new WeightInKg(i.WeightKg.Value));
             DomainHydrator.Set(item, nameof(ChinaContainerItem.LotCode), i.LotCode);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.BuyerCustomerId), i.BuyerCustomerId);
+            DomainHydrator.Set(item, nameof(ChinaContainerItem.SupplierRollNumber), i.SupplierRollNumber);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.RowStatus), i.RowStatus);
             return item;
         }).ToList();

@@ -278,6 +278,7 @@ public static class DatabaseSeeder
             (AccountingAccountIds.LandingCostClearing, "1300", "تكاليف وصول معلقة", "Landing Cost Clearing", "Asset", AccountingAccountIds.RootAssets),
             (AccountingAccountIds.AccountsPayable, "2100", "ذمم موردين", "Accounts Payable", "Liability", AccountingAccountIds.RootLiabilities),
             (AccountingAccountIds.SalesRevenue, "4100", "إيراد مبيعات", "Sales Revenue", "Revenue", AccountingAccountIds.RootRevenue),
+            (AccountingAccountIds.SalesDiscounts, "4200", "خصم مبيعات", "Sales Discounts", "Revenue", AccountingAccountIds.RootRevenue),
             (AccountingAccountIds.CostOfGoodsSold, "5100", "تكلفة مبيعات", "Cost of Goods Sold", "Expense", AccountingAccountIds.RootExpense),
             (AccountingAccountIds.OperatingExpenses, "5210", "مصاريف تشغيل", "Operating Expenses", "Expense", AccountingAccountIds.RootExpense),
             (AccountingAccountIds.OpeningBalanceEquity, "3100", "أرصدة افتتاحية", "Opening Balance Equity", "Equity", AccountingAccountIds.RootEquity),

@@ -34,6 +34,7 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             "sal.invoices" or "sal.delivery" => await BuildSalesInvoicesAsync(query, key, cancellationToken),
             "sal.returns" => await BuildSalesReturnsAsync(query, cancellationToken),
             "sal.by_customer" => await BuildSalesByCustomerAsync(query, cancellationToken),
+            "sal.discounts" => await BuildSalesDiscountsAsync(query, cancellationToken),
             "sal.detailing" => await BuildDetailingQueueAsync(query, cancellationToken),
             "cus.balances" or "cus.statements" => await BuildCustomerBalancesAsync(query, cancellationToken),
             "cus.invoices" => await BuildCustomerInvoicesAsync(query, cancellationToken),
@@ -500,6 +501,87 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             Kpi("مبيعات", grouped.Sum(g => g.Total).ToString("N2")),
             Kpi("محصّل", grouped.Sum(g => g.Collected).ToString("N2")),
             Kpi("مستحق", grouped.Sum(g => g.Outstanding).ToString("N2")));
+    }
+
+    private async Task<ModuleReportResultDto> BuildSalesDiscountsAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var q = context.SalesInvoices.AsNoTracking()
+            .Where(i => i.CompanyId == query.CompanyId && i.BranchId == query.BranchId && !i.IsArchived);
+        if (query.FromDate.HasValue)
+            q = q.Where(i => i.InvoiceDate >= UtcDateTimeNormalizer.ToUtc(query.FromDate.Value));
+        if (query.ToDate.HasValue)
+            q = q.Where(i => i.InvoiceDate <= UtcDateTimeNormalizer.ToUtc(query.ToDate.Value));
+
+        var invoices = await q
+            .Select(i => new { i.Id, i.InvoiceNumber, i.InvoiceDate, i.CustomerId, i.GrandTotal })
+            .ToListAsync(ct);
+        var invoiceIds = invoices.Select(i => i.Id).ToList();
+        var invoiceMap = invoices.ToDictionary(i => i.Id);
+
+        var items = await context.SalesInvoiceItems.AsNoTracking()
+            .Where(i => invoiceIds.Contains(i.SalesInvoiceId) && i.DiscountAmount > 0)
+            .ToListAsync(ct);
+
+        var custMap = await context.Customers.AsNoTracking()
+            .Where(c => invoices.Select(i => i.CustomerId).Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.NameAr, ct);
+        var fabricMap = await context.FabricItems.AsNoTracking()
+            .Where(f => items.Select(i => i.FabricItemId).Contains(f.Id))
+            .ToDictionaryAsync(f => f.Id, f => f.NameAr, ct);
+
+        var rows = items
+            .Select(i =>
+            {
+                var inv = invoiceMap.GetValueOrDefault(i.SalesInvoiceId);
+                return new
+                {
+                    Number = inv?.InvoiceNumber ?? "—",
+                    Date = inv?.InvoiceDate ?? DateTime.MinValue,
+                    Customer = inv is null ? "—" : custMap.GetValueOrDefault(inv.CustomerId, "—"),
+                    Product = fabricMap.GetValueOrDefault(i.FabricItemId, "—"),
+                    Reason = string.IsNullOrWhiteSpace(i.DiscountReason) ? "—" : i.DiscountReason!,
+                    Original = i.OriginalUnitPrice,
+                    Applied = i.UnitPrice,
+                    Discount = i.DiscountAmount
+                };
+            })
+            .OrderByDescending(r => r.Discount)
+            .Select(r => Row(
+                ("Number", r.Number),
+                ("Date", r.Date),
+                ("Customer", r.Customer),
+                ("Product", r.Product),
+                ("Reason", r.Reason),
+                ("Original", r.Original),
+                ("Applied", r.Applied),
+                ("Discount", r.Discount)))
+            .ToList();
+
+        var totalDiscount = items.Sum(i => i.DiscountAmount);
+        var grossSales = invoices.Sum(i => i.GrandTotal) + totalDiscount;
+        var discountPct = grossSales > 0 ? totalDiscount / grossSales * 100m : 0m;
+        var distinctCustomers = items
+            .Select(i => invoiceMap.GetValueOrDefault(i.SalesInvoiceId)?.CustomerId)
+            .Where(id => id.HasValue)
+            .Distinct()
+            .Count();
+
+        return Result(query, "تحليل الخصومات", "خصومات البيع الممنوحة ضمن الفترة",
+            Cols(
+                ("Number", "الفاتورة", 110, null),
+                ("Date", "التاريخ", 100, "yyyy/MM/dd"),
+                ("Customer", "العميل", "*", null),
+                ("Product", "المنتج", 160, null),
+                ("Reason", "السبب", 130, null),
+                ("Original", "السعر الأصلي", 100, "N2"),
+                ("Applied", "السعر المطبّق", 100, "N2"),
+                ("Discount", "قيمة الخصم", 110, "N2")),
+            rows,
+            Kpi("إجمالي الخصومات", totalDiscount.ToString("N2")),
+            Kpi("نسبة من المبيعات", $"{discountPct:N1}%"),
+            Kpi("أسطر مخصومة", rows.Count.ToString()),
+            Kpi("عملاء", distinctCustomers.ToString()));
     }
 
     private async Task<ModuleReportResultDto> BuildDetailingQueueAsync(

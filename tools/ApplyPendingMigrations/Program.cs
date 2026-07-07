@@ -23,6 +23,21 @@ await ExecuteAsync(conn, """
         ADD COLUMN IF NOT EXISTS "LastReconciliationDocumentId" uuid;
     ALTER TABLE sales.sales_invoice_items
         ADD COLUMN IF NOT EXISTS "Notes" character varying(500);
+    ALTER TABLE sales.sales_invoice_items
+        ADD COLUMN IF NOT EXISTS "OriginalUnitPrice" numeric(18,2) NOT NULL DEFAULT 0;
+    ALTER TABLE sales.sales_invoice_items
+        ADD COLUMN IF NOT EXISTS "DiscountAmount" numeric(18,2) NOT NULL DEFAULT 0;
+    ALTER TABLE sales.sales_invoice_items
+        ADD COLUMN IF NOT EXISTS "DiscountReason" character varying(300);
+    ALTER TABLE sales.sales_invoice_items
+        ADD COLUMN IF NOT EXISTS "PriceModifiedByUserId" uuid;
+    ALTER TABLE sales.sales_invoice_items
+        ADD COLUMN IF NOT EXISTS "PriceModifiedAt" timestamp with time zone;
+    UPDATE sales.sales_invoice_items
+        SET "OriginalUnitPrice" = "UnitPrice"
+        WHERE "OriginalUnitPrice" = 0;
+    ALTER TABLE china_import.container_items
+        ADD COLUMN IF NOT EXISTS "SupplierRollNumber" integer;
     """);
 
 Console.WriteLine("Schema columns ensured.");
@@ -39,7 +54,9 @@ if (!historyExists)
 foreach (var migrationId in new[]
          {
              "20260715120200_AddSalesInvoiceItemNotes",
-             "20260715120300_AddCustomerReconciliationFields"
+             "20260715120300_AddCustomerReconciliationFields",
+             "20260715120400_AddSalesInvoiceItemPriceOverride",
+             "20260716090000_AddContainerItemSupplierRollNumber"
          })
 {
     await using var cmd = new NpgsqlCommand("""

@@ -27,6 +27,13 @@ public sealed class InventoryFabricStockPageControl : UserControl
         {
             Text = "أرصدة حية محسوبة من حركات المخزون — لا بيانات تجريبية",
             Foreground = System.Windows.Media.Brushes.Gray,
+            Margin = new Thickness(0, 0, 0, 2)
+        });
+        header.Children.Add(new TextBlock
+        {
+            Text = "انقر نقراً مزدوجاً على أي صنف لعرض تفاصيل أتوابه (الأطوال والأعداد).",
+            Foreground = System.Windows.Media.Brushes.Gray,
+            FontSize = 11,
             Margin = new Thickness(0, 0, 0, 8)
         });
         header.Children.Add(InventoryContainerFilterUi.CreateFilterRow(
@@ -53,6 +60,8 @@ public sealed class InventoryFabricStockPageControl : UserControl
 
         root.Children.Add(_grid);
         Content = root;
+
+        _grid.MouseDoubleClick += (_, _) => _ = ShowRollDetailsAsync();
 
         _warehouseFilter.SelectionChanged += (_, _) => OnFilterChanged(rebindContainers: true);
         _containerFilter.SelectionChanged += (_, _) => OnFilterChanged(rebindContainers: false);
@@ -129,6 +138,12 @@ public sealed class InventoryFabricStockPageControl : UserControl
         _grid.ItemsSource = stock;
 
         InventoryContainerFilterUi.PopulateStockSummaryCards(_summaryCards, stock);
+    }
+
+    private async Task ShowRollDetailsAsync()
+    {
+        if (_grid.SelectedItem is FabricStockBalanceDto row)
+            await FabricRollDetailsPopup.ShowForStockRowAsync(row);
     }
 }
 

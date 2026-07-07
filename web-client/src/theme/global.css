@@ -497,6 +497,15 @@ svg {
   background: rgba(186, 117, 23, 0.05);
 }
 
+.record-card--reconciled {
+  border-color: rgba(201, 67, 67, 0.28);
+  background: rgba(201, 67, 67, 0.07);
+}
+
+.data-table tr.is-reconciled td {
+  background: rgba(201, 67, 67, 0.07);
+}
+
 .toolbar-panel {
   gap: 10px;
 }

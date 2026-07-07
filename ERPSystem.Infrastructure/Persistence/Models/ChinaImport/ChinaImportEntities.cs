@@ -34,6 +34,7 @@ public class ContainerItemEntity : PersistenceEntity
     public decimal? WeightKg { get; set; }
     public string? LotCode { get; set; }
     public Guid? BuyerCustomerId { get; set; }
+    public int? SupplierRollNumber { get; set; }
     public string RowStatus { get; set; } = "Valid";
 }
 

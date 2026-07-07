@@ -126,6 +126,16 @@ public sealed class InventoryUiService
         return await handler.HandleAsync(new GetFabricStockBalancesQuery(BranchId, warehouseId), cancellationToken);
     }
 
+    public async Task<ApplicationResult<IReadOnlyList<FabricRollListDto>>> GetFabricRollsByStockAsync(
+        Guid warehouseId, Guid containerId, Guid fabricItemId, Guid fabricColorId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetFabricRollsByStockHandler>();
+        return await handler.HandleAsync(
+            new GetFabricRollsByStockQuery(warehouseId, containerId, fabricItemId, fabricColorId), cancellationToken);
+    }
+
     public async Task<ApplicationResult<IReadOnlyList<StockTransferListDto>>> GetTransfersAsync(
         CancellationToken cancellationToken = default)
     {

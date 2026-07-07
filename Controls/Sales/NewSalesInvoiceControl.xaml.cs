@@ -52,6 +52,8 @@ namespace ERPSystem.Controls.Sales
         private string _unit = "متر";
         private decimal _unitPrice;
         private string _unitPriceText = "";
+        private decimal _originalUnitPrice;
+        private string _discountReason = "";
         private string _notes = "";
         private SalesWarehouseStockOptionDto? _selectedStock;
         private bool _missingSalePrice;
@@ -148,6 +150,7 @@ namespace ERPSystem.Controls.Sales
                     _unitPriceText = text;
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(UnitPriceText)));
                 }
+                RaiseDiscountDisplayChanged();
             }
         }
 
@@ -156,6 +159,46 @@ namespace ERPSystem.Controls.Sales
         {
             get => _unitPriceText;
             set => SetField(ref _unitPriceText, value ?? "");
+        }
+
+        /// <summary>Catalog (card) price captured when the stock was selected; baseline for the discount.</summary>
+        public decimal OriginalUnitPrice
+        {
+            get => _originalUnitPrice;
+            set
+            {
+                if (!SetField(ref _originalUnitPrice, value))
+                    return;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OriginalUnitPriceText)));
+                RaiseDiscountDisplayChanged();
+            }
+        }
+
+        public string OriginalUnitPriceText =>
+            _originalUnitPrice > 0 ? FormatUnitPriceDisplay(_originalUnitPrice) : "—";
+
+        /// <summary>Per-meter discount (original − applied), zero when no discount was given.</summary>
+        public decimal PerMeterDiscount =>
+            _originalUnitPrice > 0 && _originalUnitPrice > _unitPrice
+                ? _originalUnitPrice - _unitPrice
+                : 0m;
+
+        public bool HasDiscount => PerMeterDiscount > 0;
+
+        public string DiscountHint =>
+            HasDiscount ? $"-{PerMeterDiscount.ToString("N2", CultureInfo.CurrentCulture)} $/م" : "—";
+
+        public string DiscountReason
+        {
+            get => _discountReason;
+            set => SetField(ref _discountReason, value ?? "");
+        }
+
+        private void RaiseDiscountDisplayChanged()
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PerMeterDiscount)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDiscount)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DiscountHint)));
         }
 
         public string Notes
@@ -181,11 +224,13 @@ namespace ERPSystem.Controls.Sales
 
             if (stock.SalePricePerMeter is > 0)
             {
+                OriginalUnitPrice = stock.SalePricePerMeter.Value;
                 UnitPrice = stock.SalePricePerMeter.Value;
                 MissingSalePrice = false;
             }
             else
             {
+                OriginalUnitPrice = 0;
                 UnitPrice = 0;
                 MissingSalePrice = true;
             }
@@ -247,6 +292,7 @@ namespace ERPSystem.Controls.Sales
         private decimal _loadedSubTotal;
         private decimal _loadedDiscountTotal;
         private decimal _loadedTotalMeters;
+        private readonly Dictionary<int, string> _lineDisplayByNumber = new();
         private bool _cellEditFailed;
         private bool _isSaving;
         private bool _initialized;
@@ -324,15 +370,46 @@ namespace ERPSystem.Controls.Sales
         private void ItemsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (ItemsGrid.SelectedItem is SalesInvoiceLineRow row)
+            {
                 TxtLineNotes.Text = row.Notes;
+                UpdateDiscountReasonEditor(row);
+            }
             else
+            {
                 TxtLineNotes.Text = "";
+                UpdateDiscountReasonEditor(null);
+            }
         }
 
         private void TxtLineNotes_LostFocus(object sender, RoutedEventArgs e)
         {
             if (ItemsGrid.SelectedItem is SalesInvoiceLineRow row)
                 row.Notes = TxtLineNotes.Text.Trim();
+        }
+
+        /// <summary>Shows the discount-reason editor only when the selected line carries a discount.</summary>
+        private void UpdateDiscountReasonEditor(SalesInvoiceLineRow? row)
+        {
+            var showReason = row is { HasDiscount: true } && _domainStatus == SalesInvoiceStatus.Draft;
+            DiscountReasonPanel.Visibility = showReason ? Visibility.Visible : Visibility.Collapsed;
+
+            if (row is null)
+            {
+                CmbDiscountReason.Text = "";
+                TxtDiscountHint.Text = "";
+                return;
+            }
+
+            CmbDiscountReason.Text = row.DiscountReason;
+            TxtDiscountHint.Text = row.HasDiscount
+                ? $"خصم {row.PerMeterDiscount:N2} $/م عن السعر الأصلي {row.OriginalUnitPriceText} $"
+                : "";
+        }
+
+        private void CmbDiscountReason_TextChanged(object sender, RoutedEventArgs e)
+        {
+            if (ItemsGrid.SelectedItem is SalesInvoiceLineRow row)
+                row.DiscountReason = CmbDiscountReason.Text?.Trim() ?? "";
         }
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -346,6 +423,8 @@ namespace ERPSystem.Controls.Sales
                 ItemsGrid.PreviewMouseLeftButtonDown += ItemsGrid_PreviewMouseLeftButtonDown;
                 ItemsGrid.SelectionChanged += ItemsGrid_SelectionChanged;
                 TxtLineNotes.LostFocus += TxtLineNotes_LostFocus;
+                CmbDiscountReason.LostFocus += CmbDiscountReason_TextChanged;
+                CmbDiscountReason.SelectionChanged += (s, _) => CmbDiscountReason_TextChanged(s, new RoutedEventArgs());
                 foreach (var row in _lines)
                     row.PropertyChanged += OnLinePropertyChanged;
             }
@@ -627,9 +706,14 @@ namespace ERPSystem.Controls.Sales
             BtnCash.IsChecked = invoice.PaymentType == PaymentType.Cash;
             BtnCredit.IsChecked = invoice.PaymentType == PaymentType.Credit;
 
+            _lineDisplayByNumber.Clear();
             _lines.Clear();
             foreach (var line in invoice.Lines.OrderBy(l => l.LineNumber))
             {
+                _lineDisplayByNumber[line.LineNumber] = string.IsNullOrWhiteSpace(line.ColorDisplayName)
+                    ? line.FabricDisplayName
+                    : $"{line.FabricDisplayName} / {line.ColorDisplayName}";
+
                 var row = new SalesInvoiceLineRow
                 {
                     FabricItemId = line.FabricItemId,
@@ -638,9 +722,11 @@ namespace ERPSystem.Controls.Sales
                     BoltCode = line.FabricCode,
                     Color = line.ColorDisplayName,
                     RollCount = line.RollCount,
+                    OriginalUnitPrice = line.OriginalUnitPrice > 0 ? line.OriginalUnitPrice : line.UnitPrice,
                     UnitPrice = line.UnitPrice,
                     MissingSalePrice = line.UnitPrice <= 0,
                     LengthStatus = BuildLengthStatus(line, _domainStatus),
+                    DiscountReason = line.DiscountReason ?? "",
                     Notes = line.Notes ?? ""
                 };
                 row.RefreshStockSelectionDisplay();
@@ -799,10 +885,10 @@ namespace ERPSystem.Controls.Sales
                     return;
                 }
 
-                if (row.MissingSalePrice && row.UnitPrice <= 0)
+                if (row.UnitPrice <= 0)
                 {
                     MockInteractionService.ShowWarning(
-                        $"أدخل سعر البيع لـ {row.GoodsType} — {row.Color}.");
+                        $"أدخل سعر بيع أكبر من صفر لـ {row.GoodsType} — {row.Color}.");
                     return;
                 }
             }
@@ -989,10 +1075,9 @@ namespace ERPSystem.Controls.Sales
             }
         }
 
-        private bool CanEditDiscount() =>
-            _domainStatus is SalesInvoiceStatus.Draft
-                or SalesInvoiceStatus.Detailed
-                or SalesInvoiceStatus.ReadyForApproval;
+        // Header-level discount is retired in favour of per-line price overrides
+        // (discounts are now tracked as contra-revenue on each line).
+        private bool CanEditDiscount() => false;
 
         private static string FormatDiscountEntryText(decimal amount) =>
             amount > 0 ? amount.ToString("N2", CultureInfo.CurrentCulture) : string.Empty;
@@ -1084,6 +1169,9 @@ namespace ERPSystem.Controls.Sales
                 return;
             }
 
+            if (!await ConfirmBelowCostAsync())
+                return;
+
             if (!MockInteractionService.Confirm("اعتماد وتسليم الفاتورة نهائياً؟", "اعتماد وتسليم"))
                 return;
 
@@ -1098,6 +1186,33 @@ namespace ERPSystem.Controls.Sales
             SalesListRefreshHub.RequestRefresh();
             MockInteractionService.ShowSuccess("تم اعتماد وتسليم الفاتورة بنجاح.", "اعتماد وتسليم");
             UpdateWorkflowUi();
+        }
+
+        /// <summary>
+        /// Warns (without blocking) when any line's applied price is below its roll cost.
+        /// Returns false only if the manager chooses to cancel the approval.
+        /// </summary>
+        private async Task<bool> ConfirmBelowCostAsync()
+        {
+            if (_invoiceId is null)
+                return true;
+
+            var check = await SalesUiService.Instance.CheckBelowCostAsync(_invoiceId.Value);
+            if (!check.IsSuccess || check.Value is null || check.Value.Count == 0)
+                return true;
+
+            var details = string.Join("\n", check.Value.Select(l =>
+            {
+                var name = _lineDisplayByNumber.GetValueOrDefault(l.LineNumber, $"سطر {l.LineNumber}");
+                return $"• {name}: البيع {l.AppliedPrice:N2} $ < التكلفة {l.CostPerMeter:N2} $ " +
+                       $"— خسارة {l.LossPerMeter:N2} $/م ({l.TotalLoss:N2} $)";
+            }));
+
+            var totalLoss = check.Value.Sum(l => l.TotalLoss);
+            return MockInteractionService.Confirm(
+                "تنبيه: بعض الأسطر تُباع بأقل من التكلفة:\n\n" + details +
+                $"\n\nإجمالي الخسارة المتوقعة: {totalLoss:N2} $\n\nهل تريد المتابعة والاعتماد؟",
+                "بيع أقل من التكلفة");
         }
 
         private async void BtnCancel_Click(object sender, RoutedEventArgs e)
@@ -1167,6 +1282,10 @@ namespace ERPSystem.Controls.Sales
                     FabricColorId = row.FabricColorId,
                     RollCount = row.RollCount,
                     UnitPrice = row.UnitPrice,
+                    OriginalUnitPrice = row.OriginalUnitPrice > 0 ? row.OriginalUnitPrice : row.UnitPrice,
+                    DiscountReason = row.HasDiscount && !string.IsNullOrWhiteSpace(row.DiscountReason)
+                        ? row.DiscountReason.Trim()
+                        : null,
                     Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
                 });
             }
@@ -1279,11 +1398,6 @@ namespace ERPSystem.Controls.Sales
             if (header is not ("عدد الأثواب" or "سعر الوحدة"))
                 return;
 
-            if (header == "سعر الوحدة" &&
-                cell.DataContext is SalesInvoiceLineRow row &&
-                !row.MissingSalePrice)
-                return;
-
             ItemsGrid.CurrentCell = new DataGridCellInfo(cell);
             if (!cell.IsFocused)
                 cell.Focus();
@@ -1299,11 +1413,6 @@ namespace ERPSystem.Controls.Sales
             }
 
             if (e.Column.IsReadOnly)
-                e.Cancel = true;
-
-            if (e.Row.Item is SalesInvoiceLineRow row &&
-                e.Column?.Header?.ToString() == "سعر الوحدة" &&
-                !row.MissingSalePrice)
                 e.Cancel = true;
         }
 
@@ -1386,9 +1495,7 @@ namespace ERPSystem.Controls.Sales
 
         private List<DataGridColumn> GetEditableColumnsForRow(SalesInvoiceLineRow? row)
         {
-            var order = new List<string> { "اختر التوب", "عدد الأثواب" };
-            if (row is null || row.MissingSalePrice || row.UnitPrice <= 0)
-                order.Add("سعر الوحدة");
+            var order = new List<string> { "اختر التوب", "عدد الأثواب", "سعر الوحدة" };
 
             return ItemsGrid.Columns
                 .Where(c => !c.IsReadOnly && order.Contains(c.Header?.ToString() ?? ""))
@@ -1438,18 +1545,20 @@ namespace ERPSystem.Controls.Sales
                     break;
 
                 case "سعر الوحدة":
-                    if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var price) || price < 0)
+                    if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var price) || price <= 0)
                     {
                         e.Cancel = true;
                         _cellEditFailed = true;
-                        MockInteractionService.ShowWarning("أدخل سعر وحدة صحيحاً.");
+                        MockInteractionService.ShowWarning("أدخل سعر بيع أكبر من صفر.");
                         row.UnitPriceText = SalesInvoiceLineRow.FormatUnitPriceDisplay(row.UnitPrice);
                         textBox.Text = row.UnitPriceText;
                         return;
                     }
                     row.UnitPrice = price;
                     row.UnitPriceText = SalesInvoiceLineRow.FormatUnitPriceDisplay(price);
-                    row.MissingSalePrice = price <= 0;
+                    row.MissingSalePrice = false;
+                    if (ItemsGrid.SelectedItem == row)
+                        UpdateDiscountReasonEditor(row);
                     break;
             }
 

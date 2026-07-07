@@ -1,4 +1,5 @@
 using ERPSystem.Domain.Enums;
+using ERPSystem.Domain.Exceptions;
 using ERPSystem.Domain.ValueObjects;
 
 namespace ERPSystem.Domain.Entities.Sales;
@@ -11,8 +12,19 @@ public class SalesInvoiceItem
     public Guid FabricColorId { get; private set; }
     public int RollCount { get; private set; }
     public Money UnitPrice { get; private set; } = Money.Zero();
+
+    /// <summary>Catalog (card) price captured at line entry; the baseline for discount calculation.</summary>
+    public Money OriginalUnitPrice { get; private set; } = Money.Zero();
+
     public string Unit { get; private set; } = "meter";
     public Money LineTotal { get; private set; } = Money.Zero();
+
+    /// <summary>Computed contra-revenue discount = (OriginalUnitPrice − UnitPrice) × sold meters, floored at zero.</summary>
+    public Money DiscountAmount { get; private set; } = Money.Zero();
+
+    public string? DiscountReason { get; private set; }
+    public Guid? PriceModifiedByUserId { get; private set; }
+    public DateTime? PriceModifiedAt { get; private set; }
     public string? Notes { get; private set; }
 
     private SalesInvoiceItem() { }
@@ -23,22 +35,43 @@ public class SalesInvoiceItem
         Guid fabricColorId,
         int rollCount,
         Money unitPrice,
-        string? notes = null) => new()
+        string? notes = null,
+        Money? originalUnitPrice = null,
+        string? discountReason = null,
+        Guid? priceModifiedByUserId = null,
+        DateTime? priceModifiedAt = null)
     {
-        Id = Guid.NewGuid(),
-        LineNumber = lineNumber,
-        FabricItemId = fabricItemId,
-        FabricColorId = fabricColorId,
-        RollCount = rollCount,
-        UnitPrice = unitPrice,
-        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
-    };
+        if (unitPrice.Amount <= 0)
+            throw new ValidationException("سعر البيع يجب أن يكون أكبر من صفر.");
+
+        var baseline = originalUnitPrice is { Amount: > 0 } original ? original : unitPrice;
+
+        return new()
+        {
+            Id = Guid.NewGuid(),
+            LineNumber = lineNumber,
+            FabricItemId = fabricItemId,
+            FabricColorId = fabricColorId,
+            RollCount = rollCount,
+            UnitPrice = unitPrice,
+            OriginalUnitPrice = baseline,
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            DiscountReason = string.IsNullOrWhiteSpace(discountReason) ? null : discountReason.Trim(),
+            PriceModifiedByUserId = priceModifiedByUserId,
+            PriceModifiedAt = priceModifiedAt
+        };
+    }
 
     public void RecalculateTotal(IReadOnlyList<SalesInvoiceRollDetail> rollDetails)
     {
         var lineDetails = rollDetails.Where(d => d.SalesInvoiceItemId == Id).ToList();
-        var total = lineDetails.Sum(d => d.LengthMeters.Value * UnitPrice.Amount);
-        LineTotal = new Money(total, UnitPrice.Currency);
+        var meters = lineDetails.Sum(d => d.LengthMeters.Value);
+        LineTotal = new Money(meters * UnitPrice.Amount, UnitPrice.Currency);
+
+        var perMeterDiscount = OriginalUnitPrice.Amount - UnitPrice.Amount;
+        DiscountAmount = perMeterDiscount > 0
+            ? new Money(meters * perMeterDiscount, UnitPrice.Currency)
+            : Money.Zero();
     }
 }
 

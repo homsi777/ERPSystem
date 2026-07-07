@@ -28,7 +28,10 @@ internal sealed class SalesInvoiceItemConfiguration : IEntityTypeConfiguration<S
         builder.ToTable("sales_invoice_items", Schemas.Sales);
         builder.HasKey(x => x.Id);
         builder.Property(x => x.UnitPrice).HasPrecision(18, 2);
+        builder.Property(x => x.OriginalUnitPrice).HasPrecision(18, 2);
         builder.Property(x => x.LineTotal).HasPrecision(18, 2);
+        builder.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+        builder.Property(x => x.DiscountReason).HasMaxLength(300);
         builder.Property(x => x.Notes).HasMaxLength(500);
         builder.HasIndex(x => new { x.SalesInvoiceId, x.LineNumber }).IsUnique();
     }

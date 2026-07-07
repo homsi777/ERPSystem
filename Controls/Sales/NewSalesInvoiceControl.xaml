@@ -453,6 +453,22 @@
                                  VerticalContentAlignment="Center"
                                  ToolTip="تُطبَّق على السطر المحدد في الجدول — أو أدخل الملاحظة مباشرة في عمود «ملاحظة»"/>
                     </StackPanel>
+
+                    <!-- Discount reason (shown only when the selected line has a price override) -->
+                    <StackPanel x:Name="DiscountReasonPanel" Visibility="Collapsed" Margin="0,8,0,0">
+                        <TextBlock Text="سبب الخصم" Style="{StaticResource InvoiceFieldLabel}"/>
+                        <ComboBox x:Name="CmbDiscountReason" Height="36" IsEditable="True"
+                                  VerticalContentAlignment="Center"
+                                  FontFamily="Segoe UI, Tahoma, Arial">
+                            <ComboBoxItem Content="عميل وفي"/>
+                            <ComboBoxItem Content="أمر كبير"/>
+                            <ComboBoxItem Content="تصفية مخزون"/>
+                            <ComboBoxItem Content="أخرى"/>
+                        </ComboBox>
+                        <TextBlock x:Name="TxtDiscountHint" Margin="2,4,0,0" FontSize="11"
+                                   Foreground="#BE123C" FontWeight="SemiBold"
+                                   FontFamily="Segoe UI, Tahoma, Arial" TextWrapping="Wrap"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -554,9 +570,33 @@
                             <DataGridTextColumn Header="الوحدة" Binding="{Binding Unit}" Width="70"
                                                 IsReadOnly="True"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"/>
+                            <DataGridTextColumn Header="السعر الأصلي" Binding="{Binding OriginalUnitPriceText}" Width="90"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
                             <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPriceText, UpdateSourceTrigger=PropertyChanged}" Width="90"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
+                            <DataGridTemplateColumn Header="الخصم" Width="90" IsReadOnly="True">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DiscountHint}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   FontFamily="Segoe UI, Tahoma, Arial">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#94A3B8"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasDiscount}" Value="True">
+                                                            <Setter Property="Foreground" Value="#BE123C"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="ملاحظة" Binding="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Width="120"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>

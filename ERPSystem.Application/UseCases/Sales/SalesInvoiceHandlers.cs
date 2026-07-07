@@ -13,6 +13,25 @@ using ERPSystem.Domain.ValueObjects;
 
 namespace ERPSystem.Application.UseCases.Sales;
 
+internal static class SalesInvoicePriceOverride
+{
+    /// <summary>
+    /// Determines the catalog baseline price and captures audit info when the manager
+    /// applied a manual discount (applied price below the catalog price).
+    /// </summary>
+    public static (Money? OriginalPrice, string? Reason, Guid? ModifiedBy, DateTime? ModifiedAt) Resolve(
+        SalesInvoiceLineCommand line, Guid userId, DateTime now)
+    {
+        var baseline = line.OriginalUnitPrice > 0 ? line.OriginalUnitPrice : line.UnitPrice;
+        var isDiscounted = baseline > line.UnitPrice;
+        return (
+            new Money(baseline),
+            isDiscounted ? line.DiscountReason : null,
+            isDiscounted && userId != Guid.Empty ? userId : null,
+            isDiscounted ? now : null);
+    }
+}
+
 public sealed class CreateSalesInvoiceDraftHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
@@ -62,19 +81,24 @@ public sealed class CreateSalesInvoiceDraftHandler(
                 command.PaymentType,
                 userId);
 
+            var now = DateTime.UtcNow;
             foreach (var line in command.Lines)
             {
+                var (originalPrice, reason, modifiedBy, modifiedAt) =
+                    SalesInvoicePriceOverride.Resolve(line, userId, now);
                 var item = SalesInvoiceItem.Create(
                     line.LineNumber,
                     line.FabricItemId,
                     line.FabricColorId,
                     line.RollCount,
                     new Money(line.UnitPrice),
-                    line.Notes);
+                    line.Notes,
+                    originalPrice,
+                    reason,
+                    modifiedBy,
+                    modifiedAt);
                 aggregate.AddItem(item);
             }
-
-            aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
 
             Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
 
@@ -94,6 +118,7 @@ public sealed class UpdateSalesInvoiceDraftHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
+    ICurrentUserService currentUserService,
     IInventoryOperationsService inventoryOperations)
     : ICommandHandler<UpdateSalesInvoiceDraftCommand, ApplicationResult>
 {
@@ -127,18 +152,28 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                 command.ChinaContainerId,
                 command.PaymentType);
 
+            var userId = currentUserService.UserId ?? Guid.Empty;
+            var now = DateTime.UtcNow;
             var items = command.Lines
-                .Select(line => SalesInvoiceItem.Create(
-                    line.LineNumber,
-                    line.FabricItemId,
-                    line.FabricColorId,
-                    line.RollCount,
-                    new Money(line.UnitPrice),
-                    line.Notes))
+                .Select(line =>
+                {
+                    var (originalPrice, reason, modifiedBy, modifiedAt) =
+                        SalesInvoicePriceOverride.Resolve(line, userId, now);
+                    return SalesInvoiceItem.Create(
+                        line.LineNumber,
+                        line.FabricItemId,
+                        line.FabricColorId,
+                        line.RollCount,
+                        new Money(line.UnitPrice),
+                        line.Notes,
+                        originalPrice,
+                        reason,
+                        modifiedBy,
+                        modifiedAt);
+                })
                 .ToList();
 
             aggregate.ReplaceDraftLines(items);
-            aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
             Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
@@ -300,6 +335,8 @@ public sealed class ApproveSalesInvoiceHandler(
     ICurrentUserService currentUserService,
     IInventoryOperationsService inventoryOperations,
     IIntegratedAccountingService accountingService,
+    IAuditLogRepository auditLogRepository,
+    ICurrentBranchService currentBranchService,
     IDomainEventDispatcher domainEventDispatcher)
     : ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>
 {
@@ -337,6 +374,29 @@ public sealed class ApproveSalesInvoiceHandler(
 
             var cogs = await inventoryOperations.DeductForInvoiceAsync(aggregate, cancellationToken);
             await accountingService.PostSalesInvoiceApprovalAsync(aggregate, cogs, cancellationToken);
+
+            if (aggregate.TotalLineDiscount.Amount > 0)
+            {
+                var discountedLines = aggregate.Items
+                    .Where(i => i.DiscountAmount.Amount > 0)
+                    .Select(i =>
+                        $"{{\"line\":{i.LineNumber},\"original\":{i.OriginalUnitPrice.Amount}," +
+                        $"\"applied\":{i.UnitPrice.Amount},\"discount\":{i.DiscountAmount.Amount}," +
+                        $"\"reason\":\"{i.DiscountReason?.Replace("\"", "'")}\"}}");
+
+                await auditLogRepository.AddAsync(
+                    Domain.Entities.System.AuditLog.Record(
+                        userId,
+                        "SalesPriceOverride",
+                        "SalesInvoice",
+                        aggregate.Id,
+                        null,
+                        $"{{\"invoice\":\"{aggregate.InvoiceNumber.Value}\"," +
+                        $"\"totalDiscount\":{aggregate.TotalLineDiscount.Amount}," +
+                        $"\"lines\":[{string.Join(",", discountedLines)}]}}",
+                        currentBranchService.BranchId),
+                    cancellationToken);
+            }
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await customerRepository.UpdateAsync(customerAggregate, cancellationToken);

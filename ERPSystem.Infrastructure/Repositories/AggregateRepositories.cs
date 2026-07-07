@@ -107,6 +107,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             WeightKg = i.WeightKg?.Value,
             LotCode = i.LotCode,
             BuyerCustomerId = i.BuyerCustomerId,
+            SupplierRollNumber = i.SupplierRollNumber,
             RowStatus = i.RowStatus
         }), ct);
     }
@@ -322,8 +323,13 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             FabricColorId = i.FabricColorId,
             RollCount = i.RollCount,
             UnitPrice = i.UnitPrice.Amount,
+            OriginalUnitPrice = i.OriginalUnitPrice.Amount,
             Unit = i.Unit,
             LineTotal = i.LineTotal.Amount,
+            DiscountAmount = i.DiscountAmount.Amount,
+            DiscountReason = i.DiscountReason,
+            PriceModifiedByUserId = i.PriceModifiedByUserId,
+            PriceModifiedAt = i.PriceModifiedAt,
             Notes = i.Notes
         }), ct);
 

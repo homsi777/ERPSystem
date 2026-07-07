@@ -42,9 +42,24 @@ public sealed class SalesInvoiceLineDto
     public string ColorDisplayName { get; init; } = "";
     public int RollCount { get; init; }
     public decimal UnitPrice { get; init; }
+    public decimal OriginalUnitPrice { get; init; }
     public decimal TotalLengthMeters { get; init; }
     public decimal LineTotal { get; init; }
+    public decimal DiscountAmount { get; init; }
+    public string? DiscountReason { get; init; }
     public string? Notes { get; init; }
+}
+
+public sealed class SalesInvoiceBelowCostLineDto
+{
+    public int LineNumber { get; init; }
+    public string FabricDisplayName { get; init; } = "";
+    public string ColorDisplayName { get; init; } = "";
+    public decimal AppliedPrice { get; init; }
+    public decimal CostPerMeter { get; init; }
+    public decimal Meters { get; init; }
+    public decimal LossPerMeter => CostPerMeter - AppliedPrice;
+    public decimal TotalLoss => LossPerMeter * Meters;
 }
 
 public sealed class WarehouseDetailingDto

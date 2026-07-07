@@ -233,8 +233,11 @@ public static class SalesInvoiceMapper
                 FabricColorId = i.FabricColorId,
                 RollCount = i.RollCount,
                 UnitPrice = i.UnitPrice.Amount,
+                OriginalUnitPrice = i.OriginalUnitPrice.Amount,
                 TotalLengthMeters = totalLength,
                 LineTotal = i.LineTotal.Amount,
+                DiscountAmount = i.DiscountAmount.Amount,
+                DiscountReason = i.DiscountReason,
                 Notes = i.Notes
             };
         }).ToList()

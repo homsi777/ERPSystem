@@ -25,6 +25,7 @@ public sealed class ImportContainerLineCommand
     public decimal? WeightKg { get; init; }
     public string? LotCode { get; init; }
     public Guid? BuyerCustomerId { get; init; }
+    public int? SupplierRollNumber { get; init; }
 }
 
 public sealed class CalculateLandingCostCommand

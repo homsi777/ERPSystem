@@ -22,6 +22,11 @@ public sealed class SalesInvoiceLineCommand
     public Guid FabricColorId { get; init; }
     public int RollCount { get; init; }
     public decimal UnitPrice { get; init; }
+
+    /// <summary>Catalog (card) price shown to the user before any manual override.</summary>
+    public decimal OriginalUnitPrice { get; init; }
+
+    public string? DiscountReason { get; init; }
     public string? Notes { get; init; }
 }
 

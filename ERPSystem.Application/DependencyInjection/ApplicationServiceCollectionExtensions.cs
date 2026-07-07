@@ -287,6 +287,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetStockTransfersHandler>();
         services.AddScoped<GetStockTransferDetailHandler>();
         services.AddScoped<GetWarehouseTransferRollsHandler>();
+        services.AddScoped<GetFabricRollsPageHandler>();
+        services.AddScoped<GetFabricRollsByStockHandler>();
         services.AddScoped<GetStocktakeSessionsHandler>();
         services.AddScoped<GetStocktakeDetailHandler>();
         services.AddScoped<GetOpeningStockDocumentsHandler>();
@@ -345,6 +347,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetSalesInvoiceOperationsCenterHandler>();
         services.AddScoped<GetWarehouseDetailingQueueHandler>();
         services.AddScoped<GetSalesWarehouseStockHandler>();
+        services.AddScoped<CheckSalesInvoiceBelowCostHandler>();
         services.AddScoped<GetReportPreviewHandler>();
         services.AddScoped<GetModuleReportHandler>();
         services.AddScoped<AuthenticateUserHandler>();

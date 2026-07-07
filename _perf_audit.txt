@@ -1,0 +1,310 @@
+﻿=== ERP PERFORMANCE AUDIT — database 'erp_pro' — 2026-07-07 23:06 ===
+
+## SERVER / CONFIG
+version: PostgreSQL 16.13, compiled by Visual C++ build 1944, 64-bit
+max_connections: 100
+shared_buffers: 128MB
+work_mem: 4MB
+effective_cache_size: 4GB
+maintenance_work_mem: 64MB
+random_page_cost: 4
+track_activity_query_size: 1kB
+
+## TABLES (by total size)  [schema.table | est_rows | seq_scan | idx_scan | total | table | indexes]
+audit.audit_logs                         | rows=    5391 | seq=      3 | idx=       2 | total=    1.1MB | table=    576KB | idx=    512KB
+china_import.container_items                    | rows=     509 | seq=      2 | idx=    2052 | total=    488KB | table=    344KB | idx=    112KB
+public.FabricRolls                        | rows=     509 | seq=     17 | idx=       0 | total=    240KB | table=    120KB | idx=     88KB
+expenses.expenses                           | rows=       0 | seq=      9 | idx=       0 | total=     64KB | table=      0KB | idx=     56KB
+accounting.journal_entries                    | rows=       2 | seq=      5 | idx=       0 | total=     64KB | table=      8KB | idx=     48KB
+finance.cashboxes                          | rows=       1 | seq=      5 | idx=       0 | total=     48KB | table=      8KB | idx=     32KB
+inventory.fabric_batches                     | rows=       1 | seq=      2 | idx=       1 | total=     48KB | table=      8KB | idx=     32KB
+documents.document_counters                  | rows=       9 | seq=      2 | idx=       6 | total=     48KB | table=      8KB | idx=     32KB
+inventory.stock_movement_lines               | rows=       8 | seq=      2 | idx=       0 | total=     48KB | table=      8KB | idx=     32KB
+catalog.fabric_categories                  | rows=       1 | seq=      2 | idx=       2 | total=     48KB | table=      8KB | idx=     32KB
+catalog.fabric_colors                      | rows=       8 | seq=      4 | idx=      17 | total=     48KB | table=      8KB | idx=     32KB
+catalog.fabric_items                       | rows=       5 | seq=      4 | idx=      11 | total=     48KB | table=      8KB | idx=     32KB
+inventory.warehouses                         | rows=       1 | seq=      2 | idx=      13 | total=     48KB | table=      8KB | idx=     32KB
+parties.suppliers                          | rows=       1 | seq=      4 | idx=      17 | total=     48KB | table=      8KB | idx=     32KB
+identity.permissions                        | rows=      60 | seq=      2 | idx=     160 | total=     48KB | table=      8KB | idx=     32KB
+accounting.journal_books                      | rows=       5 | seq=      2 | idx=       5 | total=     48KB | table=      8KB | idx=     32KB
+expenses.expense_payments                   | rows=       0 | seq=      6 | idx=       0 | total=     48KB | table=      0KB | idx=     40KB
+identity.roles                              | rows=       1 | seq=      2 | idx=     123 | total=     48KB | table=      8KB | idx=     32KB
+settings.system_settings                    | rows=       3 | seq=      5 | idx=       1 | total=     48KB | table=      8KB | idx=     32KB
+finance.cost_centers                       | rows=       4 | seq=      2 | idx=       2 | total=     48KB | table=      8KB | idx=     32KB
+identity.users                              | rows=       1 | seq=      2 | idx=       2 | total=     48KB | table=      8KB | idx=     32KB
+expenses.expense_categories                 | rows=      10 | seq=      2 | idx=       2 | total=     48KB | table=      8KB | idx=     32KB
+china_import.fabric_type_aliases                | rows=       8 | seq=      2 | idx=      34 | total=     48KB | table=      8KB | idx=     32KB
+china_import.landing_costs                      | rows=       1 | seq=      2 | idx=      18 | total=     48KB | table=      8KB | idx=     32KB
+china_import.containers                         | rows=       1 | seq=      2 | idx=      27 | total=     48KB | table=      8KB | idx=     32KB
+china_import.container_fabric_type_lines        | rows=       8 | seq=      2 | idx=      40 | total=     48KB | table=      8KB | idx=     32KB
+company.branches                           | rows=       1 | seq=      2 | idx=       5 | total=     48KB | table=      8KB | idx=     32KB
+finance.opening_balance_lines              | rows=       0 | seq=      5 | idx=       0 | total=     48KB | table=      0KB | idx=     40KB
+company.companies                          | rows=       1 | seq=     12 | idx=       0 | total=     48KB | table=      8KB | idx=     32KB
+sales.sales_returns                      | rows=       0 | seq=      4 | idx=       0 | total=     40KB | table=      0KB | idx=     32KB
+inventory.warehouse_stocks                   | rows=       8 | seq=      4 | idx=      12 | total=     40KB | table=      8KB | idx=     32KB
+capital.partners                           | rows=       0 | seq=      4 | idx=       0 | total=     40KB | table=      0KB | idx=     32KB
+capital.capital_transactions               | rows=       0 | seq=      4 | idx=       0 | total=     40KB | table=      0KB | idx=     32KB
+finance.opening_balance_documents          | rows=       0 | seq=      4 | idx=       0 | total=     40KB | table=      0KB | idx=     32KB
+capital.partner_timeline_events            | rows=       0 | seq=      3 | idx=       0 | total=     32KB | table=      0KB | idx=     24KB
+public.Accounts                           | rows=      16 | seq=      3 | idx=      21 | total=     32KB | table=      8KB | idx=     16KB
+inventory.inventory_valuation_snapshots      | rows=       8 | seq=      1 | idx=       0 | total=     32KB | table=      8KB | idx=     16KB
+expenses.expense_timeline_events            | rows=       0 | seq=      3 | idx=       0 | total=     32KB | table=      0KB | idx=     24KB
+public.ImportBatches                      | rows=       1 | seq=      1 | idx=       0 | total=     32KB | table=      8KB | idx=     16KB
+capital.profit_distributions               | rows=       0 | seq=      3 | idx=       0 | total=     32KB | table=      0KB | idx=     24KB
+public.StockMovements                     | rows=       1 | seq=      2 | idx=       0 | total=     32KB | table=      8KB | idx=     16KB
+expenses.expense_audit_logs                 | rows=       0 | seq=      3 | idx=       0 | total=     32KB | table=      0KB | idx=     24KB
+accounting.journal_entry_lines                | rows=       4 | seq=      1 | idx=       0 | total=     32KB | table=      8KB | idx=     16KB
+capital.partner_audit_logs                 | rows=       0 | seq=      3 | idx=       0 | total=     32KB | table=      0KB | idx=     24KB
+purchasing.purchase_orders                    | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+purchasing.purchase_returns                   | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+expenses.expense_attachments                | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+expenses.expense_installments               | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     24KB
+parties.customers                          | rows=       0 | seq=      3 | idx=       6 | total=     24KB | table=      0KB | idx=     16KB
+capital.partner_participations             | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     24KB
+sales.sales_invoice_items                | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+capital.profit_distribution_lines          | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     24KB
+identity.role_permissions                   | rows=      60 | seq=      1 | idx=      81 | total=     24KB | table=      8KB | idx=     16KB
+finance.receipt_vouchers                   | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+finance.payment_vouchers                   | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+purchasing.purchase_invoices                  | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+inventory.stock_transfers                    | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+inventory.stocktake_sessions                 | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+inventory.opening_stock_documents            | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+inventory.inventory_alerts                   | rows=       0 | seq=      2 | idx=       1 | total=     24KB | table=      0KB | idx=     16KB
+inventory.inventory_audit_logs               | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+inventory.inventory_timeline_events          | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+sales.sales_invoices                     | rows=       0 | seq=      4 | idx=       2 | total=     24KB | table=      0KB | idx=     16KB
+settings.__ef_migrations_history            | rows=      27 | seq=      4 | idx=       0 | total=     24KB | table=      8KB | idx=     16KB
+sales.receipt_invoice_payments           | rows=       0 | seq=      3 | idx=       0 | total=     24KB | table=      0KB | idx=     24KB
+finance.cashbox_transfers                  | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+public.Employees                          | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+parties.china_suppliers                    | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+finance.opening_balance_events             | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+sales.warehouse_detailing_sessions       | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+identity.user_roles                         | rows=       1 | seq=      1 | idx=       5 | total=     24KB | table=      8KB | idx=     16KB
+purchasing.purchase_invoice_payments          | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+inventory.warehouse_locations                | rows=       0 | seq=      2 | idx=       1 | total=     24KB | table=      0KB | idx=     16KB
+hr.departments                        | rows=       0 | seq=      2 | idx=       0 | total=     24KB | table=      0KB | idx=     16KB
+purchasing.purchase_return_lines              | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+purchasing.purchase_invoice_items             | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+public.LandingCostExpenses                | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+public.DocumentTemplates                  | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+sales.sales_return_lines                 | rows=       0 | seq=      2 | idx=       0 | total=     16KB | table=      0KB | idx=     16KB
+public.WarehouseLocations                 | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+sales.sales_invoice_roll_details         | rows=       0 | seq=      2 | idx=       0 | total=     16KB | table=      0KB | idx=     16KB
+purchasing.purchase_order_lines               | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+public.ContainerDistributions             | rows=       0 | seq=      1 | idx=       0 | total=     16KB | table=      0KB | idx=      8KB
+inventory.inventory_rules                    | rows=       0 | seq=      1 | idx=       0 | total=      8KB | table=      0KB | idx=      8KB
+inventory.stocktake_lines                    | rows=       0 | seq=      1 | idx=       0 | total=      8KB | table=      0KB | idx=      8KB
+inventory.inventory_reservations             | rows=       0 | seq=      1 | idx=       0 | total=      8KB | table=      0KB | idx=      8KB
+inventory.opening_stock_lines                | rows=       0 | seq=      1 | idx=       0 | total=      8KB | table=      0KB | idx=      8KB
+inventory.stock_transfer_lines               | rows=       0 | seq=      1 | idx=       0 | total=      8KB | table=      0KB | idx=      8KB
+capital.partner_bank_accounts              | rows=       0 | seq=      1 | idx=       0 | total=      8KB | table=      0KB | idx=      8KB
+
+## INDEXES  [schema.table | index | definition | idx_scan]
+accounting.journal_books | IX_journal_books_CompanyId_Code | CREATE UNIQUE INDEX "IX_journal_books_CompanyId_Code" ON accounting.journal_books USING btree ("CompanyId", "Code") | scans=0
+accounting.journal_books | PK_journal_books | CREATE UNIQUE INDEX "PK_journal_books" ON accounting.journal_books USING btree ("Id") | scans=5
+accounting.journal_entries | IX_journal_entries_CompanyId_EntryNumber | CREATE UNIQUE INDEX "IX_journal_entries_CompanyId_EntryNumber" ON accounting.journal_entries USING btree ("CompanyId", "EntryNumber") | scans=0
+accounting.journal_entries | IX_journal_entries_JournalBookId | CREATE INDEX "IX_journal_entries_JournalBookId" ON accounting.journal_entries USING btree ("JournalBookId") | scans=0
+accounting.journal_entries | PK_journal_entries | CREATE UNIQUE INDEX "PK_journal_entries" ON accounting.journal_entries USING btree ("Id") | scans=0
+accounting.journal_entry_lines | PK_journal_entry_lines | CREATE UNIQUE INDEX "PK_journal_entry_lines" ON accounting.journal_entry_lines USING btree ("Id") | scans=0
+audit.audit_logs | IX_audit_logs_EntityType_EntityId | CREATE INDEX "IX_audit_logs_EntityType_EntityId" ON audit.audit_logs USING btree ("EntityType", "EntityId") | scans=0
+audit.audit_logs | IX_audit_logs_OccurredAt | CREATE INDEX "IX_audit_logs_OccurredAt" ON audit.audit_logs USING btree ("OccurredAt") | scans=2
+audit.audit_logs | PK_audit_logs | CREATE UNIQUE INDEX "PK_audit_logs" ON audit.audit_logs USING btree ("Id") | scans=0
+capital.capital_transactions | IX_capital_transactions_PartnerId | CREATE INDEX "IX_capital_transactions_PartnerId" ON capital.capital_transactions USING btree ("PartnerId") | scans=0
+capital.capital_transactions | IX_capital_transactions_Scope | CREATE INDEX "IX_capital_transactions_Scope" ON capital.capital_transactions USING btree ("Scope") | scans=0
+capital.capital_transactions | IX_capital_transactions_TransactionDate | CREATE INDEX "IX_capital_transactions_TransactionDate" ON capital.capital_transactions USING btree ("TransactionDate") | scans=0
+capital.capital_transactions | PK_capital_transactions | CREATE UNIQUE INDEX "PK_capital_transactions" ON capital.capital_transactions USING btree ("Id") | scans=0
+capital.partner_audit_logs | IX_partner_audit_logs_PartnerId | CREATE INDEX "IX_partner_audit_logs_PartnerId" ON capital.partner_audit_logs USING btree ("PartnerId") | scans=0
+capital.partner_audit_logs | IX_partner_audit_logs_Timestamp | CREATE INDEX "IX_partner_audit_logs_Timestamp" ON capital.partner_audit_logs USING btree ("Timestamp") | scans=0
+capital.partner_audit_logs | PK_partner_audit_logs | CREATE UNIQUE INDEX "PK_partner_audit_logs" ON capital.partner_audit_logs USING btree ("Id") | scans=0
+capital.partner_bank_accounts | PK_partner_bank_accounts | CREATE UNIQUE INDEX "PK_partner_bank_accounts" ON capital.partner_bank_accounts USING btree ("Id") | scans=0
+capital.partner_participations | IX_partner_participations_PartnerId | CREATE INDEX "IX_partner_participations_PartnerId" ON capital.partner_participations USING btree ("PartnerId") | scans=0
+capital.partner_participations | IX_partner_participations_Scope | CREATE INDEX "IX_partner_participations_Scope" ON capital.partner_participations USING btree ("Scope") | scans=0
+capital.partner_participations | PK_partner_participations | CREATE UNIQUE INDEX "PK_partner_participations" ON capital.partner_participations USING btree ("Id") | scans=0
+capital.partner_timeline_events | IX_partner_timeline_events_PartnerId | CREATE INDEX "IX_partner_timeline_events_PartnerId" ON capital.partner_timeline_events USING btree ("PartnerId") | scans=0
+capital.partner_timeline_events | IX_partner_timeline_events_Timestamp | CREATE INDEX "IX_partner_timeline_events_Timestamp" ON capital.partner_timeline_events USING btree ("Timestamp") | scans=0
+capital.partner_timeline_events | PK_partner_timeline_events | CREATE UNIQUE INDEX "PK_partner_timeline_events" ON capital.partner_timeline_events USING btree ("Id") | scans=0
+capital.partners | IX_partners_CompanyId | CREATE INDEX "IX_partners_CompanyId" ON capital.partners USING btree ("CompanyId") | scans=0
+capital.partners | IX_partners_CompanyId_Code | CREATE UNIQUE INDEX "IX_partners_CompanyId_Code" ON capital.partners USING btree ("CompanyId", "Code") | scans=0
+capital.partners | IX_partners_Status | CREATE INDEX "IX_partners_Status" ON capital.partners USING btree ("Status") | scans=0
+capital.partners | PK_partners | CREATE UNIQUE INDEX "PK_partners" ON capital.partners USING btree ("Id") | scans=0
+capital.profit_distribution_lines | IX_profit_distribution_lines_DistributionId | CREATE INDEX "IX_profit_distribution_lines_DistributionId" ON capital.profit_distribution_lines USING btree ("DistributionId") | scans=0
+capital.profit_distribution_lines | IX_profit_distribution_lines_PartnerId | CREATE INDEX "IX_profit_distribution_lines_PartnerId" ON capital.profit_distribution_lines USING btree ("PartnerId") | scans=0
+capital.profit_distribution_lines | PK_profit_distribution_lines | CREATE UNIQUE INDEX "PK_profit_distribution_lines" ON capital.profit_distribution_lines USING btree ("Id") | scans=0
+capital.profit_distributions | IX_profit_distributions_CompanyId_Code | CREATE UNIQUE INDEX "IX_profit_distributions_CompanyId_Code" ON capital.profit_distributions USING btree ("CompanyId", "Code") | scans=0
+capital.profit_distributions | IX_profit_distributions_Status | CREATE INDEX "IX_profit_distributions_Status" ON capital.profit_distributions USING btree ("Status") | scans=0
+capital.profit_distributions | PK_profit_distributions | CREATE UNIQUE INDEX "PK_profit_distributions" ON capital.profit_distributions USING btree ("Id") | scans=0
+catalog.fabric_categories | IX_fabric_categories_CompanyId_Code | CREATE UNIQUE INDEX "IX_fabric_categories_CompanyId_Code" ON catalog.fabric_categories USING btree ("CompanyId", "Code") | scans=2
+catalog.fabric_categories | PK_fabric_categories | CREATE UNIQUE INDEX "PK_fabric_categories" ON catalog.fabric_categories USING btree ("Id") | scans=0
+catalog.fabric_colors | IX_fabric_colors_FabricItemId_Code | CREATE UNIQUE INDEX "IX_fabric_colors_FabricItemId_Code" ON catalog.fabric_colors USING btree ("FabricItemId", "Code") | scans=16
+catalog.fabric_colors | PK_fabric_colors | CREATE UNIQUE INDEX "PK_fabric_colors" ON catalog.fabric_colors USING btree ("Id") | scans=1
+catalog.fabric_items | IX_fabric_items_CompanyId_Code | CREATE UNIQUE INDEX "IX_fabric_items_CompanyId_Code" ON catalog.fabric_items USING btree ("CompanyId", "Code") | scans=10
+catalog.fabric_items | PK_fabric_items | CREATE UNIQUE INDEX "PK_fabric_items" ON catalog.fabric_items USING btree ("Id") | scans=1
+china_import.container_fabric_type_lines | IX_container_fabric_type_lines_ContainerId_LineNumber | CREATE UNIQUE INDEX "IX_container_fabric_type_lines_ContainerId_LineNumber" ON china_import.container_fabric_type_lines USING btree ("ContainerId", "LineNumber") | scans=16
+china_import.container_fabric_type_lines | PK_container_fabric_type_lines | CREATE UNIQUE INDEX "PK_container_fabric_type_lines" ON china_import.container_fabric_type_lines USING btree ("Id") | scans=24
+china_import.container_items | IX_container_items_ContainerId_LineNumber | CREATE UNIQUE INDEX "IX_container_items_ContainerId_LineNumber" ON china_import.container_items USING btree ("ContainerId", "LineNumber") | scans=16
+china_import.container_items | PK_container_items | CREATE UNIQUE INDEX "PK_container_items" ON china_import.container_items USING btree ("Id") | scans=2036
+china_import.containers | IX_containers_CompanyId_ContainerNumber | CREATE UNIQUE INDEX "IX_containers_CompanyId_ContainerNumber" ON china_import.containers USING btree ("CompanyId", "ContainerNumber") | scans=6
+china_import.containers | PK_containers | CREATE UNIQUE INDEX "PK_containers" ON china_import.containers USING btree ("Id") | scans=21
+china_import.fabric_type_aliases | IX_fabric_type_aliases_CompanyId_SupplierId_DplMatchKey | CREATE UNIQUE INDEX "IX_fabric_type_aliases_CompanyId_SupplierId_DplMatchKey" ON china_import.fabric_type_aliases USING btree ("CompanyId", "SupplierId", "DplMatchKey") | scans=34
+china_import.fabric_type_aliases | PK_fabric_type_aliases | CREATE UNIQUE INDEX "PK_fabric_type_aliases" ON china_import.fabric_type_aliases USING btree ("Id") | scans=0
+china_import.landing_costs | IX_landing_costs_ContainerId | CREATE UNIQUE INDEX "IX_landing_costs_ContainerId" ON china_import.landing_costs USING btree ("ContainerId") | scans=15
+china_import.landing_costs | PK_landing_costs | CREATE UNIQUE INDEX "PK_landing_costs" ON china_import.landing_costs USING btree ("Id") | scans=3
+company.branches | IX_branches_CompanyId_Code | CREATE UNIQUE INDEX "IX_branches_CompanyId_Code" ON company.branches USING btree ("CompanyId", "Code") | scans=2
+company.branches | PK_branches | CREATE UNIQUE INDEX "PK_branches" ON company.branches USING btree ("Id") | scans=3
+company.companies | IX_companies_Code | CREATE UNIQUE INDEX "IX_companies_Code" ON company.companies USING btree ("Code") | scans=0
+company.companies | PK_companies | CREATE UNIQUE INDEX "PK_companies" ON company.companies USING btree ("Id") | scans=0
+documents.document_counters | IX_document_counters_BranchId_DocumentType | CREATE UNIQUE INDEX "IX_document_counters_BranchId_DocumentType" ON documents.document_counters USING btree ("BranchId", "DocumentType") | scans=3
+documents.document_counters | PK_document_counters | CREATE UNIQUE INDEX "PK_document_counters" ON documents.document_counters USING btree ("Id") | scans=3
+expenses.expense_attachments | IX_expense_attachments_ExpenseId | CREATE INDEX "IX_expense_attachments_ExpenseId" ON expenses.expense_attachments USING btree ("ExpenseId") | scans=0
+expenses.expense_attachments | PK_expense_attachments | CREATE UNIQUE INDEX "PK_expense_attachments" ON expenses.expense_attachments USING btree ("Id") | scans=0
+expenses.expense_audit_logs | IX_expense_audit_logs_ExpenseId | CREATE INDEX "IX_expense_audit_logs_ExpenseId" ON expenses.expense_audit_logs USING btree ("ExpenseId") | scans=0
+expenses.expense_audit_logs | IX_expense_audit_logs_Timestamp | CREATE INDEX "IX_expense_audit_logs_Timestamp" ON expenses.expense_audit_logs USING btree ("Timestamp") | scans=0
+expenses.expense_audit_logs | PK_expense_audit_logs | CREATE UNIQUE INDEX "PK_expense_audit_logs" ON expenses.expense_audit_logs USING btree ("Id") | scans=0
+expenses.expense_categories | IX_expense_categories_CompanyId_Code | CREATE UNIQUE INDEX "IX_expense_categories_CompanyId_Code" ON expenses.expense_categories USING btree ("CompanyId", "Code") | scans=2
+expenses.expense_categories | PK_expense_categories | CREATE UNIQUE INDEX "PK_expense_categories" ON expenses.expense_categories USING btree ("Id") | scans=0
+expenses.expense_installments | IX_expense_installments_DueDate | CREATE INDEX "IX_expense_installments_DueDate" ON expenses.expense_installments USING btree ("DueDate") | scans=0
+expenses.expense_installments | IX_expense_installments_ExpenseId | CREATE INDEX "IX_expense_installments_ExpenseId" ON expenses.expense_installments USING btree ("ExpenseId") | scans=0
+expenses.expense_installments | PK_expense_installments | CREATE UNIQUE INDEX "PK_expense_installments" ON expenses.expense_installments USING btree ("Id") | scans=0
+expenses.expense_payments | IX_expense_payments_CashboxId | CREATE INDEX "IX_expense_payments_CashboxId" ON expenses.expense_payments USING btree ("CashboxId") | scans=0
+expenses.expense_payments | IX_expense_payments_DueDate | CREATE INDEX "IX_expense_payments_DueDate" ON expenses.expense_payments USING btree ("DueDate") | scans=0
+expenses.expense_payments | IX_expense_payments_ExpenseId | CREATE INDEX "IX_expense_payments_ExpenseId" ON expenses.expense_payments USING btree ("ExpenseId") | scans=0
+expenses.expense_payments | IX_expense_payments_Status | CREATE INDEX "IX_expense_payments_Status" ON expenses.expense_payments USING btree ("Status") | scans=0
+expenses.expense_payments | PK_expense_payments | CREATE UNIQUE INDEX "PK_expense_payments" ON expenses.expense_payments USING btree ("Id") | scans=0
+expenses.expense_timeline_events | IX_expense_timeline_events_ExpenseId | CREATE INDEX "IX_expense_timeline_events_ExpenseId" ON expenses.expense_timeline_events USING btree ("ExpenseId") | scans=0
+expenses.expense_timeline_events | IX_expense_timeline_events_Timestamp | CREATE INDEX "IX_expense_timeline_events_Timestamp" ON expenses.expense_timeline_events USING btree ("Timestamp") | scans=0
+expenses.expense_timeline_events | PK_expense_timeline_events | CREATE UNIQUE INDEX "PK_expense_timeline_events" ON expenses.expense_timeline_events USING btree ("Id") | scans=0
+expenses.expenses | IX_expenses_CategoryKind | CREATE INDEX "IX_expenses_CategoryKind" ON expenses.expenses USING btree ("CategoryKind") | scans=0
+expenses.expenses | IX_expenses_CompanyId | CREATE INDEX "IX_expenses_CompanyId" ON expenses.expenses USING btree ("CompanyId") | scans=0
+expenses.expenses | IX_expenses_CompanyId_Code | CREATE UNIQUE INDEX "IX_expenses_CompanyId_Code" ON expenses.expenses USING btree ("CompanyId", "Code") | scans=0
+expenses.expenses | IX_expenses_CostCenterId | CREATE INDEX "IX_expenses_CostCenterId" ON expenses.expenses USING btree ("CostCenterId") | scans=0
+expenses.expenses | IX_expenses_NextDueDate | CREATE INDEX "IX_expenses_NextDueDate" ON expenses.expenses USING btree ("NextDueDate") | scans=0
+expenses.expenses | IX_expenses_Status | CREATE INDEX "IX_expenses_Status" ON expenses.expenses USING btree ("Status") | scans=0
+expenses.expenses | PK_expenses | CREATE UNIQUE INDEX "PK_expenses" ON expenses.expenses USING btree ("Id") | scans=0
+finance.cashbox_transfers | IX_cashbox_transfers_BranchId_TransferNumber | CREATE UNIQUE INDEX "IX_cashbox_transfers_BranchId_TransferNumber" ON finance.cashbox_transfers USING btree ("BranchId", "TransferNumber") | scans=0
+finance.cashbox_transfers | PK_cashbox_transfers | CREATE UNIQUE INDEX "PK_cashbox_transfers" ON finance.cashbox_transfers USING btree ("Id") | scans=0
+finance.cashboxes | IX_cashboxes_BranchId_Code | CREATE UNIQUE INDEX "IX_cashboxes_BranchId_Code" ON finance.cashboxes USING btree ("BranchId", "Code") | scans=0
+finance.cashboxes | PK_cashboxes | CREATE UNIQUE INDEX "PK_cashboxes" ON finance.cashboxes USING btree ("Id") | scans=0
+finance.cost_centers | IX_cost_centers_CompanyId_Code | CREATE UNIQUE INDEX "IX_cost_centers_CompanyId_Code" ON finance.cost_centers USING btree ("CompanyId", "Code") | scans=2
+finance.cost_centers | PK_cost_centers | CREATE UNIQUE INDEX "PK_cost_centers" ON finance.cost_centers USING btree ("Id") | scans=0
+finance.opening_balance_documents | IX_opening_balance_documents_CompanyId_Number | CREATE UNIQUE INDEX "IX_opening_balance_documents_CompanyId_Number" ON finance.opening_balance_documents USING btree ("CompanyId", "Number") | scans=0
+finance.opening_balance_documents | IX_opening_balance_documents_CompanyId_Type_Status | CREATE INDEX "IX_opening_balance_documents_CompanyId_Type_Status" ON finance.opening_balance_documents USING btree ("CompanyId", "Type", "Status") | scans=0
+finance.opening_balance_documents | IX_opening_balance_documents_OpeningDate | CREATE INDEX "IX_opening_balance_documents_OpeningDate" ON finance.opening_balance_documents USING btree ("OpeningDate") | scans=0
+finance.opening_balance_documents | opening_balance_documents_pkey | CREATE UNIQUE INDEX opening_balance_documents_pkey ON finance.opening_balance_documents USING btree ("Id") | scans=0
+finance.opening_balance_events | IX_opening_balance_events_DocumentId_OccurredAt | CREATE INDEX "IX_opening_balance_events_DocumentId_OccurredAt" ON finance.opening_balance_events USING btree ("DocumentId", "OccurredAt") | scans=0
+finance.opening_balance_events | opening_balance_events_pkey | CREATE UNIQUE INDEX opening_balance_events_pkey ON finance.opening_balance_events USING btree ("Id") | scans=0
+finance.opening_balance_lines | IX_opening_balance_lines_AccountId | CREATE INDEX "IX_opening_balance_lines_AccountId" ON finance.opening_balance_lines USING btree ("AccountId") | scans=0
+finance.opening_balance_lines | IX_opening_balance_lines_DocumentId_LineNumber | CREATE UNIQUE INDEX "IX_opening_balance_lines_DocumentId_LineNumber" ON finance.opening_balance_lines USING btree ("DocumentId", "LineNumber") | scans=0
+finance.opening_balance_lines | IX_opening_balance_lines_PartyId | CREATE INDEX "IX_opening_balance_lines_PartyId" ON finance.opening_balance_lines USING btree ("PartyId") | scans=0
+finance.opening_balance_lines | IX_opening_balance_lines_WarehouseId | CREATE INDEX "IX_opening_balance_lines_WarehouseId" ON finance.opening_balance_lines USING btree ("WarehouseId") | scans=0
+finance.opening_balance_lines | opening_balance_lines_pkey | CREATE UNIQUE INDEX opening_balance_lines_pkey ON finance.opening_balance_lines USING btree ("Id") | scans=0
+finance.payment_vouchers | IX_payment_vouchers_CompanyId_VoucherNumber | CREATE UNIQUE INDEX "IX_payment_vouchers_CompanyId_VoucherNumber" ON finance.payment_vouchers USING btree ("CompanyId", "VoucherNumber") | scans=0
+finance.payment_vouchers | PK_payment_vouchers | CREATE UNIQUE INDEX "PK_payment_vouchers" ON finance.payment_vouchers USING btree ("Id") | scans=0
+finance.receipt_vouchers | IX_receipt_vouchers_CompanyId_VoucherNumber | CREATE UNIQUE INDEX "IX_receipt_vouchers_CompanyId_VoucherNumber" ON finance.receipt_vouchers USING btree ("CompanyId", "VoucherNumber") | scans=0
+finance.receipt_vouchers | PK_receipt_vouchers | CREATE UNIQUE INDEX "PK_receipt_vouchers" ON finance.receipt_vouchers USING btree ("Id") | scans=0
+hr.departments | IX_departments_CompanyId_Code | CREATE UNIQUE INDEX "IX_departments_CompanyId_Code" ON hr.departments USING btree ("CompanyId", "Code") | scans=0
+hr.departments | PK_departments | CREATE UNIQUE INDEX "PK_departments" ON hr.departments USING btree ("Id") | scans=0
+identity.permissions | IX_permissions_Code | CREATE UNIQUE INDEX "IX_permissions_Code" ON identity.permissions USING btree ("Code") | scans=160
+identity.permissions | PK_permissions | CREATE UNIQUE INDEX "PK_permissions" ON identity.permissions USING btree ("Id") | scans=0
+identity.role_permissions | PK_role_permissions | CREATE UNIQUE INDEX "PK_role_permissions" ON identity.role_permissions USING btree ("RoleId", "PermissionId") | scans=81
+identity.roles | IX_roles_Name | CREATE UNIQUE INDEX "IX_roles_Name" ON identity.roles USING btree ("Name") | scans=0
+identity.roles | PK_roles | CREATE UNIQUE INDEX "PK_roles" ON identity.roles USING btree ("Id") | scans=123
+identity.user_roles | PK_user_roles | CREATE UNIQUE INDEX "PK_user_roles" ON identity.user_roles USING btree ("UserId", "RoleId") | scans=5
+identity.users | IX_users_Username | CREATE UNIQUE INDEX "IX_users_Username" ON identity.users USING btree ("Username") | scans=0
+identity.users | PK_users | CREATE UNIQUE INDEX "PK_users" ON identity.users USING btree ("Id") | scans=2
+inventory.fabric_batches | IX_fabric_batches_BatchNumber | CREATE UNIQUE INDEX "IX_fabric_batches_BatchNumber" ON inventory.fabric_batches USING btree ("BatchNumber") | scans=0
+inventory.fabric_batches | PK_fabric_batches | CREATE UNIQUE INDEX "PK_fabric_batches" ON inventory.fabric_batches USING btree ("Id") | scans=1
+inventory.inventory_alerts | IX_inventory_alerts_BranchId_IsAcknowledged | CREATE INDEX "IX_inventory_alerts_BranchId_IsAcknowledged" ON inventory.inventory_alerts USING btree ("BranchId", "IsAcknowledged") | scans=1
+inventory.inventory_alerts | PK_inventory_alerts | CREATE UNIQUE INDEX "PK_inventory_alerts" ON inventory.inventory_alerts USING btree ("Id") | scans=0
+inventory.inventory_audit_logs | IX_inventory_audit_logs_EntityId_EntityType | CREATE INDEX "IX_inventory_audit_logs_EntityId_EntityType" ON inventory.inventory_audit_logs USING btree ("EntityId", "EntityType") | scans=0
+inventory.inventory_audit_logs | PK_inventory_audit_logs | CREATE UNIQUE INDEX "PK_inventory_audit_logs" ON inventory.inventory_audit_logs USING btree ("Id") | scans=0
+inventory.inventory_reservations | PK_inventory_reservations | CREATE UNIQUE INDEX "PK_inventory_reservations" ON inventory.inventory_reservations USING btree ("Id") | scans=0
+inventory.inventory_rules | PK_inventory_rules | CREATE UNIQUE INDEX "PK_inventory_rules" ON inventory.inventory_rules USING btree ("Id") | scans=0
+inventory.inventory_timeline_events | IX_inventory_timeline_events_EntityId_EntityType | CREATE INDEX "IX_inventory_timeline_events_EntityId_EntityType" ON inventory.inventory_timeline_events USING btree ("EntityId", "EntityType") | scans=0
+inventory.inventory_timeline_events | PK_inventory_timeline_events | CREATE UNIQUE INDEX "PK_inventory_timeline_events" ON inventory.inventory_timeline_events USING btree ("Id") | scans=0
+inventory.inventory_valuation_snapshots | PK_inventory_valuation_snapshots | CREATE UNIQUE INDEX "PK_inventory_valuation_snapshots" ON inventory.inventory_valuation_snapshots USING btree ("Id") | scans=0
+inventory.opening_stock_documents | IX_opening_stock_documents_DocumentNumber | CREATE UNIQUE INDEX "IX_opening_stock_documents_DocumentNumber" ON inventory.opening_stock_documents USING btree ("DocumentNumber") | scans=0
+inventory.opening_stock_documents | PK_opening_stock_documents | CREATE UNIQUE INDEX "PK_opening_stock_documents" ON inventory.opening_stock_documents USING btree ("Id") | scans=0
+inventory.opening_stock_lines | PK_opening_stock_lines | CREATE UNIQUE INDEX "PK_opening_stock_lines" ON inventory.opening_stock_lines USING btree ("Id") | scans=0
+inventory.stock_movement_lines | IX_stock_movement_lines_MovementId | CREATE INDEX "IX_stock_movement_lines_MovementId" ON inventory.stock_movement_lines USING btree ("MovementId") | scans=0
+inventory.stock_movement_lines | PK_stock_movement_lines | CREATE UNIQUE INDEX "PK_stock_movement_lines" ON inventory.stock_movement_lines USING btree ("Id") | scans=0
+inventory.stock_transfer_lines | PK_stock_transfer_lines | CREATE UNIQUE INDEX "PK_stock_transfer_lines" ON inventory.stock_transfer_lines USING btree ("Id") | scans=0
+inventory.stock_transfers | IX_stock_transfers_Number | CREATE UNIQUE INDEX "IX_stock_transfers_Number" ON inventory.stock_transfers USING btree ("Number") | scans=0
+inventory.stock_transfers | PK_stock_transfers | CREATE UNIQUE INDEX "PK_stock_transfers" ON inventory.stock_transfers USING btree ("Id") | scans=0
+inventory.stocktake_lines | PK_stocktake_lines | CREATE UNIQUE INDEX "PK_stocktake_lines" ON inventory.stocktake_lines USING btree ("Id") | scans=0
+inventory.stocktake_sessions | IX_stocktake_sessions_SessionNumber | CREATE UNIQUE INDEX "IX_stocktake_sessions_SessionNumber" ON inventory.stocktake_sessions USING btree ("SessionNumber") | scans=0
+inventory.stocktake_sessions | PK_stocktake_sessions | CREATE UNIQUE INDEX "PK_stocktake_sessions" ON inventory.stocktake_sessions USING btree ("Id") | scans=0
+inventory.warehouse_locations | IX_warehouse_locations_WarehouseId_Code | CREATE UNIQUE INDEX "IX_warehouse_locations_WarehouseId_Code" ON inventory.warehouse_locations USING btree ("WarehouseId", "Code") | scans=1
+inventory.warehouse_locations | PK_warehouse_locations | CREATE UNIQUE INDEX "PK_warehouse_locations" ON inventory.warehouse_locations USING btree ("Id") | scans=0
+inventory.warehouse_stocks | IX_warehouse_stocks_WarehouseId_FabricItemId_FabricColorId_Con~ | CREATE UNIQUE INDEX "IX_warehouse_stocks_WarehouseId_FabricItemId_FabricColorId_Con~" ON inventory.warehouse_stocks USING btree ("WarehouseId", "FabricItemId", "FabricColorId", "ContainerId") | scans=12
+inventory.warehouse_stocks | PK_warehouse_stocks | CREATE UNIQUE INDEX "PK_warehouse_stocks" ON inventory.warehouse_stocks USING btree ("Id") | scans=0
+inventory.warehouses | IX_warehouses_BranchId_Code | CREATE UNIQUE INDEX "IX_warehouses_BranchId_Code" ON inventory.warehouses USING btree ("BranchId", "Code") | scans=8
+inventory.warehouses | PK_warehouses | CREATE UNIQUE INDEX "PK_warehouses" ON inventory.warehouses USING btree ("Id") | scans=5
+parties.china_suppliers | IX_china_suppliers_SupplierId | CREATE UNIQUE INDEX "IX_china_suppliers_SupplierId" ON parties.china_suppliers USING btree ("SupplierId") | scans=0
+parties.china_suppliers | PK_china_suppliers | CREATE UNIQUE INDEX "PK_china_suppliers" ON parties.china_suppliers USING btree ("Id") | scans=0
+parties.customers | IX_customers_CompanyId_Code | CREATE UNIQUE INDEX "IX_customers_CompanyId_Code" ON parties.customers USING btree ("CompanyId", "Code") | scans=6
+parties.customers | PK_customers | CREATE UNIQUE INDEX "PK_customers" ON parties.customers USING btree ("Id") | scans=0
+parties.suppliers | IX_suppliers_CompanyId_Code | CREATE UNIQUE INDEX "IX_suppliers_CompanyId_Code" ON parties.suppliers USING btree ("CompanyId", "Code") | scans=10
+parties.suppliers | PK_suppliers | CREATE UNIQUE INDEX "PK_suppliers" ON parties.suppliers USING btree ("Id") | scans=7
+public.Accounts | PK_Accounts | CREATE UNIQUE INDEX "PK_Accounts" ON public."Accounts" USING btree ("Id") | scans=21
+public.ContainerDistributions | PK_ContainerDistributions | CREATE UNIQUE INDEX "PK_ContainerDistributions" ON public."ContainerDistributions" USING btree ("Id") | scans=0
+public.DocumentTemplates | PK_DocumentTemplates | CREATE UNIQUE INDEX "PK_DocumentTemplates" ON public."DocumentTemplates" USING btree ("Id") | scans=0
+public.Employees | IX_Employees_CompanyId_EmployeeCode | CREATE UNIQUE INDEX "IX_Employees_CompanyId_EmployeeCode" ON public."Employees" USING btree ("CompanyId", "EmployeeCode") | scans=0
+public.Employees | PK_Employees | CREATE UNIQUE INDEX "PK_Employees" ON public."Employees" USING btree ("Id") | scans=0
+public.FabricRolls | IX_FabricRolls_Barcode | CREATE INDEX "IX_FabricRolls_Barcode" ON public."FabricRolls" USING btree ("Barcode") | scans=0
+public.FabricRolls | IX_FabricRolls_FabricBatchId | CREATE INDEX "IX_FabricRolls_FabricBatchId" ON public."FabricRolls" USING btree ("FabricBatchId") | scans=0
+public.FabricRolls | PK_FabricRolls | CREATE UNIQUE INDEX "PK_FabricRolls" ON public."FabricRolls" USING btree ("Id") | scans=0
+public.ImportBatches | PK_ImportBatches | CREATE UNIQUE INDEX "PK_ImportBatches" ON public."ImportBatches" USING btree ("Id") | scans=0
+public.LandingCostExpenses | PK_LandingCostExpenses | CREATE UNIQUE INDEX "PK_LandingCostExpenses" ON public."LandingCostExpenses" USING btree ("Id") | scans=0
+public.StockMovements | PK_StockMovements | CREATE UNIQUE INDEX "PK_StockMovements" ON public."StockMovements" USING btree ("Id") | scans=0
+public.WarehouseLocations | PK_WarehouseLocations | CREATE UNIQUE INDEX "PK_WarehouseLocations" ON public."WarehouseLocations" USING btree ("Id") | scans=0
+purchasing.purchase_invoice_items | PK_PurchaseInvoiceItems | CREATE UNIQUE INDEX "PK_PurchaseInvoiceItems" ON purchasing.purchase_invoice_items USING btree ("Id") | scans=0
+purchasing.purchase_invoice_payments | IX_purchase_invoice_payments_PurchaseInvoiceId | CREATE INDEX "IX_purchase_invoice_payments_PurchaseInvoiceId" ON purchasing.purchase_invoice_payments USING btree ("PurchaseInvoiceId") | scans=0
+purchasing.purchase_invoice_payments | PK_purchase_invoice_payments | CREATE UNIQUE INDEX "PK_purchase_invoice_payments" ON purchasing.purchase_invoice_payments USING btree ("Id") | scans=0
+purchasing.purchase_invoices | IX_purchase_invoices_CompanyId_InvoiceNumber | CREATE UNIQUE INDEX "IX_purchase_invoices_CompanyId_InvoiceNumber" ON purchasing.purchase_invoices USING btree ("CompanyId", "InvoiceNumber") | scans=0
+purchasing.purchase_invoices | PK_purchase_invoices | CREATE UNIQUE INDEX "PK_purchase_invoices" ON purchasing.purchase_invoices USING btree ("Id") | scans=0
+purchasing.purchase_order_lines | PK_purchase_order_lines | CREATE UNIQUE INDEX "PK_purchase_order_lines" ON purchasing.purchase_order_lines USING btree ("Id") | scans=0
+purchasing.purchase_orders | IX_purchase_orders_CompanyId_OrderNumber | CREATE UNIQUE INDEX "IX_purchase_orders_CompanyId_OrderNumber" ON purchasing.purchase_orders USING btree ("CompanyId", "OrderNumber") | scans=0
+purchasing.purchase_orders | PK_purchase_orders | CREATE UNIQUE INDEX "PK_purchase_orders" ON purchasing.purchase_orders USING btree ("Id") | scans=0
+purchasing.purchase_return_lines | PK_purchase_return_lines | CREATE UNIQUE INDEX "PK_purchase_return_lines" ON purchasing.purchase_return_lines USING btree ("Id") | scans=0
+purchasing.purchase_returns | IX_purchase_returns_CompanyId_ReturnNumber | CREATE UNIQUE INDEX "IX_purchase_returns_CompanyId_ReturnNumber" ON purchasing.purchase_returns USING btree ("CompanyId", "ReturnNumber") | scans=0
+purchasing.purchase_returns | PK_purchase_returns | CREATE UNIQUE INDEX "PK_purchase_returns" ON purchasing.purchase_returns USING btree ("Id") | scans=0
+sales.receipt_invoice_payments | IX_receipt_invoice_payments_ReceiptVoucherId | CREATE INDEX "IX_receipt_invoice_payments_ReceiptVoucherId" ON sales.receipt_invoice_payments USING btree ("ReceiptVoucherId") | scans=0
+sales.receipt_invoice_payments | IX_receipt_invoice_payments_SalesInvoiceId | CREATE INDEX "IX_receipt_invoice_payments_SalesInvoiceId" ON sales.receipt_invoice_payments USING btree ("SalesInvoiceId") | scans=0
+sales.receipt_invoice_payments | PK_receipt_invoice_payments | CREATE UNIQUE INDEX "PK_receipt_invoice_payments" ON sales.receipt_invoice_payments USING btree ("Id") | scans=0
+sales.sales_invoice_items | IX_sales_invoice_items_SalesInvoiceId_LineNumber | CREATE UNIQUE INDEX "IX_sales_invoice_items_SalesInvoiceId_LineNumber" ON sales.sales_invoice_items USING btree ("SalesInvoiceId", "LineNumber") | scans=0
+sales.sales_invoice_items | PK_sales_invoice_items | CREATE UNIQUE INDEX "PK_sales_invoice_items" ON sales.sales_invoice_items USING btree ("Id") | scans=0
+sales.sales_invoice_roll_details | IX_sales_invoice_roll_details_SalesInvoiceItemId_RollSequence | CREATE UNIQUE INDEX "IX_sales_invoice_roll_details_SalesInvoiceItemId_RollSequence" ON sales.sales_invoice_roll_details USING btree ("SalesInvoiceItemId", "RollSequence") | scans=0
+sales.sales_invoice_roll_details | PK_sales_invoice_roll_details | CREATE UNIQUE INDEX "PK_sales_invoice_roll_details" ON sales.sales_invoice_roll_details USING btree ("Id") | scans=0
+sales.sales_invoices | IX_sales_invoices_CompanyId_InvoiceNumber | CREATE UNIQUE INDEX "IX_sales_invoices_CompanyId_InvoiceNumber" ON sales.sales_invoices USING btree ("CompanyId", "InvoiceNumber") | scans=2
+sales.sales_invoices | PK_sales_invoices | CREATE UNIQUE INDEX "PK_sales_invoices" ON sales.sales_invoices USING btree ("Id") | scans=0
+sales.sales_return_lines | IX_sales_return_lines_SalesReturnId_LineNumber | CREATE UNIQUE INDEX "IX_sales_return_lines_SalesReturnId_LineNumber" ON sales.sales_return_lines USING btree ("SalesReturnId", "LineNumber") | scans=0
+sales.sales_return_lines | PK_sales_return_lines | CREATE UNIQUE INDEX "PK_sales_return_lines" ON sales.sales_return_lines USING btree ("Id") | scans=0
+sales.sales_returns | IX_sales_returns_CompanyId_ReturnNumber | CREATE UNIQUE INDEX "IX_sales_returns_CompanyId_ReturnNumber" ON sales.sales_returns USING btree ("CompanyId", "ReturnNumber") | scans=0
+sales.sales_returns | IX_sales_returns_CustomerId | CREATE INDEX "IX_sales_returns_CustomerId" ON sales.sales_returns USING btree ("CustomerId") | scans=0
+sales.sales_returns | IX_sales_returns_OriginalInvoiceId | CREATE INDEX "IX_sales_returns_OriginalInvoiceId" ON sales.sales_returns USING btree ("OriginalInvoiceId") | scans=0
+sales.sales_returns | PK_sales_returns | CREATE UNIQUE INDEX "PK_sales_returns" ON sales.sales_returns USING btree ("Id") | scans=0
+sales.warehouse_detailing_sessions | IX_warehouse_detailing_sessions_SalesInvoiceId | CREATE UNIQUE INDEX "IX_warehouse_detailing_sessions_SalesInvoiceId" ON sales.warehouse_detailing_sessions USING btree ("SalesInvoiceId") | scans=0
+sales.warehouse_detailing_sessions | PK_warehouse_detailing_sessions | CREATE UNIQUE INDEX "PK_warehouse_detailing_sessions" ON sales.warehouse_detailing_sessions USING btree ("Id") | scans=0
+settings.__ef_migrations_history | PK___ef_migrations_history | CREATE UNIQUE INDEX "PK___ef_migrations_history" ON settings.__ef_migrations_history USING btree ("MigrationId") | scans=0
+settings.system_settings | IX_system_settings_CompanyId_BranchId_Key | CREATE UNIQUE INDEX "IX_system_settings_CompanyId_BranchId_Key" ON settings.system_settings USING btree ("CompanyId", "BranchId", "Key") | scans=1
+settings.system_settings | PK_system_settings | CREATE UNIQUE INDEX "PK_system_settings" ON settings.system_settings USING btree ("Id") | scans=0
+
+## FOREIGN KEYS  [table | constraint | definition]
+capital.capital_transactions | FK_capital_transactions_partners_PartnerId | FOREIGN KEY ("PartnerId") REFERENCES capital.partners("Id") ON DELETE CASCADE
+capital.partner_bank_accounts | FK_partner_bank_accounts_partners_PartnerId | FOREIGN KEY ("PartnerId") REFERENCES capital.partners("Id") ON DELETE CASCADE
+capital.partner_participations | FK_partner_participations_partners_PartnerId | FOREIGN KEY ("PartnerId") REFERENCES capital.partners("Id") ON DELETE CASCADE
+capital.profit_distribution_lines | FK_profit_distribution_lines_profit_distributions_Distribution~ | FOREIGN KEY ("DistributionId") REFERENCES capital.profit_distributions("Id") ON DELETE CASCADE
+expenses.expense_attachments | FK_expense_attachments_expenses_ExpenseId | FOREIGN KEY ("ExpenseId") REFERENCES expenses.expenses("Id") ON DELETE CASCADE
+expenses.expense_installments | FK_expense_installments_expenses_ExpenseId | FOREIGN KEY ("ExpenseId") REFERENCES expenses.expenses("Id") ON DELETE CASCADE
+expenses.expense_payments | FK_expense_payments_expenses_ExpenseId | FOREIGN KEY ("ExpenseId") REFERENCES expenses.expenses("Id") ON DELETE CASCADE
+expenses.expenses | FK_expenses_cost_centers_CostCenterId | FOREIGN KEY ("CostCenterId") REFERENCES finance.cost_centers("Id") ON DELETE SET NULL
+finance.cost_centers | FK_cost_centers_cost_centers_ParentCostCenterId | FOREIGN KEY ("ParentCostCenterId") REFERENCES finance.cost_centers("Id") ON DELETE RESTRICT
+finance.opening_balance_events | opening_balance_events_DocumentId_fkey | FOREIGN KEY ("DocumentId") REFERENCES finance.opening_balance_documents("Id") ON DELETE CASCADE
+finance.opening_balance_lines | opening_balance_lines_DocumentId_fkey | FOREIGN KEY ("DocumentId") REFERENCES finance.opening_balance_documents("Id") ON DELETE CASCADE
+
+## HIGH SEQUENTIAL-SCAN TABLES (seq_scan-heavy, rows>50)
+public.FabricRolls                        | seq=      17 | idx=       0 | rows=     509
+audit.audit_logs                         | seq=       3 | idx=       2 | rows=    5391
+

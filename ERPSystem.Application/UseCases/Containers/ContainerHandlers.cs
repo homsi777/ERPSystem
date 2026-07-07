@@ -76,7 +76,8 @@ public sealed class CreateChinaContainerHandler(
                     new LengthInMeters(line.LengthMeters),
                     line.WeightKg.HasValue ? new WeightInKg(line.WeightKg.Value) : null,
                     line.LotCode,
-                    line.BuyerCustomerId));
+                    line.BuyerCustomerId,
+                    line.SupplierRollNumber));
             }
 
             var previousStatus = aggregate.Status;

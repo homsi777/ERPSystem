@@ -111,7 +111,9 @@ internal sealed class InventoryEngine(
                     FabricItemId = item.FabricItemId,
                     FabricColorId = item.FabricColorId,
                     WarehouseId = warehouseId,
-                    RollNumber = item.LineNumber * 1000 + i + 1,
+                    RollNumber = item.SupplierRollNumber.HasValue && rollsToCreate == 1
+                        ? item.SupplierRollNumber.Value
+                        : item.LineNumber * 1000 + i + 1,
                     Barcode = $"ROLL-{rollId:N}"[..20],
                     LengthMeters = length,
                     RemainingLengthMeters = length,

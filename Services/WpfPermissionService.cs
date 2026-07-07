@@ -5,9 +5,17 @@ namespace ERPSystem.Services;
 
 public sealed class WpfPermissionService(PermissionService permissionService) : IPermissionService
 {
+    // TEMP (testing): full-access mode — every permission check passes.
+    // To restore real role-based permissions, set BypassAllPermissions = false.
+    private const bool BypassAllPermissions = true;
+
     public Task<bool> CanAsync(string permissionCode, CancellationToken cancellationToken = default) =>
-        permissionService.CanAsync(permissionCode, cancellationToken);
+        BypassAllPermissions
+            ? Task.FromResult(true)
+            : permissionService.CanAsync(permissionCode, cancellationToken);
 
     public Task EnsureCanAsync(string permissionCode, CancellationToken cancellationToken = default) =>
-        permissionService.EnsureCanAsync(permissionCode, cancellationToken);
+        BypassAllPermissions
+            ? Task.CompletedTask
+            : permissionService.EnsureCanAsync(permissionCode, cancellationToken);
 }

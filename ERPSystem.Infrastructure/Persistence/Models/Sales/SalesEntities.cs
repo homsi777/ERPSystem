@@ -77,8 +77,13 @@ public class SalesInvoiceItemEntity : PersistenceEntity
     public Guid FabricColorId { get; set; }
     public int RollCount { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal OriginalUnitPrice { get; set; }
     public string Unit { get; set; } = "meter";
     public decimal LineTotal { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public string? DiscountReason { get; set; }
+    public Guid? PriceModifiedByUserId { get; set; }
+    public DateTime? PriceModifiedAt { get; set; }
     public string? Notes { get; set; }
 }
 

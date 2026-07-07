@@ -87,6 +87,16 @@ public sealed class FabricRollListDto
     public string Status { get; init; } = "";
     public string? BatchNumber { get; init; }
     public string? LocationCode { get; init; }
+    public string? LotCode { get; init; }
+}
+
+public sealed class PaginatedFabricRollDto
+{
+    public IReadOnlyList<FabricRollListDto> Items { get; init; } = [];
+    public int TotalCount { get; init; }
+    public int PageNumber { get; init; }
+    public int PageSize { get; init; }
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 0;
 }
 
 public sealed class StockMovementListDto

@@ -219,6 +219,15 @@ public sealed class SalesUiService
         return await handler.HandleAsync(new ApproveSalesInvoiceCommand { InvoiceId = invoiceId }, cancellationToken);
     }
 
+    public async Task<ApplicationResult<IReadOnlyList<SalesInvoiceBelowCostLineDto>>> CheckBelowCostAsync(
+        Guid invoiceId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<CheckSalesInvoiceBelowCostHandler>();
+        return await handler.HandleAsync(new CheckSalesInvoiceBelowCostQuery { InvoiceId = invoiceId }, cancellationToken);
+    }
+
     public async Task<ApplicationResult> CancelAsync(
         Guid invoiceId,
         string reason,

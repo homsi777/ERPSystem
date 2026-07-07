@@ -8,3 +8,7 @@ export function getSupplierLookups() {
 export function getWarehouseLookups() {
   return apiRequest<LookupItemDto[]>('/api/v1/lookups/warehouses');
 }
+
+export function getCashboxLookups() {
+  return apiRequest<LookupItemDto[]>('/api/v1/lookups/cashboxes');
+}

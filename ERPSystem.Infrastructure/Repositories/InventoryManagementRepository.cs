@@ -283,6 +283,50 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsByStockAsync(
+        Guid warehouseId, Guid containerId, Guid fabricItemId, Guid fabricColorId,
+        CancellationToken cancellationToken = default)
+    {
+        var rolls = await context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == warehouseId &&
+                        r.ContainerId == containerId &&
+                        r.FabricItemId == fabricItemId &&
+                        r.FabricColorId == fabricColorId &&
+                        r.RemainingLengthMeters > 0)
+            .OrderBy(r => r.RollNumber).ToListAsync(cancellationToken);
+        if (rolls.Count == 0) return [];
+
+        var fabric = await context.FabricItems.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == fabricItemId, cancellationToken);
+        var color = await context.FabricColors.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == fabricColorId, cancellationToken);
+        var batchIds = rolls.Where(r => r.FabricBatchId.HasValue).Select(r => r.FabricBatchId!.Value).Distinct().ToList();
+        var locIds = rolls.Where(r => r.StorageLocationId.HasValue).Select(r => r.StorageLocationId!.Value).Distinct().ToList();
+
+        var batches = batchIds.Count > 0
+            ? await context.FabricBatches.AsNoTracking()
+                .Where(b => batchIds.Contains(b.Id)).ToDictionaryAsync(b => b.Id, cancellationToken)
+            : [];
+        var locations = locIds.Count > 0
+            ? await context.WarehouseLocations.AsNoTracking()
+                .Where(l => locIds.Contains(l.Id)).ToDictionaryAsync(l => l.Id, cancellationToken)
+            : [];
+
+        return rolls.Select(r => new FabricRollListDto
+        {
+            Id = r.Id, RollNumber = r.RollNumber, Barcode = r.Barcode,
+            FabricName = fabric?.NameAr ?? "—",
+            ColorName = color?.NameAr ?? "—",
+            LengthMeters = r.LengthMeters, RemainingLengthMeters = r.RemainingLengthMeters,
+            CostPerMeter = r.CostPerMeter,
+            CurrentValue = r.RemainingLengthMeters * r.CostPerMeter,
+            Status = ((FabricRollStatus)r.Status).ToString(),
+            BatchNumber = r.FabricBatchId.HasValue && batches.TryGetValue(r.FabricBatchId.Value, out var b) ? b.BatchNumber : null,
+            LocationCode = r.StorageLocationId.HasValue && locations.TryGetValue(r.StorageLocationId.Value, out var l) ? l.Code : null,
+            LotCode = r.LotCode
+        }).ToList();
+    }
+
     public async Task<IReadOnlyList<StockMovementListDto>> GetMovementsAsync(
         Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
     {

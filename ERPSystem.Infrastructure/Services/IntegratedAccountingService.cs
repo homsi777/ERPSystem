@@ -70,12 +70,18 @@ internal sealed class IntegratedAccountingService(
         decimal cogsAmount,
         CancellationToken cancellationToken = default)
     {
-        var revenue = invoice.GrandTotal.Amount;
+        var netReceivable = invoice.GrandTotal.Amount;
+        var lineDiscount = invoice.TotalLineDiscount.Amount;
+        var grossRevenue = netReceivable + lineDiscount;
+
         var lines = new List<(Guid, decimal, decimal, string, Guid?)>
         {
-            (AccountingAccountIds.AccountsReceivable, revenue, 0m, "ذمم عميل — فاتورة بيع", invoice.CustomerId),
-            (AccountingAccountIds.SalesRevenue, 0m, revenue, "إيراد مبيعات أقمشة", null)
+            (AccountingAccountIds.AccountsReceivable, netReceivable, 0m, "ذمم عميل — فاتورة بيع", invoice.CustomerId),
+            (AccountingAccountIds.SalesRevenue, 0m, grossRevenue, "إيراد مبيعات أقمشة", null)
         };
+
+        if (lineDiscount > 0)
+            lines.Add((AccountingAccountIds.SalesDiscounts, lineDiscount, 0m, "خصم مبيعات ممنوح", invoice.CustomerId));
 
         if (cogsAmount > 0)
         {

@@ -44,6 +44,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<UtcDateTimeSaveChangesInterceptor>();
         services.AddSingleton<AuditSaveChangesInterceptor>();
+        services.AddMemoryCache();
+        services.AddSingleton<ICacheService, InMemoryCacheService>();
 
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();

@@ -9,7 +9,17 @@
       "PowerShell(subst W: /D)",
       "PowerShell(subst)",
       "Bash(dotnet build *)",
-      "Bash(rm -rf /tmp/erp-build-check /tmp/erp-build-check-final /tmp/invoice_inspect 2>/dev/null; echo done)"
+      "Bash(rm -rf /tmp/erp-build-check /tmp/erp-build-check-final /tmp/invoice_inspect 2>/dev/null; echo done)",
+      "Bash(powershell -Command \"Get-Process -Name dotnet -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, StartTime, Path\")",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='dotnet.exe'\")",
+      "PowerShell(Stop-Process -Id 25024 -Force)",
+      "PowerShell(Get-Process -Id 25024 -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5218/api/v1/customers/00000000-0000-0000-0000-000000000000/ledger)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5218/health)",
+      "Bash(curl -s -X POST http://localhost:5218/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"Admin@123\"}')",
+      "Bash(curl -s http://localhost:5218/api/v1/detailing/queue?warehouseId=55555555-5555-5555-5555-555555555555 -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -s http://localhost:5218/api/v1/detailing/queue?warehouseId=7d9886ed-7e21-44da-af4a-468df9402e8e -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(dotnet test *)"
     ],
     "additionalDirectories": [
       "\\tmp"

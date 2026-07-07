@@ -186,6 +186,14 @@ public sealed class InventoryDashboardControl : UserControl
         }
 
         _contentPanel.Children.Add(ErpUiFactory.SectionTitle("أعلى الأقمشة"));
+        _contentPanel.Children.Add(new TextBlock
+        {
+            Text = "انقر نقراً مزدوجاً على أي صنف لعرض تفاصيل أتوابه (الأطوال والأعداد).",
+            Foreground = Br("TextSecondaryBrush"),
+            FontSize = 11,
+            Margin = new Thickness(0, 0, 0, 6),
+            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial")
+        });
         _contentPanel.Children.Add(BuildStockGrid(stock.OrderByDescending(s => s.TotalMeters).Take(10).ToList()));
 
         if (_dashboard.RecentAlerts.Count > 0)
@@ -213,8 +221,15 @@ public sealed class InventoryDashboardControl : UserControl
         ErpUiFactory.AddGridColumn(g, "المستودع", nameof(FabricStockBalanceDto.WarehouseName), 120, null);
         ErpUiFactory.AddGridColumn(g, "الحاوية", nameof(FabricStockBalanceDto.ContainerNumber), 100, null);
         ErpUiFactory.AddGridColumn(g, "القماش", nameof(FabricStockBalanceDto.FabricName), "*", null);
+        ErpUiFactory.AddGridColumn(g, "اللون", nameof(FabricStockBalanceDto.ColorName), 90, null);
+        ErpUiFactory.AddGridColumn(g, "Rolls", nameof(FabricStockBalanceDto.RollCount), 60, null);
         ErpUiFactory.AddGridColumn(g, "الأمتار", nameof(FabricStockBalanceDto.TotalMeters), 90, "N2");
         ErpUiFactory.AddGridColumn(g, "القيمة", nameof(FabricStockBalanceDto.InventoryValue), 100, "N2");
+        g.MouseDoubleClick += (_, _) =>
+        {
+            if (g.SelectedItem is FabricStockBalanceDto row)
+                _ = FabricRollDetailsPopup.ShowForStockRowAsync(row);
+        };
         return g;
     }
 

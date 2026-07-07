@@ -20,6 +20,9 @@ public static class InventoryEndpoints
         group.MapGet("/warehouses", GetWarehouseListAsync)
             .WithName("GetInventoryWarehouseList");
 
+        group.MapGet("/warehouses/{warehouseId:guid}/rolls", GetWarehouseRollsAsync)
+            .WithName("GetInventoryWarehouseRolls");
+
         group.MapGet("/dashboard", GetDashboardAsync)
             .WithName("GetInventoryDashboard");
 
@@ -65,6 +68,27 @@ public static class InventoryEndpoints
         }
 
         var result = await handler.HandleAsync(new GetInventoryWarehouseListQuery(branchId), cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetWarehouseRollsAsync(
+        Guid warehouseId,
+        [FromQuery] int? pageNumber,
+        [FromQuery] int? pageSize,
+        [FromQuery] int? status,
+        [FromQuery] string? search,
+        GetFabricRollsPageHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new GetFabricRollsPageQuery(
+                warehouseId,
+                Math.Max(1, pageNumber ?? 1),
+                Math.Clamp(pageSize ?? 50, 10, 500),
+                status,
+                search),
+            cancellationToken);
+
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 

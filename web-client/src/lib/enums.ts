@@ -98,6 +98,24 @@ export function getWarehouseDetailingStatusTone(status: WarehouseDetailingStatus
   return 'amber';
 }
 
+export const customerAccountMovementTypeLabels = {
+  0: 'فاتورة بيع',
+  1: 'مرتجع بيع',
+  2: 'سند قبض'
+} as const;
+
+type CustomerAccountMovementTypeValue = keyof typeof customerAccountMovementTypeLabels;
+
+export function getCustomerAccountMovementTypeTone(type: CustomerAccountMovementTypeValue) {
+  if (type === 0) {
+    return 'blue';
+  }
+  if (type === 1) {
+    return 'amber';
+  }
+  return 'green';
+}
+
 export const documentTypeLabels = {
   0: 'فاتورة بيع',
   1: 'مرتجع بيع',

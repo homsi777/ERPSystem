@@ -12,6 +12,8 @@ public sealed record GetInventoryAlertsQuery(Guid BranchId, bool UnacknowledgedO
 public sealed record GetStockTransfersQuery(Guid BranchId);
 public sealed record GetStockTransferDetailQuery(Guid TransferId);
 public sealed record GetWarehouseTransferRollsQuery(Guid WarehouseId);
+public sealed record GetFabricRollsPageQuery(Guid WarehouseId, int PageNumber = 1, int PageSize = 50, int? Status = null, string? Search = null);
+public sealed record GetFabricRollsByStockQuery(Guid WarehouseId, Guid ContainerId, Guid FabricItemId, Guid FabricColorId);
 public sealed record GetStocktakeSessionsQuery(Guid BranchId);
 public sealed record GetStocktakeDetailQuery(Guid SessionId);
 public sealed record GetOpeningStockDocumentsQuery(Guid BranchId);

@@ -108,5 +108,6 @@ app.MapLookupEndpoints();
 app.MapContainerEndpoints();
 app.MapDetailingEndpoints();
 app.MapDashboardEndpoints();
+app.MapReceiptEndpoints();
 
 app.Run();

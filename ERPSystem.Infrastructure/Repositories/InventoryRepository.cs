@@ -137,4 +137,16 @@ internal sealed class InventoryRepository(ErpDbContext context) : IInventoryRepo
             .Where(s => warehouseIds.Contains(s.WarehouseId) && s.AvailableMeters > 0 && s.AvailableMeters <= thresholdMeters)
             .CountAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetRollCostsAsync(
+        IReadOnlyCollection<Guid> rollIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (rollIds.Count == 0)
+            return new Dictionary<Guid, decimal>();
+
+        return await context.FabricRolls.AsNoTracking()
+            .Where(r => rollIds.Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id, r => r.CostPerMeter, cancellationToken);
+    }
 }

@@ -18,6 +18,7 @@ export function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/inventory/movements" element={<InventoryMovementsPage />} />
         <Route path="/customers" element={<CustomersPage />} />
+        <Route path="/customers/new" element={<CustomersPage />} />
         <Route path="/customers/:customerId" element={<CustomersPage />} />
         <Route path="/china" element={<ChinaPage />} />
         <Route path="/china/new" element={<ChinaPage />} />

@@ -24,6 +24,8 @@ public interface IInventoryManagementRepository
 
     Task<IReadOnlyList<FabricStockBalanceDto>> GetFabricStockBalancesAsync(Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsAsync(Guid warehouseId, CancellationToken cancellationToken = default);
+    Task<PaginatedFabricRollDto> GetFabricRollsPageAsync(Guid warehouseId, int pageNumber = 1, int pageSize = 50, int? status = null, string? search = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsByStockAsync(Guid warehouseId, Guid containerId, Guid fabricItemId, Guid fabricColorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<StockMovementListDto>> GetMovementsAsync(Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<InventoryAlertDto>> GetAlertsAsync(Guid branchId, bool unacknowledgedOnly = true, CancellationToken cancellationToken = default);
     Task<InventoryDashboardDto> GetDashboardAsync(Guid branchId, CancellationToken cancellationToken = default);

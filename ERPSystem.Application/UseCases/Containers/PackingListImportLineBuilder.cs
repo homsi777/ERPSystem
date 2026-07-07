@@ -25,7 +25,8 @@ public static class PackingListImportLineBuilder
                         FabricColorId = group.FabricColorId!.Value,
                         RollCount = 1,
                         LengthMeters = roll.QuantityMeters,
-                        LotCode = string.IsNullOrWhiteSpace(roll.LotCode) ? null : roll.LotCode
+                        LotCode = string.IsNullOrWhiteSpace(roll.LotCode) ? null : roll.LotCode,
+                        SupplierRollNumber = roll.RollNumber > 0 ? roll.RollNumber : null
                     });
                 }
                 continue;

@@ -28,6 +28,11 @@ public sealed class GetSalesWarehouseStockQuery
     public Guid WarehouseId { get; init; }
 }
 
+public sealed class CheckSalesInvoiceBelowCostQuery
+{
+    public Guid InvoiceId { get; init; }
+}
+
 public sealed class GetSalesReturnListQuery
 {
     public Guid CompanyId { get; init; }

@@ -113,6 +113,36 @@ public sealed class GetWarehouseTransferRollsHandler(IInventoryManagementReposit
             await repository.GetTransferableRollsAsync(query.WarehouseId, cancellationToken));
 }
 
+public sealed class GetFabricRollsByStockHandler(IInventoryManagementRepository repository)
+    : IQueryHandler<GetFabricRollsByStockQuery, ApplicationResult<IReadOnlyList<FabricRollListDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<FabricRollListDto>>> HandleAsync(
+        GetFabricRollsByStockQuery query, CancellationToken cancellationToken = default) =>
+        ApplicationResult<IReadOnlyList<FabricRollListDto>>.Success(
+            await repository.GetFabricRollsByStockAsync(
+                query.WarehouseId, query.ContainerId, query.FabricItemId, query.FabricColorId, cancellationToken));
+}
+
+public sealed class GetFabricRollsPageHandler(IInventoryManagementRepository repository)
+    : IQueryHandler<GetFabricRollsPageQuery, ApplicationResult<PaginatedFabricRollDto>>
+{
+    public async Task<ApplicationResult<PaginatedFabricRollDto>> HandleAsync(
+        GetFabricRollsPageQuery query, CancellationToken cancellationToken = default)
+    {
+        var pageNumber = Math.Max(1, query.PageNumber);
+        var pageSize = Math.Clamp(query.PageSize, 10, 500);
+
+        return ApplicationResult<PaginatedFabricRollDto>.Success(
+            await repository.GetFabricRollsPageAsync(
+                query.WarehouseId,
+                pageNumber,
+                pageSize,
+                query.Status,
+                query.Search,
+                cancellationToken));
+    }
+}
+
 public sealed class GetStocktakeSessionsHandler(IInventoryManagementRepository repository)
     : IQueryHandler<GetStocktakeSessionsQuery, ApplicationResult<IReadOnlyList<StocktakeListDto>>>
 {
