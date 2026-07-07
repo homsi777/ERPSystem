@@ -1,5 +1,6 @@
 import { apiRequest } from './client.ts';
 import type {
+  FabricRollListDto,
   FabricStockBalanceDto,
   InventoryAlertDto,
   InventoryDashboardDto,
@@ -43,6 +44,21 @@ export function getWarehouseFabricRolls(
   return apiRequest<PaginatedFabricRollDto>(
     `/api/v1/inventory/warehouses/${warehouseId}/rolls?${params.toString()}`
   );
+}
+
+export function getFabricRollsByStock(params: {
+  warehouseId: string;
+  containerId: string;
+  fabricItemId: string;
+  fabricColorId: string;
+}) {
+  const search = new URLSearchParams({
+    warehouseId: params.warehouseId,
+    containerId: params.containerId,
+    fabricItemId: params.fabricItemId,
+    fabricColorId: params.fabricColorId
+  });
+  return apiRequest<FabricRollListDto[]>(`/api/v1/inventory/rolls-by-stock?${search.toString()}`);
 }
 
 export function getInventoryDashboard() {

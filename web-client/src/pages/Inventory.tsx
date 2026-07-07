@@ -2,26 +2,44 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
+  getFabricRollsByStock,
   getFabricStock,
   getInventoryAlerts,
   getInventoryDashboard,
   getInventoryWarehouses
 } from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
-import type { FabricStockBalanceDto, InventoryAlertDto } from '../api/types.ts';
+import type { FabricRollListDto, FabricStockBalanceDto, InventoryAlertDto } from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
+import { Modal } from '../components/Modal.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import { formatCurrency, formatMeters, formatNumber } from '../lib/format.ts';
 import { inventoryStatusLabels } from '../lib/enums.ts';
 
+const rollStatusLabels: Record<string, string> = {
+  Available: 'متاح',
+  Reserved: 'محجوز',
+  PartiallySold: 'مباع جزئياً',
+  PartiallyReserved: 'محجوز جزئياً',
+  Sold: 'مباع',
+  Damaged: 'تالف',
+  InTransit: 'قيد النقل',
+  Returned: 'مُرجع'
+};
+
+function rollStatusLabel(status: string) {
+  return rollStatusLabels[status] ?? status;
+}
+
 export function InventoryPage() {
   const [warehouseId, setWarehouseId] = useState('');
+  const [selectedRow, setSelectedRow] = useState<FabricStockBalanceDto | null>(null);
 
   const warehousesQuery = useQuery({
     queryKey: ['inventory', 'warehouses'],
@@ -149,17 +167,125 @@ export function InventoryPage() {
         <>
           <section className="record-list mobile-only" aria-label="أرصدة الأقمشة">
             {stockQuery.data.map((row) => (
-              <StockBalanceCard key={stockRowKey(row)} row={row} showWarehouseName={showWarehouseName} />
+              <button
+                key={stockRowKey(row)}
+                type="button"
+                className="card-link--button"
+                onClick={() => setSelectedRow(row)}
+              >
+                <StockBalanceCard row={row} showWarehouseName={showWarehouseName} />
+              </button>
             ))}
           </section>
           <section className="card-list desktop-only" aria-label="أرصدة الأقمشة">
             {stockQuery.data.map((row) => (
-              <StockBalanceDataCard key={stockRowKey(row)} row={row} />
+              <button
+                key={stockRowKey(row)}
+                type="button"
+                className="card-link--button"
+                onClick={() => setSelectedRow(row)}
+              >
+                <StockBalanceDataCard row={row} />
+              </button>
             ))}
           </section>
         </>
       ) : null}
+
+      {selectedRow ? <RollDetailsModal row={selectedRow} onClose={() => setSelectedRow(null)} /> : null}
     </AppShell>
+  );
+}
+
+function RollDetailsModal({ row, onClose }: { row: FabricStockBalanceDto; onClose: () => void }) {
+  const rollsQuery = useQuery({
+    queryKey: [
+      'inventory',
+      'rolls-by-stock',
+      row.warehouseId,
+      row.containerId,
+      row.fabricItemId,
+      row.fabricColorId
+    ],
+    queryFn: () =>
+      getFabricRollsByStock({
+        warehouseId: row.warehouseId,
+        containerId: row.containerId,
+        fabricItemId: row.fabricItemId,
+        fabricColorId: row.fabricColorId
+      })
+  });
+
+  const rolls = rollsQuery.data ?? [];
+  const totalRemaining = rolls.reduce((sum, roll) => sum + roll.remainingLengthMeters, 0);
+  const totalValue = rolls.reduce((sum, roll) => sum + roll.currentValue, 0);
+
+  return (
+    <Modal
+      title={`${row.fabricName} — ${row.colorName}`}
+      subtitle={`الحاوية ${row.containerNumber || '—'} • المستودع ${row.warehouseName}`}
+      onClose={onClose}
+    >
+      {rollsQuery.isLoading ? <LoadingState /> : null}
+
+      {rollsQuery.isError ? (
+        <ErrorState
+          message={rollsQuery.error instanceof ApiError ? rollsQuery.error.message : 'تعذّر تحميل تفاصيل الأتواب.'}
+          onRetry={() => void rollsQuery.refetch()}
+        />
+      ) : null}
+
+      {rollsQuery.isSuccess && rolls.length === 0 ? (
+        <EmptyState title="لا توجد أتواب" description="لا توجد أتواب متبقية لهذا الصنف حالياً." />
+      ) : null}
+
+      {rollsQuery.isSuccess && rolls.length > 0 ? (
+        <>
+          <p className="roll-summary">
+            عدد الأتواب: {formatNumber(rolls.length)} • إجمالي المتبقي: {formatMeters(totalRemaining)} • القيمة:{' '}
+            {formatCurrency(totalValue)}
+          </p>
+          <div className="roll-table-wrap">
+            <table className="roll-table">
+              <thead>
+                <tr>
+                  <th>رقم التوب</th>
+                  <th>اللوت</th>
+                  <th>الباركود</th>
+                  <th>الطول الأصلي</th>
+                  <th>المتبقي</th>
+                  <th>التكلفة/م</th>
+                  <th>القيمة $</th>
+                  <th>الموقع</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rolls.map((roll) => (
+                  <RollRow key={roll.id} roll={roll} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+    </Modal>
+  );
+}
+
+function RollRow({ roll }: { roll: FabricRollListDto }) {
+  return (
+    <tr>
+      <td>{roll.rollNumber}</td>
+      <td>{roll.lotCode ?? '—'}</td>
+      <td>{roll.barcode ?? '—'}</td>
+      <td>{formatMeters(roll.lengthMeters)}</td>
+      <td>{formatMeters(roll.remainingLengthMeters)}</td>
+      <td>{formatCurrency(roll.costPerMeter)}</td>
+      <td>{formatCurrency(roll.currentValue)}</td>
+      <td>{roll.locationCode ?? '—'}</td>
+      <td>{rollStatusLabel(roll.status)}</td>
+    </tr>
   );
 }
 

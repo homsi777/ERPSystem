@@ -23,6 +23,9 @@ public static class InventoryEndpoints
         group.MapGet("/warehouses/{warehouseId:guid}/rolls", GetWarehouseRollsAsync)
             .WithName("GetInventoryWarehouseRolls");
 
+        group.MapGet("/rolls-by-stock", GetFabricRollsByStockAsync)
+            .WithName("GetInventoryFabricRollsByStock");
+
         group.MapGet("/dashboard", GetDashboardAsync)
             .WithName("GetInventoryDashboard");
 
@@ -87,6 +90,21 @@ public static class InventoryEndpoints
                 Math.Clamp(pageSize ?? 50, 10, 500),
                 status,
                 search),
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetFabricRollsByStockAsync(
+        [FromQuery] Guid warehouseId,
+        [FromQuery] Guid containerId,
+        [FromQuery] Guid fabricItemId,
+        [FromQuery] Guid fabricColorId,
+        GetFabricRollsByStockHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new GetFabricRollsByStockQuery(warehouseId, containerId, fabricItemId, fabricColorId),
             cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);
