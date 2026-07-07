@@ -62,14 +62,14 @@ public static class DatabaseSeeder
             return;
         }
 
-        logger.LogInformation("Seeding ERP PRO database...");
+        logger.LogInformation("Seeding الأمل.AB database...");
 
         context.Companies.Add(new CompanyEntity
         {
             Id = DefaultCompanyId,
-            Code = "ERP",
-            NameAr = "شركة ERP PRO",
-            NameEn = "ERP PRO Company",
+            Code = "ALAMAL-AB",
+            NameAr = "الأمل.AB — تجارة أقمشة الجينز",
+            NameEn = "Alamal.AB — Denim Fabric Trading",
             DefaultCurrency = "USD"
         });
 
@@ -176,7 +176,8 @@ public static class DatabaseSeeder
         context.SystemSettings.AddRange(
             new SystemSettingEntity { Id = Guid.NewGuid(), Key = "DefaultCurrency", Value = "USD", CompanyId = DefaultCompanyId },
             new SystemSettingEntity { Id = Guid.NewGuid(), Key = "DefaultPaymentType", Value = "Credit", CompanyId = DefaultCompanyId },
-            new SystemSettingEntity { Id = Guid.NewGuid(), Key = "CompanyName", Value = "ERP PRO", CompanyId = DefaultCompanyId }
+            new SystemSettingEntity { Id = Guid.NewGuid(), Key = "CompanyName", Value = "الأمل.AB", CompanyId = DefaultCompanyId },
+            new SystemSettingEntity { Id = Guid.NewGuid(), Key = "CompanySlogan", Value = "تجارة أفخر أنواع أقمشة الجينز — استيراد من المصنع إلى منتجك", CompanyId = DefaultCompanyId }
         );
 
         var counterTypes = new[] { "SalesInvoice", "Container", "ReceiptVoucher", "PaymentVoucher", "JournalEntry", "Customer", "Supplier", "PurchaseInvoice", "Expense" };
@@ -205,7 +206,7 @@ public static class DatabaseSeeder
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("ERP PRO seed completed.");
+        logger.LogInformation("الأمل.AB seed completed.");
     }
 
     private static async Task EnsureChinaImportReferenceDataAsync(

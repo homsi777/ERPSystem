@@ -41,9 +41,9 @@ export function LoginPage() {
     <main className="login-page">
       <section className="login-panel" aria-labelledby="login-title">
         <div className="login-panel__brand">
-          <span>ERP</span>
+          <span>AB</span>
           <div>
-            <p>ERP PRO</p>
+            <p>الأمل.AB</p>
             <h1 id="login-title">تسجيل الدخول</h1>
           </div>
         </div>

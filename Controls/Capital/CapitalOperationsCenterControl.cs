@@ -48,7 +48,7 @@ public sealed class CapitalOperationsCenterControl : UserControl
         {
             Title = d.FullName,
             Subtitle = $"مركز عمل الشريك — {d.Code}",
-            Breadcrumb = "ERP PRO › رأس المال والشركاء › مركز العمل",
+            Breadcrumb = "الأمل.AB › رأس المال والشركاء › مركز العمل",
             IconGlyph = "\uE8F1",
             Accent = Br("PrimaryBrush"),
             AccentLight = Br("InfoBgBrush"),

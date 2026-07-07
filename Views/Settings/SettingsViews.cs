@@ -44,7 +44,7 @@ namespace ERPSystem.Views.Settings
         {
             var root = new ScrollViewer { Padding = new Thickness(16), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             var stack = new StackPanel();
-            stack.Children.Add(ErpUiFactory.SectionTitle("مركز التحكم — ERP PRO"));
+            stack.Children.Add(ErpUiFactory.SectionTitle("مركز التحكم — الأمل.AB"));
             stack.Children.Add(new TextBlock
             {
                 Text = "إعدادات النظام — كل فئة تفتح مساحة عمل مستقلة",
@@ -164,7 +164,7 @@ namespace ERPSystem.Views.Settings
             var stack = new StackPanel();
             stack.Children.Add(new TextBlock
             {
-                Text = "ERP PRO › الإعدادات › " + title,
+                Text = "الأمل.AB › الإعدادات › " + title,
                 FontSize = 11, Foreground = Br("TextMutedBrush"), Margin = new Thickness(0, 0, 0, 8), FontFamily = Ff()
             });
             stack.Children.Add(ErpUiFactory.SectionTitle(title));

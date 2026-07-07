@@ -1,7 +1,7 @@
 <Window x:Class="ERPSystem.Dialogs.ErpModalWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ERP PRO"
+        Title="الأمل.AB"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         FlowDirection="RightToLeft"

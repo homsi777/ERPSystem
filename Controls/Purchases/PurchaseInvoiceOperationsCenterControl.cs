@@ -92,7 +92,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
         {
             Title = inv.InvoiceNumber,
             Subtitle = $"فاتورة شراء — {inv.SupplierName}",
-            Breadcrumb = "ERP PRO › المشتريات › مركز العمليات",
+            Breadcrumb = "الأمل.AB › المشتريات › مركز العمليات",
             IconGlyph = "\uE9F9",
             Accent = Br("AccentOrdersBrush"),
             StatusBadge = inv.StatusDisplay,

@@ -86,7 +86,7 @@ public partial class App : System.Windows.Application
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"تعذّر تشغيل ERP PRO:\n\n{ex.Message}",
+                $"تعذّر تشغيل الأمل.AB:\n\n{ex.Message}",
                 "خطأ في التشغيل",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

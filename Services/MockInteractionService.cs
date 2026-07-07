@@ -25,7 +25,7 @@ namespace ERPSystem.Services
         public static void ShowWarning(string message, string title = "تنبيه") =>
             MockFeedbackDialog.Show(MockFeedbackKind.Warning, message, title);
 
-        public static void ShowInfo(string message, string title = "ERP PRO") =>
+        public static void ShowInfo(string message, string title = "الأمل.AB") =>
             MockFeedbackDialog.Show(MockFeedbackKind.Info, message, title);
 
         public static void ShowComingSoon(string feature) =>

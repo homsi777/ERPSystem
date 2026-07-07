@@ -18,7 +18,7 @@ export default defineConfig({
             urlPattern: ({ url }) => url.origin === self.location.origin && !url.pathname.startsWith('/api/'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'erp-pro-static',
+              cacheName: 'alamal-ab-static',
               expiration: {
                 maxEntries: 80,
                 maxAgeSeconds: 60 * 60 * 24 * 30
@@ -28,8 +28,10 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'ERP PRO',
-        short_name: 'ERP',
+        name: 'الأمل.AB — تجارة أقمشة الجينز',
+        short_name: 'الأمل.AB',
+        description:
+          'الأمل.AB لتجارة الأقمشة — استيراد وبيع جملة أفخر أنواع أقمشة الجينز (الدنيم) من المصنع إلى منتجك.',
         lang: 'ar',
         dir: 'rtl',
         theme_color: '#185FA5',

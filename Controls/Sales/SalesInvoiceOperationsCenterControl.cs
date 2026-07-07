@@ -106,7 +106,7 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         {
             Title = invoice.InvoiceNumber,
             Subtitle = $"مركز عمليات فاتورة البيع — {invoice.CustomerName}",
-            Breadcrumb = "ERP PRO › المبيعات › فاتورة",
+            Breadcrumb = "الأمل.AB › المبيعات › فاتورة",
             IconGlyph = "\uE9F9",
             Accent = Br("AccentSalesBrush"),
             AccentLight = Br("PrimaryVeryLightBrush"),

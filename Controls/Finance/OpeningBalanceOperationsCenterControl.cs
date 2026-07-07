@@ -60,7 +60,7 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
         {
             Title = h.Number,
             Subtitle = OpeningBalanceDisplay.TypeName(h.Type),
-            Breadcrumb = "ERP PRO › المالية › أرصدة افتتاحية",
+            Breadcrumb = "الأمل.AB › المالية › أرصدة افتتاحية",
             IconGlyph = "\uE8F1",
             Accent = Br("AccentPrimaryBrush"),
             AccentLight = Br("PrimaryVeryLightBrush"),

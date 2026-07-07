@@ -82,7 +82,7 @@ namespace ERPSystem.Controls.Workspace
             EntityType.Warehouse => "مركز عمليات المستودع",
             EntityType.Cashbox => "مركز عمليات الصندوق",
             EntityType.Expense => "مركز عمل المصروف — إدارة مالية",
-            _ => "ERP PRO"
+            _ => "الأمل.AB"
         };
 
         private static bool UsesOperationsCenterChrome(WorkspaceOpenRequest request) =>

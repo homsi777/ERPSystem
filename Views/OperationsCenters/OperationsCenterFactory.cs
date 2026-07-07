@@ -219,7 +219,7 @@ namespace ERPSystem.Views.OperationsCenters
             {
                 Title = title,
                 Subtitle = $"مركز عمليات الصنف — {code}",
-                Breadcrumb = "ERP PRO › المخزون › مركز عمليات الصنف",
+                Breadcrumb = "الأمل.AB › المخزون › مركز عمليات الصنف",
                 IconGlyph = "\uE821",
                 Accent = Br("AccentInventoryBrush"),
                 AccentLight = Br("SuccessBgBrush"),
@@ -275,7 +275,7 @@ namespace ERPSystem.Views.OperationsCenters
             {
                 Title = w.Name,
                 Subtitle = "مركز عمليات المستودع",
-                Breadcrumb = "ERP PRO › المخزون › مستودع",
+                Breadcrumb = "الأمل.AB › المخزون › مستودع",
                 IconGlyph = "\uE8B7",
                 Accent = Br("AccentInventoryBrush"),
                 AccentLight = Br("SuccessBgBrush"),
@@ -336,7 +336,7 @@ namespace ERPSystem.Views.OperationsCenters
             {
                 Title = "فاتورة بيع",
                 Subtitle = "مركز عمليات فاتورة البيع",
-                Breadcrumb = "ERP PRO › المبيعات › فاتورة",
+                Breadcrumb = "الأمل.AB › المبيعات › فاتورة",
                 IconGlyph = "\uE9F9",
                 Accent = Br("AccentSalesBrush"),
                 AccentLight = Br("PrimaryVeryLightBrush"),
@@ -377,7 +377,7 @@ namespace ERPSystem.Views.OperationsCenters
             {
                 Title = e.FullName,
                 Subtitle = "مركز عمليات الموظف",
-                Breadcrumb = "ERP PRO › الموارد البشرية › موظف",
+                Breadcrumb = "الأمل.AB › الموارد البشرية › موظف",
                 IconGlyph = "\uE716",
                 Accent = Br("InfoBrush"),
                 AccentLight = Br("InfoBgBrush"),
@@ -428,7 +428,7 @@ namespace ERPSystem.Views.OperationsCenters
             {
                 Title = j.EntryNumber,
                 Subtitle = "مركز عمليات القيد / السند",
-                Breadcrumb = "ERP PRO › المالية › قيد",
+                Breadcrumb = "الأمل.AB › المالية › قيد",
                 IconGlyph = "\uE8C1",
                 Accent = Br("PrimaryBrush"),
                 AccentLight = Br("PrimaryVeryLightBrush"),

@@ -109,7 +109,7 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         {
             Title = c.ContainerNumber,
             Subtitle = "مركز عمليات الحاوية — بيانات PostgreSQL",
-            Breadcrumb = "ERP PRO › طلبات الصين › مركز العمليات",
+            Breadcrumb = "الأمل.AB › طلبات الصين › مركز العمليات",
             IconGlyph = "\uE7BF",
             Accent = accent,
             AccentLight = Br("PrimaryVeryLightBrush"),

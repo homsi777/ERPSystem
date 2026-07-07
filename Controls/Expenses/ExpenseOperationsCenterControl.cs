@@ -52,7 +52,7 @@ public sealed class ExpenseOperationsCenterControl : UserControl
         {
             Title = d.Name,
             Subtitle = $"مركز عمل المصروف — {d.Code}",
-            Breadcrumb = "ERP PRO › المصاريف › مركز العمل",
+            Breadcrumb = "الأمل.AB › المصاريف › مركز العمل",
             IconGlyph = "\uE9D9",
             Accent = Br("AccentPayableBrush"),
             AccentLight = Br("WarningBgBrush"),

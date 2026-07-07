@@ -110,7 +110,7 @@ namespace ERPSystem
                 nav.NavigateSubpage(req.SubPage);
 
             NavBar.SetActiveModule(req.Module);
-            Title = $"{GetModuleTitle(req.Module)} — ERP PRO";
+            Title = $"{GetModuleTitle(req.Module)} — الأمل.AB";
             UpdateStatusBar(req);
         }
 
@@ -129,7 +129,7 @@ namespace ERPSystem
             AppModule.Reports     => "التقارير",
             AppModule.HR          => "الموارد البشرية",
             AppModule.Settings    => "الإعدادات",
-            _                     => "ERP PRO"
+            _                     => "الأمل.AB"
         };
 
         private void UpdateStatusBar(NavigationRequest? req = null)

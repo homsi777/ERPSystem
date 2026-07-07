@@ -110,7 +110,7 @@ public sealed class SupplierOperationsCenterControl : UserControl
         {
             Title = s.NameAr,
             Subtitle = "مركز عمليات المورد — بيانات PostgreSQL",
-            Breadcrumb = "ERP PRO › الموردون › مركز العمليات",
+            Breadcrumb = "الأمل.AB › الموردون › مركز العمليات",
             IconGlyph = "\uE779",
             Accent = Br("AccentPayableBrush"),
             AccentLight = Br("WarningBgBrush"),

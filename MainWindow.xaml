@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:ERPSystem.Shell"
         xmlns:workspace="clr-namespace:ERPSystem.Controls.Workspace"
-        Title="ERP PRO — نظام إدارة استيراد وبيع الأقمشة"
+        Title="الأمل.AB — تجارة أفخر أنواع أقمشة الجينز | استيراد من المصنع إلى منتجك"
         MinWidth="1024" MinHeight="660"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen"
@@ -54,7 +54,7 @@
                                FontFamily="Segoe UI" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock Grid.Column="1" x:Name="TxtVersionInfo"
-                           Text="ERP PRO v2.0 — استيراد أقمشة وجملة"
+                           Text="الأمل.AB v2.0 — تجارة أقمشة الجينز جملة"
                            FontSize="10" Foreground="{StaticResource TextMutedBrush}"
                            FontFamily="Segoe UI" VerticalAlignment="Center"/>
             </Grid>

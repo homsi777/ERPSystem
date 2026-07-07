@@ -17,7 +17,7 @@ export function Header({ title, children }: HeaderProps) {
         <div className="app-header__lead">
           <BackButton />
           <div>
-            <p className="app-header__company">ERP PRO</p>
+            <p className="app-header__company">الأمل.AB</p>
             <h1>{title}</h1>
             {user ? <span className="app-header__user">{user.fullNameAr}</span> : null}
           </div>

@@ -72,7 +72,7 @@ public sealed class CustomerOperationsCenterControl : UserControl
         {
             Title = c.NameAr,
             Subtitle = "مركز عمليات العميل — بيانات PostgreSQL",
-            Breadcrumb = "ERP PRO › العملاء › مركز العمليات",
+            Breadcrumb = "الأمل.AB › العملاء › مركز العمليات",
             IconGlyph = "\uE716",
             Accent = accent,
             AccentLight = Br("PrimaryVeryLightBrush"),
