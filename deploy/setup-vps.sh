@@ -64,16 +64,34 @@ apt-get install -y ca-certificates curl gnupg lsb-release software-properties-co
 # ==========================================================================
 step "2) تثبيت .NET SDK 9 (لبناء الـ API)"
 # ==========================================================================
-if ! command -v dotnet >/dev/null 2>&1 || ! dotnet --list-sdks 2>/dev/null | grep -q '^9\.'; then
-  UB_VER="$(lsb_release -rs)"
-  curl -fsSL "https://packages.microsoft.com/config/ubuntu/${UB_VER}/packages-microsoft-prod.deb" -o /tmp/ms-prod.deb
-  dpkg -i /tmp/ms-prod.deb
-  apt-get update -y
-  apt-get install -y dotnet-sdk-9.0 || apt-get install -y aspnetcore-runtime-9.0 dotnet-sdk-9.0
-  log ".NET مُثبّت: $(dotnet --version)"
+DOTNET_INSTALL_DIR="/usr/share/dotnet"
+have_net9() { command -v dotnet >/dev/null 2>&1 && dotnet --list-sdks 2>/dev/null | grep -q '^9\.'; }
+
+if have_net9; then
+  log ".NET 9 موجود مسبقاً: $(dotnet --version)"
 else
-  log ".NET موجود مسبقاً: $(dotnet --version)"
+  # المحاولة 1: apt عبر خلاصة Microsoft
+  UB_VER="$(lsb_release -rs)"
+  curl -fsSL "https://packages.microsoft.com/config/ubuntu/${UB_VER}/packages-microsoft-prod.deb" -o /tmp/ms-prod.deb 2>/dev/null && dpkg -i /tmp/ms-prod.deb >/dev/null 2>&1 || true
+  apt-get update -y >/dev/null 2>&1 || true
+  apt-get install -y dotnet-sdk-9.0 >/dev/null 2>&1 || true
+
+  # المحاولة 2 (احتياطي): سكربت Microsoft الرسمي — لا يعتمد على apt
+  if ! have_net9; then
+    warn "حزمة apt لـ .NET 9 غير متوفرة — التثبيت عبر السكربت الرسمي (side-by-side مع .NET 10)..."
+    curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+    bash /tmp/dotnet-install.sh --channel 9.0 --install-dir "$DOTNET_INSTALL_DIR"
+    ln -sf "${DOTNET_INSTALL_DIR}/dotnet" /usr/local/bin/dotnet
+    export DOTNET_ROOT="$DOTNET_INSTALL_DIR"
+    export PATH="$PATH:$DOTNET_INSTALL_DIR"
+  fi
+
+  have_net9 && log ".NET 9 مُثبّت: $(dotnet --version)" || { err ".NET 9 لم يُثبّت. راجع الأخطاء أعلاه."; exit 1; }
 fi
+
+# ضمان أن الخدمة والـ EF يجدان dotnet بغض النظر عن مصدر التثبيت
+export DOTNET_ROOT="${DOTNET_ROOT:-$DOTNET_INSTALL_DIR}"
+DOTNET_BIN="$(command -v dotnet)"
 
 # ==========================================================================
 step "3) تثبيت Node.js 20 (لبناء web-client)"
@@ -209,7 +227,7 @@ Wants=postgresql.service
 Type=notify
 User=${SERVICE_USER}
 WorkingDirectory=${API_DIR}
-ExecStart=/usr/bin/dotnet ${API_DIR}/ERPSystem.Api.dll
+ExecStart=${DOTNET_BIN:-/usr/bin/dotnet} ${API_DIR}/ERPSystem.Api.dll
 Restart=always
 RestartSec=5
 KillSignal=SIGINT
@@ -217,6 +235,8 @@ SyslogIdentifier=erpsystem-api
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=ASPNETCORE_URLS=http://127.0.0.1:${API_PORT}
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+Environment=DOTNET_ROOT=${DOTNET_ROOT:-/usr/share/dotnet}
+Environment=DOTNET_ROLL_FORWARD=Major
 Environment=ConnectionStrings__DefaultConnection=${CONN_STR}
 Environment=JWT_SECRET=${JWT_SECRET}
 Environment=Cors__AllowedOrigins=${CORS_ORIGINS}
