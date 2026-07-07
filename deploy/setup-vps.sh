@@ -97,7 +97,9 @@ DOTNET_BIN="$(command -v dotnet)"
 step "3) تثبيت Node.js 20 (لبناء web-client)"
 # ==========================================================================
 if [[ "$BUILD_WEB_CLIENT" == "yes" ]]; then
-  if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | sed 's/v\([0-9]*\).*/\1/')" -lt 18 ]]; then
+  # الأدوات (Vite/Workbox/react-router) تتطلب Node 20+ (Node 18 يفشل بـ "crypto is not defined")
+  if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | sed 's/v\([0-9]*\).*/\1/')" -lt 20 ]]; then
+    warn "تثبيت/ترقية Node.js إلى الإصدار 20..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get install -y nodejs
   fi
