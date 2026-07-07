@@ -23,6 +23,8 @@ namespace ERPSystem;
 
 public partial class App : System.Windows.Application
 {
+    private SshTunnelService? _sshTunnel;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         AppCulture.ConfigureWpfPresentation();
@@ -44,6 +46,9 @@ public partial class App : System.Windows.Application
                 .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
                 .Build();
+
+            // Bring up the optional SSH tunnel (cloud DB) before any DB access.
+            _sshTunnel = SshTunnelService.StartIfConfigured(configuration);
 
             services.AddSingleton<IConfiguration>(configuration);
             services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
@@ -96,5 +101,12 @@ public partial class App : System.Windows.Application
                 MessageBoxImage.Error);
             Shutdown(-1);
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _sshTunnel?.Dispose();
+        _sshTunnel = null;
+        base.OnExit(e);
     }
 }

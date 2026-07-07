@@ -1,7 +1,21 @@
 {
   "_comment": "انسخ هذا الملف إلى appsettings.Local.json بجوار ERPSystem.exe لربط هذا الجهاز بقاعدة البيانات السحابية. الملف غير متتبع في Git (يحتوي كلمة المرور).",
-  "_important": "لا تستخدم دومين Cloudflare (السحابة البرتقالية) للاتصال بالقاعدة — المنفذ 5432 لا يمر عبر Cloudflare. استخدم IP الخادم الحقيقي أو سجل DNS-only مثل db.alamal-ab.org.",
+
+  "_direct_note": "إن كان منفذ 5432 مفتوحاً مباشرة من الخارج (أو مربوطاً بمنفذ خارجي): استخدم Host=<IP>;Port=<port> وأزل قسم SshTunnel أو اجعله Enabled=false. ولا تستخدم دومين Cloudflare (السحابة البرتقالية) — المنفذ 5432 لا يمر عبره.",
+
+  "_tunnel_note": "إن كان 5432 محجوباً خارجياً (VPS خلف NAT/جدار الشركة): فعّل SshTunnel أدناه. سيفتح التطبيق النفق تلقائياً عند الإقلاع ويتصل عبر localhost:LocalPort.",
+
   "ConnectionStrings": {
-    "DefaultConnection": "Host=<SERVER_IP_OR_DB_SUBDOMAIN>;Port=5432;Database=erp_pro;Username=erp_app;Password=<DB_APP_PASSWORD>;SSL Mode=Require;Trust Server Certificate=true"
+    "DefaultConnection": "Host=localhost;Port=5433;Database=erp_pro;Username=erp_app;Password=<DB_APP_PASSWORD>;SSL Mode=Disable"
+  },
+
+  "SshTunnel": {
+    "Enabled": true,
+    "SshHost": "<SERVER_IP>",
+    "SshPort": 2727,
+    "SshUser": "ubuntu",
+    "LocalPort": 5433,
+    "RemoteHost": "localhost",
+    "RemotePort": 5432
   }
 }
