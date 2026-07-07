@@ -30,7 +30,7 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$API_DIR"
 if [[ "$BUILD_WEB_CLIENT" == "yes" ]]; then
   log "بناء web-client"
   pushd "${SRC_DIR}/web-client" >/dev/null
-  export VITE_API_BASE_URL="https://${DOMAIN}/api"
+  export VITE_API_BASE_URL="https://${DOMAIN}"
   npm ci
   npm run build
   rsync -a --delete dist/ "$WEB_ROOT/"

@@ -197,7 +197,8 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$APP_ROOT"
 if [[ "$BUILD_WEB_CLIENT" == "yes" ]]; then
   step "   6-c) بناء web-client (Vite)"
   pushd "${SRC_DIR}/web-client" >/dev/null
-  export VITE_API_BASE_URL="https://${DOMAIN}/api"
+  # مسارات الـ web-client تتضمّن بادئة /api/v1 مسبقاً، لذا القاعدة = الأصل فقط (بلا /api)
+  export VITE_API_BASE_URL="https://${DOMAIN}"
   npm ci
   npm run build
   mkdir -p "$WEB_ROOT"
@@ -262,9 +263,9 @@ read -r -d '' NGINX_LOCATIONS <<LOC || true
     index index.html;
     client_max_body_size 50M;
 
-    # بروكسي الـ API:  /api/... -> http://127.0.0.1:${API_PORT}/...
+    # بروكسي الـ API: الحفاظ على بادئة /api (مسارات الـ API هي /api/v1/...)
     location /api/ {
-        proxy_pass http://127.0.0.1:${API_PORT}/;
+        proxy_pass http://127.0.0.1:${API_PORT};
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
