@@ -3,6 +3,7 @@ import type {
   FabricStockBalanceDto,
   InventoryAlertDto,
   InventoryDashboardDto,
+  PaginatedFabricRollDto,
   StockMovementListDto,
   WarehouseListExtendedDto
 } from './types.ts';
@@ -19,6 +20,29 @@ export function getFabricStock(warehouseId?: string) {
 
 export function getInventoryWarehouses() {
   return apiRequest<WarehouseListExtendedDto[]>('/api/v1/inventory/warehouses');
+}
+
+export function getWarehouseFabricRolls(
+  warehouseId: string,
+  pageNumber = 1,
+  pageSize = 50,
+  status?: number,
+  search?: string
+) {
+  const params = new URLSearchParams({
+    pageNumber: String(pageNumber),
+    pageSize: String(pageSize)
+  });
+  if (status !== undefined) {
+    params.set('status', String(status));
+  }
+  if (search?.trim()) {
+    params.set('search', search.trim());
+  }
+
+  return apiRequest<PaginatedFabricRollDto>(
+    `/api/v1/inventory/warehouses/${warehouseId}/rolls?${params.toString()}`
+  );
 }
 
 export function getInventoryDashboard() {

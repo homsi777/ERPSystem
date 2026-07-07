@@ -500,6 +500,30 @@ export type WarehouseListExtendedDto = {
   inventoryValue: number;
 };
 
+export type FabricRollListDto = {
+  id: string;
+  rollNumber: number;
+  barcode: string | null;
+  fabricName: string;
+  colorName: string;
+  lengthMeters: number;
+  remainingLengthMeters: number;
+  costPerMeter: number;
+  currentValue: number;
+  status: string;
+  batchNumber: string | null;
+  locationCode: string | null;
+  lotCode: string | null;
+};
+
+export type PaginatedFabricRollDto = {
+  items: FabricRollListDto[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export type InventoryAlertDto = {
   id: string;
   alertType: string;

@@ -4,6 +4,12 @@
 # Build
 bin/
 obj/
+artifacts/
+
+# Diagnostic / temp output
+_perf_audit.txt
+_dump_*.txt
+_dump_*.py
 
 # User files
 *.user

@@ -136,6 +136,21 @@ public sealed class InventoryUiService
             new GetFabricRollsByStockQuery(warehouseId, containerId, fabricItemId, fabricColorId), cancellationToken);
     }
 
+    public async Task<ApplicationResult<PaginatedFabricRollDto>> GetFabricRollsPageAsync(
+        Guid warehouseId,
+        int pageNumber = 1,
+        int pageSize = 50,
+        int? status = null,
+        string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetFabricRollsPageHandler>();
+        return await handler.HandleAsync(
+            new GetFabricRollsPageQuery(warehouseId, pageNumber, pageSize, status, search),
+            cancellationToken);
+    }
+
     public async Task<ApplicationResult<IReadOnlyList<StockTransferListDto>>> GetTransfersAsync(
         CancellationToken cancellationToken = default)
     {

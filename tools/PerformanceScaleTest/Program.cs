@@ -571,6 +571,20 @@ static async Task<List<Measurement>> MeasureDesktopShapeAsync(NpgsqlConnection c
         ORDER BY r."RollNumber";
         """, new NpgsqlParameter("warehouse", mainWarehouse));
 
+    await MeasureClientProjectionAsync(conn, list, "desktop_inventory_page_optimized_shape", """
+        SELECT r."Id", r."RollNumber", r."Barcode", r."LengthMeters", r."RemainingLengthMeters",
+               r."CostPerMeter", r."Status", i."NameAr" AS fabric_name, c."NameAr" AS color_name,
+               b."BatchNumber", l."Code" AS location_code
+        FROM public."FabricRolls" r
+        JOIN catalog.fabric_items i ON i."Id" = r."FabricItemId"
+        JOIN catalog.fabric_colors c ON c."Id" = r."FabricColorId"
+        LEFT JOIN inventory.fabric_batches b ON b."Id" = r."FabricBatchId"
+        LEFT JOIN inventory.warehouse_locations l ON l."Id" = r."StorageLocationId"
+        WHERE r."WarehouseId" = @warehouse AND r."RemainingLengthMeters" > 0
+        ORDER BY r."RollNumber"
+        LIMIT 200;
+        """, new NpgsqlParameter("warehouse", mainWarehouse));
+
     await MeasureClientProjectionAsync(conn, list, "desktop_warehouse_list_current_n_plus_one_shape", """
         SELECT w."Id",
                (SELECT count(*) FROM public."FabricRolls" r WHERE r."WarehouseId" = w."Id" AND r."RemainingLengthMeters" > 0) AS roll_count,
@@ -580,12 +594,66 @@ static async Task<List<Measurement>> MeasureDesktopShapeAsync(NpgsqlConnection c
         ORDER BY w."Code";
         """, new NpgsqlParameter("branch", branch));
 
+    await MeasureClientProjectionAsync(conn, list, "desktop_warehouse_list_optimized_grouped_shape", """
+        WITH branch_warehouses AS (
+          SELECT "Id", "Code", "NameAr", "City", "Manager", "IsDefault", "CapacityRolls"
+          FROM inventory.warehouses
+          WHERE "BranchId" = @branch AND "IsActive" = true AND "IsArchived" = false
+        ),
+        stock_totals AS (
+          SELECT "WarehouseId", coalesce(sum("RollCount"),0) AS roll_count, coalesce(sum("TotalMeters"),0) AS total_meters
+          FROM inventory.warehouse_stocks
+          WHERE "WarehouseId" IN (SELECT "Id" FROM branch_warehouses) AND "TotalMeters" > 0
+          GROUP BY "WarehouseId"
+        ),
+        roll_values AS (
+          SELECT "WarehouseId", count(*) AS roll_count,
+                 coalesce(sum("RemainingLengthMeters" * "CostPerMeter"),0)::numeric(18,2) AS inventory_value
+          FROM public."FabricRolls"
+          WHERE "WarehouseId" IN (SELECT "Id" FROM branch_warehouses) AND "RemainingLengthMeters" > 0
+          GROUP BY "WarehouseId"
+        )
+        SELECT w."Id", w."Code", w."NameAr", w."City", w."Manager", w."IsDefault", w."CapacityRolls",
+               coalesce(st.roll_count, rv.roll_count, 0) AS roll_count,
+               coalesce(st.total_meters, 0) AS total_meters,
+               coalesce(rv.inventory_value, 0) AS inventory_value
+        FROM branch_warehouses w
+        LEFT JOIN stock_totals st ON st."WarehouseId" = w."Id"
+        LEFT JOIN roll_values rv ON rv."WarehouseId" = w."Id"
+        ORDER BY w."Code";
+        """, new NpgsqlParameter("branch", branch));
+
     await MeasureClientProjectionAsync(conn, list, "desktop_operations_center_stock_balance_shape", """
         SELECT s.*, i."NameAr" AS fabric_name, c."NameAr" AS color_name, w."NameAr" AS warehouse_name
         FROM inventory.warehouse_stocks s
         JOIN catalog.fabric_items i ON i."Id" = s."FabricItemId"
         JOIN catalog.fabric_colors c ON c."Id" = s."FabricColorId"
         JOIN inventory.warehouses w ON w."Id" = s."WarehouseId"
+        WHERE s."WarehouseId" = @warehouse AND s."TotalMeters" > 0
+        ORDER BY s."TotalMeters" DESC;
+        """, new NpgsqlParameter("warehouse", mainWarehouse));
+
+    await MeasureClientProjectionAsync(conn, list, "desktop_operations_center_stock_balance_optimized_shape", """
+        WITH roll_costs AS (
+          SELECT "WarehouseId", "FabricItemId", "FabricColorId", "ContainerId",
+                 coalesce(sum("RemainingLengthMeters" * "CostPerMeter"),0)::numeric(18,2) AS inventory_value
+          FROM public."FabricRolls"
+          WHERE "WarehouseId" = @warehouse AND "RemainingLengthMeters" > 0
+          GROUP BY "WarehouseId", "FabricItemId", "FabricColorId", "ContainerId"
+        )
+        SELECT s."Id", s."WarehouseId", s."FabricItemId", s."FabricColorId", s."ContainerId",
+               w."NameAr" AS warehouse_name, i."NameAr" AS fabric_name, c."NameAr" AS color_name,
+               coalesce(ct."ContainerNumber", '-') AS container_number, s."RollCount", s."TotalMeters",
+               s."ReservedMeters", s."AvailableMeters", coalesce(rc.inventory_value, 0) AS inventory_value
+        FROM inventory.warehouse_stocks s
+        JOIN inventory.warehouses w ON w."Id" = s."WarehouseId"
+        JOIN catalog.fabric_items i ON i."Id" = s."FabricItemId"
+        JOIN catalog.fabric_colors c ON c."Id" = s."FabricColorId"
+        LEFT JOIN china_import.containers ct ON ct."Id" = s."ContainerId"
+        LEFT JOIN roll_costs rc ON rc."WarehouseId" = s."WarehouseId"
+             AND rc."FabricItemId" = s."FabricItemId"
+             AND rc."FabricColorId" = s."FabricColorId"
+             AND rc."ContainerId" = s."ContainerId"
         WHERE s."WarehouseId" = @warehouse AND s."TotalMeters" > 0
         ORDER BY s."TotalMeters" DESC;
         """, new NpgsqlParameter("warehouse", mainWarehouse));
@@ -684,16 +752,16 @@ static List<RootCause> BuildRootCauses(PerfReport report) =>
     {
         Operation = "Inventory and warehouse lists",
         Category = "Database + Application + UI",
-        Evidence = "Repository methods load all matching FabricRoll rows into memory, then aggregate/project in C#. Current 200K test confirms full-result operations dominate versus LIMIT 50.",
-        Solution = "Server-side pagination and DTO projection, composite indexes on WarehouseId/Status/RemainingLengthMeters/RollNumber, and WPF DataGrid virtualization.",
+        Evidence = "Baseline repository shape loaded all matching FabricRoll rows into memory, then aggregated/projected in C#. The optimized page shape fetches only the requested rows.",
+        Solution = "Implemented server-side pagination and DTO projection, composite/partial FabricRoll indexes, and grouped warehouse aggregates.",
         Impact = "Critical"
     },
     new()
     {
         Operation = "Operations center / stock balances",
         Category = "Application",
-        Evidence = "GetFabricStockBalancesAsync loads warehouse_stocks and all rolls, then repeatedly filters rolls per stock row in memory.",
-        Solution = "Move aggregation to SQL GROUP BY or materialized inventory summary, fetch only top/page rows for the current tab.",
+        Evidence = "Baseline stock balance shape loaded warehouse_stocks and all rolls, then repeatedly filtered rolls per stock row in memory.",
+        Solution = "Implemented SQL GROUP BY roll-cost aggregation and joined projected stock balances.",
         Impact = "Critical"
     },
     new()
@@ -701,29 +769,29 @@ static List<RootCause> BuildRootCauses(PerfReport report) =>
         Operation = "Web mobile inventory",
         Category = "Network + API",
         Evidence = "The mobile page issues warehouses/dashboard/alerts calls. Backend aggregation is the main cost now; on 3G payload and latency add visible delay.",
-        Solution = "Keep calls parallel, add response compression, cache dashboard snapshots, and paginate any future roll list endpoint.",
+        Solution = "Response compression is enabled and a paged rolls API contract is available for future roll-list screens.",
         Impact = "High"
     }
 ];
 
 static Dictionary<string, string> BuildAnswers(PerfReport report) => new()
 {
-    ["desktop_rows_displayed"] = "Current repository shape returns all rows for the selected warehouse; no server page contract exists for GetFabricRollsAsync.",
-    ["wpf_virtualization"] = "Must be verified visually in XAML/runtime; code-level performance risk remains because ItemsSource can receive tens of thousands of rows.",
+    ["desktop_rows_displayed"] = "The legacy GetFabricRollsAsync now returns a capped first page for compatibility; GetFabricRollsPageAsync exposes the explicit server page contract.",
+    ["wpf_virtualization"] = "WPF design was not changed; the UI service now has a paged method so screens can bind pages without loading tens of thousands of rows.",
     ["filter_location"] = "Inventory filtering in tested repository methods is server-side only for simple WHERE clauses, but aggregation and many projections run client-side in C#.",
     ["ef_loading"] = "No lazy-loading proxy was found; slowness is from explicit ToListAsync full loads and follow-up dictionary/lookups.",
     ["sql_executed"] = "EXPLAIN ANALYZE output is included in the JSON report.",
     ["web_api_calls_inventory_page"] = "3 calls in web-client Inventory.tsx: warehouses, dashboard, alerts.",
     ["web_parallel_or_sequential"] = "React Query calls are declared independently and can run in parallel.",
-    ["web_pagination"] = "Current inventory web page does not request fabric-roll pages; WPF/repository roll APIs are unpaged.",
-    ["compression"] = "API Program.cs does not configure response compression.",
+    ["web_pagination"] = "A paged web API endpoint is available at GET /api/v1/inventory/warehouses/{warehouseId}/rolls with pageNumber/pageSize/status/search.",
+    ["compression"] = "API Program.cs configures response compression.",
     ["json_response_size"] = "Measured in payloadBytes per web measurement in the JSON report.",
-    ["fabric_roll_indexes"] = "Existing model defines indexes only on Barcode and FabricBatchId; no WarehouseId/Status composite index.",
-    ["partial_index_complete"] = "No partial index for available/complete rolls exists in the current model.",
-    ["columns_returned"] = "Several paths return full entities first, then map to DTOs.",
+    ["fabric_roll_indexes"] = "The model now defines WarehouseId/Status, WarehouseId/FabricColorId, ContainerId/Status, Status, and available-roll partial indexes.",
+    ["partial_index_complete"] = "The partial index uses the actual enum value Status = 0 for available rolls and RemainingLengthMeters > 0.",
+    ["columns_returned"] = "The paged roll path projects DTO fields instead of materializing full FabricRoll entities.",
     ["includes"] = "No large Include chain was found in the inventory repository; related data is loaded with separate lookup queries.",
-    ["n_plus_one"] = "Warehouse list uses per-warehouse stock/roll queries; operations center uses in-memory repeated filtering across loaded collections.",
-    ["lookup_cache"] = "Catalog lookups are queried per operation; no cross-request cache is configured."
+    ["n_plus_one"] = "Warehouse list now uses grouped stock and roll-value queries instead of per-warehouse stock/roll queries.",
+    ["lookup_cache"] = "Account and fabric catalog lookups now use in-memory cache with prefix invalidation on writes."
 };
 
 static async Task MeasureQueryAsync(NpgsqlConnection conn, List<Measurement> list, string name, string sql, params NpgsqlParameter[] parameters)

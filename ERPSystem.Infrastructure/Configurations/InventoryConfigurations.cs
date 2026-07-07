@@ -15,6 +15,10 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
         builder.Property(x => x.MovementNumber).HasMaxLength(50).IsRequired();
         builder.HasIndex(x => x.MovementNumber).IsUnique();
         builder.HasIndex(x => new { x.ReferenceType, x.ReferenceId, x.Type });
+        builder.HasIndex(x => new { x.WarehouseId, x.MovementDate })
+            .HasDatabaseName("idx_stock_movements_warehouse_date");
+        builder.HasIndex(x => x.MovementDate)
+            .HasDatabaseName("idx_stock_movements_date");
     }
 }
 
@@ -29,6 +33,8 @@ internal sealed class StockMovementLineConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.TotalValue).HasPrecision(18, 4);
         builder.HasIndex(x => x.MovementId);
         builder.HasIndex(x => x.FabricRollId);
+        builder.HasIndex(x => new { x.MovementId, x.FabricItemId, x.FabricRollId })
+            .HasDatabaseName("idx_stock_movement_lines_movement_fabric");
     }
 }
 
@@ -69,6 +75,17 @@ internal sealed class FabricRollConfiguration : IEntityTypeConfiguration<FabricR
         builder.Property(x => x.CostPerMeter).HasPrecision(18, 4);
         builder.HasIndex(x => x.Barcode);
         builder.HasIndex(x => x.FabricBatchId);
+        builder.HasIndex(x => new { x.WarehouseId, x.Status, x.RemainingLengthMeters, x.RollNumber })
+            .HasDatabaseName("idx_fabric_rolls_warehouse_status");
+        builder.HasIndex(x => new { x.WarehouseId, x.FabricColorId, x.RemainingLengthMeters })
+            .HasDatabaseName("idx_fabric_rolls_warehouse_color");
+        builder.HasIndex(x => new { x.ContainerId, x.Status })
+            .HasDatabaseName("idx_fabric_rolls_container");
+        builder.HasIndex(x => x.Status)
+            .HasDatabaseName("idx_fabric_rolls_status");
+        builder.HasIndex(x => new { x.WarehouseId, x.Status, x.RollNumber })
+            .HasDatabaseName("idx_fabric_rolls_available_partial")
+            .HasFilter("\"Status\" = 0 AND \"RemainingLengthMeters\" > 0");
     }
 }
 

@@ -204,23 +204,50 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
     private async Task<ModuleReportResultDto> BuildItemMovementsAsync(
         GetModuleReportQuery query, CancellationToken ct)
     {
-        var rolls = await context.FabricRolls.AsNoTracking()
-            .OrderByDescending(r => r.UpdatedAt ?? r.CreatedAt)
-            .Take(3000)
+        var from = query.FromDate;
+        var to = query.ToDate;
+        var movements = context.StockMovements.AsNoTracking()
+            .Where(m => !m.IsArchived);
+
+        if (from.HasValue)
+            movements = movements.Where(m => m.MovementDate >= UtcDateTimeNormalizer.ToUtc(from.Value));
+        if (to.HasValue)
+            movements = movements.Where(m => m.MovementDate <= UtcDateTimeNormalizer.ToUtc(to.Value));
+
+        var movementRows = await (
+            from m in movements
+            join w in WarehouseEntities(ct).Where(w => w.BranchId == query.BranchId)
+                on m.WarehouseId equals w.Id
+            join line in context.StockMovementLines.AsNoTracking()
+                on m.Id equals line.MovementId
+            join fabric in context.FabricItems.AsNoTracking()
+                on line.FabricItemId equals fabric.Id
+            join roll in context.FabricRolls.AsNoTracking()
+                on line.FabricRollId equals (Guid?)roll.Id into rollJoin
+            from roll in rollJoin.DefaultIfEmpty()
+            orderby m.MovementDate descending
+            select new
+            {
+                m.MovementNumber,
+                m.MovementDate,
+                m.Type,
+                m.Status,
+                FabricName = fabric.NameAr,
+                RollNumber = roll == null ? (int?)null : roll.RollNumber,
+                Remaining = roll == null ? (decimal?)null : roll.RemainingLengthMeters,
+                line.QuantityMeters,
+                line.UnitCost
+            })
+            .Take(1000)
             .ToListAsync(ct);
 
-        var fabricIds = rolls.Select(r => r.FabricItemId).Distinct().ToList();
-        var fabrics = await context.FabricItems.AsNoTracking()
-            .Where(f => fabricIds.Contains(f.Id))
-            .ToDictionaryAsync(f => f.Id, f => f.NameAr, ct);
-
-        var rows = rolls.Select(r => Row(
-            ("Roll", r.RollNumber),
-            ("Fabric", fabrics.GetValueOrDefault(r.FabricItemId, "—")),
-            ("Status", ((FabricRollStatus)r.Status).ToString()),
-            ("Length", r.LengthMeters),
-            ("Remaining", r.RemainingLengthMeters),
-            ("CostPerMeter", r.CostPerMeter))).ToList();
+        var rows = movementRows.Select(r => Row(
+            ("Roll", r.RollNumber.HasValue ? $"{r.MovementNumber} / {r.RollNumber.Value}" : r.MovementNumber),
+            ("Fabric", r.FabricName),
+            ("Status", $"{((MovementType)r.Type)} / {((StockMovementStatus)r.Status)}"),
+            ("Length", Math.Abs(r.QuantityMeters)),
+            ("Remaining", r.Remaining ?? 0m),
+            ("CostPerMeter", r.UnitCost))).ToList();
 
         return Result(query, "حركة المادة", "حركة الأثواب (rolls) في المخزون",
             Cols(
@@ -231,7 +258,8 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
                 ("Remaining", "متبقي", 90, "N2"),
                 ("CostPerMeter", "تكلفة/م", 90, "N4")),
             rows,
-            Kpi("أثواب", rows.Count.ToString()));
+            Kpi("أثواب", rows.Count.ToString()),
+            Kpi("أمتار", movementRows.Sum(r => Math.Abs(r.QuantityMeters)).ToString("N0")));
     }
 
     private async Task<ModuleReportResultDto> BuildItemAnalysisAsync(

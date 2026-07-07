@@ -67,26 +67,45 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
     {
         var warehouses = await context.Warehouses.AsNoTracking()
             .Where(w => w.BranchId == branchId).OrderBy(w => w.Code).ToListAsync(cancellationToken);
+        if (warehouses.Count == 0)
+            return [];
 
-        var result = new List<WarehouseListExtendedDto>();
-        foreach (var w in warehouses)
+        var warehouseIds = warehouses.Select(w => w.Id).ToList();
+        var stockTotals = await context.WarehouseStocks.AsNoTracking()
+            .Where(s => warehouseIds.Contains(s.WarehouseId))
+            .GroupBy(s => s.WarehouseId)
+            .Select(g => new
+            {
+                WarehouseId = g.Key,
+                RollCount = g.Sum(s => s.RollCount),
+                TotalMeters = g.Sum(s => s.TotalMeters)
+            })
+            .ToDictionaryAsync(x => x.WarehouseId, cancellationToken);
+
+        var rollValues = await context.FabricRolls.AsNoTracking()
+            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0)
+            .GroupBy(r => r.WarehouseId)
+            .Select(g => new
+            {
+                WarehouseId = g.Key,
+                RollCount = g.Count(),
+                InventoryValue = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter)
+            })
+            .ToDictionaryAsync(x => x.WarehouseId, cancellationToken);
+
+        return warehouses.Select(w =>
         {
-            var stocks = await context.WarehouseStocks.AsNoTracking()
-                .Where(s => s.WarehouseId == w.Id).ToListAsync(cancellationToken);
-            var rolls = await context.FabricRolls.AsNoTracking()
-                .Where(r => r.WarehouseId == w.Id && r.RemainingLengthMeters > 0).ToListAsync(cancellationToken);
-            var value = rolls.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
-
-            result.Add(new WarehouseListExtendedDto
+            stockTotals.TryGetValue(w.Id, out var stock);
+            rollValues.TryGetValue(w.Id, out var value);
+            return new WarehouseListExtendedDto
             {
                 Id = w.Id, Code = w.Code, NameAr = w.NameAr, NameEn = w.NameEn,
                 City = w.City, Manager = w.Manager, IsDefault = w.IsDefault, IsActive = w.IsActive,
-                RollCount = stocks.Sum(s => s.RollCount),
-                TotalMeters = stocks.Sum(s => s.TotalMeters),
-                InventoryValue = value
-            });
-        }
-        return result;
+                RollCount = stock?.RollCount ?? value?.RollCount ?? 0,
+                TotalMeters = stock?.TotalMeters ?? 0m,
+                InventoryValue = value?.InventoryValue ?? 0m
+            };
+        }).ToList();
     }
 
     public async Task ArchiveWarehouseAsync(Guid id, CancellationToken cancellationToken = default)
@@ -189,6 +208,66 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         var warehouseIds = warehouseId.HasValue
             ? [warehouseId.Value]
             : await context.Warehouses.AsNoTracking()
+                .Where(w => w.BranchId == branchId)
+                .Select(w => w.Id)
+                .ToListAsync(cancellationToken);
+
+        if (warehouseIds.Count == 0)
+            return [];
+
+        var rollCosts = context.FabricRolls.AsNoTracking()
+            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0)
+            .GroupBy(r => new { r.WarehouseId, r.FabricItemId, r.FabricColorId, r.ContainerId })
+            .Select(g => new
+            {
+                g.Key.WarehouseId,
+                g.Key.FabricItemId,
+                g.Key.FabricColorId,
+                g.Key.ContainerId,
+                AverageCost = g.Average(r => r.CostPerMeter)
+            });
+
+        var balances =
+            from s in context.WarehouseStocks.AsNoTracking()
+            join w in context.Warehouses.AsNoTracking() on s.WarehouseId equals w.Id
+            join f in context.FabricItems.AsNoTracking() on s.FabricItemId equals f.Id
+            join c in context.FabricColors.AsNoTracking() on s.FabricColorId equals c.Id
+            join container in context.Containers.AsNoTracking() on s.ContainerId equals container.Id into containerJoin
+            from container in containerJoin.DefaultIfEmpty()
+            join rc in rollCosts
+                on new { s.WarehouseId, s.FabricItemId, s.FabricColorId, s.ContainerId }
+                equals new { rc.WarehouseId, rc.FabricItemId, rc.FabricColorId, rc.ContainerId }
+                into rollCostJoin
+            from rc in rollCostJoin.DefaultIfEmpty()
+            where warehouseIds.Contains(s.WarehouseId) && s.TotalMeters > 0
+            orderby s.TotalMeters descending
+            select new FabricStockBalanceDto
+            {
+                WarehouseId = s.WarehouseId,
+                WarehouseName = w.NameAr,
+                FabricItemId = s.FabricItemId,
+                FabricCode = f.Code,
+                FabricName = f.NameAr,
+                FabricColorId = s.FabricColorId,
+                ColorName = c.NameAr,
+                ContainerId = s.ContainerId,
+                ContainerNumber = container == null ? "-" : container.ContainerNumber,
+                RollCount = s.RollCount,
+                TotalMeters = s.TotalMeters,
+                ReservedMeters = s.ReservedMeters,
+                AvailableMeters = s.AvailableMeters,
+                InventoryValue = s.AvailableMeters * (rc == null ? 0m : rc.AverageCost)
+            };
+
+        return await balances.ToListAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<FabricStockBalanceDto>> GetFabricStockBalancesSlowAsync(
+        Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
+    {
+        var warehouseIds = warehouseId.HasValue
+            ? [warehouseId.Value]
+            : await context.Warehouses.AsNoTracking()
                 .Where(w => w.BranchId == branchId).Select(w => w.Id).ToListAsync(cancellationToken);
 
         var stocks = await context.WarehouseStocks.AsNoTracking()
@@ -244,6 +323,98 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
     }
 
     public async Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsAsync(
+        Guid warehouseId, CancellationToken cancellationToken = default)
+    {
+        var page = await GetFabricRollsPageAsync(warehouseId, pageNumber: 1, pageSize: 200, cancellationToken: cancellationToken);
+        return page.Items.ToList();
+    }
+
+    public async Task<PaginatedFabricRollDto> GetFabricRollsPageAsync(
+        Guid warehouseId,
+        int pageNumber = 1,
+        int pageSize = 50,
+        int? status = null,
+        string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        pageNumber = Math.Max(1, pageNumber);
+        pageSize = Math.Clamp(pageSize, 10, 500);
+
+        var query = context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == warehouseId && r.RemainingLengthMeters > 0);
+
+        if (status.HasValue)
+            query = query.Where(r => r.Status == status.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = int.TryParse(term, out var rollNumber)
+                ? query.Where(r =>
+                    r.RollNumber == rollNumber ||
+                    (r.Barcode != null && r.Barcode.Contains(term)) ||
+                    (r.LotCode != null && r.LotCode.Contains(term)))
+                : query.Where(r =>
+                    (r.Barcode != null && r.Barcode.Contains(term)) ||
+                    (r.LotCode != null && r.LotCode.Contains(term)));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var skip = (pageNumber - 1) * pageSize;
+
+        var rows = await (
+            from r in query
+            join f in context.FabricItems.AsNoTracking() on r.FabricItemId equals f.Id
+            join c in context.FabricColors.AsNoTracking() on r.FabricColorId equals c.Id
+            join b in context.FabricBatches.AsNoTracking() on r.FabricBatchId equals (Guid?)b.Id into batchJoin
+            from b in batchJoin.DefaultIfEmpty()
+            join l in context.WarehouseLocations.AsNoTracking() on r.StorageLocationId equals (Guid?)l.Id into locationJoin
+            from l in locationJoin.DefaultIfEmpty()
+            orderby r.RollNumber
+            select new
+            {
+                r.Id,
+                r.RollNumber,
+                r.Barcode,
+                FabricName = f.NameAr,
+                ColorName = c.NameAr,
+                r.LengthMeters,
+                r.RemainingLengthMeters,
+                r.CostPerMeter,
+                r.Status,
+                BatchNumber = b == null ? null : b.BatchNumber,
+                LocationCode = l == null ? null : l.Code,
+                r.LotCode
+            })
+            .Skip(skip)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PaginatedFabricRollDto
+        {
+            Items = rows.Select(r => new FabricRollListDto
+            {
+                Id = r.Id,
+                RollNumber = r.RollNumber,
+                Barcode = r.Barcode,
+                FabricName = r.FabricName,
+                ColorName = r.ColorName,
+                LengthMeters = r.LengthMeters,
+                RemainingLengthMeters = r.RemainingLengthMeters,
+                CostPerMeter = r.CostPerMeter,
+                CurrentValue = r.RemainingLengthMeters * r.CostPerMeter,
+                Status = ((FabricRollStatus)r.Status).ToString(),
+                BatchNumber = r.BatchNumber,
+                LocationCode = r.LocationCode,
+                LotCode = r.LotCode
+            }).ToList(),
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
+    }
+
+    private async Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsSlowAsync(
         Guid warehouseId, CancellationToken cancellationToken = default)
     {
         var rolls = await context.FabricRolls.AsNoTracking()
@@ -413,10 +584,9 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
 
         var stocks = await context.WarehouseStocks.AsNoTracking()
             .Where(s => s.WarehouseId == warehouseId).ToListAsync(cancellationToken);
-        var allRolls = await context.FabricRolls.AsNoTracking()
-            .Where(r => r.WarehouseId == warehouseId).ToListAsync(cancellationToken);
-        var activeRolls = allRolls.Where(r => r.RemainingLengthMeters > 0).ToList();
-        var value = activeRolls.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+        var value = await context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == warehouseId && r.RemainingLengthMeters > 0)
+            .SumAsync(r => r.RemainingLengthMeters * r.CostPerMeter, cancellationToken);
 
         var whDto = new WarehouseListExtendedDto
         {
@@ -456,7 +626,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         }
 
         var executive = await BuildExecutiveDashboardAsync(
-            warehouseId, w.NameAr, branchId, value, stockBalances, allRolls, activeRolls,
+            warehouseId, w.NameAr, branchId, value, stockBalances,
             transfers, stocktakes, openingDocs, audit, timeline, pendingTransfers, pendingStocktakes,
             cancellationToken);
 
@@ -489,8 +659,6 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         Guid branchId,
         decimal inventoryValue,
         IReadOnlyList<FabricStockBalanceDto> stockBalances,
-        IReadOnlyList<FabricRollEntity> allRolls,
-        IReadOnlyList<FabricRollEntity> activeRolls,
         IReadOnlyList<StockTransferDocumentEntity> transfers,
         IReadOnlyList<StocktakeSessionEntity> stocktakes,
         IReadOnlyList<OpeningStockDocumentEntity> openingDocs,
@@ -501,7 +669,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         CancellationToken cancellationToken)
     {
         var since30 = DateTime.UtcNow.Date.AddDays(-29);
-        var fabricIds = activeRolls.Select(r => r.FabricItemId).Distinct().ToList();
+        var fabricIds = stockBalances.Select(r => r.FabricItemId).Distinct().ToList();
         var fabrics = fabricIds.Count > 0
             ? await context.FabricItems.AsNoTracking()
                 .Where(f => fabricIds.Contains(f.Id)).ToDictionaryAsync(f => f.Id, cancellationToken)
@@ -512,11 +680,11 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 .Where(c => categoryIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, cancellationToken)
             : [];
 
-        var valueByFabric = activeRolls
+        var valueByFabric = stockBalances
             .GroupBy(r => r.FabricItemId)
             .Select(g =>
             {
-                var v = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+                var v = g.Sum(r => r.InventoryValue);
                 return new { FabricId = g.Key, Value = v, Name = fabrics.GetValueOrDefault(g.Key)?.NameAr ?? "—" };
             })
             .OrderByDescending(x => x.Value).Take(8).ToList();
@@ -528,11 +696,11 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             Percent = totalVal > 0 ? Math.Round(x.Value / totalVal * 100, 1) : 0
         }).ToList();
 
-        var valueByCategory = activeRolls
+        var valueByCategory = stockBalances
             .GroupBy(r => fabrics.GetValueOrDefault(r.FabricItemId)?.CategoryId ?? Guid.Empty)
             .Select(g =>
             {
-                var v = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+                var v = g.Sum(r => r.InventoryValue);
                 var catName = g.Key != Guid.Empty && categories.TryGetValue(g.Key, out var c) ? c.NameAr : "غير مصنف";
                 return new { Label = catName, Value = v };
             })
@@ -547,15 +715,22 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
 
         var damagedStatus = (int)FabricRollStatus.Wasted;
         var blockedQuality = (int)InventoryQualityStatus.Damaged;
+        var damagedMeters = await context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == warehouseId && r.QualityStatus == blockedQuality)
+            .SumAsync(r => r.RemainingLengthMeters, cancellationToken);
+        var blockedMeters = await context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == warehouseId &&
+                        r.Status != (int)FabricRollStatus.Available &&
+                        r.Status != damagedStatus)
+            .SumAsync(r => r.RemainingLengthMeters, cancellationToken);
         var quantities = new WarehouseQuantityMetricsDto
         {
-            TotalRolls = activeRolls.Count,
+            TotalRolls = stockBalances.Sum(s => s.RollCount),
             TotalMeters = stockBalances.Sum(s => s.TotalMeters),
             AvailableMeters = stockBalances.Sum(s => s.AvailableMeters),
             ReservedMeters = stockBalances.Sum(s => s.ReservedMeters),
-            DamagedMeters = allRolls.Where(r => r.QualityStatus == blockedQuality).Sum(r => r.RemainingLengthMeters),
-            BlockedMeters = allRolls.Where(r => r.Status != (int)FabricRollStatus.Available && r.Status != damagedStatus)
-                .Sum(r => r.RemainingLengthMeters)
+            DamagedMeters = damagedMeters,
+            BlockedMeters = blockedMeters
         };
 
         var whIds = await context.Warehouses.AsNoTracking()
@@ -1288,9 +1463,9 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
 
         var stocks = await context.WarehouseStocks.AsNoTracking()
             .Where(s => s.WarehouseId == id).ToListAsync(cancellationToken);
-        var rolls = await context.FabricRolls.AsNoTracking()
-            .Where(r => r.WarehouseId == id && r.RemainingLengthMeters > 0).ToListAsync(cancellationToken);
-        var value = rolls.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
+        var value = await context.FabricRolls.AsNoTracking()
+            .Where(r => r.WarehouseId == id && r.RemainingLengthMeters > 0)
+            .SumAsync(r => r.RemainingLengthMeters * r.CostPerMeter, cancellationToken);
 
         var lastMove = await context.StockMovements.AsNoTracking()
             .Where(m => m.WarehouseId == id || m.SourceWarehouseId == id || m.DestinationWarehouseId == id)

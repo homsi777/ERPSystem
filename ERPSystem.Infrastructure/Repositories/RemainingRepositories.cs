@@ -59,7 +59,6 @@ internal sealed class WarehouseRepository(ErpDbContext context) : IWarehouseRepo
             CapacityRolls = aggregate.Warehouse.CapacityRolls,
             IsActive = aggregate.Warehouse.IsActive
         }, cancellationToken);
-        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public Task UpdateAsync(WarehouseAggregate aggregate, CancellationToken cancellationToken = default) =>
@@ -273,6 +272,7 @@ internal sealed class FabricCatalogRepository(ErpDbContext context, ICacheServic
             IsActive = category.IsActive,
             CreatedAt = DateTime.UtcNow
         }, cancellationToken);
+        await cache.RemoveByPrefixAsync(FabricCatalogCachePrefix, cancellationToken);
     }
 
     public async Task UpdateCategoryAsync(FabricCategory category, CancellationToken cancellationToken = default)

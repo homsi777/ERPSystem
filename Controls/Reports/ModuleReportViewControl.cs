@@ -32,6 +32,7 @@ public sealed class ModuleReportViewControl : UserControl
     };
     private readonly DataGrid _grid = new() { AutoGenerateColumns = false, IsReadOnly = true, MinHeight = 280 };
     private readonly StackPanel _body = new();
+    private bool _isRunning;
 
     public event EventHandler? BackRequested;
 
@@ -109,13 +110,31 @@ public sealed class ModuleReportViewControl : UserControl
         if (!AppServices.IsInitialized)
             return;
 
-        var result = await ModuleReportUiService.Instance.GetReportAsync(
-            _reportKey, _from.SelectedDate, _to.SelectedDate);
-
-        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+        if (_isRunning)
             return;
 
-        Render(result.Value);
+        try
+        {
+            _isRunning = true;
+            _meta.Text = "جار تحميل التقرير...";
+
+            var result = await ModuleReportUiService.Instance.GetReportAsync(
+                _reportKey, _from.SelectedDate, _to.SelectedDate);
+
+            if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+                return;
+
+            Render(result.Value);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"تعذر تحميل التقرير.\n\n{ex.Message}", _definition.TitleAr,
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isRunning = false;
+        }
     }
 
     private void Render(ModuleReportResultDto report)

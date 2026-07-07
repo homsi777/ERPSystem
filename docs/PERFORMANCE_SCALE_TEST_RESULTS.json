@@ -1,10 +1,10 @@
 ﻿{
-  "Timestamp": "2026-07-07T20:27:02.5555733+00:00",
+  "Timestamp": "2026-07-07T21:09:42.2444156+00:00",
   "SourceDatabase": "erp_pro",
   "TestDatabase": "erp_pro_perf",
-  "DatabaseBefore": "10.97 MB",
-  "DatabaseAfter": "250.28 MB",
-  "SeedSeconds": 26.17,
+  "DatabaseBefore": "11.01 MB",
+  "DatabaseAfter": "284.16 MB",
+  "SeedSeconds": 34.69,
   "RecordCounts": {
     "fabric_rolls": 200000,
     "containers": 500,
@@ -22,72 +22,93 @@
   "DatabaseMeasurements": [
     {
       "Operation": "db_inventory_all_rolls_for_warehouse",
-      "ElapsedMs": 1234.36,
+      "ElapsedMs": 1196.74,
       "Rows": 80000,
       "ApproxBytes": 37638225,
-      "ManagedMemoryDeltaBytes": 4083688
+      "ManagedMemoryDeltaBytes": 4372576
     },
     {
       "Operation": "db_inventory_filter_main_complete",
-      "ElapsedMs": 186.09,
+      "ElapsedMs": 201.27,
       "Rows": 60000,
       "ApproxBytes": 5710494,
       "ManagedMemoryDeltaBytes": 2577192
     },
     {
       "Operation": "db_inventory_filter_main_complete_paged_50",
-      "ElapsedMs": 99.04,
+      "ElapsedMs": 0.99,
       "Rows": 50,
       "ApproxBytes": 4609,
       "ManagedMemoryDeltaBytes": 32856
     },
     {
       "Operation": "db_fabric_selection_by_stock",
-      "ElapsedMs": 90.96,
+      "ElapsedMs": 1.2,
       "Rows": 4,
-      "ApproxBytes": 296,
+      "ApproxBytes": 304,
       "ManagedMemoryDeltaBytes": 16448
     },
     {
       "Operation": "db_sales_invoices_all_active",
-      "ElapsedMs": 62.12,
+      "ElapsedMs": 52.27,
       "Rows": 8000,
       "ApproxBytes": 2832073,
-      "ManagedMemoryDeltaBytes": 2687864
+      "ManagedMemoryDeltaBytes": 2688200
     },
     {
       "Operation": "db_month_sales_report_sql_aggregate",
-      "ElapsedMs": 18.82,
+      "ElapsedMs": 27.78,
       "Rows": 30,
       "ApproxBytes": 1050,
-      "ManagedMemoryDeltaBytes": 24624
+      "ManagedMemoryDeltaBytes": 24648
     }
   ],
   "DesktopMeasurements": [
     {
       "Operation": "desktop_inventory_list_repository_shape",
-      "ElapsedMs": 1128.19,
+      "ElapsedMs": 1119.45,
       "Rows": 80000,
       "ApproxBytes": 30710495,
-      "ManagedMemoryDeltaBytes": 204590008
+      "ManagedMemoryDeltaBytes": 204593584
+    },
+    {
+      "Operation": "desktop_inventory_page_optimized_shape",
+      "ElapsedMs": 139.32,
+      "Rows": 200,
+      "ApproxBytes": 73871,
+      "ManagedMemoryDeltaBytes": 684736
     },
     {
       "Operation": "desktop_warehouse_list_current_n_plus_one_shape",
-      "ElapsedMs": 2639.99,
+      "ElapsedMs": 291.91,
       "Rows": 15,
       "ApproxBytes": 1398,
-      "ManagedMemoryDeltaBytes": 213488
+      "ManagedMemoryDeltaBytes": 205216
+    },
+    {
+      "Operation": "desktop_warehouse_list_optimized_grouped_shape",
+      "ElapsedMs": 215.78,
+      "Rows": 15,
+      "ApproxBytes": 4659,
+      "ManagedMemoryDeltaBytes": 84448
     },
     {
       "Operation": "desktop_operations_center_stock_balance_shape",
-      "ElapsedMs": 439.01,
+      "ElapsedMs": 391.94,
       "Rows": 20000,
-      "ApproxBytes": 13984061,
-      "ManagedMemoryDeltaBytes": 95052928
+      "ApproxBytes": 13964061,
+      "ManagedMemoryDeltaBytes": 94981784
+    },
+    {
+      "Operation": "desktop_operations_center_stock_balance_optimized_shape",
+      "ElapsedMs": 559.18,
+      "Rows": 20000,
+      "ApproxBytes": 12368661,
+      "ManagedMemoryDeltaBytes": 53675168
     },
     {
       "Operation": "desktop_navigation_inventory_to_sales_back",
-      "ElapsedMs": 153.05,
+      "ElapsedMs": 148.2,
       "Rows": 4,
       "ApproxBytes": 64,
       "ManagedMemoryDeltaBytes": 37296
@@ -97,143 +118,143 @@
     {
       "Scenario": "Local WiFi",
       "Operation": "GET /api/v1/inventory/warehouses",
-      "BackendMs": 1.5,
+      "BackendMs": 1.77,
       "PayloadBytes": 2107,
       "EstimatedNetworkMs": 10.17,
-      "EstimatedEndToEndMs": 11.67
+      "EstimatedEndToEndMs": 11.94
     },
     {
       "Scenario": "Local WiFi",
       "Operation": "GET /api/v1/inventory/dashboard",
-      "BackendMs": 233.87,
+      "BackendMs": 219.06,
       "PayloadBytes": 1174,
       "EstimatedNetworkMs": 10.09,
-      "EstimatedEndToEndMs": 243.96
+      "EstimatedEndToEndMs": 229.15
     },
     {
       "Scenario": "Local WiFi",
       "Operation": "GET /api/v1/inventory/alerts",
-      "BackendMs": 2.39,
+      "BackendMs": 1.96,
       "PayloadBytes": 0,
       "EstimatedNetworkMs": 10,
-      "EstimatedEndToEndMs": 12.39
+      "EstimatedEndToEndMs": 11.96
     },
     {
       "Scenario": "Local WiFi",
       "Operation": "Inventory mobile page aggregate (3 parallel React Query calls)",
-      "BackendMs": 237.75,
+      "BackendMs": 222.79,
       "PayloadBytes": 3281,
       "EstimatedNetworkMs": 10.26,
-      "EstimatedEndToEndMs": 268.02
+      "EstimatedEndToEndMs": 253.05
     },
     {
       "Scenario": "Mobile 4G",
-      "Operation": "GET /api/v1/inventory/warehouses",
-      "BackendMs": 0.57,
-      "PayloadBytes": 2107,
-      "EstimatedNetworkMs": 101.69,
-      "EstimatedEndToEndMs": 102.26
-    },
-    {
-      "Scenario": "Mobile 4G",
-      "Operation": "GET /api/v1/inventory/dashboard",
-      "BackendMs": 220.74,
-      "PayloadBytes": 1174,
-      "EstimatedNetworkMs": 100.94,
-      "EstimatedEndToEndMs": 321.68
-    },
-    {
-      "Scenario": "Mobile 4G",
-      "Operation": "GET /api/v1/inventory/alerts",
-      "BackendMs": 0.55,
-      "PayloadBytes": 0,
-      "EstimatedNetworkMs": 100,
-      "EstimatedEndToEndMs": 100.55
-    },
-    {
-      "Scenario": "Mobile 4G",
-      "Operation": "Inventory mobile page aggregate (3 parallel React Query calls)",
-      "BackendMs": 221.86,
-      "PayloadBytes": 3281,
-      "EstimatedNetworkMs": 102.62,
-      "EstimatedEndToEndMs": 524.49
-    },
-    {
-      "Scenario": "Mobile 3G",
       "Operation": "GET /api/v1/inventory/warehouses",
       "BackendMs": 0.49,
       "PayloadBytes": 2107,
+      "EstimatedNetworkMs": 101.69,
+      "EstimatedEndToEndMs": 102.18
+    },
+    {
+      "Scenario": "Mobile 4G",
+      "Operation": "GET /api/v1/inventory/dashboard",
+      "BackendMs": 219.89,
+      "PayloadBytes": 1174,
+      "EstimatedNetworkMs": 100.94,
+      "EstimatedEndToEndMs": 320.83
+    },
+    {
+      "Scenario": "Mobile 4G",
+      "Operation": "GET /api/v1/inventory/alerts",
+      "BackendMs": 1.07,
+      "PayloadBytes": 0,
+      "EstimatedNetworkMs": 100,
+      "EstimatedEndToEndMs": 101.07
+    },
+    {
+      "Scenario": "Mobile 4G",
+      "Operation": "Inventory mobile page aggregate (3 parallel React Query calls)",
+      "BackendMs": 221.45,
+      "PayloadBytes": 3281,
+      "EstimatedNetworkMs": 102.62,
+      "EstimatedEndToEndMs": 524.08
+    },
+    {
+      "Scenario": "Mobile 3G",
+      "Operation": "GET /api/v1/inventory/warehouses",
+      "BackendMs": 0.59,
+      "PayloadBytes": 2107,
       "EstimatedNetworkMs": 216.86,
-      "EstimatedEndToEndMs": 217.35
+      "EstimatedEndToEndMs": 217.45
     },
     {
       "Scenario": "Mobile 3G",
       "Operation": "GET /api/v1/inventory/dashboard",
-      "BackendMs": 228.35,
+      "BackendMs": 215.41,
       "PayloadBytes": 1174,
       "EstimatedNetworkMs": 209.39,
-      "EstimatedEndToEndMs": 437.74
+      "EstimatedEndToEndMs": 424.8
     },
     {
       "Scenario": "Mobile 3G",
       "Operation": "GET /api/v1/inventory/alerts",
-      "BackendMs": 0.5,
+      "BackendMs": 1.48,
       "PayloadBytes": 0,
       "EstimatedNetworkMs": 200,
-      "EstimatedEndToEndMs": 200.5
+      "EstimatedEndToEndMs": 201.48
     },
     {
       "Scenario": "Mobile 3G",
       "Operation": "Inventory mobile page aggregate (3 parallel React Query calls)",
-      "BackendMs": 229.33,
+      "BackendMs": 217.48,
       "PayloadBytes": 3281,
       "EstimatedNetworkMs": 226.25,
-      "EstimatedEndToEndMs": 855.57
+      "EstimatedEndToEndMs": 843.73
     }
   ],
   "Explain": {
-    "inventory_filter": "Limit  (cost=9046.23..9052.06 rows=50 width=37) (actual time=85.610..92.749 rows=50 loops=1)\r\n  Buffers: shared hit=2997 read=3327\r\n  -\u003E  Gather Merge  (cost=9046.23..11419.63 rows=20342 width=37) (actual time=85.609..92.742 rows=50 loops=1)\r\n        Workers Planned: 2\r\n        Workers Launched: 2\r\n        Buffers: shared hit=2997 read=3327\r\n        -\u003E  Sort  (cost=8046.21..8071.63 rows=10171 width=37) (actual time=48.680..48.683 rows=33 loops=3)\r\n              Sort Key: \u0022RollNumber\u0022\r\n              Sort Method: top-N heapsort  Memory: 28kB\r\n              Buffers: shared hit=2997 read=3327\r\n              Worker 0:  Sort Method: top-N heapsort  Memory: 28kB\r\n              Worker 1:  Sort Method: quicksort  Memory: 25kB\r\n              -\u003E  Parallel Seq Scan on \u0022FabricRolls\u0022 r  (cost=0.00..7708.33 rows=10171 width=37) (actual time=8.470..44.819 rows=20000 loops=3)\r\n                    Filter: ((\u0022RemainingLengthMeters\u0022 \u003E \u00270\u0027::numeric) AND (\u0022WarehouseId\u0022 = \u002706f5501d-6523-42ef-95e4-c6c5d6df3b3c\u0027::uuid) AND (\u0022Status\u0022 = 0))\r\n                    Rows Removed by Filter: 46667\r\n                    Buffers: shared hit=2923 read=3327\r\nPlanning Time: 0.079 ms\r\nExecution Time: 92.773 ms",
-    "warehouse_stock": "Sort  (cost=3157.76..3208.08 rows=20127 width=148) (actual time=36.547..38.023 rows=20000 loops=1)\r\n  Sort Key: \u0022TotalMeters\u0022 DESC\r\n  Sort Method: quicksort  Memory: 3528kB\r\n  Buffers: shared hit=966\r\n  -\u003E  Seq Scan on warehouse_stocks  (cost=0.00..1719.00 rows=20127 width=148) (actual time=0.011..23.697 rows=20000 loops=1)\r\n        Filter: ((\u0022TotalMeters\u0022 \u003E \u00270\u0027::numeric) AND (\u0022WarehouseId\u0022 = \u002706f5501d-6523-42ef-95e4-c6c5d6df3b3c\u0027::uuid))\r\n        Rows Removed by Filter: 30200\r\n        Buffers: shared hit=966\r\nPlanning Time: 0.094 ms\r\nExecution Time: 39.734 ms"
+    "inventory_filter": "Limit  (cost=0.41..43.86 rows=50 width=37) (actual time=0.019..0.038 rows=50 loops=1)\r\n  Buffers: shared hit=5\r\n  -\u003E  Index Scan using idx_fabric_rolls_available_partial on \u0022FabricRolls\u0022 r  (cost=0.41..21153.55 rows=24343 width=37) (actual time=0.018..0.034 rows=50 loops=1)\r\n        Index Cond: (\u0022WarehouseId\u0022 = \u0027d9d2cb51-2c70-4b94-a9f0-350b1b21e24c\u0027::uuid)\r\n        Buffers: shared hit=5\r\nPlanning Time: 0.183 ms\r\nExecution Time: 0.049 ms",
+    "warehouse_stock": "Sort  (cost=3142.35..3192.17 rows=19931 width=148) (actual time=29.484..31.114 rows=20000 loops=1)\r\n  Sort Key: \u0022TotalMeters\u0022 DESC\r\n  Sort Method: quicksort  Memory: 3528kB\r\n  Buffers: shared hit=966\r\n  -\u003E  Seq Scan on warehouse_stocks  (cost=0.00..1719.00 rows=19931 width=148) (actual time=0.013..20.489 rows=20000 loops=1)\r\n        Filter: ((\u0022TotalMeters\u0022 \u003E \u00270\u0027::numeric) AND (\u0022WarehouseId\u0022 = \u0027d9d2cb51-2c70-4b94-a9f0-350b1b21e24c\u0027::uuid))\r\n        Rows Removed by Filter: 30200\r\n        Buffers: shared hit=966\r\nPlanning Time: 0.082 ms\r\nExecution Time: 32.147 ms"
   },
   "RootCauses": [
     {
       "Operation": "Inventory and warehouse lists",
       "Category": "Database \u002B Application \u002B UI",
-      "Evidence": "Repository methods load all matching FabricRoll rows into memory, then aggregate/project in C#. Current 200K test confirms full-result operations dominate versus LIMIT 50.",
-      "Solution": "Server-side pagination and DTO projection, composite indexes on WarehouseId/Status/RemainingLengthMeters/RollNumber, and WPF DataGrid virtualization.",
+      "Evidence": "Baseline repository shape loaded all matching FabricRoll rows into memory, then aggregated/projected in C#. The optimized page shape fetches only the requested rows.",
+      "Solution": "Implemented server-side pagination and DTO projection, composite/partial FabricRoll indexes, and grouped warehouse aggregates.",
       "Impact": "Critical"
     },
     {
       "Operation": "Operations center / stock balances",
       "Category": "Application",
-      "Evidence": "GetFabricStockBalancesAsync loads warehouse_stocks and all rolls, then repeatedly filters rolls per stock row in memory.",
-      "Solution": "Move aggregation to SQL GROUP BY or materialized inventory summary, fetch only top/page rows for the current tab.",
+      "Evidence": "Baseline stock balance shape loaded warehouse_stocks and all rolls, then repeatedly filtered rolls per stock row in memory.",
+      "Solution": "Implemented SQL GROUP BY roll-cost aggregation and joined projected stock balances.",
       "Impact": "Critical"
     },
     {
       "Operation": "Web mobile inventory",
       "Category": "Network \u002B API",
       "Evidence": "The mobile page issues warehouses/dashboard/alerts calls. Backend aggregation is the main cost now; on 3G payload and latency add visible delay.",
-      "Solution": "Keep calls parallel, add response compression, cache dashboard snapshots, and paginate any future roll list endpoint.",
+      "Solution": "Response compression is enabled and a paged rolls API contract is available for future roll-list screens.",
       "Impact": "High"
     }
   ],
   "Questions": {
-    "desktop_rows_displayed": "Current repository shape returns all rows for the selected warehouse; no server page contract exists for GetFabricRollsAsync.",
-    "wpf_virtualization": "Must be verified visually in XAML/runtime; code-level performance risk remains because ItemsSource can receive tens of thousands of rows.",
+    "desktop_rows_displayed": "The legacy GetFabricRollsAsync now returns a capped first page for compatibility; GetFabricRollsPageAsync exposes the explicit server page contract.",
+    "wpf_virtualization": "WPF design was not changed; the UI service now has a paged method so screens can bind pages without loading tens of thousands of rows.",
     "filter_location": "Inventory filtering in tested repository methods is server-side only for simple WHERE clauses, but aggregation and many projections run client-side in C#.",
     "ef_loading": "No lazy-loading proxy was found; slowness is from explicit ToListAsync full loads and follow-up dictionary/lookups.",
     "sql_executed": "EXPLAIN ANALYZE output is included in the JSON report.",
     "web_api_calls_inventory_page": "3 calls in web-client Inventory.tsx: warehouses, dashboard, alerts.",
     "web_parallel_or_sequential": "React Query calls are declared independently and can run in parallel.",
-    "web_pagination": "Current inventory web page does not request fabric-roll pages; WPF/repository roll APIs are unpaged.",
-    "compression": "API Program.cs does not configure response compression.",
+    "web_pagination": "A paged web API endpoint is available at GET /api/v1/inventory/warehouses/{warehouseId}/rolls with pageNumber/pageSize/status/search.",
+    "compression": "API Program.cs configures response compression.",
     "json_response_size": "Measured in payloadBytes per web measurement in the JSON report.",
-    "fabric_roll_indexes": "Existing model defines indexes only on Barcode and FabricBatchId; no WarehouseId/Status composite index.",
-    "partial_index_complete": "No partial index for available/complete rolls exists in the current model.",
-    "columns_returned": "Several paths return full entities first, then map to DTOs.",
+    "fabric_roll_indexes": "The model now defines WarehouseId/Status, WarehouseId/FabricColorId, ContainerId/Status, Status, and available-roll partial indexes.",
+    "partial_index_complete": "The partial index uses the actual enum value Status = 0 for available rolls and RemainingLengthMeters \u003E 0.",
+    "columns_returned": "The paged roll path projects DTO fields instead of materializing full FabricRoll entities.",
     "includes": "No large Include chain was found in the inventory repository; related data is loaded with separate lookup queries.",
-    "n_plus_one": "Warehouse list uses per-warehouse stock/roll queries; operations center uses in-memory repeated filtering across loaded collections.",
-    "lookup_cache": "Catalog lookups are queried per operation; no cross-request cache is configured."
+    "n_plus_one": "Warehouse list now uses grouped stock and roll-value queries instead of per-warehouse stock/roll queries.",
+    "lookup_cache": "Account and fabric catalog lookups now use in-memory cache with prefix invalidation on writes."
   }
 }

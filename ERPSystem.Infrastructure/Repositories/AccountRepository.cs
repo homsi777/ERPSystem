@@ -1,4 +1,5 @@
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
 using ERPSystem.Domain.Entities.Accounting;
 using ERPSystem.Domain.Enums;
@@ -9,8 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ERPSystem.Infrastructure.Repositories;
 
-internal sealed class AccountRepository(ErpDbContext context) : IAccountRepository
+internal sealed class AccountRepository(ErpDbContext context, ICacheService cache) : IAccountRepository
 {
+    private const string AccountCachePrefix = "lookup:accounts:";
+
     public async Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await context.Accounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
@@ -31,6 +34,14 @@ internal sealed class AccountRepository(ErpDbContext context) : IAccountReposito
         bool activeOnly = true,
         CancellationToken cancellationToken = default)
     {
+        var cacheKey = $"{AccountCachePrefix}{companyId}:type:{accountType?.ToString() ?? "all"}:active:{activeOnly}";
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            var cached = await cache.GetAsync<IReadOnlyList<Account>>(cacheKey, cancellationToken);
+            if (cached is not null)
+                return cached;
+        }
+
         var query = context.Accounts.AsNoTracking().Where(a => a.CompanyId == companyId);
         if (activeOnly)
             query = query.Where(a => a.IsActive);
@@ -46,7 +57,10 @@ internal sealed class AccountRepository(ErpDbContext context) : IAccountReposito
         }
 
         var entities = await query.OrderBy(a => a.Code).ToListAsync(cancellationToken);
-        return entities.Select(ToDomain).ToList();
+        var accounts = entities.Select(ToDomain).ToList();
+        if (string.IsNullOrWhiteSpace(search))
+            await cache.SetAsync(cacheKey, accounts, TimeSpan.FromMinutes(30), cancellationToken);
+        return accounts;
     }
 
     public Task<bool> HasChildrenAsync(Guid accountId, CancellationToken cancellationToken = default) =>
@@ -69,6 +83,7 @@ internal sealed class AccountRepository(ErpDbContext context) : IAccountReposito
             IsPostable = account.IsPostable,
             IsActive = account.IsActive
         }, cancellationToken);
+        await cache.RemoveByPrefixAsync(AccountCachePrefix, cancellationToken);
     }
 
     public async Task UpdateAsync(Account account, CancellationToken cancellationToken = default)
@@ -84,6 +99,7 @@ internal sealed class AccountRepository(ErpDbContext context) : IAccountReposito
         entity.IsPostable = account.IsPostable;
         entity.IsActive = account.IsActive;
         entity.UpdatedAt = DateTime.UtcNow;
+        await cache.RemoveByPrefixAsync(AccountCachePrefix, cancellationToken);
     }
 
     private static Account ToDomain(AccountEntity entity)
