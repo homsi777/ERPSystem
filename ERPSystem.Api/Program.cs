@@ -41,12 +41,22 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            cors.WithOrigins(
+            // Production origins are supplied via configuration/environment so the
+            // deployed domain can be added without recompiling.
+            // Example (env): Cors__AllowedOrigins="https://alamal-ab.org,https://www.alamal-ab.org"
+            string[] defaults =
+            [
                 "http://localhost:5173",
                 "https://localhost:5173",
                 "http://localhost:5174",
-                "https://localhost:5174");
-            // Add the production web-client origin here when the domain is ready.
+                "https://localhost:5174"
+            ];
+
+            var configured = builder.Configuration["Cors:AllowedOrigins"]
+                ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                ?? [];
+
+            cors.WithOrigins([.. defaults, .. configured]);
         }
     });
 });
