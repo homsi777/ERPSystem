@@ -182,15 +182,7 @@ else
   git clone --branch "$REPO_BRANCH" "$REPO_URL" "$SRC_DIR"
 fi
 
-step "   6-a) تطبيق ترحيلات قاعدة البيانات (EF Core migrations)"
-export PATH="$PATH:/root/.dotnet/tools"
-dotnet tool install --global dotnet-ef --version 9.* >/dev/null 2>&1 || dotnet tool update --global dotnet-ef >/dev/null 2>&1 || true
-ConnectionStrings__DefaultConnection="Host=127.0.0.1;Port=${DB_PORT};Database=${DB_NAME};Username=${DB_APP_USER};Password=${DB_APP_PASSWORD}" \
-  dotnet ef database update \
-    --project "${SRC_DIR}/ERPSystem.Infrastructure/ERPSystem.Infrastructure.csproj" \
-    --startup-project "${SRC_DIR}/ERPSystem.Api/ERPSystem.Api.csproj" \
-  && log "تم تطبيق الترحيلات على ${DB_NAME}" \
-  || warn "تعذّر تطبيق الترحيلات تلقائياً — طبّقها يدوياً لاحقاً بـ dotnet ef database update"
+log "ملاحظة: الترحيلات تُطبَّق تلقائياً عند إقلاع الـ API (Database.MigrateAsync)."
 
 step "   6-b) نشر الـ API (dotnet publish)"
 dotnet publish "${SRC_DIR}/ERPSystem.Api/ERPSystem.Api.csproj" \

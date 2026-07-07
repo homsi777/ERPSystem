@@ -5,6 +5,7 @@ using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.DependencyInjection;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Infrastructure.Seed;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,6 +99,12 @@ await using (var scope = app.Services.CreateAsyncScope())
     var context = scope.ServiceProvider.GetRequiredService<ERPSystem.Infrastructure.Persistence.ErpDbContext>();
     var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    // Apply any pending EF Core migrations on startup so a fresh/cloud database
+    // is provisioned automatically without a separate migration step.
+    logger.LogInformation("Applying database migrations...");
+    await context.Database.MigrateAsync();
+
     await DatabaseSeeder.EnsureAdminPasswordAsync(context, passwordHasher, logger);
 }
 
