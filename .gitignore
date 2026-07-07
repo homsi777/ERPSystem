@@ -11,6 +11,10 @@ _perf_audit.txt
 _dump_*.txt
 _dump_*.py
 
+# Per-machine secrets / cloud DB override (never commit)
+appsettings.Local.json
+**/appsettings.Local.json
+
 # User files
 *.user
 *.suo

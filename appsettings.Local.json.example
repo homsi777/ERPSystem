@@ -1,0 +1,7 @@
+{
+  "_comment": "انسخ هذا الملف إلى appsettings.Local.json بجوار ERPSystem.exe لربط هذا الجهاز بقاعدة البيانات السحابية. الملف غير متتبع في Git (يحتوي كلمة المرور).",
+  "_important": "لا تستخدم دومين Cloudflare (السحابة البرتقالية) للاتصال بالقاعدة — المنفذ 5432 لا يمر عبر Cloudflare. استخدم IP الخادم الحقيقي أو سجل DNS-only مثل db.alamal-ab.org.",
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=<SERVER_IP_OR_DB_SUBDOMAIN>;Port=5432;Database=erp_pro;Username=erp_app;Password=<DB_APP_PASSWORD>;SSL Mode=Require;Trust Server Certificate=true"
+  }
+}

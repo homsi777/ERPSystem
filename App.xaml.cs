@@ -38,6 +38,10 @@ public partial class App : System.Windows.Application
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                // Optional per-machine override (e.g. cloud DB connection string).
+                // Not tracked in git; place it next to ERPSystem.exe to point this
+                // installation at the shared cloud database.
+                .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
                 .Build();
 
