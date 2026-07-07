@@ -1037,6 +1037,17 @@ internal sealed class UserRepository(ErpDbContext context) : IUserRepository
     {
         var roleIds = await context.UserRoles.AsNoTracking()
             .Where(ur => ur.UserId == userId).Select(ur => ur.RoleId).ToListAsync(cancellationToken);
+
+        // System roles (e.g. Administrator) implicitly hold every permission.
+        if (await IsSuperAdminAsync(roleIds, cancellationToken))
+        {
+            return await context.Permissions.AsNoTracking()
+                .Select(p => p.Code)
+                .Distinct()
+                .OrderBy(code => code)
+                .ToListAsync(cancellationToken);
+        }
+
         var permissionIds = await context.RolePermissions.AsNoTracking()
             .Where(rp => roleIds.Contains(rp.RoleId)).Select(rp => rp.PermissionId).ToListAsync(cancellationToken);
         return await context.Permissions.AsNoTracking()
@@ -1051,10 +1062,24 @@ internal sealed class UserRepository(ErpDbContext context) : IUserRepository
     {
         var roleIds = await context.UserRoles.AsNoTracking()
             .Where(ur => ur.UserId == userId).Select(ur => ur.RoleId).ToListAsync(cancellationToken);
+
+        // System roles (e.g. Administrator) implicitly hold every permission.
+        if (await IsSuperAdminAsync(roleIds, cancellationToken))
+            return true;
+
         var permissionIds = await context.RolePermissions.AsNoTracking()
             .Where(rp => roleIds.Contains(rp.RoleId)).Select(rp => rp.PermissionId).ToListAsync(cancellationToken);
         return await context.Permissions.AsNoTracking()
             .AnyAsync(p => permissionIds.Contains(p.Id) && p.Code == permissionCode, cancellationToken);
+    }
+
+    private async Task<bool> IsSuperAdminAsync(IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        if (roleIds.Count == 0)
+            return false;
+
+        return await context.Roles.AsNoTracking()
+            .AnyAsync(r => roleIds.Contains(r.Id) && r.IsSystem, cancellationToken);
     }
 
     private static User ToUser(UserEntity entity)
