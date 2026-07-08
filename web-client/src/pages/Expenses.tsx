@@ -27,11 +27,13 @@ import type {
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
+import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
+import type { DocumentExportPayload } from '../lib/documentExport.ts';
 import { formatCurrency, formatDateOnly, formatNumber } from '../lib/format.ts';
 import { expenseCategoryKindLabel, expenseStatusLabel, getExpenseStatusTone } from '../lib/enums.ts';
 
@@ -868,6 +870,36 @@ function OperationsCenterPage({ expenseId }: { expenseId: string }) {
     </>
   ) : undefined;
 
+  const exportPayload: DocumentExportPayload | null = expense
+    ? {
+        title: `مصروف ${expense.code}`,
+        subtitle: expense.name,
+        fileName: `expense-${expense.code}.pdf`,
+        shareText: `مصروف: ${expense.name}\nالكود: ${expense.code}\nالمدفوع: ${formatCurrency(expense.paidAmountBase)}\nالمتبقي: ${formatCurrency(expense.remainingBalanceBase)}`,
+        sections: [
+          {
+            heading: 'بيانات المصروف',
+            rows: [
+              { label: 'الاسم', value: expense.name },
+              { label: 'الكود', value: expense.code },
+              { label: 'التصنيف', value: expense.categoryName },
+              { label: 'الحالة', value: expense.statusDisplay },
+              { label: 'المدفوع', value: formatCurrency(expense.paidAmountBase) },
+              { label: 'المتبقي', value: formatCurrency(expense.remainingBalanceBase) },
+              { label: 'ملاحظات', value: expense.notes?.trim() || '—' }
+            ]
+          },
+          {
+            heading: 'الدفعات',
+            rows: (expense.payments ?? []).map((payment, index) => ({
+              label: `دفعة ${index + 1}`,
+              value: `${formatDateOnly(payment.paymentDate)} · ${formatCurrency(payment.amountBase)} · ${payment.notes ?? '—'}`
+            }))
+          }
+        ]
+      }
+    : null;
+
   return (
     <AppShell title={expense ? expense.name : 'مركز عمل المصروف'} summary={headerSummary}>
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -891,6 +923,11 @@ function OperationsCenterPage({ expenseId }: { expenseId: string }) {
               </span>
             </div>
           </section>
+
+          <DocumentActions
+            payload={exportPayload}
+            onToast={(message, tone = 'success') => setToast({ tone, message })}
+          />
 
           <section className="compact-action-row">
             {can('expenses.edit') ? (

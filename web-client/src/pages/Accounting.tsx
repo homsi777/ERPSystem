@@ -10,10 +10,12 @@ import {
 import { ApiError } from '../api/client.ts';
 import type { JournalEntryStatus, TrialBalanceLineDto } from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
+import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
+import type { DocumentExportPayload } from '../lib/documentExport.ts';
 import { formatCurrency, formatDate, formatDateOnly } from '../lib/format.ts';
 import {
   getJournalEntryStatusTone,
@@ -314,6 +316,35 @@ function JournalEntryDetailPage({ entryId }: { entryId: string }) {
     </>
   ) : undefined;
 
+  const exportPayload: DocumentExportPayload | null = entry
+    ? {
+        title: `قيد محاسبي ${entry.entryNumber}`,
+        subtitle: entry.description,
+        fileName: `journal-${entry.entryNumber}.pdf`,
+        shareText: `قيد محاسبي ${entry.entryNumber}\n${entry.description}\nمدين: ${formatCurrency(entry.debitTotal)}\nدائن: ${formatCurrency(entry.creditTotal)}`,
+        sections: [
+          {
+            heading: 'بيانات القيد',
+            rows: [
+              { label: 'رقم القيد', value: entry.entryNumber },
+              { label: 'البيان', value: entry.description },
+              { label: 'التاريخ', value: formatDate(entry.entryDate) },
+              { label: 'الحالة', value: journalEntryStatusLabel(entry.status) },
+              { label: 'المدين', value: formatCurrency(entry.debitTotal) },
+              { label: 'الدائن', value: formatCurrency(entry.creditTotal) }
+            ]
+          },
+          {
+            heading: 'السطور',
+            rows: entry.lines.map((line) => ({
+              label: `${line.accountCode} ${line.accountName}`,
+              value: line.debit > 0 ? `مدين ${formatCurrency(line.debit)}` : `دائن ${formatCurrency(line.credit)}`
+            }))
+          }
+        ]
+      }
+    : null;
+
   return (
     <AppShell title={entry ? entry.entryNumber : 'تفاصيل القيد'} summary={headerSummary}>
       {entryQuery.isLoading ? <LoadingState /> : null}
@@ -341,6 +372,8 @@ function JournalEntryDetailPage({ entryId }: { entryId: string }) {
               <DetailItem label="الدائن" value={formatCurrency(entry.creditTotal)} />
             </dl>
           </section>
+
+          <DocumentActions payload={exportPayload} />
 
           <section className="form-panel form-compact">
             <h2>سطور القيد</h2>

@@ -26,12 +26,14 @@ import type {
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
+import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
+import type { DocumentExportPayload } from '../lib/documentExport.ts';
 import { formatCurrency, formatDateOnly, formatNumber } from '../lib/format.ts';
 import {
   customerAccountMovementTypeLabels,
@@ -315,6 +317,30 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
     </>
   ) : undefined;
 
+  const exportPayload: DocumentExportPayload | null = customer
+    ? {
+        title: `بطاقة عميل ${customer.code}`,
+        subtitle: customer.nameAr,
+        fileName: `customer-${customer.code}.pdf`,
+        shareText: `عميل: ${customer.nameAr}\nالكود: ${customer.code}\nالهاتف: ${customer.phone ?? '—'}\nالرصيد: ${formatCurrency(customer.balance)}`,
+        sections: [
+          {
+            heading: 'بيانات العميل',
+            rows: [
+              { label: 'الاسم', value: customer.nameAr },
+              { label: 'الكود', value: customer.code },
+              { label: 'النوع', value: customerTypeLabels[customer.type as CustomerType] },
+              { label: 'الهاتف', value: customer.phone ?? '—' },
+              { label: 'البريد', value: customer.email ?? '—' },
+              { label: 'الرصيد', value: formatCurrency(customer.balance) },
+              { label: 'حد الائتمان', value: formatCurrency(customer.creditLimit) },
+              { label: 'شروط الدفع', value: `${formatNumber(customer.paymentTermsDays)} يوم` }
+            ]
+          }
+        ]
+      }
+    : null;
+
   return (
     <AppShell title={customer ? customer.nameAr : 'تفاصيل العميل'} summary={headerSummary}>
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -346,6 +372,11 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
               <DetailItem label="البريد" value={customer.email ?? 'غير محدد'} />
             </dl>
           </section>
+
+          <DocumentActions
+            payload={exportPayload}
+            onToast={(message, tone = 'success') => setToast({ tone, message })}
+          />
 
           <section className="compact-action-row" aria-label="إجراءات العميل">
             {can('customers.create') ? (

@@ -24,11 +24,13 @@ import type {
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
+import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
+import type { DocumentExportPayload } from '../lib/documentExport.ts';
 import { formatCurrency, formatDate, formatMeters, formatNumber } from '../lib/format.ts';
 import {
   getJournalEntryStatusTone,
@@ -206,6 +208,36 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
     </>
   ) : undefined;
 
+  const exportPayload: DocumentExportPayload | null = invoice
+    ? {
+        title: `فاتورة بيع ${invoice.invoiceNumber}`,
+        subtitle: invoice.customerName || 'عميل غير محدد',
+        fileName: `sales-invoice-${invoice.invoiceNumber}.pdf`,
+        shareText: `فاتورة بيع ${invoice.invoiceNumber}\nالعميل: ${invoice.customerName || '—'}\nالإجمالي: ${formatCurrency(invoice.grandTotal)}\nالتاريخ: ${formatDate(invoice.invoiceDate)}`,
+        sections: [
+          {
+            heading: 'بيانات الفاتورة',
+            rows: [
+              { label: 'رقم الفاتورة', value: invoice.invoiceNumber },
+              { label: 'العميل', value: invoice.customerName || '—' },
+              { label: 'التاريخ', value: formatDate(invoice.invoiceDate) },
+              { label: 'نوع الدفع', value: paymentTypeLabel(invoice.paymentType) },
+              { label: 'الإجمالي', value: formatCurrency(invoice.grandTotal) },
+              { label: 'المحصّل', value: formatCurrency(ops?.collectedAmount ?? 0) },
+              { label: 'المتبقي', value: formatCurrency(ops?.remainingBalance ?? 0) }
+            ]
+          },
+          {
+            heading: 'الأصناف',
+            rows: invoice.lines.map((line) => ({
+              label: `#${line.lineNumber} ${line.fabricDisplayName}/${line.colorDisplayName}`,
+              value: `${formatNumber(line.rollCount)} ثوب · ${formatMeters(line.totalLengthMeters)} · ${formatCurrency(line.lineTotal)}`
+            }))
+          }
+        ]
+      }
+    : null;
+
   return (
     <AppShell title={invoice ? invoice.invoiceNumber : 'تفاصيل الفاتورة'} summary={headerSummary}>
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -242,6 +274,11 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
               <DetailItem label="الإجمالي" value={formatCurrency(invoice.grandTotal)} />
             </dl>
           </section>
+
+          <DocumentActions
+            payload={exportPayload}
+            onToast={(message, tone = 'success') => setToast({ tone, message })}
+          />
 
           <section className="compact-action-row" aria-label="إجراءات الفاتورة">
             {ops.canSendToWarehouse ? (

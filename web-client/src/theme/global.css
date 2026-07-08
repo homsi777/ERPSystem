@@ -711,8 +711,13 @@ svg {
   border: 1px solid rgba(245, 166, 35, 0.35);
 }
 
-.detailing-alert {
-  margin-block-end: 14px;
+.document-actions {
+  margin-block: 0;
+}
+
+.document-actions .chip-button {
+  flex: 1 1 calc(50% - 4px);
+  justify-content: center;
 }
 
 .detailing-alert__link {

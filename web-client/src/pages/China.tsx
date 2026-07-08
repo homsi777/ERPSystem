@@ -35,6 +35,7 @@ import type {
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
+import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
@@ -549,6 +550,29 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
               </div>
             </div>
           </section>
+
+          <DocumentActions
+            payload={{
+              title: `حاوية ${container.containerNumber}`,
+              subtitle: container.supplierName || 'مورد غير محدد',
+              fileName: `container-${container.containerNumber}.pdf`,
+              shareText: `حاوية: ${container.containerNumber}\nالمورد: ${container.supplierName || '—'}\nالأمتار: ${formatMeters(container.totalMeters)}\nالأثواب: ${formatNumber(container.totalRolls)}`,
+              sections: [
+                {
+                  heading: 'بيانات الحاوية',
+                  rows: [
+                    { label: 'رقم الحاوية', value: container.containerNumber },
+                    { label: 'المورد', value: container.supplierName || '—' },
+                    { label: 'تاريخ الشحن', value: formatDate(container.shipmentDate) },
+                    { label: 'الأمتار', value: formatMeters(container.totalMeters) },
+                    { label: 'الأثواب', value: formatNumber(container.totalRolls) },
+                    { label: 'فاتورة الصين', value: formatCurrency(container.chinaInvoiceAmountUsd) }
+                  ]
+                }
+              ]
+            }}
+            onToast={(message, tone = 'success') => setToast({ tone, message })}
+          />
 
           <ActionPanel
             canCalculateLandingCost={data.canCalculateLandingCost && can('containers.landing-cost')}
