@@ -39,6 +39,7 @@ function rollStatusLabel(status: string) {
 
 export function InventoryPage() {
   const [warehouseId, setWarehouseId] = useState('');
+  const [containerId, setContainerId] = useState('');
   const [selectedRow, setSelectedRow] = useState<FabricStockBalanceDto | null>(null);
 
   const warehousesQuery = useQuery({
@@ -56,6 +57,7 @@ export function InventoryPage() {
     queryFn: () => getInventoryAlerts()
   });
 
+  // Fetch stock by warehouse only; container is filtered client-side (same as desktop).
   const stockQuery = useQuery({
     queryKey: ['inventory', 'stock', warehouseId],
     queryFn: () => getFabricStock(warehouseId || undefined)
@@ -63,19 +65,40 @@ export function InventoryPage() {
 
   const dashboard = dashboardQuery.data;
   const showWarehouseName = warehouseId.length === 0;
-  const isWarehouseFiltered = warehouseId.length > 0;
+  const isFiltered = warehouseId.length > 0 || containerId.length > 0;
+
+  const containerOptions = useMemo(() => {
+    const rows = stockQuery.data ?? [];
+    const scoped = warehouseId ? rows.filter((row) => row.warehouseId === warehouseId) : rows;
+    const map = new Map<string, string>();
+    for (const row of scoped) {
+      if (row.containerId && !map.has(row.containerId)) {
+        map.set(row.containerId, row.containerNumber || row.containerId);
+      }
+    }
+    return [...map.entries()]
+      .map(([id, number]) => ({ id, number }))
+      .sort((a, b) => a.number.localeCompare(b.number, 'ar'));
+  }, [stockQuery.data, warehouseId]);
+
+  const filteredStock = useMemo(() => {
+    const rows = stockQuery.data ?? [];
+    if (!containerId) {
+      return rows;
+    }
+    return rows.filter((row) => row.containerId === containerId);
+  }, [stockQuery.data, containerId]);
 
   const headerSummaryValues = useMemo(() => {
     if (stockQuery.isSuccess) {
-      const rows = stockQuery.data;
       return {
-        totalValue: rows.reduce((sum, row) => sum + row.inventoryValue, 0),
-        totalRolls: rows.reduce((sum, row) => sum + row.rollCount, 0),
-        itemCount: rows.length
+        totalValue: filteredStock.reduce((sum, row) => sum + row.inventoryValue, 0),
+        totalRolls: filteredStock.reduce((sum, row) => sum + row.rollCount, 0),
+        itemCount: filteredStock.length
       };
     }
 
-    if (!isWarehouseFiltered && dashboard) {
+    if (!isFiltered && dashboard) {
       return {
         totalValue: dashboard.totalInventoryValue,
         totalRolls: dashboard.totalRolls,
@@ -84,21 +107,26 @@ export function InventoryPage() {
     }
 
     return { totalValue: 0, totalRolls: 0, itemCount: 0 };
-  }, [stockQuery.isSuccess, stockQuery.data, isWarehouseFiltered, dashboard]);
+  }, [stockQuery.isSuccess, filteredStock, isFiltered, dashboard]);
+
+  function handleWarehouseChange(nextWarehouseId: string) {
+    setWarehouseId(nextWarehouseId);
+    setContainerId('');
+  }
 
   const headerSummary = (
     <>
       <SummaryCard
-        label={isWarehouseFiltered ? 'قيمة المستودع' : 'قيمة المخزون'}
+        label={isFiltered ? 'قيمة التصفية' : 'قيمة المخزون'}
         value={formatCurrency(headerSummaryValues.totalValue)}
       />
       <SummaryCard
-        label={isWarehouseFiltered ? 'أثواب المستودع' : 'عدد الأثواب'}
+        label={isFiltered ? 'أثواب التصفية' : 'عدد الأثواب'}
         value={formatNumber(headerSummaryValues.totalRolls)}
         tone="green"
       />
       <SummaryCard
-        label={isWarehouseFiltered ? 'أصناف المستودع' : 'الأصناف'}
+        label={isFiltered ? 'أصناف التصفية' : 'الأصناف'}
         value={formatNumber(headerSummaryValues.itemCount)}
         tone="amber"
       />
@@ -124,24 +152,47 @@ export function InventoryPage() {
       ) : null}
 
       <section className="form-panel form-compact form-panel--filter" aria-label="تصفية المخزون">
-        <label className="form-field form-field--wide">
-          <span className="form-field__label">المستودع</span>
-          <select
-            value={warehouseId}
-            onChange={(event) => setWarehouseId(event.target.value)}
-            disabled={warehousesQuery.isLoading || warehousesQuery.isError}
-          >
-            <option value="">كل المستودعات</option>
-            {(warehousesQuery.data ?? []).map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.nameAr}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Link className="chip-button" to="/inventory/movements" style={{ justifySelf: 'start' }}>
-          حركة المخزون
-        </Link>
+        <div className="form-section-head">
+          <h2>التصفية</h2>
+          <Link className="chip-button" to="/inventory/movements">
+            حركة المخزون
+          </Link>
+        </div>
+        <div className="form-field-row form-field-row--2">
+          <label className="form-field">
+            <span className="form-field__label">المستودع</span>
+            <select
+              value={warehouseId}
+              onChange={(event) => handleWarehouseChange(event.target.value)}
+              disabled={warehousesQuery.isLoading || warehousesQuery.isError}
+            >
+              <option value="">كل المستودعات</option>
+              {(warehousesQuery.data ?? []).map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.nameAr}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="form-field">
+            <span className="form-field__label">الحاوية</span>
+            <select
+              value={containerId}
+              onChange={(event) => setContainerId(event.target.value)}
+              disabled={stockQuery.isLoading || containerOptions.length === 0}
+            >
+              <option value="">كل الحاويات</option>
+              {containerOptions.map((container) => (
+                <option key={container.id} value={container.id}>
+                  {container.number}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {containerOptions.length === 0 && stockQuery.isSuccess ? (
+          <p className="form-hint">لا توجد حاويات ضمن التصفية الحالية.</p>
+        ) : null}
       </section>
 
       {stockQuery.isLoading ? <LoadingState /> : null}
@@ -153,21 +204,21 @@ export function InventoryPage() {
         />
       ) : null}
 
-      {stockQuery.isSuccess && stockQuery.data.length === 0 ? (
+      {stockQuery.isSuccess && filteredStock.length === 0 ? (
         <EmptyState
           title="لا توجد أرصدة مخزون"
           description={
-            isWarehouseFiltered
-              ? 'لا توجد أثواب في هذا المستودع حاليًا.'
+            isFiltered
+              ? 'لا توجد أثواب مطابقة للمستودع/الحاوية المحددين.'
               : 'ستظهر الأقمشة هنا بعد ترحيلها إلى المستودع.'
           }
         />
       ) : null}
 
-      {stockQuery.isSuccess && stockQuery.data.length > 0 ? (
+      {stockQuery.isSuccess && filteredStock.length > 0 ? (
         <>
           <section className="record-list mobile-only" aria-label="أرصدة الأقمشة">
-            {stockQuery.data.map((row) => (
+            {filteredStock.map((row) => (
               <button
                 key={stockRowKey(row)}
                 type="button"
@@ -179,7 +230,7 @@ export function InventoryPage() {
             ))}
           </section>
           <section className="card-list desktop-only" aria-label="أرصدة الأقمشة">
-            {stockQuery.data.map((row) => (
+            {filteredStock.map((row) => (
               <button
                 key={stockRowKey(row)}
                 type="button"
