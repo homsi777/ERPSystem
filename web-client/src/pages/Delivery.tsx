@@ -73,23 +73,24 @@ function DeliveryQueuePage() {
 
   return (
     <AppShell title="التسليم" summary={headerSummary}>
-      <section className="toolbar-row toolbar-row--start">
-        <label className="inline-field">
-          المستودع
-          <select
-            value={warehouseId}
-            onChange={(event) => setWarehouseId(event.target.value)}
-            disabled={warehousesQuery.isLoading || warehousesQuery.isError}
-          >
-            <option value="">اختر المستودع...</option>
-            {(warehousesQuery.data ?? []).map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.nameAr}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
+      <div className="page-stack">
+        <section className="form-panel form-compact form-panel--filter" aria-label="اختيار المستودع">
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">المستودع</span>
+            <select
+              value={warehouseId}
+              onChange={(event) => setWarehouseId(event.target.value)}
+              disabled={warehousesQuery.isLoading || warehousesQuery.isError}
+            >
+              <option value="">اختر المستودع...</option>
+              {(warehousesQuery.data ?? []).map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.nameAr}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
 
       {!warehouseId ? (
         <EmptyState title="اختر مستودعًا" description="اختر المستودع لعرض فواتير بانتظار التفصيل." />
@@ -114,6 +115,7 @@ function DeliveryQueuePage() {
           ))}
         </section>
       ) : null}
+      </div>
     </AppShell>
   );
 }
@@ -210,10 +212,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   const detailing = detailingQuery.data;
 
   const headerSummary = detailing ? (
-    <>
-      <SummaryCard label="عدد الأثواب" value={formatNumber(detailing.rolls.length)} />
-      <SummaryCard label="إجمالي الأمتار المُدخلة" value={formatMeters(totalEnteredMeters)} tone="amber" />
-    </>
+    <SummaryCard label="الأمتار المُدخلة" value={formatMeters(totalEnteredMeters)} tone="amber" />
   ) : undefined;
 
   return (
@@ -227,73 +226,96 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       ) : null}
 
       {detailing ? (
-        <>
-          <section className="detail-card">
-            <h2>بيانات الفاتورة</h2>
+        <form className="page-stack page-stack--footer" onSubmit={submit}>
+          <section className="form-panel form-compact" aria-label="بيانات الفاتورة">
+            <div className="form-section-head">
+              <h2>بيانات الفاتورة</h2>
+              <DeliveryStatusPill status={detailing.status} />
+            </div>
             <dl className="detail-grid">
               <DetailItem label="العميل" value={detailing.customerName || 'غير محدد'} />
-              <DetailItem label="تاريخ الإرسال للمستودع" value={formatDate(detailing.sentToWarehouseAt)} />
+              <DetailItem label="تاريخ الإرسال" value={formatDate(detailing.sentToWarehouseAt)} />
               <DetailItem
-                label="سعر الوحدة التمثيلي"
-                value={detailing.representativeUnitPrice != null ? formatNumber(detailing.representativeUnitPrice) : 'غير محدد'}
+                label="سعر الوحدة"
+                value={detailing.representativeUnitPrice != null ? formatNumber(detailing.representativeUnitPrice) : '—'}
               />
-              <DetailItem label="الحالة" value={warehouseDetailingStatusLabels[detailing.status]} />
+              <DetailItem label="عدد الأثواب" value={formatNumber(detailing.rolls.length)} />
             </dl>
           </section>
 
-          {isCompleted ? (
-            <section className="detail-card">
+          <section className="form-panel form-compact" aria-label="أطوال الأثواب">
+            <div className="form-section-head">
               <h2>أطوال الأثواب</h2>
-              <div className="banner banner--success" role="status">
-                تم تفصيل هذه الفاتورة بالفعل — الفاتورة الآن بانتظار الاعتماد. لا حاجة لإعادة الإرسال.
-              </div>
-              <div className="line-list">
+              {!isCompleted ? <span className="form-hint">{formatNumber(detailing.rolls.length)} ثوب</span> : null}
+            </div>
+
+            {isCompleted ? (
+              <>
+                <div className="banner banner--success" role="status">
+                  تم تفصيل هذه الفاتورة — بانتظار الاعتماد.
+                </div>
+                <div className="line-items">
+                  {detailing.rolls.map((roll) => (
+                    <article className="line-item" key={roll.rollDetailId}>
+                      <div className="line-item__head">
+                        <span className="line-item__index">#{roll.rollSequence}</span>
+                        <strong>{formatMeters(roll.lengthMeters)}</strong>
+                      </div>
+                      <p className="line-item__meta">
+                        {roll.fabricDisplayName} / {roll.colorDisplayName}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+                <button className="primary-button" type="button" onClick={() => navigate('/delivery')}>
+                  العودة للقائمة
+                </button>
+              </>
+            ) : (
+              <div className="line-items">
                 {detailing.rolls.map((roll) => (
-                  <div className="price-row" key={roll.rollDetailId}>
-                    <span>
-                      #{roll.rollSequence} — {roll.fabricDisplayName} / {roll.colorDisplayName}
-                    </span>
-                    <strong>{formatMeters(roll.lengthMeters)}</strong>
-                  </div>
+                  <article className="line-item" key={roll.rollDetailId}>
+                    <div className="line-item__head">
+                      <span className="line-item__index">#{roll.rollSequence}</span>
+                    </div>
+                    <p className="line-item__meta">
+                      {roll.fabricDisplayName} / {roll.colorDisplayName}
+                    </p>
+                    <label className="form-field form-field--wide">
+                      <span className="form-field__label">الطول (م)</span>
+                      <input
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={lengths[roll.rollDetailId] ?? ''}
+                        onChange={(event) =>
+                          setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
+                        }
+                        aria-label={`طول الثوب رقم ${roll.rollSequence}`}
+                      />
+                    </label>
+                  </article>
                 ))}
               </div>
-              <button className="primary-button primary-button--wide" type="button" onClick={() => navigate('/delivery')}>
-                العودة إلى قائمة التسليم
-              </button>
-            </section>
-          ) : (
-            <form className="detail-card" onSubmit={submit}>
-              <h2>أطوال الأثواب</h2>
-              <div className="line-list">
-                {detailing.rolls.map((roll) => (
-                  <label className="price-row" key={roll.rollDetailId}>
-                    <span>
-                      #{roll.rollSequence} — {roll.fabricDisplayName} / {roll.colorDisplayName}
-                    </span>
-                    <input
-                      inputMode="decimal"
-                      placeholder="الطول (متر)"
-                      value={lengths[roll.rollDetailId] ?? ''}
-                      onChange={(event) =>
-                        setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
-                      }
-                      aria-label={`طول الثوب رقم ${roll.rollSequence}`}
-                    />
-                  </label>
-                ))}
+            )}
+          </section>
+
+          {!isCompleted ? (
+            <div className="sticky-form-footer">
+              <div className="sticky-form-footer__total">
+                <span>إجمالي الأمتار</span>
+                <strong>{formatMeters(totalEnteredMeters)}</strong>
               </div>
               <button
-                className="primary-button primary-button--wide"
+                className="primary-button sticky-form-footer__submit"
                 type="submit"
                 disabled={!allRollsValid || completeMutation.isPending}
                 title={!allRollsValid ? 'أدخل طول كل الأثواب قبل الإكمال.' : undefined}
               >
                 {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
               </button>
-              {!allRollsValid ? <p className="field-note">أدخل طولًا صحيحًا (أكبر من صفر) لكل الأثواب قبل الإكمال.</p> : null}
-            </form>
-          )}
-        </>
+            </div>
+          ) : null}
+        </form>
       ) : null}
     </AppShell>
   );

@@ -96,24 +96,29 @@ function CustomerListPage() {
 
   return (
     <AppShell title="العملاء" summary={headerSummary}>
-      <section className="toolbar-row">
-        {can('customers.create') ? (
-          <button className="primary-button" type="button" onClick={() => navigate('/customers/new')}>
-            عميل جديد
-          </button>
-        ) : null}
-      </section>
-
-      <form className="search-row" onSubmit={submitSearch}>
-        <input
-          className="search-input"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="ابحث بالاسم أو الكود..."
-          aria-label="بحث عن عميل"
-        />
-        <button className="primary-button" type="submit">بحث</button>
-      </form>
+      <div className="page-stack">
+        <section className="form-panel form-compact form-panel--filter">
+          <div className="form-section-head">
+            <h2>البحث</h2>
+            {can('customers.create') ? (
+              <button className="chip-button" type="button" onClick={() => navigate('/customers/new')}>
+                + عميل جديد
+              </button>
+            ) : null}
+          </div>
+          <form className="compact-search-row" onSubmit={submitSearch}>
+            <label className="form-field">
+              <span className="form-field__label">ابحث بالاسم أو الكود</span>
+              <input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="..."
+                aria-label="بحث عن عميل"
+              />
+            </label>
+            <button className="chip-button" type="submit">بحث</button>
+          </form>
+        </section>
 
       {customersQuery.isLoading ? <LoadingState /> : null}
 
@@ -137,6 +142,7 @@ function CustomerListPage() {
           ))}
         </section>
       ) : null}
+      </div>
     </AppShell>
   );
 }
@@ -206,41 +212,51 @@ function CustomerCreatePage() {
   return (
     <AppShell title="عميل جديد">
       <Toast toast={toast} onClose={() => setToast(null)} />
-      <form className="detail-card form-grid" onSubmit={submit}>
-        <label>
-          الكود
-          <input value={form.code} onChange={(event) => update('code', event.target.value)} required />
-        </label>
-        <label>
-          النوع
-          <select value={form.type} onChange={(event) => update('type', event.target.value as '0' | '1')}>
-            <option value="0">{customerTypeLabels[0]}</option>
-            <option value="1">{customerTypeLabels[1]}</option>
-          </select>
-        </label>
-        <label>
-          الاسم بالعربي
-          <input value={form.nameAr} onChange={(event) => update('nameAr', event.target.value)} required />
-        </label>
-        <label>
-          الاسم بالإنجليزي
-          <input value={form.nameEn} onChange={(event) => update('nameEn', event.target.value)} />
-        </label>
-        <label>
-          حد الائتمان
-          <input inputMode="decimal" value={form.creditLimit} onChange={(event) => update('creditLimit', event.target.value)} />
-        </label>
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={form.creditLimitEnabled}
-            onChange={(event) => update('creditLimitEnabled', event.target.checked)}
-          />
-          تفعيل حد الائتمان
-        </label>
-        <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء العميل'}
-        </button>
+      <form className="page-stack page-stack--footer" onSubmit={submit}>
+        <section className="form-panel form-compact" aria-label="بيانات العميل">
+          <div className="form-field-row form-field-row--2">
+            <label className="form-field">
+              <span className="form-field__label">الكود</span>
+              <input value={form.code} onChange={(event) => update('code', event.target.value)} required />
+            </label>
+            <label className="form-field">
+              <span className="form-field__label">النوع</span>
+              <select value={form.type} onChange={(event) => update('type', event.target.value as '0' | '1')}>
+                <option value="0">{customerTypeLabels[0]}</option>
+                <option value="1">{customerTypeLabels[1]}</option>
+              </select>
+            </label>
+          </div>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">الاسم بالعربي</span>
+            <input value={form.nameAr} onChange={(event) => update('nameAr', event.target.value)} required />
+          </label>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">الاسم بالإنجليزي</span>
+            <input value={form.nameEn} onChange={(event) => update('nameEn', event.target.value)} />
+          </label>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">حد الائتمان</span>
+            <input inputMode="decimal" value={form.creditLimit} onChange={(event) => update('creditLimit', event.target.value)} />
+          </label>
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={form.creditLimitEnabled}
+              onChange={(event) => update('creditLimitEnabled', event.target.checked)}
+            />
+            تفعيل حد الائتمان
+          </label>
+        </section>
+        <div className="sticky-form-footer">
+          <div className="sticky-form-footer__total">
+            <span>حد الائتمان</span>
+            <strong>{formatCurrency(toNumber(form.creditLimit))}</strong>
+          </div>
+          <button className="primary-button sticky-form-footer__submit" type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء العميل'}
+          </button>
+        </div>
       </form>
     </AppShell>
   );
@@ -310,16 +326,18 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
       ) : null}
 
       {customer ? (
-        <div className="details-stack">
-          <section className="detail-card detail-card--hero">
-            <div className="detail-card__lead">
-              <p className="detail-card__eyebrow">{customer.code}</p>
-              <h2>{customer.nameAr}</h2>
+        <div className="page-stack">
+          <section className="form-panel form-compact">
+            <div className="compact-hero">
+              <div>
+                <p className="compact-hero__eyebrow">{customer.code}</p>
+                <h2>{customer.nameAr}</h2>
+              </div>
               <CustomerStatusPill status={customer.status} />
             </div>
           </section>
 
-          <section className="detail-card">
+          <section className="form-panel form-compact">
             <h2>بيانات العميل</h2>
             <dl className="detail-grid">
               <DetailItem label="النوع" value={customerTypeLabels[customer.type as CustomerType]} />
@@ -329,7 +347,7 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
             </dl>
           </section>
 
-          <section className="action-grid" aria-label="إجراءات العميل">
+          <section className="compact-action-row" aria-label="إجراءات العميل">
             {can('customers.create') ? (
               <button
                 className="primary-button primary-button--wide"
@@ -379,7 +397,7 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
             <ReceiptVoucherForm customerId={customerId} onToast={setToast} onDone={refreshAfterAction} />
           ) : null}
 
-          <section className="detail-card detail-card--tabs">
+          <section className="form-panel form-compact">
             <div className="tab-strip" role="tablist" aria-label="تبويبات العميل">
               <button
                 className={`filter-chip ${activeTab === 'statement' ? 'filter-chip--active' : ''}`}
@@ -401,13 +419,13 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
               </button>
             </div>
 
-            <div className="form-grid form-grid--dates">
-              <label>
-                من تاريخ
+            <div className="form-field-row form-field-row--2">
+              <label className="form-field">
+                <span className="form-field__label">من تاريخ</span>
                 <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
               </label>
-              <label>
-                إلى تاريخ
+              <label className="form-field">
+                <span className="form-field__label">إلى تاريخ</span>
                 <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
               </label>
             </div>
@@ -464,25 +482,29 @@ function EditCustomerForm({
   }
 
   return (
-    <form className="detail-card form-grid" onSubmit={submit}>
-      <h2 className="form-grid__wide">تعديل بيانات العميل</h2>
-      <label>
-        الاسم بالعربي
+    <form className="form-panel form-compact" onSubmit={submit}>
+      <div className="form-section-head">
+        <h2>تعديل بيانات العميل</h2>
+      </div>
+      <label className="form-field form-field--wide">
+        <span className="form-field__label">الاسم بالعربي</span>
         <input value={form.nameAr} onChange={(event) => update('nameAr', event.target.value)} required />
       </label>
-      <label>
-        الاسم بالإنجليزي
+      <label className="form-field form-field--wide">
+        <span className="form-field__label">الاسم بالإنجليزي</span>
         <input value={form.nameEn} onChange={(event) => update('nameEn', event.target.value)} />
       </label>
-      <label>
-        حد الائتمان
-        <input inputMode="decimal" value={form.creditLimit} onChange={(event) => update('creditLimit', event.target.value)} />
-      </label>
-      <label>
-        شروط الدفع (أيام)
-        <input inputMode="numeric" value={form.paymentTermsDays} onChange={(event) => update('paymentTermsDays', event.target.value)} />
-      </label>
-      <label className="toggle-row form-grid__wide">
+      <div className="form-field-row form-field-row--2">
+        <label className="form-field">
+          <span className="form-field__label">حد الائتمان</span>
+          <input inputMode="decimal" value={form.creditLimit} onChange={(event) => update('creditLimit', event.target.value)} />
+        </label>
+        <label className="form-field">
+          <span className="form-field__label">شروط الدفع (أيام)</span>
+          <input inputMode="numeric" value={form.paymentTermsDays} onChange={(event) => update('paymentTermsDays', event.target.value)} />
+        </label>
+      </div>
+      <label className="toggle-row">
         <input
           type="checkbox"
           checked={form.creditLimitEnabled}
@@ -490,7 +512,7 @@ function EditCustomerForm({
         />
         تفعيل حد الائتمان
       </label>
-      <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
+      <button className="primary-button" type="submit" disabled={mutation.isPending}>
         {mutation.isPending ? 'جار الحفظ...' : 'حفظ التعديلات'}
       </button>
     </form>
@@ -531,22 +553,26 @@ function OpeningBalanceForm({
   }
 
   return (
-    <form className="detail-card form-grid" onSubmit={submit}>
-      <h2 className="form-grid__wide">ترحيل رصيد افتتاحي</h2>
-      <label>
-        المبلغ
-        <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
-      </label>
-      <label>
-        تاريخ الترحيل
-        <input type="date" value={postingDate} onChange={(event) => setPostingDate(event.target.value)} />
-      </label>
-      <label className="form-grid__wide">
-        ملاحظة مرجعية
+    <form className="form-panel form-compact" onSubmit={submit}>
+      <div className="form-section-head">
+        <h2>ترحيل رصيد افتتاحي</h2>
+      </div>
+      <div className="form-field-row form-field-row--2">
+        <label className="form-field">
+          <span className="form-field__label">المبلغ</span>
+          <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+        </label>
+        <label className="form-field">
+          <span className="form-field__label">تاريخ الترحيل</span>
+          <input type="date" value={postingDate} onChange={(event) => setPostingDate(event.target.value)} />
+        </label>
+      </div>
+      <label className="form-field form-field--wide">
+        <span className="form-field__label">ملاحظة مرجعية</span>
         <input value={note} onChange={(event) => setNote(event.target.value)} />
       </label>
-      <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? 'جار الترحيل...' : 'ترحيل الرصيد الافتتاحي'}
+      <button className="primary-button" type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? 'جار الترحيل...' : 'ترحيل الرصيد'}
       </button>
     </form>
   );
@@ -597,10 +623,12 @@ function ReceiptVoucherForm({
   }
 
   return (
-    <form className="detail-card form-grid" onSubmit={submit}>
-      <h2 className="form-grid__wide">سند قبض</h2>
-      <label>
-        الصندوق
+    <form className="form-panel form-compact" onSubmit={submit}>
+      <div className="form-section-head">
+        <h2>سند قبض</h2>
+      </div>
+      <label className="form-field form-field--wide">
+        <span className="form-field__label">الصندوق</span>
         <select
           value={cashboxId}
           onChange={(event) => setCashboxId(event.target.value)}
@@ -614,17 +642,15 @@ function ReceiptVoucherForm({
             </option>
           ))}
         </select>
-        {cashboxesQuery.isError ? <span className="field-note">تعذر تحميل قائمة الصناديق.</span> : null}
+        {cashboxesQuery.isError ? <span className="form-hint form-hint--warn">تعذر تحميل الصناديق.</span> : null}
       </label>
-      <label>
-        المبلغ
+      <label className="form-field form-field--wide">
+        <span className="form-field__label">المبلغ</span>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </label>
-      <p className="field-note form-grid__wide">
-        سيُنشأ السند ويُرحَّل فورًا (بلا تخصيص تفصيلي على فواتير محددة).
-      </p>
-      <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? 'جار الحفظ...' : 'حفظ وترحيل السند'}
+      <p className="form-hint">يُنشأ السند ويُرحَّل فورًا (بلا تخصيص على فواتير).</p>
+      <button className="primary-button" type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? 'جار الحفظ...' : 'حفظ وترحيل'}
       </button>
     </form>
   );
@@ -709,9 +735,9 @@ function CustomerLedgerPanel({
         />
       </dl>
 
-      <div className="section-title-row">
+      <div className="form-section-head">
         <button
-          className="ghost-button"
+          className="chip-button"
           type="button"
           onClick={openReconcilePanel}
           disabled={ledger.lines.length === 0}
@@ -721,10 +747,10 @@ function CustomerLedgerPanel({
       </div>
 
       {showReconcile && selectedLineIndex !== null ? (
-        <form className="detail-card form-grid" onSubmit={submitReconcile}>
-          <p className="field-note form-grid__wide">المطابقة الجديدة تحل محل السابقة.</p>
-          <label className="form-grid__wide">
-            السطر المرجعي
+        <form className="form-panel form-compact" onSubmit={submitReconcile}>
+          <p className="form-hint">المطابقة الجديدة تحل محل السابقة.</p>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">السطر المرجعي</span>
             <select value={selectedLineIndex} onChange={(event) => setSelectedLineIndex(Number(event.target.value))}>
               {ledger.lines.map((line, index) => (
                 <option key={index} value={index}>
@@ -733,7 +759,7 @@ function CustomerLedgerPanel({
               ))}
             </select>
           </label>
-          <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={reconcileMutation.isPending}>
+          <button className="primary-button" type="submit" disabled={reconcileMutation.isPending}>
             {reconcileMutation.isPending ? 'جار المطابقة...' : 'تأكيد المطابقة'}
           </button>
         </form>

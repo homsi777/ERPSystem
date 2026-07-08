@@ -107,6 +107,7 @@ export function InventoryPage() {
 
   return (
     <AppShell title="المخزون" summary={headerSummary}>
+      <div className="page-stack">
       {alertsQuery.isSuccess && alertsQuery.data.length > 0 ? (
         <>
           <section className="record-list mobile-only" aria-label="تنبيهات المخزون">
@@ -122,9 +123,9 @@ export function InventoryPage() {
         </>
       ) : null}
 
-      <section className="toolbar-row toolbar-row--start toolbar-panel">
-        <label className="inline-field inline-field--grow">
-          المستودع
+      <section className="form-panel form-compact form-panel--filter" aria-label="تصفية المخزون">
+        <label className="form-field form-field--wide">
+          <span className="form-field__label">المستودع</span>
           <select
             value={warehouseId}
             onChange={(event) => setWarehouseId(event.target.value)}
@@ -138,7 +139,7 @@ export function InventoryPage() {
             ))}
           </select>
         </label>
-        <Link className="ghost-button toolbar-panel__action" to="/inventory/movements">
+        <Link className="chip-button" to="/inventory/movements" style={{ justifySelf: 'start' }}>
           حركة المخزون
         </Link>
       </section>
@@ -193,6 +194,7 @@ export function InventoryPage() {
       ) : null}
 
       {selectedRow ? <RollDetailsModal row={selectedRow} onClose={() => setSelectedRow(null)} /> : null}
+      </div>
     </AppShell>
   );
 }

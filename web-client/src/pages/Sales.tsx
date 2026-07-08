@@ -88,27 +88,28 @@ function SalesListPage() {
 
   return (
     <AppShell title="فواتير البيع" summary={headerSummary}>
-      <section className="toolbar-row">
-        {can('sales.create') ? (
-          <button className="primary-button" type="button" onClick={() => navigate('/sales/new')}>
-            فاتورة جديدة
-          </button>
-        ) : null}
-      </section>
-
-      <section className="toolbar-row toolbar-row--start">
-        <label className="inline-field">
-          الحالة
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">كل الحالات</option>
-            {salesInvoiceStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
+      <div className="page-stack">
+        <section className="form-panel form-compact form-panel--filter">
+          <div className="form-section-head">
+            <h2>الفواتير</h2>
+            {can('sales.create') ? (
+              <button className="chip-button" type="button" onClick={() => navigate('/sales/new')}>
+                + فاتورة جديدة
+              </button>
+            ) : null}
+          </div>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">الحالة</span>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="">كل الحالات</option>
+              {salesInvoiceStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
 
       {invoicesQuery.isLoading ? <LoadingState /> : null}
       {invoicesQuery.isError ? (
@@ -127,6 +128,7 @@ function SalesListPage() {
           ))}
         </section>
       ) : null}
+      </div>
     </AppShell>
   );
 }

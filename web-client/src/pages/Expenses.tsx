@@ -83,27 +83,28 @@ function ExpenseListPage() {
 
   return (
     <AppShell title="المصاريف" summary={headerSummary}>
-      <section className="toolbar-row">
-        {can('expenses.create') ? (
-          <button className="primary-button" type="button" onClick={() => navigate('/expenses/new')}>
-            مصروف جديد
-          </button>
-        ) : null}
-      </section>
-
-      <section className="toolbar-row toolbar-row--start">
-        <label className="inline-field">
-          الحالة
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">كل الحالات</option>
-            {expenseStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
+      <div className="page-stack">
+        <section className="form-panel form-compact form-panel--filter">
+          <div className="form-section-head">
+            <h2>التصفية</h2>
+            {can('expenses.create') ? (
+              <button className="chip-button" type="button" onClick={() => navigate('/expenses/new')}>
+                + مصروف جديد
+              </button>
+            ) : null}
+          </div>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">الحالة</span>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="">كل الحالات</option>
+              {expenseStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
 
       {expensesQuery.isLoading ? <LoadingState /> : null}
       {expensesQuery.isError ? (
@@ -122,6 +123,7 @@ function ExpenseListPage() {
           ))}
         </section>
       ) : null}
+      </div>
     </AppShell>
   );
 }
@@ -220,18 +222,20 @@ function ExpenseDetailPage({ expenseId }: { expenseId: string }) {
       ) : null}
 
       {expense ? (
-        <div className="details-stack">
-          <section className="detail-card detail-card--hero">
-            <div className="detail-card__lead">
-              <p className="detail-card__eyebrow">{expense.code}</p>
-              <h2>{expense.name}</h2>
+        <div className="page-stack">
+          <section className="form-panel form-compact">
+            <div className="compact-hero">
+              <div>
+                <p className="compact-hero__eyebrow">{expense.code}</p>
+                <h2>{expense.name}</h2>
+              </div>
               <span className={`status-pill status-pill--${getExpenseStatusTone(expense.status)}`}>
                 {expenseStatusLabel(expense.status)}
               </span>
             </div>
           </section>
 
-          <section className="detail-card">
+          <section className="form-panel form-compact">
             <h2>بيانات المصروف</h2>
             <dl className="detail-grid">
               <DetailItem label="التصنيف" value={expense.categoryName} />
@@ -243,10 +247,10 @@ function ExpenseDetailPage({ expenseId }: { expenseId: string }) {
               <DetailItem label="العملة" value={expense.originalCurrency} />
               <DetailItem label="المبلغ الأصلي" value={formatNumber(expense.originalAmount)} />
             </dl>
-            {expense.description ? <p className="muted-line">{expense.description}</p> : null}
+            {expense.description ? <p className="form-hint">{expense.description}</p> : null}
           </section>
 
-          <section className="action-grid" aria-label="إجراءات المصروف">
+          <section className="compact-action-row" aria-label="إجراءات المصروف">
             {canApprove ? (
               <button className="primary-button primary-button--wide" type="button" onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}>
                 {approveMutation.isPending ? 'جار الاعتماد...' : 'اعتماد'}
@@ -283,7 +287,7 @@ function ExpenseDetailPage({ expenseId }: { expenseId: string }) {
           ) : null}
 
           {expense.payments.length > 0 ? (
-            <section className="detail-card">
+            <section className="form-panel form-compact">
               <h2>الدفعات</h2>
               <div className="table-scroll">
                 <table className="data-table">
@@ -369,24 +373,28 @@ function PayExpenseForm({
   }
 
   return (
-    <form className="detail-card form-grid" onSubmit={submit}>
-      <h2 className="form-grid__wide">تسجيل دفعة</h2>
-      <label>
-        المبلغ
-        <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
-      </label>
-      <label>
-        طريقة الدفع
-        <select value={method} onChange={(event) => setMethod(event.target.value)}>
-          {expensePaymentMethodOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="form-grid__wide">
-        الصندوق (اختياري)
+    <form className="form-panel form-compact" onSubmit={submit}>
+      <div className="form-section-head">
+        <h2>تسجيل دفعة</h2>
+      </div>
+      <div className="form-field-row form-field-row--2">
+        <label className="form-field">
+          <span className="form-field__label">المبلغ</span>
+          <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
+        </label>
+        <label className="form-field">
+          <span className="form-field__label">طريقة الدفع</span>
+          <select value={method} onChange={(event) => setMethod(event.target.value)}>
+            {expensePaymentMethodOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className="form-field form-field--wide">
+        <span className="form-field__label">الصندوق (اختياري)</span>
         <select value={cashboxId} onChange={(event) => setCashboxId(event.target.value)}>
           <option value="">بدون صندوق</option>
           {(cashboxesQuery.data ?? []).map((cashbox) => (
@@ -396,7 +404,7 @@ function PayExpenseForm({
           ))}
         </select>
       </label>
-      <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
+      <button className="primary-button" type="submit" disabled={mutation.isPending}>
         {mutation.isPending ? 'جار الحفظ...' : 'حفظ الدفعة'}
       </button>
     </form>
@@ -479,70 +487,83 @@ function ExpenseCreatePage() {
   return (
     <AppShell title="مصروف جديد">
       <Toast toast={toast} onClose={() => setToast(null)} />
-      <form className="detail-card form-grid" onSubmit={submit}>
-        <label className="form-grid__wide">
-          اسم المصروف
-          <input value={form.name} onChange={(event) => update('name', event.target.value)} required />
-        </label>
-        <label>
-          التصنيف
-          <select value={form.categoryId} onChange={(event) => update('categoryId', event.target.value)} required>
-            <option value="">اختر التصنيف...</option>
-            {categoriesByKind.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.nameAr} ({expenseCategoryKindLabel(category.kind)})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          مركز التكلفة (اختياري)
-          <select value={form.costCenterId} onChange={(event) => update('costCenterId', event.target.value)}>
-            <option value="">بدون</option>
-            {(costCentersQuery.data ?? []).map((cc) => (
-              <option key={cc.id} value={cc.id}>
-                {cc.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          المبلغ
-          <input inputMode="decimal" value={form.amount} onChange={(event) => update('amount', event.target.value)} />
-        </label>
-        <label>
-          العملة
-          <input value={form.currency} onChange={(event) => update('currency', event.target.value)} />
-        </label>
-        <label>
-          طريقة الدفع
-          <select value={form.paymentMethod} onChange={(event) => update('paymentMethod', event.target.value)}>
-            {expensePaymentMethodOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          المستفيد (اختياري)
-          <input value={form.payeeName} onChange={(event) => update('payeeName', event.target.value)} />
-        </label>
-        <label>
-          التاريخ
-          <input type="date" value={form.startDate} onChange={(event) => update('startDate', event.target.value)} />
-        </label>
-        <label className="form-grid__wide">
-          الوصف (اختياري)
-          <input value={form.description} onChange={(event) => update('description', event.target.value)} />
-        </label>
-        <label className="toggle-row form-grid__wide">
-          <input type="checkbox" checked={form.submitForApproval} onChange={(event) => update('submitForApproval', event.target.checked)} />
-          إرسال للاعتماد مباشرة
-        </label>
-        <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'جار الحفظ...' : 'حفظ المصروف'}
-        </button>
+      <form className="page-stack page-stack--footer" onSubmit={submit}>
+        <section className="form-panel form-compact" aria-label="بيانات المصروف">
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">اسم المصروف</span>
+            <input value={form.name} onChange={(event) => update('name', event.target.value)} required />
+          </label>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">التصنيف</span>
+            <select value={form.categoryId} onChange={(event) => update('categoryId', event.target.value)} required>
+              <option value="">اختر التصنيف...</option>
+              {categoriesByKind.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.nameAr} ({expenseCategoryKindLabel(category.kind)})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="form-field-row form-field-row--2">
+            <label className="form-field">
+              <span className="form-field__label">المبلغ</span>
+              <input inputMode="decimal" value={form.amount} onChange={(event) => update('amount', event.target.value)} />
+            </label>
+            <label className="form-field">
+              <span className="form-field__label">العملة</span>
+              <input value={form.currency} onChange={(event) => update('currency', event.target.value)} />
+            </label>
+          </div>
+          <div className="form-field-row form-field-row--2">
+            <label className="form-field">
+              <span className="form-field__label">طريقة الدفع</span>
+              <select value={form.paymentMethod} onChange={(event) => update('paymentMethod', event.target.value)}>
+                {expensePaymentMethodOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-field">
+              <span className="form-field__label">التاريخ</span>
+              <input type="date" value={form.startDate} onChange={(event) => update('startDate', event.target.value)} />
+            </label>
+          </div>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">مركز التكلفة (اختياري)</span>
+            <select value={form.costCenterId} onChange={(event) => update('costCenterId', event.target.value)}>
+              <option value="">بدون</option>
+              {(costCentersQuery.data ?? []).map((cc) => (
+                <option key={cc.id} value={cc.id}>
+                  {cc.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">المستفيد (اختياري)</span>
+            <input value={form.payeeName} onChange={(event) => update('payeeName', event.target.value)} />
+          </label>
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">الوصف (اختياري)</span>
+            <input value={form.description} onChange={(event) => update('description', event.target.value)} />
+          </label>
+          <label className="toggle-row">
+            <input type="checkbox" checked={form.submitForApproval} onChange={(event) => update('submitForApproval', event.target.checked)} />
+            إرسال للاعتماد مباشرة
+          </label>
+        </section>
+
+        <div className="sticky-form-footer">
+          <div className="sticky-form-footer__total">
+            <span>المبلغ</span>
+            <strong>{formatCurrency(toNumber(form.amount))}</strong>
+          </div>
+          <button className="primary-button sticky-form-footer__submit" type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? 'جار الحفظ...' : 'حفظ المصروف'}
+          </button>
+        </div>
       </form>
     </AppShell>
   );
