@@ -929,7 +929,7 @@ function OperationsCenterPage({ expenseId }: { expenseId: string }) {
             ) : null}
           </section>
 
-          <section className="detail-card detail-card--tabs">
+          <section className="form-panel form-compact">
             <div className="tab-strip" role="tablist">
               <OpsTabButton active={tab === 'overview'} onClick={() => setTab('overview')} label="نظرة عامة" />
               <OpsTabButton active={tab === 'financial'} onClick={() => setTab('financial')} label="الملخص المالي" />

@@ -150,66 +150,69 @@ function ChinaContainerListPage() {
   return (
     <AppShell title="طلبات الصين" summary={headerSummary}>
       <Toast toast={toast} onClose={() => setToast(null)} />
-
-      <section className="toolbar-row">
-        {can('containers.create') ? (
-          <button className="primary-button" type="button" onClick={() => navigate('/china/new')}>
-            استيراد حاوية جديدة
-          </button>
-        ) : null}
-      </section>
-
-      <section className="filter-strip" aria-label="تصفية حالة الحاوية">
-        <button
-          className={`filter-chip ${status === undefined ? 'filter-chip--active' : ''}`}
-          type="button"
-          onClick={() => selectStatus(undefined)}
-        >
-          الكل
-        </button>
-        {chinaContainerStatusOptions.map((option) => (
-          <button
-            className={`filter-chip ${status === option.value ? 'filter-chip--active' : ''}`}
-            key={option.value}
-            type="button"
-            onClick={() => selectStatus(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </section>
-
-      {containersQuery.isLoading ? <LoadingState /> : null}
-
-      {containersQuery.isError ? (
-        <ErrorState
-          message={getErrorMessage(containersQuery.error)}
-          onRetry={() => void containersQuery.refetch()}
-        />
-      ) : null}
-
-      {containersQuery.isSuccess && containersQuery.data.items.length === 0 ? (
-        <EmptyState title="لا توجد حاويات" description="ستظهر طلبات الصين هنا بعد إنشاء الحاويات في النظام." />
-      ) : null}
-
-      {containersQuery.isSuccess && containersQuery.data.items.length > 0 ? (
-        <>
-          <section className="card-list" aria-label="قائمة حاويات الصين">
-            {containersQuery.data.items.map((container) => (
-              <Link className="card-link" key={container.id} to={`/china/${container.id}`}>
-                <ContainerListCard container={container} />
-              </Link>
+      <div className="page-stack">
+        <section className="form-panel form-compact form-panel--filter">
+          <div className="form-section-head">
+            <h2>الحاويات</h2>
+            {can('containers.create') ? (
+              <button className="chip-button" type="button" onClick={() => navigate('/china/new')}>
+                + استيراد جديد
+              </button>
+            ) : null}
+          </div>
+          <div className="tab-strip" role="tablist" aria-label="تصفية حالة الحاوية">
+            <button
+              className={`filter-chip ${status === undefined ? 'filter-chip--active' : ''}`}
+              type="button"
+              onClick={() => selectStatus(undefined)}
+            >
+              الكل
+            </button>
+            {chinaContainerStatusOptions.map((option) => (
+              <button
+                className={`filter-chip ${status === option.value ? 'filter-chip--active' : ''}`}
+                key={option.value}
+                type="button"
+                onClick={() => selectStatus(option.value)}
+              >
+                {option.label}
+              </button>
             ))}
-          </section>
-          <Pagination
-            page={containersQuery.data.page}
-            totalPages={containersQuery.data.totalPages}
-            totalCount={containersQuery.data.totalCount}
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
+          </div>
+        </section>
+
+        {containersQuery.isLoading ? <LoadingState /> : null}
+
+        {containersQuery.isError ? (
+          <ErrorState
+            message={getErrorMessage(containersQuery.error)}
+            onRetry={() => void containersQuery.refetch()}
           />
-        </>
-      ) : null}
+        ) : null}
+
+        {containersQuery.isSuccess && containersQuery.data.items.length === 0 ? (
+          <EmptyState title="لا توجد حاويات" description="ستظهر طلبات الصين هنا بعد إنشاء الحاويات في النظام." />
+        ) : null}
+
+        {containersQuery.isSuccess && containersQuery.data.items.length > 0 ? (
+          <>
+            <section className="card-list" aria-label="قائمة حاويات الصين">
+              {containersQuery.data.items.map((container) => (
+                <Link className="card-link" key={container.id} to={`/china/${container.id}`}>
+                  <ContainerListCard container={container} />
+                </Link>
+              ))}
+            </section>
+            <Pagination
+              page={containersQuery.data.page}
+              totalPages={containersQuery.data.totalPages}
+              totalCount={containersQuery.data.totalCount}
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+            />
+          </>
+        ) : null}
+      </div>
     </AppShell>
   );
 }
@@ -365,8 +368,8 @@ function ImportWizard({ onDone, onToast }: { onDone: () => void; onToast: (toast
   }
 
   return (
-    <section className="detail-card import-wizard">
-      <div className="section-title-row">
+    <section className="form-panel form-compact import-wizard">
+      <div className="form-section-head">
         <h2>استيراد حاوية جديدة</h2>
         <button className="ghost-button" type="button" onClick={onDone}>إغلاق</button>
       </div>
@@ -533,14 +536,18 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
       ) : null}
 
       {data && container ? (
-        <div className="details-stack">
-          <section className="detail-card detail-card--hero">
-            <div>
-              <StatusPill status={container.status} />
-              <h2>{container.containerNumber}</h2>
-              <p>{container.supplierName || 'مورد غير محدد'}</p>
+        <div className="page-stack">
+          <section className="form-panel form-compact">
+            <div className="compact-hero">
+              <div>
+                <p className="compact-hero__eyebrow">{container.supplierName || 'مورد غير محدد'}</p>
+                <h2>{container.containerNumber}</h2>
+              </div>
+              <div>
+                <StatusPill status={container.status} />
+                {data.isReadyForSale ? <span className="ready-badge">جاهزة للبيع</span> : null}
+              </div>
             </div>
-            {data.isReadyForSale ? <span className="ready-badge">جاهزة للبيع</span> : null}
           </section>
 
           <ActionPanel
@@ -623,8 +630,10 @@ function LandingCostForm({ container, onDone, onToast }: { container: ContainerD
   }
 
   return (
-    <section className="detail-card">
-      <h2>احتساب تكلفة الوصول</h2>
+    <section className="form-panel form-compact">
+      <div className="form-section-head">
+        <h2>احتساب تكلفة الوصول</h2>
+      </div>
       <form className="form-grid" onSubmit={submit}>
         <NumberInput label="وزن الحاوية كغ" value={form.containerWeightKg} onChange={(value) => update('containerWeightKg', value)} />
         <NumberInput label="الجمارك" value={form.customsAmount} onChange={(value) => update('customsAmount', value)} />
@@ -669,7 +678,7 @@ function SalePricesForm({ container, onDone, onToast }: { container: ContainerDe
   }
 
   return (
-    <section className="detail-card">
+    <section className="form-panel form-compact">
       <h2>تحديد أسعار البيع</h2>
       <form className="line-list" onSubmit={submit}>
         {container.fabricTypeLines.map((line) => (
@@ -733,7 +742,7 @@ function MoveToWarehouseForm({ containerId, onDone, onToast }: { containerId: st
   }
 
   return (
-    <section className="detail-card">
+    <section className="form-panel form-compact">
       <h2>نقل إلى المستودع</h2>
       <form className="form-grid" onSubmit={submit}>
         <label className="form-grid__wide">
@@ -829,9 +838,9 @@ function ActionPanel({
   }
 
   return (
-    <section className="action-grid" aria-label="إجراءات الحاوية">
+    <section className="compact-action-row" aria-label="إجراءات الحاوية">
       {visibleActions.map((action) => (
-        <button className="primary-button primary-button--wide" type="button" key={action.label} onClick={action.onClick} disabled={pending}>
+        <button className="chip-button" type="button" key={action.label} onClick={action.onClick} disabled={pending}>
           {pending ? 'جار التنفيذ...' : action.label}
         </button>
       ))}
@@ -841,7 +850,7 @@ function ActionPanel({
 
 function ContainerInfoSection({ container }: { container: ContainerDetailsDto }) {
   return (
-    <section className="detail-card">
+    <section className="form-panel form-compact">
       <h2>بيانات الحاوية</h2>
       <dl className="detail-grid">
         <DetailItem label="المورد" value={container.supplierName || 'غير محدد'} />
@@ -860,16 +869,16 @@ function ContainerInfoSection({ container }: { container: ContainerDetailsDto })
 function LandingCostSection({ landingCost }: { landingCost: LandingCostDto | null }) {
   if (!landingCost) {
     return (
-      <section className="detail-card">
+      <section className="form-panel form-compact">
         <h2>تكلفة الوصول</h2>
-        <p className="muted-line">لم تُحتسب بعد</p>
+        <p className="form-hint">لم تُحتسب بعد</p>
       </section>
     );
   }
 
   return (
-    <section className="detail-card">
-      <div className="section-title-row">
+    <section className="form-panel form-compact">
+      <div className="form-section-head">
         <h2>تكلفة الوصول</h2>
         <span className="status-pill status-pill--blue">{landingCostStatusLabels[landingCost.status]}</span>
       </div>
@@ -893,7 +902,7 @@ function LandingCostSection({ landingCost }: { landingCost: LandingCostDto | nul
 
 function FabricTypeLinesSection({ container }: { container: ContainerDetailsDto }) {
   return (
-    <section className="detail-card">
+    <section className="form-panel form-compact">
       <h2>أنواع الأقمشة</h2>
       {container.fabricTypeLines.length === 0 ? (
         <p className="muted-line">لا توجد بنود أقمشة.</p>
@@ -925,7 +934,7 @@ function FabricTypeLinesSection({ container }: { container: ContainerDetailsDto 
 
 function InventorySection({ inventory }: { inventory: ContainerInventoryMetricsDto | null }) {
   return (
-    <section className="detail-card">
+    <section className="form-panel form-compact">
       <h2>مؤشرات المخزون</h2>
       {!inventory ? (
         <p className="muted-line">لم تُرحل للمخزون بعد.</p>

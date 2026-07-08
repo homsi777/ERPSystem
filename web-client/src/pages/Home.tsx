@@ -79,7 +79,7 @@ export function HomePage() {
       </section>
 
       {summary && summary.recentActivity.length > 0 ? (
-        <section className="detail-card">
+        <section className="form-panel form-compact">
           <h2>آخر الأنشطة</h2>
           <div className="line-list">
             {summary.recentActivity.map((activity, index) => (

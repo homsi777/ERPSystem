@@ -216,16 +216,18 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
       ) : null}
 
       {ops && invoice ? (
-        <div className="details-stack">
-          <section className="detail-card detail-card--hero">
-            <div className="detail-card__lead">
-              <p className="detail-card__eyebrow">{invoice.customerName}</p>
-              <h2>{invoice.invoiceNumber}</h2>
+        <div className="page-stack">
+          <section className="form-panel form-compact">
+            <div className="compact-hero">
+              <div>
+                <p className="compact-hero__eyebrow">{invoice.customerName}</p>
+                <h2>{invoice.invoiceNumber}</h2>
+              </div>
               <StatusPill status={invoice.status} />
             </div>
           </section>
 
-          <section className="detail-card">
+          <section className="form-panel form-compact">
             <h2>بيانات الفاتورة</h2>
             <dl className="detail-grid">
               <DetailItem label="التاريخ" value={formatDate(invoice.invoiceDate)} />
@@ -241,7 +243,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
             </dl>
           </section>
 
-          <section className="action-grid" aria-label="إجراءات الفاتورة">
+          <section className="compact-action-row" aria-label="إجراءات الفاتورة">
             {ops.canSendToWarehouse ? (
               <button className="primary-button primary-button--wide" type="button" onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending}>
                 {sendMutation.isPending ? 'جار الإرسال...' : 'إرسال إلى المستودع'}
@@ -259,44 +261,34 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
             ) : null}
           </section>
 
-          <section className="detail-card">
+          <section className="form-panel form-compact">
             <h2>أصناف الفاتورة</h2>
             {invoice.lines.length === 0 ? (
               <EmptyState title="لا توجد أصناف" description="لم تُضف أصناف لهذه الفاتورة." />
             ) : (
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>الصنف</th>
-                      <th>اللون</th>
-                      <th>الأثواب</th>
-                      <th>الأمتار</th>
-                      <th>السعر</th>
-                      <th>الإجمالي</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.lines.map((line) => (
-                      <tr key={line.id}>
-                        <td>{line.lineNumber}</td>
-                        <td>{line.fabricDisplayName}</td>
-                        <td>{line.colorDisplayName}</td>
-                        <td>{formatNumber(line.rollCount)}</td>
-                        <td>{formatMeters(line.totalLengthMeters)}</td>
-                        <td>{formatCurrency(line.unitPrice)}</td>
-                        <td>{formatCurrency(line.lineTotal)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="line-items">
+                {invoice.lines.map((line) => (
+                  <article className="line-item" key={line.id}>
+                    <div className="line-item__head">
+                      <span className="line-item__index">#{line.lineNumber}</span>
+                      <strong>{formatCurrency(line.lineTotal)}</strong>
+                    </div>
+                    <p className="line-item__meta">
+                      {line.fabricDisplayName} / {line.colorDisplayName}
+                    </p>
+                    <div className="form-field-row form-field-row--2">
+                      <span className="form-hint">{formatNumber(line.rollCount)} ثوب</span>
+                      <span className="form-hint">{formatMeters(line.totalLengthMeters)}</span>
+                    </div>
+                    <p className="form-hint">سعر المتر: {formatCurrency(line.unitPrice)}</p>
+                  </article>
+                ))}
               </div>
             )}
           </section>
 
           {ops.journalEntries.length > 0 ? (
-            <section className="detail-card">
+            <section className="form-panel form-compact">
               <h2>القيود المحاسبية المرتبطة</h2>
               <div className="line-list">
                 {ops.journalEntries.map((entry) => (
@@ -315,7 +307,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
           ) : null}
 
           {ops.payments.length > 0 ? (
-            <section className="detail-card">
+            <section className="form-panel form-compact">
               <h2>الدفعات المحصّلة</h2>
               <div className="line-list">
                 {ops.payments.map((payment) => (

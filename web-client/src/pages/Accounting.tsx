@@ -54,19 +54,23 @@ function AccountingHomePage() {
 
   return (
     <AppShell title="المحاسبة والتقارير" summary={headerSummary}>
-      <section className="detail-card detail-card--tabs">
-        <div className="tab-strip" role="tablist" aria-label="تبويبات المحاسبة">
-          <TabButton active={tab === 'summary'} onClick={() => setTab('summary')} label="الملخص المالي" />
-          <TabButton active={tab === 'trial-balance'} onClick={() => setTab('trial-balance')} label="ميزان المراجعة" />
-          <TabButton active={tab === 'journal'} onClick={() => setTab('journal')} label="القيود اليومية" />
-          <TabButton active={tab === 'accounts'} onClick={() => setTab('accounts')} label="دليل الحسابات" />
-        </div>
+      <div className="page-stack">
+        <section className="form-panel form-compact">
+          <div className="tab-strip" role="tablist" aria-label="تبويبات المحاسبة">
+            <TabButton active={tab === 'summary'} onClick={() => setTab('summary')} label="الملخص المالي" />
+            <TabButton active={tab === 'trial-balance'} onClick={() => setTab('trial-balance')} label="ميزان المراجعة" />
+            <TabButton active={tab === 'journal'} onClick={() => setTab('journal')} label="القيود اليومية" />
+            <TabButton active={tab === 'accounts'} onClick={() => setTab('accounts')} label="دليل الحسابات" />
+          </div>
+        </section>
 
-        {tab === 'summary' ? <SummaryTab query={trialBalanceQuery} metrics={metrics} /> : null}
-        {tab === 'trial-balance' ? <TrialBalanceTab query={trialBalanceQuery} metrics={metrics} /> : null}
-        {tab === 'journal' ? <JournalTab /> : null}
-        {tab === 'accounts' ? <AccountsTab /> : null}
-      </section>
+        <section className="form-panel form-compact">
+          {tab === 'summary' ? <SummaryTab query={trialBalanceQuery} metrics={metrics} /> : null}
+          {tab === 'trial-balance' ? <TrialBalanceTab query={trialBalanceQuery} metrics={metrics} /> : null}
+          {tab === 'journal' ? <JournalTab /> : null}
+          {tab === 'accounts' ? <AccountsTab /> : null}
+        </section>
+      </div>
     </AppShell>
   );
 }
@@ -318,48 +322,41 @@ function JournalEntryDetailPage({ entryId }: { entryId: string }) {
       ) : null}
 
       {entry ? (
-        <div className="details-stack">
-          <section className="detail-card">
-            <h2>{entry.description}</h2>
+        <div className="page-stack">
+          <section className="form-panel form-compact">
+            <div className="compact-hero">
+              <div>
+                <p className="compact-hero__eyebrow">{entry.entryNumber}</p>
+                <h2>{entry.description}</h2>
+              </div>
+              <span className={`status-pill status-pill--${getJournalEntryStatusTone(entry.status)}`}>
+                {journalEntryStatusLabel(entry.status)}
+              </span>
+            </div>
             <dl className="detail-grid">
-              <DetailItem label="رقم القيد" value={entry.entryNumber} />
               <DetailItem label="التاريخ" value={formatDate(entry.entryDate)} />
-              <DetailItem label="الحالة" value={journalEntryStatusLabel(entry.status)} />
               <DetailItem label="المصدر" value={entry.sourceTypeDisplay ?? 'يدوي'} />
               <DetailItem label="تاريخ الترحيل" value={entry.postedAt ? formatDate(entry.postedAt) : 'غير مُرحّل'} />
+              <DetailItem label="المدين" value={formatCurrency(entry.debitTotal)} />
+              <DetailItem label="الدائن" value={formatCurrency(entry.creditTotal)} />
             </dl>
           </section>
 
-          <section className="detail-card">
+          <section className="form-panel form-compact">
             <h2>سطور القيد</h2>
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>الحساب</th>
-                    <th>البيان</th>
-                    <th>مدين</th>
-                    <th>دائن</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entry.lines.map((line) => (
-                    <tr key={line.id}>
-                      <td>{line.accountCode} — {line.accountName}</td>
-                      <td>{line.narrative || '—'}</td>
-                      <td>{line.debit > 0 ? formatCurrency(line.debit) : '—'}</td>
-                      <td>{line.credit > 0 ? formatCurrency(line.credit) : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={2}>الإجمالي</td>
-                    <td>{formatCurrency(entry.debitTotal)}</td>
-                    <td>{formatCurrency(entry.creditTotal)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+            <div className="line-items">
+              {entry.lines.map((line) => (
+                <article className="line-item" key={line.id}>
+                  <div className="line-item__head">
+                    <strong>{line.accountCode}</strong>
+                    <span className="form-hint">
+                      {line.debit > 0 ? `مدين ${formatCurrency(line.debit)}` : `دائن ${formatCurrency(line.credit)}`}
+                    </span>
+                  </div>
+                  <p className="line-item__meta">{line.accountName}</p>
+                  {line.narrative ? <p className="form-hint">{line.narrative}</p> : null}
+                </article>
+              ))}
             </div>
           </section>
 

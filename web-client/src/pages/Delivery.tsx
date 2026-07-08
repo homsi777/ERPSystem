@@ -243,18 +243,21 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       {detailing ? (
         <form className="page-stack page-stack--footer" onSubmit={submit}>
           <section className="form-panel form-compact" aria-label="بيانات الفاتورة">
-            <div className="form-section-head">
-              <h2>بيانات الفاتورة</h2>
+            <div className="compact-hero">
+              <div>
+                <p className="compact-hero__eyebrow">{detailing.customerName || 'عميل غير محدد'}</p>
+                <h2>{detailing.invoiceNumber}</h2>
+              </div>
               <DeliveryStatusPill status={detailing.status} />
             </div>
             <dl className="detail-grid">
-              <DetailItem label="العميل" value={detailing.customerName || 'غير محدد'} />
               <DetailItem label="تاريخ الإرسال" value={formatDate(detailing.sentToWarehouseAt)} />
               <DetailItem
                 label="سعر الوحدة"
                 value={detailing.representativeUnitPrice != null ? formatNumber(detailing.representativeUnitPrice) : '—'}
               />
               <DetailItem label="عدد الأثواب" value={formatNumber(detailing.rolls.length)} />
+              <DetailItem label="الأمتار المُدخلة" value={formatMeters(totalEnteredMeters)} />
             </dl>
           </section>
 

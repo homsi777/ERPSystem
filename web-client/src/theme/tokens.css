@@ -14,7 +14,12 @@
   --shadow-soft: 0 12px 30px rgba(24, 95, 165, 0.09);
   --radius-card: 14px;
   --radius-control: 12px;
-  --spacing-page: clamp(16px, 4vw, 28px);
+  /* ~390pt iPhone width: tighter page chrome, more usable content */
+  --spacing-page: clamp(10px, 3.2vw, 22px);
   --content-max-width: 1080px;
+  --touch-target: 44px;
+  --control-height: 44px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
 }
