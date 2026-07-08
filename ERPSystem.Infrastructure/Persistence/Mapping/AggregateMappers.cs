@@ -81,6 +81,8 @@ internal static class SalesInvoiceMapper
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.ChinaContainerId), header.ChinaContainerId);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.InvoiceDate), header.InvoiceDate);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.PaymentType), (PaymentType)header.PaymentType);
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.PartialPaymentAmount),
+            header.PartialPaymentAmount is > 0 ? new Money(header.PartialPaymentAmount.Value) : null);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.Status), (SalesInvoiceStatus)header.Status);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.SubTotal), new Money(header.SubTotal));
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DiscountTotal), new Money(header.DiscountTotal));

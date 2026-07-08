@@ -14,6 +14,7 @@ public sealed class SalesInvoiceDto
     public Guid ChinaContainerId { get; init; }
     public DateTime InvoiceDate { get; init; }
     public PaymentType PaymentType { get; init; }
+    public decimal PartialPaymentAmount { get; init; }
     public decimal SubTotal { get; init; }
     public decimal DiscountTotal { get; init; }
     public decimal TaxTotal { get; init; }

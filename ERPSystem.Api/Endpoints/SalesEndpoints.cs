@@ -92,6 +92,7 @@ public static class SalesEndpoints
             ChinaContainerId = request.ChinaContainerId,
             PaymentType = request.PaymentType,
             DiscountAmount = request.DiscountAmount,
+            PartialPaymentAmount = request.PartialPaymentAmount,
             Lines = request.Lines.Select(l => new SalesInvoiceLineCommand
             {
                 LineNumber = l.LineNumber,
@@ -171,6 +172,7 @@ public static class SalesEndpoints
         Guid ChinaContainerId,
         PaymentType PaymentType,
         decimal DiscountAmount,
+        decimal? PartialPaymentAmount,
         string? InvoiceNumber,
         IReadOnlyList<SalesInvoiceLineRequest> Lines);
 

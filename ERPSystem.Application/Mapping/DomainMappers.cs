@@ -207,6 +207,7 @@ public static class SalesInvoiceMapper
         ChinaContainerId = aggregate.ChinaContainerId,
         InvoiceDate = aggregate.InvoiceDate,
         PaymentType = aggregate.PaymentType,
+        PartialPaymentAmount = aggregate.PartialPaymentAmount?.Amount ?? 0,
         SubTotal = aggregate.SubTotal.Amount,
         DiscountTotal = aggregate.DiscountTotal.Amount,
         TaxTotal = aggregate.TaxTotal.Amount,

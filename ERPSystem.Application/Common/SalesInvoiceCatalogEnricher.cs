@@ -99,6 +99,7 @@ public static class SalesInvoiceCatalogEnricher
             ChinaContainerId = invoice.ChinaContainerId,
             InvoiceDate = invoice.InvoiceDate,
             PaymentType = invoice.PaymentType,
+            PartialPaymentAmount = invoice.PartialPaymentAmount,
             SubTotal = invoice.SubTotal,
             DiscountTotal = invoice.DiscountTotal,
             TaxTotal = invoice.TaxTotal,

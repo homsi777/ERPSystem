@@ -646,6 +646,7 @@ export type SalesInvoiceDto = {
   chinaContainerId: string;
   invoiceDate: string;
   paymentType: PaymentType;
+  partialPaymentAmount?: number | null;
   subTotal: number;
   discountTotal: number;
   taxTotal: number;
@@ -725,6 +726,7 @@ export type CreateSalesInvoiceRequest = {
   chinaContainerId: string;
   paymentType: PaymentType;
   discountAmount: number;
+  partialPaymentAmount?: number | null;
   invoiceNumber: string | null;
   lines: CreateSalesInvoiceLineRequest[];
 };

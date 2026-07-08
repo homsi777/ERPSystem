@@ -114,6 +114,26 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         WarehouseId = warehouseId;
         ChinaContainerId = chinaContainerId;
         PaymentType = paymentType;
+        if (paymentType == PaymentType.Cash)
+            PartialPaymentAmount = null;
+    }
+
+    public void SetPartialPaymentAmount(Money? amount)
+    {
+        EnsureEditable();
+        if (PaymentType == PaymentType.Cash)
+        {
+            PartialPaymentAmount = null;
+            return;
+        }
+
+        if (amount is not null && amount.Amount < 0)
+            throw new ValidationException("Partial payment cannot be negative.");
+
+        if (amount is not null && GrandTotal.Amount > 0 && amount.Amount > GrandTotal.Amount)
+            throw new ValidationException("Partial payment cannot exceed invoice total.");
+
+        PartialPaymentAmount = amount is null || amount.Amount == 0 ? null : amount;
     }
 
     public void ReplaceDraftLines(IReadOnlyList<SalesInvoiceItem> lines)

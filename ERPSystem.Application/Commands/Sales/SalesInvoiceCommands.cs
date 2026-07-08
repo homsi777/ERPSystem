@@ -12,6 +12,7 @@ public sealed class CreateSalesInvoiceDraftCommand
     public Guid ChinaContainerId { get; init; }
     public PaymentType PaymentType { get; init; }
     public decimal DiscountAmount { get; init; }
+    public decimal? PartialPaymentAmount { get; init; }
     public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
 }
 
@@ -38,6 +39,7 @@ public sealed class UpdateSalesInvoiceDraftCommand
     public Guid ChinaContainerId { get; init; }
     public PaymentType PaymentType { get; init; }
     public decimal DiscountAmount { get; init; }
+    public decimal? PartialPaymentAmount { get; init; }
     public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
 }
 

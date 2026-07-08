@@ -100,6 +100,14 @@ public sealed class CreateSalesInvoiceDraftHandler(
                 aggregate.AddItem(item);
             }
 
+            if (command.DiscountAmount > 0)
+                aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
+
+            aggregate.SetPartialPaymentAmount(
+                command.PaymentType == Domain.Enums.PaymentType.Credit && command.PartialPaymentAmount is > 0
+                    ? new Money(command.PartialPaymentAmount.Value)
+                    : null);
+
             Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
 
             await invoiceRepository.AddAsync(aggregate, cancellationToken);
@@ -174,6 +182,17 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                 .ToList();
 
             aggregate.ReplaceDraftLines(items);
+
+            if (command.DiscountAmount > 0)
+                aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
+            else
+                aggregate.SetDiscountTotal(Money.Zero());
+
+            aggregate.SetPartialPaymentAmount(
+                command.PaymentType == Domain.Enums.PaymentType.Credit && command.PartialPaymentAmount is > 0
+                    ? new Money(command.PartialPaymentAmount.Value)
+                    : null);
+
             Domain.Validators.SalesInvoiceValidator.ValidateDraft(aggregate);
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);

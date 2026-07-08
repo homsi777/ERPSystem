@@ -228,6 +228,9 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
             <dl className="detail-grid">
               <DetailItem label="التاريخ" value={formatDate(invoice.invoiceDate)} />
               <DetailItem label="نوع الدفع" value={paymentTypeLabel(invoice.paymentType)} />
+              {invoice.paymentType === 1 && (invoice.partialPaymentAmount ?? 0) > 0 ? (
+                <DetailItem label="دفعة مقدّمة" value={formatCurrency(invoice.partialPaymentAmount ?? 0)} />
+              ) : null}
               <DetailItem label="المستودع" value={ops.warehouseName ?? 'غير محدد'} />
               <DetailItem label="هاتف العميل" value={ops.customerPhone ?? 'غير محدد'} />
               <DetailItem label="الإجمالي الفرعي" value={formatCurrency(invoice.subTotal)} />
@@ -349,6 +352,7 @@ function SalesCreatePage() {
   const [containerId, setContainerId] = useState('');
   const [paymentType, setPaymentType] = useState<'0' | '1'>('0');
   const [discount, setDiscount] = useState('0');
+  const [partialPayment, setPartialPayment] = useState('0');
   const [lines, setLines] = useState<DraftLine[]>([]);
 
   const customersQuery = useQuery({
@@ -451,6 +455,8 @@ function SalesCreatePage() {
         chinaContainerId: containerId,
         paymentType: Number(paymentType) as PaymentType,
         discountAmount: toNumber(discount),
+        partialPaymentAmount:
+          paymentType === '1' && toNumber(partialPayment) > 0 ? toNumber(partialPayment) : null,
         invoiceNumber: null,
         lines: payloadLines
       });
@@ -473,6 +479,17 @@ function SalesCreatePage() {
     if (validLines.length === 0) {
       setToast({ tone: 'error', message: 'أضف صنفًا واحدًا على الأقل مع عدد أثواب صحيح.' });
       return;
+    }
+    if (paymentType === '1') {
+      const partial = toNumber(partialPayment);
+      if (partial < 0) {
+        setToast({ tone: 'error', message: 'مبلغ الدفعة لا يمكن أن يكون سالباً.' });
+        return;
+      }
+      if (estimatedTotal > 0 && partial > estimatedTotal) {
+        setToast({ tone: 'error', message: 'مبلغ الدفعة لا يمكن أن يتجاوز إجمالي الفاتورة.' });
+        return;
+      }
     }
     mutation.mutate();
   }
@@ -522,7 +539,16 @@ function SalesCreatePage() {
           <div className="form-field-row form-field-row--2">
             <label className="form-field">
               <span className="form-field__label">نوع الدفع</span>
-              <select value={paymentType} onChange={(event) => setPaymentType(event.target.value as '0' | '1')}>
+              <select
+                value={paymentType}
+                onChange={(event) => {
+                  const next = event.target.value as '0' | '1';
+                  setPaymentType(next);
+                  if (next === '0') {
+                    setPartialPayment('0');
+                  }
+                }}
+              >
                 <option value="0">{paymentTypeLabel(0)}</option>
                 <option value="1">{paymentTypeLabel(1)}</option>
               </select>
@@ -532,6 +558,18 @@ function SalesCreatePage() {
               <input inputMode="decimal" value={discount} onChange={(event) => setDiscount(event.target.value)} />
             </label>
           </div>
+
+          {paymentType === '1' ? (
+            <label className="form-field form-field--wide form-credit-payment">
+              <span className="form-field__label">دفعة من الفاتورة (آجل)</span>
+              <input
+                inputMode="decimal"
+                value={partialPayment}
+                onChange={(event) => setPartialPayment(event.target.value)}
+                placeholder="0"
+              />
+            </label>
+          ) : null}
         </section>
 
         <section className="form-panel form-compact" aria-label="أصناف الفاتورة">
