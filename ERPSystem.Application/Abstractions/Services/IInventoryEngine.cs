@@ -58,6 +58,15 @@ public interface IInventoryEngine
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Matches detailing lines by DPL roll serial when provided; otherwise uses the manual length.
+    /// Assigns fabric-roll ids on the invoice aggregate for reliable deduction on approval.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, decimal>> ResolveDetailingEntriesAsync(
+        SalesInvoiceAggregate invoice,
+        IReadOnlyList<(Guid RollDetailId, int? RollNumber, decimal LengthMeters)> entries,
+        CancellationToken cancellationToken = default);
+
     Task<decimal> ReceiveSalesReturnAsync(
         SalesReturnAggregate salesReturn,
         SalesInvoiceAggregate originalInvoice,

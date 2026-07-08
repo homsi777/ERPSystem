@@ -92,7 +92,25 @@ public static class ApplicationValidators
             return ApplicationResult.ValidationFailed(nameof(command.InvoiceId), "Invoice is required.");
         if (command.RollEntries.Count == 0)
             return ApplicationResult.ValidationFailed(nameof(command.RollEntries), "Roll entries are required.");
-        return null;
+
+        var errors = new List<ValidationError>();
+        for (var i = 0; i < command.RollEntries.Count; i++)
+        {
+            var entry = command.RollEntries[i];
+            if (entry.RollDetailId == Guid.Empty)
+                errors.Add(new ValidationError($"RollEntries[{i}].RollDetailId", "Roll detail is required."));
+
+            var hasSerial = entry.RollNumber is > 0;
+            var hasLength = entry.LengthMeters > 0;
+            if (!hasSerial && !hasLength)
+            {
+                errors.Add(new ValidationError(
+                    $"RollEntries[{i}]",
+                    "أدخل رقم التوب (سيريال) أو الطول بالمتر."));
+            }
+        }
+
+        return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 
     public static ApplicationResult? Validate(CreateReceiptVoucherCommand command)

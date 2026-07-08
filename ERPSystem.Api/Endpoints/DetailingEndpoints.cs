@@ -78,6 +78,7 @@ public static class DetailingEndpoints
                     .Select(entry => new RollLengthEntryCommand
                     {
                         RollDetailId = entry.RollDetailId,
+                        RollNumber = entry.RollNumber,
                         LengthMeters = entry.LengthMeters
                     })
                     .ToList()
@@ -89,5 +90,5 @@ public static class DetailingEndpoints
 
     private sealed record CompleteWarehouseDetailingRequest(IReadOnlyList<RollLengthEntryRequest> RollEntries);
 
-    private sealed record RollLengthEntryRequest(Guid RollDetailId, decimal LengthMeters);
+    private sealed record RollLengthEntryRequest(Guid RollDetailId, int? RollNumber, decimal LengthMeters);
 }

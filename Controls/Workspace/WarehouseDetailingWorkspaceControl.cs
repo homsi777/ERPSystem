@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -18,6 +19,7 @@ namespace ERPSystem.Controls.Workspace
         public int RollIndex { get; set; }
         public string FabricCode { get; set; } = "";
         public string Color { get; set; } = "";
+        public string SerialText { get; set; } = "";
         public string LengthText { get; set; } = "";
         public bool IsCurrent { get; set; }
     }
@@ -106,7 +108,7 @@ namespace ERPSystem.Controls.Workspace
 
             root.Children.Add(new TextBlock
             {
-                Text = "Enter للانتقال للتوب التالي • Tab بين الحقول • لا يُكمل قبل إدخال جميع الأطوال",
+                Text = "أدخل رقم التوب (سيريال DPL) أو الطول • يكفي أحدهما • السيريال أدق ويخصم من نفس التوب في المخزون",
                 FontSize = 11, Foreground = Br("TextMutedBrush"), Margin = new Thickness(0, 0, 0, 8), FontFamily = Ff()
             });
 
@@ -120,7 +122,10 @@ namespace ERPSystem.Controls.Workspace
             _grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new System.Windows.Data.Binding(nameof(DetailingRollRow.RollIndex)), Width = 50, IsReadOnly = true });
             _grid.Columns.Add(new DataGridTextColumn { Header = "كود التوب", Binding = new System.Windows.Data.Binding(nameof(DetailingRollRow.FabricCode)), Width = 120, IsReadOnly = true });
             _grid.Columns.Add(new DataGridTextColumn { Header = "اللون", Binding = new System.Windows.Data.Binding(nameof(DetailingRollRow.Color)), Width = 90, IsReadOnly = true });
-            var lengthCol = new DataGridTemplateColumn { Header = "الطول (متر)", Width = new DataGridLength(1, DataGridLengthUnitType.Star) };
+            var serialCol = new DataGridTemplateColumn { Header = "رقم التوب (سيريال)", Width = new DataGridLength(1, DataGridLengthUnitType.Star) };
+            serialCol.CellTemplate = CreateSerialTemplate();
+            _grid.Columns.Add(serialCol);
+            var lengthCol = new DataGridTemplateColumn { Header = "أو الطول (م)", Width = new DataGridLength(1, DataGridLengthUnitType.Star) };
             lengthCol.CellTemplate = CreateLengthTemplate();
             _grid.Columns.Add(lengthCol);
             root.Children.Add(_grid);
@@ -172,6 +177,7 @@ namespace ERPSystem.Controls.Workspace
                     RollIndex = roll.RollSequence,
                     FabricCode = string.IsNullOrWhiteSpace(roll.FabricCode) ? "—" : roll.FabricCode,
                     Color = string.IsNullOrWhiteSpace(roll.ColorDisplayName) ? "—" : roll.ColorDisplayName,
+                    SerialText = "",
                     LengthText = roll.HasValidLength && roll.LengthMeters > 0
                         ? roll.LengthMeters.ToString(CultureInfo.CurrentCulture)
                         : "",
@@ -182,7 +188,7 @@ namespace ERPSystem.Controls.Workspace
             _currentIndex = 0;
             _txtCurrentRoll.Text = $"فاتورة {invoiceNumber} — {customer} — حاوية {container}";
             UpdateTotals();
-            Dispatcher.BeginInvoke(() => FocusLengthBox(0), System.Windows.Threading.DispatcherPriority.Loaded);
+            Dispatcher.BeginInvoke(() => FocusSerialBox(0), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private async Task TryCompleteAsync(bool saveOnly)
@@ -243,13 +249,16 @@ namespace ERPSystem.Controls.Workspace
             var entries = new List<RollLengthEntryCommand>();
             foreach (var row in _rows)
             {
-                if (!TryParseLength(row.LengthText, out var length))
+                var hasSerial = TryParseSerial(row.SerialText, out var serial);
+                var hasLength = TryParseLength(row.LengthText, out var length);
+                if (!hasSerial && !hasLength)
                     continue;
 
                 entries.Add(new RollLengthEntryCommand
                 {
                     RollDetailId = row.RollDetailId,
-                    LengthMeters = length
+                    RollNumber = hasSerial ? serial : null,
+                    LengthMeters = hasLength ? length : 0m
                 });
             }
             return entries;
@@ -262,19 +271,37 @@ namespace ERPSystem.Controls.Workspace
                 && length > 0;
         }
 
+        private static bool TryParseSerial(string text, out int serial)
+        {
+            serial = 0;
+            return int.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out serial)
+                && serial > 0;
+        }
+
+        private bool IsRowFilled(DetailingRollRow row) =>
+            TryParseSerial(row.SerialText, out _) || TryParseLength(row.LengthText, out _);
+
         private bool ValidateAllRolls(out string message)
         {
             message = "";
             for (int i = 0; i < _rows.Count; i++)
             {
                 var r = _rows[i];
-                if (string.IsNullOrWhiteSpace(r.LengthText))
+                if (!IsRowFilled(r))
                 {
-                    message = $"الرجاء إدخال طول التوب رقم {r.RollIndex}.";
-                    FocusLengthBox(i);
+                    message = $"الرجاء إدخال رقم التوب (سيريال) أو الطول للتوب رقم {r.RollIndex}.";
+                    FocusSerialBox(i);
                     return false;
                 }
-                if (!TryParseLength(r.LengthText, out _))
+
+                if (!string.IsNullOrWhiteSpace(r.SerialText) && !TryParseSerial(r.SerialText, out _))
+                {
+                    message = $"رقم التوب للتوب رقم {r.RollIndex} غير صالح.";
+                    FocusSerialBox(i);
+                    return false;
+                }
+
+                if (!string.IsNullOrWhiteSpace(r.LengthText) && !TryParseLength(r.LengthText, out _))
                 {
                     message = $"طول التوب رقم {r.RollIndex} يجب أن يكون أكبر من صفر.";
                     FocusLengthBox(i);
@@ -282,6 +309,24 @@ namespace ERPSystem.Controls.Workspace
                 }
             }
             return true;
+        }
+
+        private DataTemplate CreateSerialTemplate()
+        {
+            var factory = new FrameworkElementFactory(typeof(TextBox));
+            factory.SetValue(TextBox.HeightProperty, 40.0);
+            factory.SetValue(TextBox.FontSizeProperty, 18.0);
+            factory.SetValue(TextBox.FontWeightProperty, FontWeights.SemiBold);
+            factory.SetValue(TextBox.PaddingProperty, new Thickness(12, 6, 12, 6));
+            factory.SetValue(TextBox.VerticalContentAlignmentProperty, VerticalAlignment.Center);
+            factory.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding(nameof(DetailingRollRow.SerialText))
+            {
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            });
+            factory.AddHandler(TextBox.PreviewKeyDownEvent, new KeyEventHandler(OnSerialKeyDown));
+            factory.AddHandler(TextBox.TextChangedEvent, new TextChangedEventHandler((_, _) => UpdateTotals()));
+            return new DataTemplate { VisualTree = factory };
         }
 
         private DataTemplate CreateLengthTemplate()
@@ -308,6 +353,14 @@ namespace ERPSystem.Controls.Workspace
                 e.Row.Background = Br("PrimaryVeryLightBrush");
         }
 
+        private void OnSerialKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Enter) return;
+            e.Handled = true;
+            // Enter from serial: move to length of same row, or next row serial if length not needed.
+            FocusLengthBox(_currentIndex);
+        }
+
         private void OnLengthKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Enter) return;
@@ -318,24 +371,34 @@ namespace ERPSystem.Controls.Workspace
                 _currentIndex++;
                 _rows[_currentIndex].IsCurrent = true;
                 _grid?.Items.Refresh();
-                FocusLengthBox(_currentIndex);
+                FocusSerialBox(_currentIndex);
             }
             UpdateTotals();
         }
 
-        private void FocusLengthBox(int index)
+        private void FocusSerialBox(int index) => FocusRowTextBox(index, preferSerial: true);
+
+        private void FocusLengthBox(int index) => FocusRowTextBox(index, preferSerial: false);
+
+        private void FocusRowTextBox(int index, bool preferSerial)
         {
             if (_grid == null || index < 0 || index >= _rows.Count) return;
             _grid.ScrollIntoView(_rows[index]);
             _grid.UpdateLayout();
             Dispatcher.BeginInvoke(() =>
             {
-                if (_grid.ItemContainerGenerator.ContainerFromIndex(index) is DataGridRow dgRow)
-                {
-                    var tb = FindVisualChild<TextBox>(dgRow);
-                    tb?.Focus();
-                    tb?.SelectAll();
-                }
+                if (_grid.ItemContainerGenerator.ContainerFromIndex(index) is not DataGridRow dgRow)
+                    return;
+
+                var boxes = FindVisualChildren<TextBox>(dgRow).ToList();
+                TextBox? target = null;
+                if (preferSerial)
+                    target = boxes.FirstOrDefault();
+                else
+                    target = boxes.Count > 1 ? boxes[1] : boxes.FirstOrDefault();
+
+                target?.Focus();
+                target?.SelectAll();
             }, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
@@ -345,16 +408,16 @@ namespace ERPSystem.Controls.Workspace
             int filled = 0;
             foreach (var r in _rows)
             {
-                if (TryParseLength(r.LengthText, out var len))
-                {
-                    total += len;
+                if (IsRowFilled(r))
                     filled++;
-                }
+
+                if (TryParseLength(r.LengthText, out var len))
+                    total += len;
             }
             int remaining = _rows.Count - filled;
             double pct = _rows.Count > 0 ? filled * 100.0 / _rows.Count : 0;
 
-            _txtTotal.Text = $"{total:N2} م";
+            _txtTotal.Text = total > 0 ? $"{total:N2} م" : (filled > 0 ? "بالسيريال" : "0.00 م");
             _txtProgress.Text = $"{filled} / {_rows.Count} توب — متبقي {remaining}";
             _txtPercent.Text = $"{pct:N0}% مكتمل";
             _txtEstimated.Text = total > 0 ? $"{total * _pricePerMeter:N2} $" : "—";
@@ -369,7 +432,9 @@ namespace ERPSystem.Controls.Workspace
             _txtStatRemaining.Text = remaining.ToString();
             var currentLength = _currentIndex >= 0 && _currentIndex < _rows.Count && TryParseLength(_rows[_currentIndex].LengthText, out var curLen)
                 ? $"{curLen:N2} م"
-                : "0.00 م";
+                : (_currentIndex >= 0 && _currentIndex < _rows.Count && TryParseSerial(_rows[_currentIndex].SerialText, out var sn)
+                    ? $"#{sn}"
+                    : "—");
             _txtStatCurrentLength.Text = currentLength;
         }
 
@@ -390,16 +455,16 @@ namespace ERPSystem.Controls.Workspace
             return value;
         }
 
-        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T match) return match;
-                var found = FindVisualChild<T>(child);
-                if (found != null) return found;
+                if (child is T match)
+                    yield return match;
+                foreach (var nested in FindVisualChildren<T>(child))
+                    yield return nested;
             }
-            return null;
         }
 
         private static Brush Br(string k) => (Brush)System.Windows.Application.Current.Resources[k]!;

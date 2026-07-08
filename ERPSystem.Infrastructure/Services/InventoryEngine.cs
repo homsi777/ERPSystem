@@ -505,6 +505,115 @@ internal sealed class InventoryEngine(
         }
     }
 
+    public async Task<IReadOnlyDictionary<Guid, decimal>> ResolveDetailingEntriesAsync(
+        SalesInvoiceAggregate invoice,
+        IReadOnlyList<(Guid RollDetailId, int? RollNumber, decimal LengthMeters)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        var resolved = new Dictionary<Guid, decimal>();
+        var claimedRollIds = new HashSet<Guid>();
+
+        // Prefetch reserved rolls for this invoice context once.
+        var reservedRolls = await context.FabricRolls
+            .Where(r =>
+                r.ContainerId == invoice.ChinaContainerId &&
+                r.WarehouseId == invoice.WarehouseId &&
+                (r.Status == (int)FabricRollStatus.Reserved || r.Status == (int)FabricRollStatus.Available))
+            .ToListAsync(cancellationToken);
+
+        foreach (var entry in entries)
+        {
+            var detail = invoice.RollDetails.FirstOrDefault(d => d.Id == entry.RollDetailId)
+                ?? throw new WarehouseDetailingException("بند التوب غير موجود في الفاتورة.");
+
+            var item = invoice.Items.FirstOrDefault(i => i.Id == detail.SalesInvoiceItemId)
+                ?? throw new WarehouseDetailingException("سطر الفاتورة المرتبط بالتوب غير موجود.");
+
+            if (entry.RollNumber is int serial and > 0)
+            {
+                var roll = reservedRolls.FirstOrDefault(r =>
+                    r.RollNumber == serial &&
+                    r.FabricItemId == item.FabricItemId &&
+                    r.FabricColorId == item.FabricColorId);
+
+                if (roll is null)
+                {
+                    // Allow matching by serial within the invoice container/warehouse even if fabric differs —
+                    // warehouse staff may pick the physical roll first; still require same fabric/color for safety.
+                    roll = reservedRolls.FirstOrDefault(r => r.RollNumber == serial);
+                    if (roll is not null &&
+                        (roll.FabricItemId != item.FabricItemId || roll.FabricColorId != item.FabricColorId))
+                    {
+                        throw new InventoryException(
+                            $"رقم التوب {serial} موجود لكنه لنوع/لون مختلف عن بند الفاتورة.");
+                    }
+                }
+
+                if (roll is null)
+                    throw new InventoryException($"رقم التوب {serial} غير موجود في مستودع/حاوية هذه الفاتورة.");
+
+                if (!claimedRollIds.Add(roll.Id))
+                    throw new InventoryException($"رقم التوب {serial} مُدخل أكثر من مرة في نفس التفصيل.");
+
+                if (roll.RemainingLengthMeters <= 0)
+                    throw new InventoryException($"التوب رقم {serial} لا يحتوي أمتاراً متبقية.");
+
+                // Prefer reserved rolls; if still available, mark reserved for this invoice line.
+                if (roll.Status == (int)FabricRollStatus.Available)
+                {
+                    roll.Status = (int)FabricRollStatus.Reserved;
+                    roll.ReservationStatus = (int)InventoryReservationStatus.Reserved;
+                }
+
+                invoice.AssignFabricRollToDetail(detail.Id, roll.Id);
+
+                // Serial pins the physical roll; optional length allows partial sale.
+                // When length omitted, use remaining meters on the matched roll.
+                var meters = entry.LengthMeters > 0 ? entry.LengthMeters : roll.RemainingLengthMeters;
+                if (meters > roll.RemainingLengthMeters)
+                {
+                    throw new InventoryException(
+                        $"التوب رقم {serial}: الطول المدخل ({meters:N2}) أكبر من المتبقي ({roll.RemainingLengthMeters:N2}).");
+                }
+
+                resolved[detail.Id] = meters;
+                continue;
+            }
+
+            if (entry.LengthMeters <= 0)
+                throw new WarehouseDetailingException("أدخل رقم التوب (سيريال) أو الطول بالمتر.");
+
+            resolved[detail.Id] = entry.LengthMeters;
+        }
+
+        // FIFO fallback for lines entered by length only (no serial) — keep previous reliability.
+        foreach (var item in invoice.Items)
+        {
+            var details = invoice.RollDetails
+                .Where(d => d.SalesInvoiceItemId == item.Id && !d.FabricRollId.HasValue)
+                .ToList();
+            if (details.Count == 0)
+                continue;
+
+            var pool = reservedRolls
+                .Where(r =>
+                    r.FabricItemId == item.FabricItemId &&
+                    r.FabricColorId == item.FabricColorId &&
+                    r.Status == (int)FabricRollStatus.Reserved &&
+                    !claimedRollIds.Contains(r.Id))
+                .OrderBy(r => r.RollNumber)
+                .ToList();
+
+            for (var i = 0; i < details.Count && i < pool.Count; i++)
+            {
+                claimedRollIds.Add(pool[i].Id);
+                invoice.AssignFabricRollToDetail(details[i].Id, pool[i].Id);
+            }
+        }
+
+        return resolved;
+    }
+
     public async Task<decimal> IssueForInvoiceAsync(
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default)

@@ -180,7 +180,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
 
   const approveMutation = useMutation({
     mutationFn: () => approveSalesInvoice(invoiceId),
-    onSuccess: () => void refresh('تم اعتماد الفاتورة وإنشاء القيود المحاسبية.'),
+    onSuccess: () => void refresh('تم اعتماد الفاتورة وخصم المخزون وإنشاء القيود المحاسبية.'),
     onError: (error) => setToast({ tone: 'error', message: getErrorMessage(error) })
   });
 

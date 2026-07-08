@@ -63,6 +63,9 @@ public sealed class CompleteWarehouseDetailingCommand
 public sealed class RollLengthEntryCommand
 {
     public Guid RollDetailId { get; init; }
+    /// <summary>Optional DPL/inventory roll serial. When set, length is resolved from the fabric roll.</summary>
+    public int? RollNumber { get; init; }
+    /// <summary>Manual length in meters. Required when <see cref="RollNumber"/> is not provided.</summary>
     public decimal LengthMeters { get; init; }
 }
 

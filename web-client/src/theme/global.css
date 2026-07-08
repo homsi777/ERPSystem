@@ -1456,6 +1456,21 @@ svg {
   min-width: 0;
 }
 
+.form-row {
+  display: grid;
+  gap: 8px;
+}
+
+.form-row--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 420px) {
+  .form-row--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-field--wide {
   grid-column: 1 / -1;
 }

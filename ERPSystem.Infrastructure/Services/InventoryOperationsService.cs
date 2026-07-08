@@ -47,6 +47,12 @@ internal sealed class InventoryOperationsService(
     public Task AssignFabricRollsOnDetailingAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
         engine.AssignFabricRollsOnDetailingAsync(invoice, cancellationToken);
 
+    public Task<IReadOnlyDictionary<Guid, decimal>> ResolveDetailingEntriesAsync(
+        SalesInvoiceAggregate invoice,
+        IReadOnlyList<(Guid RollDetailId, int? RollNumber, decimal LengthMeters)> entries,
+        CancellationToken cancellationToken = default) =>
+        engine.ResolveDetailingEntriesAsync(invoice, entries, cancellationToken);
+
     public Task<decimal> DeductForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
         engine.IssueForInvoiceAsync(invoice, cancellationToken);
 

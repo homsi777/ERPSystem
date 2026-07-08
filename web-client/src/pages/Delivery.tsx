@@ -160,6 +160,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   const queryClient = useQueryClient();
   const [toast, setToast] = useState<ToastState | null>(null);
   const [lengths, setLengths] = useState<Record<string, string>>({});
+  const [serials, setSerials] = useState<Record<string, string>>({});
 
   const detailingQuery = useQuery({
     queryKey: ['detailing', invoiceId],
@@ -183,7 +184,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   }, [detailingQuery.data]);
 
   const totalEnteredMeters = useMemo(() => {
-    // عرض فقط: مجموع فوري للأمتار المُدخلة في الواجهة، والقيمة الفعلية تُعاد التحقق منها في الـ API عند الإكمال.
+    // مجموع تقريبي: يُحسب من الأطوال اليدوية فقط؛ عند السيريال يُحل الطول في الـ API من المخزون.
     return Object.values(lengths).reduce((sum, value) => sum + (toNumber(value) || 0), 0);
   }, [lengths]);
 
@@ -194,14 +195,19 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     if (rolls.length === 0) {
       return false;
     }
-    return rolls.every((roll) => toNumber(lengths[roll.rollDetailId] ?? '') > 0);
-  }, [detailingQuery.data, lengths]);
+    return rolls.every((roll) => {
+      const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
+      const length = toNumber(lengths[roll.rollDetailId] ?? '');
+      return serial != null || length > 0;
+    });
+  }, [detailingQuery.data, lengths, serials]);
 
   const completeMutation = useMutation({
     mutationFn: () =>
       completeDetailing(invoiceId, {
         rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => ({
           rollDetailId: roll.rollDetailId,
+          rollNumber: toRollNumber(serials[roll.rollDetailId] ?? ''),
           lengthMeters: toNumber(lengths[roll.rollDetailId] ?? '')
         }))
       }),
@@ -261,9 +267,9 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             </dl>
           </section>
 
-          <section className="form-panel form-compact" aria-label="أطوال الأثواب">
+          <section className="form-panel form-compact" aria-label="تفصيل الأثواب">
             <div className="form-section-head">
-              <h2>أطوال الأثواب</h2>
+              <h2>تفصيل الأثواب</h2>
               {!isCompleted ? <span className="form-hint">{formatNumber(detailing.rolls.length)} ثوب</span> : null}
             </div>
 
@@ -290,44 +296,63 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                 </button>
               </>
             ) : (
-              <div className="line-items">
-                {detailing.rolls.map((roll) => (
-                  <article className="line-item" key={roll.rollDetailId}>
-                    <div className="line-item__head">
-                      <span className="line-item__index">#{roll.rollSequence}</span>
-                    </div>
-                    <p className="line-item__meta">
-                      {roll.fabricDisplayName} / {roll.colorDisplayName}
-                    </p>
-                    <label className="form-field form-field--wide">
-                      <span className="form-field__label">الطول (م)</span>
-                      <input
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={lengths[roll.rollDetailId] ?? ''}
-                        onChange={(event) =>
-                          setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
-                        }
-                        aria-label={`طول الثوب رقم ${roll.rollSequence}`}
-                      />
-                    </label>
-                  </article>
-                ))}
-              </div>
+              <>
+                <p className="form-hint" style={{ marginBottom: 8 }}>
+                  أدخل رقم التوب (سيريال DPL) أو الطول بالمتر — يكفي أحدهما. السيريال أدق ويخصم من نفس التوب في المخزون.
+                </p>
+                <div className="line-items">
+                  {detailing.rolls.map((roll) => (
+                    <article className="line-item" key={roll.rollDetailId}>
+                      <div className="line-item__head">
+                        <span className="line-item__index">#{roll.rollSequence}</span>
+                      </div>
+                      <p className="line-item__meta">
+                        {roll.fabricDisplayName} / {roll.colorDisplayName}
+                      </p>
+                      <div className="form-row form-row--2">
+                        <label className="form-field">
+                          <span className="form-field__label">رقم التوب (سيريال)</span>
+                          <input
+                            inputMode="numeric"
+                            placeholder="مثلاً 126"
+                            value={serials[roll.rollDetailId] ?? ''}
+                            onChange={(event) =>
+                              setSerials((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
+                            }
+                            aria-label={`رقم سيريال الثوب ${roll.rollSequence}`}
+                          />
+                        </label>
+                        <label className="form-field">
+                          <span className="form-field__label">أو الطول (م)</span>
+                          <input
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={lengths[roll.rollDetailId] ?? ''}
+                            onChange={(event) =>
+                              setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
+                            }
+                            aria-label={`طول الثوب رقم ${roll.rollSequence}`}
+                          />
+                        </label>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
             )}
           </section>
 
           {!isCompleted ? (
             <div className="sticky-form-footer">
               <div className="sticky-form-footer__total">
-                <span>إجمالي الأمتار</span>
+                <span>إجمالي الأمتار (يدوي)</span>
                 <strong>{formatMeters(totalEnteredMeters)}</strong>
               </div>
               <button
                 className="primary-button sticky-form-footer__submit"
                 type="submit"
                 disabled={!allRollsValid || completeMutation.isPending}
-                title={!allRollsValid ? 'أدخل طول كل الأثواب قبل الإكمال.' : undefined}
+                title={!allRollsValid ? 'أدخل رقم التوب أو الطول لكل الأثواب قبل الإكمال.' : undefined}
               >
                 {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
               </button>
@@ -363,6 +388,15 @@ function Toast({ toast, onClose }: { toast: ToastState | null; onClose: () => vo
 function toNumber(value: string) {
   const normalized = Number(value.replace(',', '.'));
   return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function toRollNumber(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function getErrorMessage(error: unknown) {

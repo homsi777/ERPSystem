@@ -317,13 +317,30 @@ public sealed class CompleteWarehouseDetailingHandler(
         try
         {
             var userId = currentUserService.UserId ?? Guid.Empty;
+
+            var resolvePayload = command.RollEntries
+                .Select(e => (e.RollDetailId, e.RollNumber, e.LengthMeters))
+                .ToList();
+
+            var resolvedLengths = await inventoryOperations.ResolveDetailingEntriesAsync(
+                aggregate,
+                resolvePayload,
+                cancellationToken);
+
             foreach (var entry in command.RollEntries)
-                aggregate.EnterRollLength(entry.RollDetailId, new LengthInMeters(entry.LengthMeters), userId);
+            {
+                if (!resolvedLengths.TryGetValue(entry.RollDetailId, out var lengthMeters))
+                    return ApplicationResult.Conflict("تعذّر مطابقة جميع الأثواب.");
+
+                aggregate.EnterRollLength(entry.RollDetailId, new LengthInMeters(lengthMeters), userId);
+            }
 
             if (!WarehouseDetailingValidator.CanCompleteDetailing(aggregate))
                 return ApplicationResult.Conflict("All roll lengths must be entered before completing detailing.");
 
             aggregate.CompleteDetailing();
+
+            // Serial matching already assigns fabric rolls; FIFO fills any remaining length-only lines.
             await inventoryOperations.AssignFabricRollsOnDetailingAsync(aggregate, cancellationToken);
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);

@@ -594,6 +594,9 @@ export type WarehouseDetailingDto = {
 
 export type RollLengthEntryRequest = {
   rollDetailId: string;
+  /** DPL / inventory roll serial (رقم التوب). Prefer this for reliable matching. */
+  rollNumber?: number | null;
+  /** Manual length in meters when serial is not used (or for partial sale with serial). */
   lengthMeters: number;
 };
 
