@@ -20,7 +20,8 @@ public sealed class SshTunnelService : IDisposable
         string SshUser,
         int LocalPort,
         string RemoteHost,
-        int RemotePort);
+        int RemotePort,
+        string? IdentityFile);
 
     /// <summary>Starts the tunnel if configured and enabled; returns null otherwise.</summary>
     public static SshTunnelService? StartIfConfigured(IConfiguration configuration)
@@ -35,7 +36,8 @@ public sealed class SshTunnelService : IDisposable
             section.GetValue<string>("SshUser") ?? "",
             section.GetValue("LocalPort", 5433),
             section.GetValue<string>("RemoteHost") ?? "localhost",
-            section.GetValue("RemotePort", 5432));
+            section.GetValue("RemotePort", 5432),
+            section.GetValue<string>("IdentityFile"));
 
         if (string.IsNullOrWhiteSpace(options.SshHost) || string.IsNullOrWhiteSpace(options.SshUser))
             return null;
@@ -51,8 +53,13 @@ public sealed class SshTunnelService : IDisposable
         if (IsPortOpen(options.LocalPort))
             return;
 
+        var identityArg = string.IsNullOrWhiteSpace(options.IdentityFile)
+            ? string.Empty
+            : $"-i \"{options.IdentityFile}\" -o IdentitiesOnly=yes ";
+
         var args =
             $"-p {options.SshPort} -N " +
+            identityArg +
             "-o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes " +
             $"-L {options.LocalPort}:{options.RemoteHost}:{options.RemotePort} " +
             $"{options.SshUser}@{options.SshHost}";
