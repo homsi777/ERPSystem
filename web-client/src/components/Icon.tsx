@@ -1,6 +1,19 @@
 import type { ReactElement } from 'react';
 
-type IconName = 'home' | 'inventory' | 'customers' | 'china' | 'delivery' | 'logout' | 'box' | 'chart' | 'alert' | 'back';
+type IconName =
+  | 'home'
+  | 'inventory'
+  | 'customers'
+  | 'china'
+  | 'delivery'
+  | 'logout'
+  | 'box'
+  | 'chart'
+  | 'alert'
+  | 'back'
+  | 'sales'
+  | 'expenses'
+  | 'accounting';
 
 type IconProps = {
   name: IconName;
@@ -59,5 +72,24 @@ const paths: Record<IconName, ReactElement> = {
   box: <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5zm8 4.5 8-4.5M12 12 4 7.5m8 4.5V21" />,
   chart: <path d="M5 19V5m0 14h14M9 16v-5m4 5V8m4 8v-7" />,
   alert: <path d="M12 4 3.5 19h17zM12 9v4m0 3h.01" />,
-  back: <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+  back: <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />,
+  sales: (
+    <>
+      <path d="M6 3h9l3 3v15l-2.2-1.4L13.6 21l-2.2-1.4L9.2 21 7 19.6 4.8 21V6z" />
+      <path d="M8 8h7M8 11h7M8 14h4" />
+    </>
+  ),
+  expenses: (
+    <>
+      <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z" />
+      <path d="M9.5 14.5c.4 1 1.4 1.5 2.5 1.5 1.4 0 2.3-.7 2.3-1.8 0-2.4-4.6-1.4-4.6-3.8 0-1 .9-1.8 2.3-1.8 1.1 0 2 .5 2.4 1.4M12 7v1.5M12 15.5V17" />
+    </>
+  ),
+  accounting: (
+    <>
+      <path d="M4 5h16v14H4z" />
+      <path d="M4 9h16M9 5v14" />
+      <path d="M12 12h5m-5 3h5" />
+    </>
+  )
 };

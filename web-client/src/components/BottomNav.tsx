@@ -4,8 +4,11 @@ import { Icon } from './Icon.tsx';
 const tabs = [
   { to: '/home', label: 'رئيسية', icon: 'home' },
   { to: '/inventory', label: 'المخزون', icon: 'inventory' },
+  { to: '/sales', label: 'المبيعات', icon: 'sales' },
   { to: '/customers', label: 'العملاء', icon: 'customers' },
-  { to: '/china', label: 'طلبات الصين', icon: 'china' },
+  { to: '/expenses', label: 'المصاريف', icon: 'expenses' },
+  { to: '/accounting', label: 'المحاسبة', icon: 'accounting' },
+  { to: '/china', label: 'الصين', icon: 'china' },
   { to: '/delivery', label: 'التسليم', icon: 'delivery' }
 ] as const;
 

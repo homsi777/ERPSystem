@@ -130,5 +130,8 @@ app.MapContainerEndpoints();
 app.MapDetailingEndpoints();
 app.MapDashboardEndpoints();
 app.MapReceiptEndpoints();
+app.MapSalesEndpoints();
+app.MapExpenseEndpoints();
+app.MapAccountingEndpoints();
 
 app.Run();

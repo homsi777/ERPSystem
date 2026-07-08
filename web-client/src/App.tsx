@@ -7,6 +7,9 @@ import { HomePage } from './pages/Home.tsx';
 import { CustomersPage } from './pages/Customers.tsx';
 import { ChinaPage } from './pages/China.tsx';
 import { DeliveryPage } from './pages/Delivery.tsx';
+import { SalesPage } from './pages/Sales.tsx';
+import { ExpensesPage } from './pages/Expenses.tsx';
+import { AccountingPage } from './pages/Accounting.tsx';
 
 export function App() {
   return (
@@ -25,6 +28,14 @@ export function App() {
         <Route path="/china/:containerId" element={<ChinaPage />} />
         <Route path="/delivery" element={<DeliveryPage />} />
         <Route path="/delivery/:invoiceId" element={<DeliveryPage />} />
+        <Route path="/sales" element={<SalesPage />} />
+        <Route path="/sales/new" element={<SalesPage />} />
+        <Route path="/sales/:invoiceId" element={<SalesPage />} />
+        <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/expenses/new" element={<ExpensesPage />} />
+        <Route path="/expenses/:expenseId" element={<ExpensesPage />} />
+        <Route path="/accounting" element={<AccountingPage />} />
+        <Route path="/accounting/journal/:entryId" element={<AccountingPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>

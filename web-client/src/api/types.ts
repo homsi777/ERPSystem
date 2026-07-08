@@ -613,3 +613,359 @@ export type DashboardSummaryDto = {
   lowStockItemsCount: number;
   recentActivity: DashboardActivityDto[];
 };
+
+// ── Sales invoices ────────────────────────────────────────────────
+export type SalesInvoiceStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type PaymentType = 0 | 1;
+
+export type SalesInvoiceLineDto = {
+  id: string;
+  lineNumber: number;
+  fabricItemId: string;
+  fabricColorId: string;
+  fabricDisplayName: string;
+  fabricCode: string;
+  colorDisplayName: string;
+  rollCount: number;
+  unitPrice: number;
+  originalUnitPrice: number;
+  totalLengthMeters: number;
+  lineTotal: number;
+  discountAmount: number;
+  discountReason: string | null;
+  notes: string | null;
+};
+
+export type SalesInvoiceDto = {
+  id: string;
+  invoiceNumber: string;
+  status: SalesInvoiceStatus;
+  customerId: string;
+  customerName: string;
+  warehouseId: string;
+  chinaContainerId: string;
+  invoiceDate: string;
+  paymentType: PaymentType;
+  subTotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  sentToWarehouseAt: string | null;
+  detailedAt: string | null;
+  approvedAt: string | null;
+  printedAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
+  deliveredToName: string | null;
+  deliveryDriverName: string | null;
+  deliveryNotes: string | null;
+  cancelReason: string | null;
+  lines: SalesInvoiceLineDto[];
+};
+
+export type SalesJournalEntryDto = {
+  id: string;
+  entryNumber: string;
+  entryDate: string;
+  description: string;
+  status: JournalEntryStatus;
+  debitTotal: number;
+  creditTotal: number;
+};
+
+export type ReceiptInvoicePaymentDto = {
+  salesInvoiceId: string;
+  receiptVoucherId: string;
+  receiptNumber: string;
+  amount: number;
+  appliedAt: string;
+};
+
+export type SalesInvoiceOperationsCenterDto = {
+  invoice: SalesInvoiceDto;
+  detailing: WarehouseDetailingDto | null;
+  canSendToWarehouse: boolean;
+  canCompleteDetailing: boolean;
+  canApprove: boolean;
+  canCancel: boolean;
+  journalEntries: SalesJournalEntryDto[];
+  payments: ReceiptInvoicePaymentDto[];
+  collectedAmount: number;
+  remainingBalance: number;
+  warehouseName: string | null;
+  customerPhone: string | null;
+};
+
+export type SalesWarehouseStockOptionDto = {
+  fabricItemId: string;
+  fabricColorId: string;
+  fabricDisplayName: string;
+  fabricCode: string;
+  colorDisplayName: string;
+  availableRollCount: number;
+  availableMeters: number;
+  salePricePerMeter: number | null;
+  display: string;
+};
+
+export type CreateSalesInvoiceLineRequest = {
+  lineNumber: number;
+  fabricItemId: string;
+  fabricColorId: string;
+  rollCount: number;
+  unitPrice: number;
+  originalUnitPrice: number;
+  discountReason: string | null;
+  notes: string | null;
+};
+
+export type CreateSalesInvoiceRequest = {
+  customerId: string;
+  warehouseId: string;
+  chinaContainerId: string;
+  paymentType: PaymentType;
+  discountAmount: number;
+  invoiceNumber: string | null;
+  lines: CreateSalesInvoiceLineRequest[];
+};
+
+// ── Expenses ──────────────────────────────────────────────────────
+export type ExpenseStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type ExpenseCategoryKind = 1 | 2 | 3;
+export type ExpensePaymentMethod = 1 | 2 | 3 | 4 | 5;
+export type ExpenseFundingSource = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export type ExpenseListDto = {
+  id: string;
+  code: string;
+  name: string;
+  categoryKind: ExpenseCategoryKind;
+  categoryKindDisplay: string;
+  categoryName: string;
+  status: ExpenseStatus;
+  statusDisplay: string;
+  startDate: string;
+  endDate: string | null;
+  originalCurrency: string;
+  originalAmount: number;
+  baseAmount: number;
+  paidAmountBase: number;
+  remainingBalanceBase: number;
+  baseCurrency: string;
+  department: string | null;
+  costCenterId: string | null;
+  costCenterName: string | null;
+  payeeName: string | null;
+  isRecurring: boolean;
+  nextDueDate: string | null;
+  isArchived: boolean;
+};
+
+export type ExpensePaymentDto = {
+  id: string;
+  paymentDate: string;
+  dueDate: string | null;
+  amountOriginal: number;
+  amountBase: number;
+  currency: string;
+  exchangeRateSnapshot: number;
+  paymentMethodDisplay: string;
+  fundingSourceDisplay: string;
+  statusDisplay: string;
+  approvalStatusDisplay: string;
+  referenceNumber: string | null;
+  notes: string | null;
+  installmentNumber: number | null;
+};
+
+export type ExpenseDetailsDto = {
+  id: string;
+  code: string;
+  name: string;
+  categoryId: string;
+  categoryKind: ExpenseCategoryKind;
+  categoryKindDisplay: string;
+  categoryName: string;
+  description: string | null;
+  status: ExpenseStatus;
+  statusDisplay: string;
+  allowedTransitions: ExpenseStatus[];
+  startDate: string;
+  endDate: string | null;
+  originalCurrency: string;
+  originalAmount: number;
+  exchangeRate: number;
+  baseCurrency: string;
+  baseAmount: number;
+  paidAmountBase: number;
+  remainingBalanceBase: number;
+  paymentMethod: ExpensePaymentMethod;
+  paymentMethodDisplay: string;
+  payeeName: string | null;
+  supplierId: string | null;
+  costCenterId: string | null;
+  costCenterName: string | null;
+  department: string | null;
+  projectCode: string | null;
+  notes: string | null;
+  isRecurring: boolean;
+  isArchived: boolean;
+  createdAt: string;
+  createdByName: string | null;
+  updatedAt: string | null;
+  payments: ExpensePaymentDto[];
+};
+
+export type ExpenseCategoryDto = {
+  id: string;
+  kind: ExpenseCategoryKind;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  kindDisplay: string;
+};
+
+export type CostCenterDto = {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  parentCostCenterId: string | null;
+  status: number;
+  statusDisplay: string;
+};
+
+export type ExpenseCategoryBreakdownDto = {
+  label: string;
+  amountBase: number;
+  percentage: number;
+  growthPercentage: number;
+};
+
+export type ExpenseDashboardDto = {
+  totalExpensesBase: number;
+  monthlyExpensesBase: number;
+  yearlyExpensesBase: number;
+  capitalExpensesBase: number;
+  personalExpensesBase: number;
+  operatingExpensesBase: number;
+  activeCount: number;
+  pendingApprovalCount: number;
+  upcomingPaymentsCount: number;
+  overdueCount: number;
+  largestExpenseBase: number;
+  largestExpenseName: string;
+  burnRateMonthly: number;
+  baseCurrency: string;
+  categoryBreakdown: ExpenseCategoryBreakdownDto[];
+};
+
+export type CreateExpenseRequest = {
+  name: string;
+  categoryId: string;
+  description: string | null;
+  startDate: string;
+  endDate: string | null;
+  originalCurrency: string;
+  originalAmount: number;
+  exchangeRate: number;
+  baseCurrency: string;
+  paymentMethod: ExpensePaymentMethod;
+  payeeName: string | null;
+  supplierId: string | null;
+  costCenterId: string | null;
+  department: string | null;
+  notes: string | null;
+  submitForApproval: boolean;
+};
+
+export type PayExpenseRequest = {
+  paymentDate: string;
+  amount: number;
+  currency: string;
+  paymentMethod: ExpensePaymentMethod;
+  fundingSource: ExpenseFundingSource;
+  referenceNumber: string | null;
+  notes: string | null;
+  cashboxId: string | null;
+};
+
+// ── Accounting ────────────────────────────────────────────────────
+export type JournalEntryStatus = 0 | 1 | 2 | 3 | 4;
+export type GlAccountType = 1 | 2 | 3 | 4 | 5;
+
+export type JournalEntryListDto = {
+  id: string;
+  entryNumber: string;
+  entryDate: string;
+  description: string;
+  status: JournalEntryStatus;
+  statusDisplay: string;
+  debitTotal: number;
+  creditTotal: number;
+  lineCount: number;
+  sourceType: DocumentType | null;
+  sourceTypeDisplay: string | null;
+};
+
+export type JournalEntryLineDetailsDto = {
+  id: string;
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  debit: number;
+  credit: number;
+  narrative: string;
+};
+
+export type JournalEntryDetailsDto = {
+  id: string;
+  entryNumber: string;
+  entryDate: string;
+  description: string;
+  status: JournalEntryStatus;
+  statusDisplay: string;
+  debitTotal: number;
+  creditTotal: number;
+  sourceType: DocumentType | null;
+  sourceTypeDisplay: string | null;
+  sourceId: string | null;
+  postedAt: string | null;
+  lines: JournalEntryLineDetailsDto[];
+};
+
+export type AccountListDto = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  accountType: GlAccountType;
+  accountTypeDisplay: string;
+  parentId: string | null;
+  parentName: string | null;
+  isPostable: boolean;
+  isActive: boolean;
+  childCount: number;
+  level: number;
+};
+
+export type TrialBalanceLineDto = {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  accountTypeDisplay: string;
+  debitTotal: number;
+  creditTotal: number;
+  balance: number;
+};
+
+export type AccountLedgerLineDto = {
+  journalEntryId: string;
+  entryNumber: string;
+  entryDate: string;
+  description: string;
+  lineNarrative: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+};

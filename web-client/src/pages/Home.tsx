@@ -49,9 +49,21 @@ export function HomePage() {
           <Icon name="inventory" />
           <span>المخزون</span>
         </Link>
+        <Link className="shortcut-card" to="/sales">
+          <Icon name="sales" />
+          <span>فواتير البيع</span>
+        </Link>
         <Link className="shortcut-card" to="/customers">
           <Icon name="customers" />
           <span>العملاء</span>
+        </Link>
+        <Link className="shortcut-card" to="/expenses">
+          <Icon name="expenses" />
+          <span>المصاريف</span>
+        </Link>
+        <Link className="shortcut-card" to="/accounting">
+          <Icon name="accounting" />
+          <span>المحاسبة</span>
         </Link>
         <Link className="shortcut-card" to="/china">
           <Icon name="china" />
