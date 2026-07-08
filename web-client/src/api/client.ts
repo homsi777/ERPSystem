@@ -120,10 +120,26 @@ function serializeBody(body: RequestBody | undefined): BodyInit | null | undefin
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (response.ok) {
-    if (response.status === 204) {
+    // Successful void commands often return 200 with an empty body (or 204).
+    // Parsing empty JSON throws and falsely shows "save failed" after a real success.
+    if (response.status === 204 || response.status === 205) {
       return undefined as T;
     }
-    return (await response.json()) as T;
+
+    const raw = await response.text();
+    if (!raw.trim()) {
+      return undefined as T;
+    }
+
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      throw new ApiError(response.status, {
+        code: 'INVALID_JSON',
+        message: 'استجابة الخادم غير صالحة.',
+        validationErrors: []
+      });
+    }
   }
 
   const fallback: ApiErrorResponse = {

@@ -329,12 +329,21 @@ public sealed class CompleteWarehouseDetailingHandler(
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
 
-            await notificationService.PublishAsync(new SalesInvoiceDetailedNotification
+            // Never fail a completed detailing because the UI notification dialog threw —
+            // the invoice is already saved as detailed.
+            try
             {
-                InvoiceId = aggregate.Id,
-                InvoiceNumber = aggregate.InvoiceNumber.Value,
-                GrandTotal = aggregate.GrandTotal.Amount
-            }, cancellationToken);
+                await notificationService.PublishAsync(new SalesInvoiceDetailedNotification
+                {
+                    InvoiceId = aggregate.Id,
+                    InvoiceNumber = aggregate.InvoiceNumber.Value,
+                    GrandTotal = aggregate.GrandTotal.Amount
+                }, cancellationToken);
+            }
+            catch
+            {
+                // UI notification failures must not reverse a successful save.
+            }
 
             return ApplicationResult.Success();
         }

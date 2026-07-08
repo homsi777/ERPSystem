@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { completeDetailing, getDetailing, getDetailingQueue } from '../api/detailing.ts';
 import { getInventoryWarehouses } from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
@@ -41,7 +41,18 @@ export function DeliveryPage() {
 }
 
 function DeliveryQueuePage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [warehouseId, setWarehouseId] = useState('');
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  useEffect(() => {
+    const state = location.state as { toast?: ToastState } | null;
+    if (state?.toast) {
+      setToast(state.toast);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const warehousesQuery = useQuery({
     queryKey: ['inventory', 'warehouses'],
@@ -73,6 +84,7 @@ function DeliveryQueuePage() {
 
   return (
     <AppShell title="التسليم" summary={headerSummary}>
+      <Toast toast={toast} onClose={() => setToast(null)} />
       <div className="page-stack">
         <section className="form-panel form-compact form-panel--filter" aria-label="اختيار المستودع">
           <label className="form-field form-field--wide">
@@ -195,8 +207,11 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['detailing'] });
-      setToast({ tone: 'success', message: 'تم إكمال التفصيل بنجاح.' });
-      navigate('/delivery');
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      navigate('/delivery', {
+        replace: true,
+        state: { toast: { tone: 'success', message: 'تم إكمال التفصيل بنجاح. يمكنك اعتماد الفاتورة من شاشة المبيعات.' } }
+      });
     },
     onError: (error) => setToast({ tone: 'error', message: getErrorMessage(error) })
   });

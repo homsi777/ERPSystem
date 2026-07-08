@@ -17,7 +17,7 @@ public static class ApplicationResultHttpMapper
     public static IResult ToHttpResult(ApplicationResult result)
     {
         if (result.IsSuccess)
-            return Results.Ok();
+            return Results.NoContent();
 
         return ToErrorResult(result);
     }

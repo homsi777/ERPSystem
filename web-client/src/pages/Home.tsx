@@ -72,6 +72,9 @@ export function HomePage() {
         <Link className="shortcut-card" to="/delivery">
           <Icon name="delivery" />
           <span>التسليم</span>
+          {summary && summary.awaitingDetailingCount > 0 ? (
+            <em className="shortcut-card__badge">{formatNumber(summary.awaitingDetailingCount)} بانتظار التفنيد</em>
+          ) : null}
         </Link>
       </section>
 

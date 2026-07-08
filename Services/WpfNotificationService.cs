@@ -1,9 +1,7 @@
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Notifications;
-using ERPSystem.Core;
 using ERPSystem.Dialogs;
 using ERPSystem.Services.Sales;
-using System.Globalization;
 using System.Windows;
 
 namespace ERPSystem.Services;
@@ -24,25 +22,11 @@ public sealed class WpfNotificationService : INotificationService
             case CustomerDeactivatedNotification d:
                 ShowSuccess($"تم تعطيل العميل «{d.CustomerName}».", "تعطيل عميل");
                 break;
-            case SalesInvoiceDetailedNotification detailed:
+            case SalesInvoiceDetailedNotification:
+                // Lists refresh only — success UI is shown by the detailing workspace
+                // so we don't nest dialogs that can clash after a successful save.
                 SalesListRefreshHub.RequestRefresh();
                 DetailingQueueRefreshHub.RequestRefresh();
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    MockFeedbackDialog.Show(
-                        MockFeedbackKind.Success,
-                        $"تم تفنيد فاتورة {detailed.InvoiceNumber}.\n" +
-                        $"الإجمالي: {detailed.GrandTotal.ToString("N2", CultureInfo.CurrentCulture)}",
-                        "تم التفنيد — المستودع");
-
-                    if (MockInteractionService.Confirm(
-                            "فتح الفاتورة الآن للمراجعة والاعتماد؟",
-                            "فاتورة جاهزة"))
-                    {
-                        SalesNavigationContext.BeginEdit(detailed.InvoiceId);
-                        MockInteractionService.Navigate(AppModule.Sales, "NewInvoice");
-                    }
-                });
                 break;
             case InventoryChangedNotification:
             case SalesInvoiceApprovedNotification:
