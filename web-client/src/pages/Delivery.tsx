@@ -170,6 +170,8 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     return Object.values(lengths).reduce((sum, value) => sum + (toNumber(value) || 0), 0);
   }, [lengths]);
 
+  const isCompleted = detailingQuery.data?.status === 2;
+
   const allRollsValid = useMemo(() => {
     const rolls = detailingQuery.data?.rolls ?? [];
     if (rolls.length === 0) {
@@ -196,7 +198,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!allRollsValid || completeMutation.isPending) {
+    if (isCompleted || !allRollsValid || completeMutation.isPending) {
       return;
     }
     completeMutation.mutate();
@@ -236,36 +238,58 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             </dl>
           </section>
 
-          <form className="detail-card" onSubmit={submit}>
-            <h2>أطوال الأثواب</h2>
-            <div className="line-list">
-              {detailing.rolls.map((roll) => (
-                <label className="price-row" key={roll.rollDetailId}>
-                  <span>
-                    #{roll.rollSequence} — {roll.fabricDisplayName} / {roll.colorDisplayName}
-                  </span>
-                  <input
-                    inputMode="decimal"
-                    placeholder="الطول (متر)"
-                    value={lengths[roll.rollDetailId] ?? ''}
-                    onChange={(event) =>
-                      setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
-                    }
-                    aria-label={`طول الثوب رقم ${roll.rollSequence}`}
-                  />
-                </label>
-              ))}
-            </div>
-            <button
-              className="primary-button primary-button--wide"
-              type="submit"
-              disabled={!allRollsValid || completeMutation.isPending}
-              title={!allRollsValid ? 'أدخل طول كل الأثواب قبل الإكمال.' : undefined}
-            >
-              {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
-            </button>
-            {!allRollsValid ? <p className="field-note">أدخل طولًا صحيحًا (أكبر من صفر) لكل الأثواب قبل الإكمال.</p> : null}
-          </form>
+          {isCompleted ? (
+            <section className="detail-card">
+              <h2>أطوال الأثواب</h2>
+              <div className="banner banner--success" role="status">
+                تم تفصيل هذه الفاتورة بالفعل — الفاتورة الآن بانتظار الاعتماد. لا حاجة لإعادة الإرسال.
+              </div>
+              <div className="line-list">
+                {detailing.rolls.map((roll) => (
+                  <div className="price-row" key={roll.rollDetailId}>
+                    <span>
+                      #{roll.rollSequence} — {roll.fabricDisplayName} / {roll.colorDisplayName}
+                    </span>
+                    <strong>{formatMeters(roll.lengthMeters)}</strong>
+                  </div>
+                ))}
+              </div>
+              <button className="primary-button primary-button--wide" type="button" onClick={() => navigate('/delivery')}>
+                العودة إلى قائمة التسليم
+              </button>
+            </section>
+          ) : (
+            <form className="detail-card" onSubmit={submit}>
+              <h2>أطوال الأثواب</h2>
+              <div className="line-list">
+                {detailing.rolls.map((roll) => (
+                  <label className="price-row" key={roll.rollDetailId}>
+                    <span>
+                      #{roll.rollSequence} — {roll.fabricDisplayName} / {roll.colorDisplayName}
+                    </span>
+                    <input
+                      inputMode="decimal"
+                      placeholder="الطول (متر)"
+                      value={lengths[roll.rollDetailId] ?? ''}
+                      onChange={(event) =>
+                        setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
+                      }
+                      aria-label={`طول الثوب رقم ${roll.rollSequence}`}
+                    />
+                  </label>
+                ))}
+              </div>
+              <button
+                className="primary-button primary-button--wide"
+                type="submit"
+                disabled={!allRollsValid || completeMutation.isPending}
+                title={!allRollsValid ? 'أدخل طول كل الأثواب قبل الإكمال.' : undefined}
+              >
+                {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
+              </button>
+              {!allRollsValid ? <p className="field-note">أدخل طولًا صحيحًا (أكبر من صفر) لكل الأثواب قبل الإكمال.</p> : null}
+            </form>
+          )}
         </>
       ) : null}
     </AppShell>
@@ -305,6 +329,9 @@ function getErrorMessage(error: unknown) {
     }
     if (error.status === 404) {
       return 'الفاتورة غير موجودة أو ليست بانتظار التفصيل.';
+    }
+    if (error.status === 409) {
+      return 'تعذّر إكمال التفصيل — يبدو أن الفاتورة لم تعد بانتظار التفصيل (ربما تم تفصيلها مسبقًا). حدّث الصفحة للتحقق من الحالة.';
     }
     return error.message;
   }

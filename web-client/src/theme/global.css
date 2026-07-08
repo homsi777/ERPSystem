@@ -637,6 +637,20 @@ svg {
   background: rgba(201, 67, 67, 0.1);
 }
 
+.banner {
+  margin-block-end: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.banner--success {
+  color: var(--color-good);
+  background: rgba(29, 158, 117, 0.12);
+}
+
 .toast button,
 .ghost-button {
   min-height: 34px;
