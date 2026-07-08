@@ -17,7 +17,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   if (isAuthenticated) {
-    return <Navigate to="/inventory" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -28,7 +28,7 @@ export function LoginPage() {
     try {
       await login({ username, password });
       const state = location.state as LocationState | null;
-      navigate(state?.from ?? '/inventory', { replace: true });
+      navigate(state?.from ?? '/home', { replace: true });
     } catch (caught) {
       const message = caught instanceof ApiError ? caught.message : 'تعذر تسجيل الدخول.';
       setError(message);

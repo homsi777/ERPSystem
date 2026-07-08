@@ -49,12 +49,15 @@ function DeliveryQueuePage() {
   });
 
   useEffect(() => {
-    if (warehouseId || !warehousesQuery.data) {
+    if (warehouseId || !warehousesQuery.data || warehousesQuery.data.length === 0) {
       return;
     }
-    const defaultWarehouse = warehousesQuery.data.find((warehouse) => warehouse.isDefault);
-    if (defaultWarehouse) {
-      setWarehouseId(defaultWarehouse.id);
+    const preferred =
+      warehousesQuery.data.find((warehouse) => warehouse.isDefault) ??
+      warehousesQuery.data.find((warehouse) => warehouse.nameAr?.includes('رئيسي')) ??
+      warehousesQuery.data[0];
+    if (preferred) {
+      setWarehouseId(preferred.id);
     }
   }, [warehouseId, warehousesQuery.data]);
 

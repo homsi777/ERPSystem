@@ -13,7 +13,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Navigate to="/inventory" replace />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/inventory/movements" element={<InventoryMovementsPage />} />
@@ -26,7 +26,7 @@ export function App() {
         <Route path="/delivery" element={<DeliveryPage />} />
         <Route path="/delivery/:invoiceId" element={<DeliveryPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/inventory" replace />} />
+      <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   );
 }

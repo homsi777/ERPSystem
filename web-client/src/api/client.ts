@@ -2,7 +2,9 @@ import type { ApiErrorResponse } from './types.ts';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
-  `${window.location.protocol}//${window.location.hostname}:5218`;
+  (import.meta.env.DEV
+    ? `${window.location.protocol}//${window.location.hostname}:5218`
+    : '');
 
 type RequestBody = BodyInit | Record<string, unknown> | unknown[] | null;
 
