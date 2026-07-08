@@ -12,7 +12,7 @@ export function Header({ title, children }: HeaderProps) {
   const { user, logout } = useAuth();
 
   return (
-    <header className="app-header">
+    <header className={`app-header${children ? '' : ' app-header--compact'}`}>
       <div className="app-header__top">
         <div className="app-header__lead">
           <BackButton />

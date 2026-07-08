@@ -477,88 +477,100 @@ function SalesCreatePage() {
     mutation.mutate();
   }
 
-  const headerSummary = <SummaryCard label="القيمة التقديرية" value={formatCurrency(estimatedTotal)} tone="green" />;
-
   return (
-    <AppShell title="فاتورة بيع جديدة" summary={headerSummary}>
+    <AppShell title="فاتورة بيع جديدة">
       <Toast toast={toast} onClose={() => setToast(null)} />
-      <form className="detail-card form-grid" onSubmit={submit}>
-        <label>
-          العميل
-          <select value={customerId} onChange={(event) => setCustomerId(event.target.value)} required>
-            <option value="">اختر العميل...</option>
-            {(customersQuery.data?.items ?? []).map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.nameAr}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          المستودع
-          <select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} required>
-            <option value="">اختر المستودع...</option>
-            {(warehousesQuery.data ?? []).map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.nameAr}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          الحاوية المصدر
-          <select value={containerId} onChange={(event) => setContainerId(event.target.value)} required>
-            <option value="">اختر الحاوية...</option>
-            {(containersQuery.data?.items ?? []).map((container) => (
-              <option key={container.id} value={container.id}>
-                {container.containerNumber}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          نوع الدفع
-          <select value={paymentType} onChange={(event) => setPaymentType(event.target.value as '0' | '1')}>
-            <option value="0">{paymentTypeLabel(0)}</option>
-            <option value="1">{paymentTypeLabel(1)}</option>
-          </select>
-        </label>
-        <label>
-          الخصم على الفاتورة
-          <input inputMode="decimal" value={discount} onChange={(event) => setDiscount(event.target.value)} />
-        </label>
+      <form className="sales-create" onSubmit={submit}>
+        <section className="form-panel form-compact" aria-label="بيانات الفاتورة">
+          <label className="form-field form-field--wide">
+            <span className="form-field__label">العميل</span>
+            <select value={customerId} onChange={(event) => setCustomerId(event.target.value)} required>
+              <option value="">اختر العميل...</option>
+              {(customersQuery.data?.items ?? []).map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.nameAr}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <div className="form-grid__wide">
-          <div className="section-title-row">
+          <div className="form-field-row form-field-row--2">
+            <label className="form-field">
+              <span className="form-field__label">المستودع</span>
+              <select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} required>
+                <option value="">اختر...</option>
+                {(warehousesQuery.data ?? []).map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.nameAr}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-field">
+              <span className="form-field__label">الحاوية</span>
+              <select value={containerId} onChange={(event) => setContainerId(event.target.value)} required>
+                <option value="">اختر...</option>
+                {(containersQuery.data?.items ?? []).map((container) => (
+                  <option key={container.id} value={container.id}>
+                    {container.containerNumber}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="form-field-row form-field-row--2">
+            <label className="form-field">
+              <span className="form-field__label">نوع الدفع</span>
+              <select value={paymentType} onChange={(event) => setPaymentType(event.target.value as '0' | '1')}>
+                <option value="0">{paymentTypeLabel(0)}</option>
+                <option value="1">{paymentTypeLabel(1)}</option>
+              </select>
+            </label>
+            <label className="form-field">
+              <span className="form-field__label">الخصم</span>
+              <input inputMode="decimal" value={discount} onChange={(event) => setDiscount(event.target.value)} />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-panel form-compact" aria-label="أصناف الفاتورة">
+          <div className="form-section-head">
             <h2>الأصناف</h2>
             <button
-              className="ghost-button"
+              className="chip-button"
               type="button"
               onClick={addLine}
               disabled={!containerId || !warehouseId || stockQuery.isLoading}
             >
-              إضافة صنف
+              + إضافة
             </button>
           </div>
 
           {!containerId || !warehouseId ? (
-            <p className="field-note">اختر الحاوية والمستودع لعرض الأصناف المتاحة.</p>
+            <p className="form-hint">اختر الحاوية والمستودع لعرض الأصناف.</p>
           ) : null}
           {stockQuery.isLoading ? <LoadingState /> : null}
           {stockQuery.isError ? (
             <ErrorState message={getErrorMessage(stockQuery.error)} onRetry={() => void stockQuery.refetch()} />
           ) : null}
           {containerId && warehouseId && stockQuery.isSuccess && stockOptions.length === 0 ? (
-            <p className="field-note">لا يوجد مخزون متاح في هذه الحاوية/المستودع.</p>
+            <p className="form-hint form-hint--warn">لا يوجد مخزون متاح.</p>
           ) : null}
 
-          <div className="line-list">
-            {lines.map((line) => {
+          <div className="line-items">
+            {lines.map((line, index) => {
               const stock = findStock(line.stockKey);
               return (
-                <div className="detail-card form-grid" key={line.key}>
-                  <label className="form-grid__wide">
-                    الصنف
+                <article className="line-item" key={line.key}>
+                  <div className="line-item__head">
+                    <span className="line-item__index">#{index + 1}</span>
+                    <button className="line-item__remove" type="button" onClick={() => removeLine(line.key)} aria-label="حذف الصنف">
+                      حذف
+                    </button>
+                  </div>
+                  <label className="form-field form-field--wide">
+                    <span className="form-field__label">الصنف</span>
                     <select
                       value={line.stockKey}
                       onChange={(event) => {
@@ -577,32 +589,37 @@ function SalesCreatePage() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    عدد الأثواب
-                    <input inputMode="numeric" value={line.rollCount} onChange={(event) => updateLine(line.key, { rollCount: event.target.value })} />
-                  </label>
-                  <label>
-                    سعر المتر
-                    <input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(line.key, { unitPrice: event.target.value })} />
-                  </label>
+                  <div className="form-field-row form-field-row--2">
+                    <label className="form-field">
+                      <span className="form-field__label">الأثواب</span>
+                      <input inputMode="numeric" value={line.rollCount} onChange={(event) => updateLine(line.key, { rollCount: event.target.value })} />
+                    </label>
+                    <label className="form-field">
+                      <span className="form-field__label">سعر/م</span>
+                      <input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(line.key, { unitPrice: event.target.value })} />
+                    </label>
+                  </div>
                   {stock ? (
-                    <p className="field-note form-grid__wide">
-                      المتاح: {formatNumber(stock.availableRollCount)} ثوب / {formatMeters(stock.availableMeters)}
-                      {stock.salePricePerMeter != null ? ` • سعر البطاقة: ${formatCurrency(stock.salePricePerMeter)}` : ''}
+                    <p className="line-item__meta">
+                      متاح {formatNumber(stock.availableRollCount)} ثوب · {formatMeters(stock.availableMeters)}
+                      {stock.salePricePerMeter != null ? ` · بطاقة ${formatCurrency(stock.salePricePerMeter)}` : ''}
                     </p>
                   ) : null}
-                  <button className="ghost-button form-grid__wide" type="button" onClick={() => removeLine(line.key)}>
-                    حذف الصنف
-                  </button>
-                </div>
+                </article>
               );
             })}
           </div>
-        </div>
+        </section>
 
-        <button className="primary-button primary-button--wide form-grid__wide" type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء الفاتورة (مسودة)'}
-        </button>
+        <div className="sales-create__footer">
+          <div className="sales-create__total">
+            <span>الإجمالي التقديري</span>
+            <strong>{formatCurrency(estimatedTotal)}</strong>
+          </div>
+          <button className="primary-button sales-create__submit" type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء مسودة'}
+          </button>
+        </div>
       </form>
     </AppShell>
   );
