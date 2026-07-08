@@ -586,7 +586,10 @@ internal sealed class InventoryEngine(
             resolved[detail.Id] = entry.LengthMeters;
         }
 
-        // FIFO fallback for lines entered by length only (no serial) — keep previous reliability.
+        // Length-only lines (no serial): assign a specific reserved roll now — in FIFO order but
+        // only rolls with ENOUGH remaining length — so a length/roll mismatch fails here at
+        // detailing time with a clear message, instead of silently failing later at approval
+        // with "Cannot sell more meters than remaining on roll."
         foreach (var item in invoice.Items)
         {
             var details = invoice.RollDetails
@@ -604,10 +607,21 @@ internal sealed class InventoryEngine(
                 .OrderBy(r => r.RollNumber)
                 .ToList();
 
-            for (var i = 0; i < details.Count && i < pool.Count; i++)
+            foreach (var detail in details)
             {
-                claimedRollIds.Add(pool[i].Id);
-                invoice.AssignFabricRollToDetail(details[i].Id, pool[i].Id);
+                var requiredMeters = resolved.TryGetValue(detail.Id, out var m) ? m : 0m;
+                var match = pool.FirstOrDefault(r =>
+                    !claimedRollIds.Contains(r.Id) && r.RemainingLengthMeters >= requiredMeters);
+
+                if (match is null)
+                {
+                    throw new InventoryException(
+                        $"لا يوجد توب محجوز بطول كافٍ ({requiredMeters:N2} م) لهذا الصنف. " +
+                        "أدخل رقم التوب (سيريال) مباشرة بدل الطول لتفادي هذا الخطأ.");
+                }
+
+                claimedRollIds.Add(match.Id);
+                invoice.AssignFabricRollToDetail(detail.Id, match.Id);
             }
         }
 

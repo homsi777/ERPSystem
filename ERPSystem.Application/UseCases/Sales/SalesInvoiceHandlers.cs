@@ -340,8 +340,9 @@ public sealed class CompleteWarehouseDetailingHandler(
 
             aggregate.CompleteDetailing();
 
-            // Serial matching already assigns fabric rolls; FIFO fills any remaining length-only lines.
-            await inventoryOperations.AssignFabricRollsOnDetailingAsync(aggregate, cancellationToken);
+            // ResolveDetailingEntriesAsync already pinned every roll detail to a specific fabric
+            // roll (by serial, or by best-available match for length-only entries), so approval-time
+            // deduction is guaranteed to find enough remaining length on the assigned roll.
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
