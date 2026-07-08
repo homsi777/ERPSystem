@@ -3,6 +3,69 @@ export const inventoryStatusLabels = {
   low: 'منخفض'
 } as const;
 
+export const movementTypeLabels: Record<string, string> = {
+  Import: 'استيراد',
+  Purchase: 'شراء',
+  Sale: 'بيع',
+  SaleReturn: 'مرتجع بيع',
+  PurchaseReturn: 'مرتجع شراء',
+  Transfer: 'تحويل',
+  OpeningBalance: 'رصيد افتتاحي',
+  Adjustment: 'تسوية',
+  Stocktake: 'جرد',
+  Manufacturing: 'تصنيع',
+  Consumption: 'استهلاك',
+  Production: 'إنتاج',
+  Damage: 'تلف',
+  Loss: 'فقد',
+  Correction: 'تصحيح',
+  Waste: 'هدر'
+};
+
+export const stockMovementStatusLabels: Record<string, string> = {
+  Draft: 'مسودة',
+  Posted: 'مرحّلة',
+  Cancelled: 'ملغاة',
+  Reversed: 'معكوسة'
+};
+
+export const documentTypeNameLabels: Record<string, string> = {
+  SalesInvoice: 'فاتورة بيع',
+  SalesReturn: 'مرتجع بيع',
+  PurchaseInvoice: 'فاتورة شراء',
+  PurchaseReturn: 'مرتجع شراء',
+  ReceiptVoucher: 'سند قبض',
+  PaymentVoucher: 'سند صرف',
+  JournalEntry: 'قيد يومية',
+  StockMovement: 'حركة مخزون',
+  DeliveryNote: 'إشعار تسليم',
+  ChinaContainer: 'حاوية صين',
+  ExpensePayment: 'دفعة مصروف',
+  SupplierOpeningBalance: 'رصيد افتتاحي مورد',
+  OpeningBalance: 'رصيد افتتاحي',
+  StockTransfer: 'تحويل مخزون',
+  Stocktake: 'جرد',
+  PurchaseInvoiceReversal: 'عكس فاتورة شراء',
+  CustomerOpeningBalance: 'رصيد افتتاحي عميل',
+  CashboxTransfer: 'تحويل صندوق',
+  FinanceOpeningBalance: 'رصيد افتتاحي مالي'
+};
+
+export function movementTypeLabel(value: string) {
+  return movementTypeLabels[value] ?? value;
+}
+
+export function stockMovementStatusLabel(value: string) {
+  return stockMovementStatusLabels[value] ?? value;
+}
+
+export function documentTypeName(value: string | null | undefined) {
+  if (!value) {
+    return '—';
+  }
+  return documentTypeNameLabels[value] ?? value;
+}
+
 export const chinaContainerStatusLabels = {
   0: 'مسودة',
   1: 'قيد الشحن',

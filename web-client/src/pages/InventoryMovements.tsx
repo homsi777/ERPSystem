@@ -10,6 +10,7 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import { formatCurrency, formatDate, formatMeters, formatNumber } from '../lib/format.ts';
+import { documentTypeName, movementTypeLabel, stockMovementStatusLabel } from '../lib/enums.ts';
 
 export function InventoryMovementsPage() {
   const [warehouseId, setWarehouseId] = useState('');
@@ -87,12 +88,12 @@ export function InventoryMovementsPage() {
                   <tr key={movement.id}>
                     <td>{movement.movementNumber}</td>
                     <td>{formatDate(movement.movementDate)}</td>
-                    <td>{movement.type}</td>
+                    <td>{movementTypeLabel(movement.type)}</td>
                     <td>{movement.warehouseName}</td>
-                    <td>{movement.reference ?? '—'}</td>
+                    <td>{documentTypeName(movement.reference)}</td>
                     <td>{formatMeters(movement.totalMeters)}</td>
                     <td>{formatCurrency(movement.totalValue)}</td>
-                    <td>{movement.status}</td>
+                    <td>{stockMovementStatusLabel(movement.status)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -112,13 +113,13 @@ function MovementCard({ movement }: { movement: StockMovementListDto }) {
         <span className="record-card__badge">{formatDate(movement.movementDate)}</span>
       </div>
       <p className="record-card__meta">
-        {movement.type} • {movement.warehouseName}
+        {movementTypeLabel(movement.type)} • {movement.warehouseName}
       </p>
       <dl className="record-card__grid record-card__grid--quad">
-        <RecordField label="المرجع" value={movement.reference ?? '—'} />
+        <RecordField label="المرجع" value={documentTypeName(movement.reference)} />
         <RecordField label="الأمتار" value={formatMeters(movement.totalMeters)} />
         <RecordField label="القيمة" value={formatCurrency(movement.totalValue)} emphasis />
-        <RecordField label="الحالة" value={movement.status} />
+        <RecordField label="الحالة" value={stockMovementStatusLabel(movement.status)} />
       </dl>
     </article>
   );
