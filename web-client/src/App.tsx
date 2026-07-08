@@ -32,7 +32,12 @@ export function App() {
         <Route path="/sales/new" element={<SalesPage />} />
         <Route path="/sales/:invoiceId" element={<SalesPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/expenses/dashboard" element={<ExpensesPage />} />
+        <Route path="/expenses/entries" element={<ExpensesPage />} />
+        <Route path="/expenses/entry" element={<ExpensesPage />} />
         <Route path="/expenses/new" element={<ExpensesPage />} />
+        <Route path="/expenses/categories" element={<ExpensesPage />} />
+        <Route path="/expenses/reports" element={<ExpensesPage />} />
         <Route path="/expenses/:expenseId" element={<ExpensesPage />} />
         <Route path="/accounting" element={<AccountingPage />} />
         <Route path="/accounting/journal/:entryId" element={<AccountingPage />} />

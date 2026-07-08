@@ -816,6 +816,7 @@ export type ExpenseDetailsDto = {
   createdByName: string | null;
   updatedAt: string | null;
   payments: ExpensePaymentDto[];
+  installments?: ExpenseInstallmentDto[];
 };
 
 export type ExpenseCategoryDto = {
@@ -835,6 +836,142 @@ export type CostCenterDto = {
   parentCostCenterId: string | null;
   status: number;
   statusDisplay: string;
+};
+
+export type ExpenseEntryListDto = {
+  id: string;
+  expenseId: string;
+  expenseCode: string;
+  expenseName: string;
+  paymentDate: string;
+  amountOriginal: number;
+  amountBase: number;
+  currency: string;
+  description: string | null;
+  cashboxId: string | null;
+  cashboxName: string | null;
+};
+
+export type ExpenseInstallmentDto = {
+  id: string;
+  installmentNumber: number;
+  dueDate: string;
+  amountOriginal: number;
+  amountBase: number;
+  currency: string;
+  statusDisplay: string;
+  paymentId: string | null;
+};
+
+export type ExpenseAuditEntryDto = {
+  action: string;
+  fieldName: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  userName: string;
+  timestamp: string;
+  reason: string | null;
+};
+
+export type ExpenseTimelineEventDto = {
+  eventType: string;
+  title: string;
+  description: string | null;
+  previousValue: string | null;
+  newValue: string | null;
+  userName: string;
+  timestamp: string;
+  reason: string | null;
+};
+
+export type ExpenseFinancialSummaryDto = {
+  originalAmount: number;
+  originalCurrency: string;
+  baseAmount: number;
+  baseCurrency: string;
+  paidAmountBase: number;
+  remainingBalanceBase: number;
+  exchangeRate: number;
+  completedPayments: number;
+  scheduledPayments: number;
+  pendingInstallments: number;
+  nextPaymentDue: string | null;
+};
+
+export type ExpenseStatisticsDto = {
+  totalPayments: number;
+  totalAttachments: number;
+  daysSinceCreated: number;
+  auditEventCount: number;
+};
+
+export type ExpenseLifecycleStepDto = {
+  label: string;
+  completed: boolean;
+  current: boolean;
+};
+
+export type ExpenseOperationsCenterDto = {
+  details: ExpenseDetailsDto;
+  financial: ExpenseFinancialSummaryDto;
+  lifecycleSteps: ExpenseLifecycleStepDto[];
+  timeline: ExpenseTimelineEventDto[];
+  recentAudit: ExpenseAuditEntryDto[];
+  statistics: ExpenseStatisticsDto;
+};
+
+export type ExpenseReportRowDto = {
+  expenseId: string;
+  code: string;
+  name: string;
+  category: string;
+  categoryKindDisplay: string;
+  status: string;
+  startDate: string;
+  endDate: string | null;
+  originalAmount: number;
+  currency: string;
+  exchangeRate: number;
+  baseAmount: number;
+  paidAmountBase: number;
+  remainingBalanceBase: number;
+  department: string | null;
+  costCenter: string | null;
+  payeeName: string | null;
+  fundingSource: string | null;
+  paymentMethod: string;
+  description: string | null;
+  notes: string | null;
+  isRecurring: boolean;
+  nextDueDate: string | null;
+  paymentCount: number;
+};
+
+export type ExpenseReportDto = {
+  title: string;
+  reportType: string;
+  generatedAt: string;
+  rows: ExpenseReportRowDto[];
+  totalBase: number;
+  totalPaidBase: number;
+  totalRemainingBase: number;
+  expenseCount: number;
+  baseCurrency: string;
+  fromDate: string | null;
+  toDate: string | null;
+  scopeLabel: string | null;
+};
+
+export type ExpenseMonthlyTrendDto = {
+  label: string;
+  amountBase: number;
+};
+
+export type ExpenseCurrencyBreakdownDto = {
+  currency: string;
+  amountOriginal: number;
+  amountBase: number;
+  exposurePercentage: number;
 };
 
 export type ExpenseCategoryBreakdownDto = {
@@ -860,6 +997,8 @@ export type ExpenseDashboardDto = {
   burnRateMonthly: number;
   baseCurrency: string;
   categoryBreakdown: ExpenseCategoryBreakdownDto[];
+  monthlyTrend?: ExpenseMonthlyTrendDto[];
+  currencyBreakdown?: ExpenseCurrencyBreakdownDto[];
 };
 
 export type CreateExpenseRequest = {
@@ -884,6 +1023,9 @@ export type CreateExpenseRequest = {
 export type PayExpenseRequest = {
   paymentDate: string;
   amount: number;
+  amountOriginal: number;
+  amountBase: number;
+  exchangeRateSnapshot: number;
   currency: string;
   paymentMethod: ExpensePaymentMethod;
   fundingSource: ExpenseFundingSource;
