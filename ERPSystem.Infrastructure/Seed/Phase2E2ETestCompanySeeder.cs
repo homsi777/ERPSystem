@@ -1,4 +1,5 @@
 using ERPSystem.Domain.Enums;
+using ERPSystem.Infrastructure.E2E;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Models.Accounting;
 using ERPSystem.Infrastructure.Persistence.Models.Catalog;
@@ -51,11 +52,8 @@ public static class Phase2E2ETestCompanySeeder
         };
     }
 
-    public static void GuardNotProduction(Guid? companyId = null)
-    {
-        if (companyId is Guid id && id == DatabaseSeeder.DefaultCompanyId)
-            throw new InvalidOperationException("Refusing E2E operations on production company.");
-    }
+    public static void GuardNotProduction(Guid? companyId = null) =>
+        E2EProductionGuard.GuardWritableE2E(companyId: companyId);
 
     private static async Task EnsureCompanyAsync(ErpDbContext context, CancellationToken ct)
     {

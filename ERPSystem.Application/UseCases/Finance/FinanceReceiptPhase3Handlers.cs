@@ -17,6 +17,7 @@ public sealed class CreateReceiptVoucherHandler(
     IReceiptVoucherRepository voucherRepository,
     IReceiptInvoicePaymentRepository paymentRepository,
     ICashboxPostingValidator cashboxValidator,
+    IBankAccountPostingValidator bankAccountValidator,
     IUnitOfWork unitOfWork,
     INumberingService numberingService,
     IPermissionService permissionService)
@@ -33,10 +34,22 @@ public sealed class CreateReceiptVoucherHandler(
         if (!await permissionService.CanAsync("finance.receipt.create", cancellationToken))
             return ApplicationResult<Guid>.PermissionDenied("Not allowed to create receipt vouchers.");
 
-        var cashValidation = await cashboxValidator.ValidateForReceiptAsync(
-            command.CompanyId, command.CashboxId, command.Currency, cancellationToken);
-        if (!cashValidation.IsValid && command.BankAccountId is null)
-            return ApplicationResult<Guid>.ValidationFailed("CashboxId", cashValidation.ErrorMessage ?? "Invalid cashbox.");
+        if (command.BankAccountId is Guid bankAccountId)
+        {
+            var bankValidation = await bankAccountValidator.ValidateForReceiptAsync(
+                command.CompanyId, bankAccountId, command.Currency, command.Reference, cancellationToken);
+            if (!bankValidation.IsValid)
+                return ApplicationResult<Guid>.ValidationFailed(
+                    "BankAccountId", bankValidation.ErrorMessage ?? "Invalid bank account.");
+        }
+        else
+        {
+            var cashValidation = await cashboxValidator.ValidateForReceiptAsync(
+                command.CompanyId, command.CashboxId, command.Currency, cancellationToken);
+            if (!cashValidation.IsValid)
+                return ApplicationResult<Guid>.ValidationFailed(
+                    "CashboxId", cashValidation.ErrorMessage ?? "Invalid cashbox.");
+        }
 
         var allocationTotal = command.Allocations.Sum(a => a.Amount);
         if (allocationTotal > command.Amount)
@@ -139,9 +152,18 @@ public sealed class PostReceiptVoucherHandler(
         if (command.VoucherId == Guid.Empty)
             return ApplicationResult.ValidationFailed(nameof(command.VoucherId), "Voucher is required.");
 
-        if (!string.IsNullOrWhiteSpace(command.IdempotencyKey) &&
-            await voucherRepository.ExistsByIdempotencyKeyAsync(command.IdempotencyKey, cancellationToken))
-            return ApplicationResult.Success();
+        if (!string.IsNullOrWhiteSpace(command.IdempotencyKey))
+        {
+            var existingId = await voucherRepository.GetIdByIdempotencyKeyAsync(
+                command.IdempotencyKey, cancellationToken);
+            if (existingId is Guid keyedId)
+            {
+                if (keyedId == command.VoucherId)
+                    return ApplicationResult.Success();
+                return ApplicationResult.Conflict(
+                    "Idempotency key already used by another receipt voucher.");
+            }
+        }
 
         if (!await permissionService.CanAsync("finance.receipt.post", cancellationToken))
             return ApplicationResult.PermissionDenied("Not allowed to post receipt vouchers.");
@@ -212,6 +234,10 @@ public sealed class PostReceiptVoucherHandler(
                 voucher.Amount.Amount,
                 cancellationToken);
 
+            if (!string.IsNullOrWhiteSpace(command.IdempotencyKey))
+                await voucherRepository.SetIdempotencyKeyAsync(
+                    voucher.Id, command.IdempotencyKey, cancellationToken);
+
             var recoveryRequests = integratedAccounting.ConsumePendingPostingRequests();
             await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recoveryRequests, cancellationToken);
             await unitOfWork.CommitTransactionAsync(cancellationToken);
@@ -228,6 +254,42 @@ public sealed class PostReceiptVoucherHandler(
         catch (Exception ex)
         {
             await unitOfWork.RollbackTransactionAsync(cancellationToken);
+            return ex.ToFailureResult();
+        }
+    }
+}
+
+public sealed class CancelReceiptVoucherHandler(
+    IReceiptVoucherRepository voucherRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
+    : ICommandHandler<CancelReceiptVoucherCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        CancelReceiptVoucherCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.VoucherId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.VoucherId), "Voucher is required.");
+        if (string.IsNullOrWhiteSpace(command.Reason))
+            return ApplicationResult.ValidationFailed(nameof(command.Reason), "Cancel reason is required.");
+
+        if (!await permissionService.CanAsync("finance.receipt.cancel", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to cancel receipt vouchers.");
+
+        var voucher = await voucherRepository.GetByIdAsync(command.VoucherId, cancellationToken);
+        if (voucher is null)
+            return ApplicationResult.NotFound("Receipt voucher not found.");
+
+        try
+        {
+            voucher.Cancel(command.Reason);
+            await voucherRepository.UpdateAsync(voucher, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
             return ex.ToFailureResult();
         }
     }

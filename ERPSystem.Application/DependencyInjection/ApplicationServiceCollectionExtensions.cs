@@ -197,6 +197,8 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<ICommandHandler<CreateReceiptVoucherCommand, ApplicationResult<Guid>>, CreateReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<ApproveReceiptVoucherCommand, ApplicationResult>, ApproveReceiptVoucherHandler>();
+        services.AddScoped<ICommandHandler<PostReceiptVoucherCommand, ApplicationResult>, PostReceiptVoucherHandler>();
+        services.AddScoped<ICommandHandler<CancelReceiptVoucherCommand, ApplicationResult>, CancelReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<ReverseReceiptVoucherCommand, ApplicationResult>, ReverseReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<CreatePaymentVoucherCommand, ApplicationResult<Guid>>, CreatePaymentVoucherHandler>();
         services.AddScoped<ICommandHandler<PostPaymentVoucherCommand, ApplicationResult>, PostPaymentVoucherHandler>();

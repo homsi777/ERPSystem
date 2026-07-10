@@ -16,6 +16,8 @@ public interface IReceiptVoucherRepository
     Task<IReadOnlyList<ReceiptTenderLine>> GetTenderLinesAsync(Guid voucherId, CancellationToken cancellationToken = default);
     Task<decimal> GetAllocatedTotalAsync(Guid voucherId, CancellationToken cancellationToken = default);
     Task<bool> ExistsByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default);
+    Task<Guid?> GetIdByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default);
+    Task SetIdempotencyKeyAsync(Guid voucherId, string idempotencyKey, CancellationToken cancellationToken = default);
 }
 
 public interface IPaymentMethodRepository

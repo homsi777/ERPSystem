@@ -13,7 +13,13 @@ import {
   updateCustomer
 } from '../api/customers.ts';
 import { getCashboxLookups } from '../api/lookups.ts';
-import { createReceiptVoucher, postReceiptVoucher } from '../api/receipts.ts';
+import {
+  approveReceiptVoucher,
+  createReceiptVoucher,
+  getBankAccounts,
+  getPaymentMethods,
+  postReceiptVoucher
+} from '../api/receipts.ts';
 import { ApiError } from '../api/client.ts';
 import type {
   CustomerAccountLedgerDto,
@@ -618,22 +624,43 @@ function ReceiptVoucherForm({
   onDone: (message: string) => void;
   onToast: (toast: ToastState) => void;
 }) {
+  const [paymentMethodId, setPaymentMethodId] = useState('');
   const [cashboxId, setCashboxId] = useState('');
+  const [bankAccountId, setBankAccountId] = useState('');
+  const [reference, setReference] = useState('');
   const [amount, setAmount] = useState('0');
 
+  const paymentMethodsQuery = useQuery({
+    queryKey: ['finance', 'payment-methods'],
+    queryFn: getPaymentMethods
+  });
   const cashboxesQuery = useQuery({
     queryKey: ['lookups', 'cashboxes'],
     queryFn: getCashboxLookups
   });
+  const bankAccountsQuery = useQuery({
+    queryKey: ['finance', 'bank-accounts'],
+    queryFn: getBankAccounts
+  });
+
+  const selectedMethod = (paymentMethodsQuery.data ?? []).find((m) => m.id === paymentMethodId);
+  const requiresCashbox = selectedMethod?.requiresCashbox ?? true;
+  const requiresBank = selectedMethod?.requiresBankAccount ?? false;
+  const requiresReference = selectedMethod?.requiresReference ?? false;
 
   const mutation = useMutation({
     mutationFn: async () => {
       const voucherId = await createReceiptVoucher({
         customerId,
-        cashboxId,
         amount: toNumber(amount),
+        paymentMethodId: paymentMethodId || undefined,
+        cashboxId: requiresCashbox ? cashboxId : undefined,
+        bankAccountId: requiresBank ? bankAccountId : undefined,
+        reference: requiresReference ? reference : undefined,
+        currency: 'USD',
         allocations: []
       });
+      await approveReceiptVoucher(voucherId);
       await postReceiptVoucher(voucherId);
     },
     onSuccess: () => onDone('تم إنشاء وترحيل سند القبض بنجاح.'),
@@ -642,8 +669,20 @@ function ReceiptVoucherForm({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!cashboxId.trim()) {
+    if (!paymentMethodId.trim()) {
+      onToast({ tone: 'error', message: 'اختر وسيلة الدفع.' });
+      return;
+    }
+    if (requiresCashbox && !cashboxId.trim()) {
       onToast({ tone: 'error', message: 'اختر الصندوق أولاً.' });
+      return;
+    }
+    if (requiresBank && !bankAccountId.trim()) {
+      onToast({ tone: 'error', message: 'اختر الحساب البنكي.' });
+      return;
+    }
+    if (requiresReference && !reference.trim()) {
+      onToast({ tone: 'error', message: 'أدخل مرجع التحويل.' });
       return;
     }
     if (toNumber(amount) <= 0) {
@@ -659,29 +698,70 @@ function ReceiptVoucherForm({
         <h2>سند قبض</h2>
       </div>
       <label className="form-field form-field--wide">
-        <span className="form-field__label">الصندوق</span>
+        <span className="form-field__label">وسيلة الدفع</span>
         <select
-          value={cashboxId}
-          onChange={(event) => setCashboxId(event.target.value)}
-          disabled={cashboxesQuery.isLoading || cashboxesQuery.isError}
+          value={paymentMethodId}
+          onChange={(event) => setPaymentMethodId(event.target.value)}
+          disabled={paymentMethodsQuery.isLoading || paymentMethodsQuery.isError}
           required
         >
-          <option value="">اختر الصندوق...</option>
-          {(cashboxesQuery.data ?? []).map((cashbox) => (
-            <option key={cashbox.id} value={cashbox.id}>
-              {cashbox.name}
+          <option value="">اختر وسيلة الدفع...</option>
+          {(paymentMethodsQuery.data ?? []).map((method) => (
+            <option key={method.id} value={method.id}>
+              {method.name}
             </option>
           ))}
         </select>
-        {cashboxesQuery.isError ? <span className="form-hint form-hint--warn">تعذر تحميل الصناديق.</span> : null}
       </label>
+      {requiresCashbox ? (
+        <label className="form-field form-field--wide">
+          <span className="form-field__label">الصندوق</span>
+          <select
+            value={cashboxId}
+            onChange={(event) => setCashboxId(event.target.value)}
+            disabled={cashboxesQuery.isLoading || cashboxesQuery.isError}
+            required
+          >
+            <option value="">اختر الصندوق...</option>
+            {(cashboxesQuery.data ?? []).map((cashbox) => (
+              <option key={cashbox.id} value={cashbox.id}>
+                {cashbox.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {requiresBank ? (
+        <label className="form-field form-field--wide">
+          <span className="form-field__label">الحساب البنكي</span>
+          <select
+            value={bankAccountId}
+            onChange={(event) => setBankAccountId(event.target.value)}
+            disabled={bankAccountsQuery.isLoading || bankAccountsQuery.isError}
+            required
+          >
+            <option value="">اختر البنك...</option>
+            {(bankAccountsQuery.data ?? []).map((bank) => (
+              <option key={bank.id} value={bank.id}>
+                {bank.name} — {bank.bankName}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {requiresReference ? (
+        <label className="form-field form-field--wide">
+          <span className="form-field__label">مرجع التحويل</span>
+          <input value={reference} onChange={(event) => setReference(event.target.value)} required />
+        </label>
+      ) : null}
       <label className="form-field form-field--wide">
-        <span className="form-field__label">المبلغ</span>
+        <span className="form-field__label">المبلغ (USD)</span>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </label>
-      <p className="form-hint">يُنشأ السند ويُرحَّل فورًا (بلا تخصيص على فواتير).</p>
+      <p className="form-hint">مسودة → اعتماد → ترحيل. لا تخصيص على فواتير من الويب حالياً.</p>
       <button className="primary-button" type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? 'جار الحفظ...' : 'حفظ وترحيل'}
+        {mutation.isPending ? 'جار التنفيذ...' : 'حفظ وترحيل'}
       </button>
     </form>
   );

@@ -1,150 +1,159 @@
 # PHASE 3 COMPLETION REPORT — Cashboxes, Banks, Receipt Vouchers
 
-**Date (UTC):** 2026-07-10  
-**Production commit at start:** `caa3b87`  
-**Phase 4 started:** **NO**
+**Date (UTC):** 2026-07-11  
+**Core backend commit:** `f611893`  
+**Acceptance gate commit (local, uncommitted):** _pending push_  
+**Production deployed:** `caa3b87` — **unchanged (NO-GO)**  
+**PHASE 4 STARTED:** **NO**
 
 ---
 
-## Executive decision
+## Final decision
 
 ```text
-PHASE 3 CORE BACKEND: IMPLEMENTED (first increment)
-PHASE 3 FINAL ACCEPTANCE: NOT YET PASSED
-PHASE 4: NO-GO
+PHASE 3 CORE BACKEND: IMPLEMENTED
+PHASE 3 FINAL ACCEPTANCE: FAILED (gates incomplete)
+PRODUCTION DEPLOYMENT: NO-GO
+PHASE 4: NOT STARTED
 ```
-
-**Reason:** Core posting stabilization, payment-method/tender model, cashbox GL resolution, reversal workflow, reconciliation services, and API extensions are implemented and build-clean. Full 28-scenario live matrix, isolated E2E company, WPF/React/PDF parity, VPS backup confirmation, and post-migration production baseline remain pending before `PHASE 3: PASSED`.
 
 ---
 
 ## 1. Backup verification
 
-See `artifacts/phase3-prechange-backup-verification.md`.
-
 | Item | Status |
 |------|--------|
 | Script | ✅ `tools/phase3-verification/backup-pre-phase3.sh` |
-| VPS dump | ⏳ Pending — run with sudo on VPS |
-| `pg_restore --list` | ⏳ Pending |
+| Restore script | ✅ `tools/phase3-verification/restore-test-db.sh` |
+| VPS dump | ❌ Pending — run with `sudo` on VPS |
+| `pg_restore --list` | ❌ Pending |
+
+Artifact: `artifacts/phase3-prechange-backup-verification.md`
+
+**Gate:** STOP until backup verified.
 
 ---
 
-## 2. Pre baseline (production `11111111-…`)
+## 2. Pre baseline (production)
 
 | Metric | Value |
 |--------|------:|
 | AR GL | 320.00 |
-| Stored customer balances | 320.00 |
 | Operational inventory | 105,636.71 |
 | Inventory GL | 15,622.43 |
-| Posted receipts | 0 |
-| Legacy duplicate journals | 1 / 2 |
 
-Artifacts: `artifacts/phase3-prechange.json`, `.md`  
-**No unexplained drift** — gate cleared for development.
+Artifacts: `artifacts/phase3-prechange.json`, `.md`
 
 ---
 
-## 3. Current-state analysis (before Phase 3)
+## 3. Core backend (`f611893`)
 
-| Operation | Entry point | Account used (before) | Problem |
-|-----------|-------------|----------------------|---------|
-| Post receipt voucher | `PostReceiptVoucherHandler` | `AccountingAccountIds.CashUsd` hardcoded | Ignored `Cashbox.AccountId` |
-| Auto cash on invoice approve | `PostCashCollectionAsync` | Same `CashUsd` | Same |
-| Payment voucher | `PostPaymentVoucherHandler` | `CashUsd` param | Payment path still uses static cash (out of receipt scope) |
-| Cashbox transfer | `CashboxHandlers` | `from/to.AccountId ?? CashUsd` | Fallback only |
-| Receipt create | WPF/API | N/A | `CompanyId`/`BranchId` not persisted on voucher |
-| Reversal | N/A | N/A | Not implemented |
-| Tender / payment method | N/A | N/A | Not modeled |
+- Migration: `20260722120000_AddPhase3FinanceModule`
+- Receipt posting via cashbox/bank GL (no `CashUsd` for new receipts)
+- Tender lines, reversal, idempotency columns, reconciliation services
+- Finance API: payment methods, bank accounts, reconciliation, approve/reverse
 
 ---
 
-## 4. Target design implemented
+## 4. Acceptance increment (local — not yet committed)
 
-### 4.1 Domain
-- `PaymentMethodKind`, extended `ReceiptVoucher` (Submitted, Reversal metadata)
-- `ReceiptTenderLine`, `BankAccount`, `PaymentMethod`
-- Extended `Cashbox` (`CompanyId`, `AllowNegativeBalance`, `OpeningDate`)
-
-### 4.2 Migration (additive)
-`20260722120000_AddPhase3FinanceModule`:
-- `finance.payment_methods` (seeded per company)
-- `finance.bank_accounts`
-- `finance.receipt_tender_lines`
-- Receipt voucher reversal/idempotency columns
-- Cashbox `CompanyId`, `AllowNegativeBalance`, `OpeningDate`
-- `CustomerAdvances` GL account seed (`a1000014-…`)
-
-### 4.3 Posting rules (new receipts)
-- **No `CashUsd` in new receipt postings**
-- Debit account resolved from tender → cashbox `AccountId` or bank `GlAccountId`
-- `PostingKind.ReceiptVoucherCollection` / `ReceiptVoucherReversal`
-- Unallocated amount → `CustomerAdvances` Cr (design hook; Phase 4 full advance engine deferred)
-- Validation via `ICashboxPostingValidator` / `IBankAccountPostingValidator`
-
-### 4.4 Services
-- `IReceiptPostingService`, `ICashboxBalanceService`, `ICashboxReconciliationService`
-- `IReceiptTenderResolver`
-
-### 4.5 Handlers
-- `CreateReceiptVoucherHandler` — tender line + company/branch + validation
-- `ApproveReceiptVoucherHandler`
-- `PostReceiptVoucherHandler` — GL from cashbox, no silent `CashUsd`
-- `ReverseReceiptVoucherHandler` — reversal journal + status `Reversed`
-- `ApproveSalesInvoiceHandler` — requires cashbox with linked GL for cash sales
-
-### 4.6 API
-- `GET /api/v1/finance/cashboxes`
-- `GET /api/v1/finance/payment-methods`
-- `GET /api/v1/finance/bank-accounts`
-- `GET /api/v1/finance/cashboxes/reconciliation`
-- `POST /api/v1/finance/receipts/{id}/approve`
-- `POST /api/v1/finance/receipts/{id}/reverse`
-- Existing `POST /api/v1/receipts` + `/post` updated via new handlers
+| Area | Status |
+|------|--------|
+| `E2EProductionGuard` | ✅ blocks `erp_pro` writes |
+| `Phase3FinanceE2ETestCompanySeeder` | ✅ `ERP PRO FINANCE E2E TEST COMPANY` |
+| `Phase3FinanceE2ECertificationRunner` | ✅ 28-test matrix implemented |
+| CLI `tools/Phase3FinanceE2ECertification` | ✅ `--seed`, `--run`, `--guard-check` |
+| Legacy reports CLI | ✅ `tools/Phase3LegacyAnalysis` |
+| WPF receipt UI | ✅ payment method, bank, reference, GL display |
+| React receipt form | ✅ payment method, bank, reference, approve→post |
+| API `/api/v1/finance/receipts` | ✅ create/approve/post/reverse |
+| PDF reversal banner | ✅ `StatusLabel=REVERSED` |
+| Unit tests | ✅ 8/8 Phase3 domain tests |
+| Production guard test | ✅ 1/1 |
+| Live 28/28 matrix on `erp_pro_phase3_e2e` | ❌ DB not provisioned locally |
 
 ---
 
-## 5. Tests
+## 5. Build & test evidence
 
-| Suite | Result |
+| Check | Result |
 |-------|--------|
-| `Phase3FinanceAcceptanceTests` | **8 passed, 0 failed** |
-| Full 28-scenario live matrix | ⏳ Not yet implemented |
-| E2E isolated company | ⏳ Not yet implemented |
-| Concurrency (20 parallel) | ⏳ Not yet implemented |
+| `dotnet build ERPSystem.Api` | ✅ 0 errors |
+| `npm run build` (web-client) | ✅ |
+| Phase3 unit tests | ✅ 8 passed |
+| Phase3 guard test | ✅ 1 passed |
+| Phase3 E2E 28 matrix | ⏳ requires `erp_pro_phase3_e2e` + migration |
 
 ---
 
-## 6. Remaining for `PHASE 3: PASSED`
+## 6. CashUsd audit
 
-1. VPS backup + `pg_restore --list` confirmation  
-2. Apply migration on staging/production after backup  
-3. `Phase3FinanceE2ETestCompanySeeder` + live scenarios A–L  
-4. Expand test matrix to 28 cases (live DB)  
-5. WPF: cashbox account display, receipt reverse UX, reconciliation page  
-6. React: finance receipt flows  
-7. PDF receipt template updates  
-8. `artifacts/phase3-cashbox-account-mapping-required.md`  
-9. `artifacts/phase3-legacy-receipt-analysis.md`  
-10. Post baseline + `artifacts/phase3-baseline-diff.md`  
-11. `artifacts/phase3-receipt-cross-layer-proof.md`
+Artifact: `artifacts/phase3-cashusd-audit.md`  
+**Active new receipt posting = 0** ✅
 
 ---
 
-## 7. Rollback
+## 7. Artifacts pending live run
 
-1. Restore: `pg_restore --clean --if-exists -d erp_pro …/erp_pro_pre_phase3_*.dump`
-2. Revert migration / git commits
-3. Redeploy prior build (`caa3b87`)
+- `artifacts/phase3-e2e-matrix.md` — after `--run` on test DB
+- `artifacts/phase3-receipt-cross-layer-proof.md` — after E2E run
+- `artifacts/phase3-cashbox-account-mapping-required.md` — run `Phase3LegacyAnalysis --all`
+- `artifacts/phase3-legacy-receipt-posting-analysis.md` — same
+- `artifacts/phase3-baseline-diff.md` — after post-E2E baselines
 
 ---
 
-## 8. Final confirmation
+## 8. Production deployment
 
 ```text
-PHASE 3 FINAL ACCEPTANCE: NOT PASSED (core backend ready)
-PHASE 4 STARTED: NO
+NOT DEPLOYED
+NOT MIGRATED on erp_pro
 ```
 
-**Next step for operator:** Run VPS backup script, then continue Phase 3 E2E gate in a follow-up session.
+Production remains at `caa3b87`. Health: https://alamal-ab.org/health
+
+---
+
+## 9. Rollback
+
+1. Do not apply `20260722120000` on `erp_pro`
+2. Restore from verified backup if test DB restore was attempted
+3. Revert to `caa3b87` on VPS if any accidental deploy
+
+---
+
+## 10. Next steps (operator)
+
+```bash
+# On VPS
+sudo bash /opt/erpsystem/src/tools/phase3-verification/backup-pre-phase3.sh
+pg_restore --list <BACKUP_FILE>
+sudo bash /opt/erpsystem/src/tools/phase3-verification/restore-test-db.sh <BACKUP_FILE>
+
+# From dev (tunnel)
+dotnet run --project tools/Phase3FinanceE2ECertification -- --seed
+dotnet run --project tools/Phase3FinanceE2ECertification -- --run
+dotnet run --project tools/Phase3LegacyAnalysis -- --all
+
+# Baselines (read-only production OK)
+dotnet run --project tools/AccountingBaselineReport -- --output-prefix phase3-production-post
+dotnet run --project tools/AccountingBaselineReport -- --output-prefix phase3-e2e-post
+```
+
+Deploy to production **only after** 28/28 PASS, cross-layer proof PASS, backup verified, production baseline unchanged.
+
+---
+
+## 11. Remaining risks
+
+- Payment vouchers still post to `CashUsd` fallback
+- Cashbox transfers use `CashUsd` when `AccountId` null
+- WPF reverse button UI not yet added (handler exists)
+- Uncommitted acceptance work needs review + commit before VPS tooling sync
+
+---
+
+```text
+PHASE 3 FINAL ACCEPTANCE: FAILED
+PHASE 4 STARTED: NO
+```

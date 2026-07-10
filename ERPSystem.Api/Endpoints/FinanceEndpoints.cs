@@ -7,6 +7,7 @@ using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Application.UseCases.Finance;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERPSystem.Api.Endpoints;
@@ -23,7 +24,9 @@ public static class FinanceEndpoints
         group.MapGet("/payment-methods", GetPaymentMethodsAsync);
         group.MapGet("/bank-accounts", GetBankAccountsAsync);
         group.MapGet("/cashboxes/reconciliation", GetCashboxReconciliationAsync);
+        group.MapPost("/receipts", CreateReceiptAsync);
         group.MapPost("/receipts/{id:guid}/approve", ApproveReceiptAsync);
+        group.MapPost("/receipts/{id:guid}/post", PostReceiptAsync);
         group.MapPost("/receipts/{id:guid}/reverse", ReverseReceiptAsync);
 
         return app;
@@ -93,6 +96,55 @@ public static class FinanceEndpoints
         return Results.Ok(rows);
     }
 
+    private static async Task<IResult> CreateReceiptAsync(
+        [FromBody] CreateFinanceReceiptRequest request,
+        ICurrentBranchService branchService,
+        ICommandHandler<CreateReceiptVoucherCommand, ApplicationResult<Guid>> handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId || branchService.BranchId is not Guid branchId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new CreateReceiptVoucherCommand
+        {
+            CompanyId = companyId,
+            BranchId = branchId,
+            CustomerId = request.CustomerId,
+            CashboxId = request.CashboxId ?? Guid.Empty,
+            PaymentMethodId = request.PaymentMethodId ?? PaymentMethodIds.Cash,
+            Amount = request.Amount,
+            Currency = request.Currency ?? "USD",
+            ExchangeRate = request.ExchangeRate ?? 1m,
+            BankAccountId = request.BankAccountId,
+            Reference = request.Reference,
+            Allocations = request.Allocations
+                .Select(a => new ReceiptInvoiceAllocationInput
+                {
+                    SalesInvoiceId = a.SalesInvoiceId,
+                    Amount = a.Amount
+                })
+                .ToList()
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> PostReceiptAsync(
+        Guid id,
+        [FromBody] PostFinanceReceiptRequest? request,
+        [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyHeader,
+        [FromHeader(Name = "X-Correlation-Id")] string? correlationId,
+        ICommandHandler<PostReceiptVoucherCommand, ApplicationResult> handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new PostReceiptVoucherCommand
+        {
+            VoucherId = id,
+            IdempotencyKey = request?.IdempotencyKey ?? idempotencyHeader
+        }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
     private static async Task<IResult> ApproveReceiptAsync(
         Guid id,
         ICommandHandler<ApproveReceiptVoucherCommand, ApplicationResult> handler,
@@ -105,6 +157,7 @@ public static class FinanceEndpoints
     private static async Task<IResult> ReverseReceiptAsync(
         Guid id,
         [FromBody] ReverseReceiptRequest request,
+        [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyHeader,
         ICommandHandler<ReverseReceiptVoucherCommand, ApplicationResult> handler,
         CancellationToken cancellationToken)
     {
@@ -113,10 +166,25 @@ public static class FinanceEndpoints
             ReceiptVoucherId = id,
             Reason = request.Reason,
             ReversalDate = request.ReversalDate ?? DateTime.UtcNow,
-            IdempotencyKey = request.IdempotencyKey
+            IdempotencyKey = request.IdempotencyKey ?? idempotencyHeader
         }, cancellationToken);
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
+
+    private sealed record CreateFinanceReceiptRequest(
+        Guid CustomerId,
+        decimal Amount,
+        Guid? CashboxId,
+        Guid? PaymentMethodId,
+        Guid? BankAccountId,
+        string? Reference,
+        string? Currency,
+        decimal? ExchangeRate,
+        IReadOnlyList<ReceiptAllocationRequest> Allocations);
+
+    private sealed record PostFinanceReceiptRequest(string? IdempotencyKey);
+
+    private sealed record ReceiptAllocationRequest(Guid SalesInvoiceId, decimal Amount);
 
     private sealed record ReverseReceiptRequest(string Reason, DateTime? ReversalDate, string? IdempotencyKey);
 }

@@ -555,8 +555,13 @@ export type ReceiptAllocationRequest = {
 
 export type CreateReceiptVoucherRequest = {
   customerId: string;
-  cashboxId: string;
   amount: number;
+  cashboxId?: string;
+  paymentMethodId?: string;
+  bankAccountId?: string;
+  reference?: string;
+  currency?: string;
+  exchangeRate?: number;
   allocations: ReceiptAllocationRequest[];
 };
 

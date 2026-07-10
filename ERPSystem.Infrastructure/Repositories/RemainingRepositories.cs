@@ -571,6 +571,20 @@ internal sealed class ReceiptVoucherRepository(ErpDbContext context) : IReceiptV
         context.ReceiptVouchers.AsNoTracking()
             .AnyAsync(v => v.IdempotencyKey == idempotencyKey, cancellationToken);
 
+    public async Task<Guid?> GetIdByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default) =>
+        await context.ReceiptVouchers.AsNoTracking()
+            .Where(v => v.IdempotencyKey == idempotencyKey)
+            .Select(v => (Guid?)v.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task SetIdempotencyKeyAsync(Guid voucherId, string idempotencyKey, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.ReceiptVouchers.FirstOrDefaultAsync(v => v.Id == voucherId, cancellationToken)
+            ?? throw new InvalidOperationException("Receipt voucher not found.");
+        entity.IdempotencyKey = idempotencyKey;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
     public async Task UpdateAsync(ReceiptVoucher voucher, CancellationToken cancellationToken = default)
     {
         var entity = await context.ReceiptVouchers.FirstOrDefaultAsync(v => v.Id == voucher.Id, cancellationToken)

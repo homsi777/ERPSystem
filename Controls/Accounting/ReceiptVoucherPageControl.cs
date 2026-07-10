@@ -1,5 +1,7 @@
 using ERPSystem.Application.Commands.Finance;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -29,8 +31,15 @@ public static class ReceiptVoucherNavigationContext
 /// <summary>سند قبض — إنشاء مسودة وترحيل.</summary>
 public sealed class ReceiptVoucherPageControl : UserControl
 {
+    private readonly ComboBox _paymentMethod = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly ComboBox _customer = new() { MinWidth = 280, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly ComboBox _cashbox = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
+    private readonly ComboBox _bankAccount = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle"), Visibility = Visibility.Collapsed };
+    private readonly TextBox _reference = ErpUiFactory.FormField("");
+    private readonly Border _referenceRow = new() { Visibility = Visibility.Collapsed };
+    private readonly Border _cashboxRow = new();
+    private readonly Border _bankRow = new() { Visibility = Visibility.Collapsed };
+    private readonly TextBlock _glAccount = new() { FontSize = 11, Foreground = (Brush)WpfApplication.Current.Resources["TextMutedBrush"]!, Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBox _amount = ErpUiFactory.FormField("0");
     private readonly DatePicker _date = ErpUiFactory.FormDate(DateTime.Today);
     private readonly TextBlock _status = new()
@@ -64,10 +73,17 @@ public sealed class ReceiptVoucherPageControl : UserControl
         stack.Children.Add(ErpUiFactory.SectionTitle("سند قبض"));
         stack.Children.Add(ErpUxFactory.InfoBanner("تحصيل نقدي من عميل — احفظ مسودة ثم رحّل السند.", "info"));
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
+            ("وسيلة الدفع *", _paymentMethod),
             ("العميل *", _customer),
-            ("الصندوق *", _cashbox),
+            ("الصندوق *", _cashboxRow),
+            ("البنك *", _bankRow),
+            ("المرجع *", _referenceRow),
             ("المبلغ *", _amount),
             ("التاريخ", _date))));
+        _cashboxRow.Child = WrapCashboxField();
+        _bankRow.Child = _bankAccount;
+        _referenceRow.Child = _reference;
+        stack.Children.Add(_glAccount);
         stack.Children.Add(_status);
 
         BuildAllocationGrid();
@@ -84,6 +100,52 @@ public sealed class ReceiptVoucherPageControl : UserControl
         _createDraft.Click += async (_, _) => await CreateDraftAsync();
         _post.Click += async (_, _) => await PostAsync();
         _customer.SelectionChanged += async (_, _) => await LoadOpenInvoicesAsync();
+        _paymentMethod.SelectionChanged += (_, _) => UpdatePaymentMethodUi();
+        _cashbox.SelectionChanged += (_, _) => UpdateGlAccountDisplay();
+        _bankAccount.SelectionChanged += (_, _) => UpdateGlAccountDisplay();
+    }
+
+    private UIElement WrapCashboxField()
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(_cashbox);
+        return panel;
+    }
+
+    private void UpdatePaymentMethodUi()
+    {
+        if (_paymentMethod.SelectedItem is not PaymentMethodDto method)
+        {
+            _cashboxRow.Visibility = Visibility.Visible;
+            _bankRow.Visibility = Visibility.Collapsed;
+            _referenceRow.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _cashboxRow.Visibility = method.RequiresCashbox ? Visibility.Visible : Visibility.Collapsed;
+        _bankRow.Visibility = method.RequiresBankAccount ? Visibility.Visible : Visibility.Collapsed;
+        _referenceRow.Visibility = method.RequiresReference ? Visibility.Visible : Visibility.Collapsed;
+        UpdateGlAccountDisplay();
+    }
+
+    private void UpdateGlAccountDisplay()
+    {
+        if (_paymentMethod.SelectedItem is PaymentMethodDto { RequiresBankAccount: true } &&
+            _bankAccount.SelectedItem is BankAccountListDto bank)
+        {
+            _glAccount.Text = $"الحساب المحاسبي: {bank.GlAccountId}";
+            return;
+        }
+
+        if (_cashbox.SelectedItem is CashboxListDto box)
+        {
+            _glAccount.Text = box.AccountId is Guid aid && aid != Guid.Empty
+                ? $"الحساب المحاسبي: {aid}"
+                : "الحساب المحاسبي: غير مربوط — لا يمكن الترحيل";
+            return;
+        }
+
+        _glAccount.Text = "";
     }
 
     private void BuildAllocationGrid()
@@ -200,6 +262,23 @@ public sealed class ReceiptVoucherPageControl : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        var methods = await FinanceUiService.Instance.GetPaymentMethodsAsync();
+        if (ApplicationResultPresenter.Present(methods) && methods.Value is { Count: > 0 })
+        {
+            _paymentMethod.ItemsSource = methods.Value;
+            _paymentMethod.DisplayMemberPath = nameof(PaymentMethodDto.Name);
+            _paymentMethod.SelectedValuePath = nameof(PaymentMethodDto.Id);
+            _paymentMethod.SelectedIndex = 0;
+        }
+
+        var banks = await FinanceUiService.Instance.GetBankAccountsAsync();
+        if (ApplicationResultPresenter.Present(banks) && banks.Value is { Count: > 0 })
+        {
+            _bankAccount.ItemsSource = banks.Value;
+            _bankAccount.DisplayMemberPath = nameof(BankAccountListDto.Name);
+            _bankAccount.SelectedValuePath = nameof(BankAccountListDto.Id);
+        }
+
         var customers = await FinanceUiService.Instance.GetCustomersAsync();
         if (ApplicationResultPresenter.Present(customers) && customers.Value is { Count: > 0 })
         {
@@ -215,8 +294,16 @@ public sealed class ReceiptVoucherPageControl : UserControl
 
         await LoadOpenInvoicesAsync();
 
-        CashboxDropdownBinder.WireRefresh(_cashbox);
-        await CashboxDropdownBinder.LoadAsync(_cashbox);
+        var boxes = await FinanceUiService.Instance.GetCashboxListAsync(includeInactive: false);
+        if (ApplicationResultPresenter.Present(boxes) && boxes.Value is { Count: > 0 })
+        {
+            _cashbox.ItemsSource = boxes.Value;
+            _cashbox.DisplayMemberPath = nameof(CashboxListDto.Name);
+            _cashbox.SelectedValuePath = nameof(CashboxListDto.Id);
+            _cashbox.SelectedIndex = 0;
+        }
+
+        UpdatePaymentMethodUi();
     }
 
     private async Task CreateDraftAsync()
@@ -232,7 +319,11 @@ public sealed class ReceiptVoucherPageControl : UserControl
         _createDraft.IsEnabled = false;
         try
         {
-            var result = await FinanceUiService.Instance.CreateReceiptVoucherAsync(customerId, cashboxId, amount, allocations);
+            var result = await FinanceUiService.Instance.CreateReceiptVoucherAsync(
+                customerId, cashboxId, amount, allocations,
+                _paymentMethod.SelectedValue as Guid? ?? PaymentMethodIds.Cash,
+                _bankAccount.SelectedValue as Guid?,
+                string.IsNullOrWhiteSpace(_reference.Text) ? null : _reference.Text.Trim());
             if (!ApplicationResultPresenter.Present(result))
                 return;
 
@@ -266,7 +357,11 @@ public sealed class ReceiptVoucherPageControl : UserControl
             _post.IsEnabled = false;
             try
             {
-                var create = await FinanceUiService.Instance.CreateReceiptVoucherAsync(customerId, cashboxId, amount, allocations);
+                var create = await FinanceUiService.Instance.CreateReceiptVoucherAsync(
+                    customerId, cashboxId, amount, allocations,
+                    _paymentMethod.SelectedValue as Guid? ?? PaymentMethodIds.Cash,
+                    _bankAccount.SelectedValue as Guid?,
+                    string.IsNullOrWhiteSpace(_reference.Text) ? null : _reference.Text.Trim());
                 if (!ApplicationResultPresenter.Present(create))
                     return;
                 voucherId = create.Value;
@@ -314,11 +409,45 @@ public sealed class ReceiptVoucherPageControl : UserControl
             return false;
         }
 
-        if (_cashbox.SelectedValue is not Guid boxId || boxId == Guid.Empty)
+        if (_paymentMethod.SelectedItem is PaymentMethodDto method)
+        {
+            if (method.RequiresCashbox)
+            {
+                if (_cashbox.SelectedValue is not Guid box || box == Guid.Empty)
+                {
+                    MessageBox.Show("اختر الصندوق.", "سند قبض", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return false;
+                }
+                cashboxId = box;
+                if (_cashbox.SelectedItem is CashboxListDto { AccountId: null } or CashboxListDto { AccountId: Guid.Empty })
+                {
+                    MessageBox.Show("الصندوق لا يملك حساب GL — لا يمكن الترحيل.", "سند قبض", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return false;
+                }
+            }
+            if (method.RequiresBankAccount && (_bankAccount.SelectedValue is not Guid bankId || bankId == Guid.Empty))
+            {
+                MessageBox.Show("اختر الحساب البنكي.", "سند قبض", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            if (method.RequiresReference && string.IsNullOrWhiteSpace(_reference.Text))
+            {
+                MessageBox.Show("أدخل مرجع التحويل.", "سند قبض", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+        }
+        else if (_cashbox.SelectedValue is not Guid fallbackBox || fallbackBox == Guid.Empty)
         {
             MessageBox.Show("اختر الصندوق.", "سند قبض", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
+        else
+        {
+            cashboxId = fallbackBox;
+        }
+
+        if (cashboxId == Guid.Empty && _cashbox.SelectedValue is Guid selectedBox)
+            cashboxId = selectedBox;
 
         if (!TryParseDecimal(_amount.Text, out amount) || amount <= 0)
         {
@@ -327,7 +456,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
         }
 
         customerId = cid;
-        cashboxId = boxId;
+        if (cashboxId == Guid.Empty && _cashbox.SelectedValue is Guid boxId)
+            cashboxId = boxId;
         return true;
     }
 

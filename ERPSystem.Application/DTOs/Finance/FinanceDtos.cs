@@ -55,6 +55,7 @@ public sealed class CashboxListDto
     public decimal Balance { get; init; }
     public string Currency { get; init; } = "USD";
     public bool IsActive { get; init; }
+    public Guid? AccountId { get; init; }
     public string BalanceDisplay => $"{Balance:N2} {Currency}";
     public string StatusDisplay => IsActive ? "نشط" : "معطل";
 }

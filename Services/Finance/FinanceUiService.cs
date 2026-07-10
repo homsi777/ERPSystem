@@ -2,6 +2,7 @@ using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Finance;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Expenses;
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.Queries.Customers;
@@ -288,6 +289,10 @@ public sealed class FinanceUiService
         Guid cashboxId,
         decimal amount,
         IReadOnlyList<ReceiptInvoiceAllocationInput>? allocations = null,
+        Guid? paymentMethodId = null,
+        Guid? bankAccountId = null,
+        string? reference = null,
+        string currency = "USD",
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -298,10 +303,83 @@ public sealed class FinanceUiService
             BranchId = BranchId,
             CustomerId = customerId,
             CashboxId = cashboxId,
+            PaymentMethodId = paymentMethodId ?? PaymentMethodIds.Cash,
+            BankAccountId = bankAccountId,
+            Reference = reference,
+            Currency = currency,
             Amount = amount,
             Allocations = allocations ?? []
         }, cancellationToken);
     }
+
+    public async Task<ApplicationResult<IReadOnlyList<PaymentMethodDto>>> GetPaymentMethodsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IPaymentMethodRepository>();
+        var methods = await repo.GetActiveForCompanyAsync(CompanyId, cancellationToken);
+        var dtos = methods.Select(m => new PaymentMethodDto
+        {
+            Id = m.Id,
+            Code = m.Code,
+            Name = m.Name,
+            Kind = m.Kind,
+            RequiresCashbox = m.RequiresCashbox,
+            RequiresBankAccount = m.RequiresBankAccount,
+            RequiresReference = m.RequiresReference
+        }).ToList();
+        return ApplicationResult<IReadOnlyList<PaymentMethodDto>>.Success(dtos);
+    }
+
+    public async Task<ApplicationResult<IReadOnlyList<BankAccountListDto>>> GetBankAccountsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IBankAccountRepository>();
+        var banks = await repo.GetActiveForCompanyAsync(CompanyId, cancellationToken);
+        var dtos = banks.Select(b => new BankAccountListDto
+        {
+            Id = b.Id,
+            Code = b.Code,
+            Name = b.Name,
+            BankName = b.BankName,
+            GlAccountId = b.GlAccountId,
+            Currency = b.Currency,
+            IsActive = b.IsActive
+        }).ToList();
+        return ApplicationResult<IReadOnlyList<BankAccountListDto>>.Success(dtos);
+    }
+
+    public async Task<ApplicationResult> ApproveReceiptVoucherAsync(
+        Guid voucherId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<ApproveReceiptVoucherCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new ApproveReceiptVoucherCommand { VoucherId = voucherId }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult> ReverseReceiptVoucherAsync(
+        Guid voucherId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<ReverseReceiptVoucherCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new ReverseReceiptVoucherCommand
+        {
+            ReceiptVoucherId = voucherId,
+            Reason = reason
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<Guid>> CreateReceiptVoucherAsync(
+        Guid customerId,
+        Guid cashboxId,
+        decimal amount,
+        IReadOnlyList<ReceiptInvoiceAllocationInput>? allocations,
+        CancellationToken cancellationToken)
+        => await CreateReceiptVoucherAsync(customerId, cashboxId, amount, allocations, null, null, null, "USD", cancellationToken);
 
     /// <summary>All receipt vouchers for a customer (for the Customer OC → Receipts tab).</summary>
     public async Task<IReadOnlyList<CustomerReceiptRow>> GetReceiptsForCustomerAsync(

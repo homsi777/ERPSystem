@@ -253,7 +253,8 @@ public sealed class GetCashboxListHandler(ICashboxRepository cashboxRepository)
                 Name = b.Name,
                 Balance = b.Balance.Amount,
                 Currency = b.Currency,
-                IsActive = b.IsActive
+                IsActive = b.IsActive,
+                AccountId = b.AccountId
             })
             .OrderBy(b => b.Code)
             .ToList();
