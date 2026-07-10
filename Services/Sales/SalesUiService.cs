@@ -20,6 +20,8 @@ public static class SalesNavigationContext
     public static Guid? EditInvoiceId { get; set; }
     public static Guid? DetailingInvoiceId { get; set; }
     public static string? DetailingInvoiceNumber { get; set; }
+    public static Guid? ReturnsFilterInvoiceId { get; set; }
+    public static string? ReturnsFilterInvoiceNumber { get; set; }
 
     public static void BeginCreate() => EditInvoiceId = null;
 
@@ -31,12 +33,27 @@ public static class SalesNavigationContext
         DetailingInvoiceNumber = invoiceNumber;
     }
 
+    public static void BeginViewReturns(Guid invoiceId, string? invoiceNumber = null)
+    {
+        ReturnsFilterInvoiceId = invoiceId;
+        ReturnsFilterInvoiceNumber = invoiceNumber;
+    }
+
     public static (Guid? Id, string? Number) TakeDetailingContext()
     {
         var id = DetailingInvoiceId;
         var number = DetailingInvoiceNumber;
         DetailingInvoiceId = null;
         DetailingInvoiceNumber = null;
+        return (id, number);
+    }
+
+    public static (Guid? Id, string? Number) TakeReturnsFilter()
+    {
+        var id = ReturnsFilterInvoiceId;
+        var number = ReturnsFilterInvoiceNumber;
+        ReturnsFilterInvoiceId = null;
+        ReturnsFilterInvoiceNumber = null;
         return (id, number);
     }
 }
@@ -145,6 +162,8 @@ public sealed class SalesUiService
         IReadOnlyList<SalesInvoiceLineCommand> lines,
         string? invoiceNumber = null,
         decimal discountAmount = 0,
+        Guid? cashboxId = null,
+        decimal? partialPaymentAmount = null,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -159,6 +178,8 @@ public sealed class SalesUiService
             ChinaContainerId = chinaContainerId,
             PaymentType = paymentType,
             DiscountAmount = discountAmount,
+            CashboxId = cashboxId,
+            PartialPaymentAmount = partialPaymentAmount,
             Lines = lines
         }, cancellationToken);
     }
@@ -171,6 +192,8 @@ public sealed class SalesUiService
         PaymentType paymentType,
         IReadOnlyList<SalesInvoiceLineCommand> lines,
         decimal discountAmount = 0,
+        Guid? cashboxId = null,
+        decimal? partialPaymentAmount = null,
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -183,6 +206,8 @@ public sealed class SalesUiService
             ChinaContainerId = chinaContainerId,
             PaymentType = paymentType,
             DiscountAmount = discountAmount,
+            CashboxId = cashboxId,
+            PartialPaymentAmount = partialPaymentAmount,
             Lines = lines
         }, cancellationToken);
     }
@@ -374,6 +399,20 @@ public sealed class SalesUiService
 
     public async Task<bool> CanCompleteDetailingAsync(CancellationToken cancellationToken = default) =>
         await CanAsync("warehouse.detailing", cancellationToken);
+
+    public async Task<ApplicationResult> SaveDetailingDraftAsync(
+        Guid invoiceId,
+        IReadOnlyList<RollDraftEntryCommand> rollEntries,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<SaveWarehouseDetailingDraftCommand, ApplicationResult>>();
+        return await handler.HandleAsync(new SaveWarehouseDetailingDraftCommand
+        {
+            InvoiceId = invoiceId,
+            RollEntries = rollEntries
+        }, cancellationToken);
+    }
 
     private async Task<bool> CanAsync(string permission, CancellationToken cancellationToken)
     {

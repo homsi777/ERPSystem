@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { completeDetailing, getDetailing, getDetailingQueue } from '../api/detailing.ts';
-import { getInventoryWarehouses } from '../api/inventory.ts';
+import { completeDetailing, getDetailing, getDetailingQueue, saveDetailingDraft } from '../api/detailing.ts';
+import { getDetailingCandidateRolls, getInventoryWarehouses } from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
-import type { WarehouseDetailingDto, WarehouseDetailingStatus } from '../api/types.ts';
+import type {
+  DetailingCandidateRollDto,
+  WarehouseDetailingDto,
+  WarehouseDetailingRollDto,
+  WarehouseDetailingStatus
+} from '../api/types.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
@@ -171,13 +176,30 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     if (!detailingQuery.data) {
       return;
     }
+    // Previously-saved partial progress (Part 4) pre-populates the inputs so the employee
+    // doesn't lose work if interrupted; a finally-resolved length always takes priority.
     setLengths((current) => {
       if (Object.keys(current).length > 0) {
         return current;
       }
       const initial: Record<string, string> = {};
       for (const roll of detailingQuery.data.rolls) {
-        initial[roll.rollDetailId] = roll.hasValidLength ? String(roll.lengthMeters) : '';
+        initial[roll.rollDetailId] = roll.hasValidLength
+          ? String(roll.lengthMeters)
+          : roll.draftLengthMeters != null && roll.draftLengthMeters > 0
+            ? String(roll.draftLengthMeters)
+            : '';
+      }
+      return initial;
+    });
+    setSerials((current) => {
+      if (Object.keys(current).length > 0) {
+        return current;
+      }
+      const initial: Record<string, string> = {};
+      for (const roll of detailingQuery.data.rolls) {
+        initial[roll.rollDetailId] =
+          roll.draftRollNumber != null && roll.draftRollNumber > 0 ? String(roll.draftRollNumber) : '';
       }
       return initial;
     });
@@ -218,6 +240,21 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
         replace: true,
         state: { toast: { tone: 'success', message: 'تم إكمال التفصيل بنجاح. يمكنك اعتماد الفاتورة من شاشة المبيعات.' } }
       });
+    },
+    onError: (error) => setToast({ tone: 'error', message: getErrorMessage(error) })
+  });
+
+  const saveDraftMutation = useMutation({
+    mutationFn: () =>
+      saveDetailingDraft(invoiceId, {
+        rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => ({
+          rollDetailId: roll.rollDetailId,
+          rollNumber: toRollNumber(serials[roll.rollDetailId] ?? ''),
+          lengthMeters: toOptionalNumber(lengths[roll.rollDetailId] ?? '')
+        }))
+      }),
+    onSuccess: () => {
+      setToast({ tone: 'success', message: 'تم حفظ التقدم الحالي. يمكنك إكمال الأثواب المتبقية لاحقاً.' });
     },
     onError: (error) => setToast({ tone: 'error', message: getErrorMessage(error) })
   });
@@ -298,44 +335,25 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             ) : (
               <>
                 <p className="form-hint" style={{ marginBottom: 8 }}>
-                  أدخل رقم التوب (سيريال DPL) أو الطول بالمتر — يكفي أحدهما. السيريال أدق ويخصم من نفس التوب في المخزون.
+                  أدخل رقم التوب (سيريال DPL) أو الطول بالمتر — يكفي أحدهما، أو اختر من قائمة اللفافات المتاحة أدناه.
+                  السيريال أدق ويخصم من نفس التوب في المخزون.
                 </p>
                 <div className="line-items">
                   {detailing.rolls.map((roll) => (
-                    <article className="line-item" key={roll.rollDetailId}>
-                      <div className="line-item__head">
-                        <span className="line-item__index">#{roll.rollSequence}</span>
-                      </div>
-                      <p className="line-item__meta">
-                        {roll.fabricDisplayName} / {roll.colorDisplayName}
-                      </p>
-                      <div className="form-row form-row--2">
-                        <label className="form-field">
-                          <span className="form-field__label">رقم التوب (سيريال)</span>
-                          <input
-                            inputMode="numeric"
-                            placeholder="مثلاً 126"
-                            value={serials[roll.rollDetailId] ?? ''}
-                            onChange={(event) =>
-                              setSerials((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
-                            }
-                            aria-label={`رقم سيريال الثوب ${roll.rollSequence}`}
-                          />
-                        </label>
-                        <label className="form-field">
-                          <span className="form-field__label">أو الطول (م)</span>
-                          <input
-                            inputMode="decimal"
-                            placeholder="0"
-                            value={lengths[roll.rollDetailId] ?? ''}
-                            onChange={(event) =>
-                              setLengths((current) => ({ ...current, [roll.rollDetailId]: event.target.value }))
-                            }
-                            aria-label={`طول الثوب رقم ${roll.rollSequence}`}
-                          />
-                        </label>
-                      </div>
-                    </article>
+                    <RollCard
+                      key={roll.rollDetailId}
+                      roll={roll}
+                      warehouseId={detailing.warehouseId}
+                      invoiceId={invoiceId}
+                      serialValue={serials[roll.rollDetailId] ?? ''}
+                      lengthValue={lengths[roll.rollDetailId] ?? ''}
+                      onSerialChange={(value) =>
+                        setSerials((current) => ({ ...current, [roll.rollDetailId]: value }))
+                      }
+                      onLengthChange={(value) =>
+                        setLengths((current) => ({ ...current, [roll.rollDetailId]: value }))
+                      }
+                    />
                   ))}
                 </div>
               </>
@@ -348,19 +366,192 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                 <span>إجمالي الأمتار (يدوي)</span>
                 <strong>{formatMeters(totalEnteredMeters)}</strong>
               </div>
-              <button
-                className="primary-button sticky-form-footer__submit"
-                type="submit"
-                disabled={!allRollsValid || completeMutation.isPending}
-                title={!allRollsValid ? 'أدخل رقم التوب أو الطول لكل الأثواب قبل الإكمال.' : undefined}
-              >
-                {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => saveDraftMutation.mutate()}
+                  disabled={saveDraftMutation.isPending || completeMutation.isPending}
+                  title="حفظ التقدم الحالي دون إكمال التفصيل"
+                >
+                  {saveDraftMutation.isPending ? 'جار الحفظ...' : 'حفظ التقدم'}
+                </button>
+                <button
+                  className="primary-button sticky-form-footer__submit"
+                  type="submit"
+                  disabled={!allRollsValid || completeMutation.isPending}
+                  title={!allRollsValid ? 'أدخل رقم التوب أو الطول لكل الأثواب قبل الإكمال.' : undefined}
+                >
+                  {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
+                </button>
+              </div>
             </div>
           ) : null}
         </form>
       ) : null}
     </AppShell>
+  );
+}
+
+type RollCardProps = {
+  roll: WarehouseDetailingRollDto;
+  warehouseId: string;
+  invoiceId: string;
+  serialValue: string;
+  lengthValue: string;
+  onSerialChange: (value: string) => void;
+  onLengthChange: (value: string) => void;
+};
+
+function RollCard({
+  roll,
+  warehouseId,
+  invoiceId,
+  serialValue,
+  lengthValue,
+  onSerialChange,
+  onLengthChange
+}: RollCardProps) {
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+
+  const canLookup = Boolean(warehouseId) && Boolean(roll.chinaContainerId) && Boolean(roll.fabricItemId) && Boolean(roll.fabricColorId);
+
+  const candidatesQuery = useQuery({
+    queryKey: [
+      'detailing',
+      'candidate-rolls',
+      warehouseId,
+      roll.chinaContainerId,
+      roll.fabricItemId,
+      roll.fabricColorId,
+      invoiceId
+    ],
+    queryFn: () =>
+      getDetailingCandidateRolls({
+        warehouseId,
+        containerId: roll.chinaContainerId,
+        fabricItemId: roll.fabricItemId,
+        fabricColorId: roll.fabricColorId,
+        excludeSalesInvoiceId: invoiceId
+      }),
+    enabled: canLookup
+  });
+
+  const candidates = candidatesQuery.data ?? [];
+  const selectedSerial = toRollNumber(serialValue);
+  const matchedCandidate = selectedSerial != null
+    ? candidates.find((candidate) => candidate.rollNumber === selectedSerial)
+    : undefined;
+  const warningKey = matchedCandidate ? `${roll.rollDetailId}:${matchedCandidate.fabricRollId}` : null;
+  const showReservationWarning = Boolean(matchedCandidate?.reservedInSalesInvoiceId) && warningKey !== dismissedKey;
+
+  return (
+    <article className="line-item">
+      <div className="line-item__head">
+        <span className="line-item__index">#{roll.rollSequence}</span>
+      </div>
+      <p className="line-item__meta">
+        {roll.fabricDisplayName} / {roll.colorDisplayName}
+        {roll.containerDisplay && roll.containerDisplay !== '—' ? ` — حاوية ${roll.containerDisplay}` : ''}
+      </p>
+
+      <div className="form-row form-row--2">
+        <label className="form-field">
+          <span className="form-field__label">رقم التوب (سيريال)</span>
+          <input
+            inputMode="numeric"
+            placeholder="مثلاً 126"
+            value={serialValue}
+            onChange={(event) => onSerialChange(event.target.value)}
+            aria-label={`رقم سيريال الثوب ${roll.rollSequence}`}
+          />
+        </label>
+        <label className="form-field">
+          <span className="form-field__label">أو الطول (م)</span>
+          <input
+            inputMode="decimal"
+            placeholder="0"
+            value={lengthValue}
+            onChange={(event) => onLengthChange(event.target.value)}
+            aria-label={`طول الثوب رقم ${roll.rollSequence}`}
+          />
+        </label>
+      </div>
+
+      {canLookup ? (
+        <div className="candidate-rolls">
+          <p className="candidate-rolls__label">لفافات متاحة في هذه الحاوية</p>
+
+          {candidatesQuery.isLoading ? <p className="form-hint">جار تحميل اللفافات المتاحة...</p> : null}
+
+          {candidatesQuery.isError ? (
+            <p className="form-hint form-hint--warn">تعذّر تحميل اللفافات المتاحة لهذا الصنف.</p>
+          ) : null}
+
+          {candidatesQuery.isSuccess && candidates.length === 0 ? (
+            <p className="form-hint">لا توجد لفافات متاحة في هذه الحاوية.</p>
+          ) : null}
+
+          {candidates.length > 0 ? (
+            <div className="candidate-rolls__list">
+              {candidates.map((candidate) => (
+                <CandidateChip
+                  key={candidate.fabricRollId}
+                  candidate={candidate}
+                  isSelected={selectedSerial === candidate.rollNumber}
+                  onSelect={() => onSerialChange(String(candidate.rollNumber))}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showReservationWarning && matchedCandidate ? (
+        <div className="reservation-warning" role="status">
+          <span>
+            هذا التوب موجود بالفعل في فاتورة رقم{' '}
+            <Link to={`/sales/${matchedCandidate.reservedInSalesInvoiceId}`}>
+              {matchedCandidate.reservedInSalesInvoiceNumber}
+            </Link>
+            . يمكنك المتابعة إذا كنت متأكداً.
+          </span>
+          <button
+            type="button"
+            className="reservation-warning__dismiss"
+            onClick={() => setDismissedKey(warningKey)}
+            aria-label="إغلاق التنبيه"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function CandidateChip({
+  candidate,
+  isSelected,
+  onSelect
+}: {
+  candidate: DetailingCandidateRollDto;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const isReserved = Boolean(candidate.reservedInSalesInvoiceId);
+  return (
+    <button
+      type="button"
+      className={`candidate-chip${isSelected ? ' candidate-chip--selected' : ''}${isReserved ? ' candidate-chip--reserved' : ''}`}
+      onClick={onSelect}
+      title={isReserved ? `محجوز أيضاً في فاتورة ${candidate.reservedInSalesInvoiceNumber}` : undefined}
+    >
+      <span className="candidate-chip__dot" aria-hidden="true" />
+      <span>
+        #{candidate.rollNumber} • {formatMeters(candidate.remainingLengthMeters)}
+      </span>
+    </button>
   );
 }
 
@@ -396,6 +587,15 @@ function toRollNumber(value: string): number | null {
     return null;
   }
   const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function toOptionalNumber(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed.replace(',', '.'));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 

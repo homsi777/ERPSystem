@@ -165,7 +165,8 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
     IJournalEntryRepository journalEntryRepository,
     IReceiptInvoicePaymentRepository paymentRepository,
     ISalesReturnRepository salesReturnRepository,
-    IWarehouseRepository warehouseRepository)
+    IWarehouseRepository warehouseRepository,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetSalesInvoiceOperationsCenterQuery, ApplicationResult<SalesInvoiceOperationsCenterDto>>
 {
     public async Task<ApplicationResult<SalesInvoiceOperationsCenterDto>> HandleAsync(
@@ -193,6 +194,7 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
                 aggregate,
                 baseDto.Detailing.Rolls,
                 fabricCatalogRepository,
+                containerRepository,
                 cancellationToken);
             enrichedDetailing = SalesInvoiceCatalogEnricher.WithEnrichedRolls(baseDto.Detailing, enrichedRolls);
         }
@@ -299,7 +301,8 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
 public sealed class GetWarehouseDetailingQueueHandler(
     ISalesInvoiceRepository invoiceRepository,
     ICustomerRepository customerRepository,
-    IFabricCatalogRepository fabricCatalogRepository)
+    IFabricCatalogRepository fabricCatalogRepository,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetWarehouseDetailingQueueQuery, ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<WarehouseDetailingDto>>> HandleAsync(
@@ -318,6 +321,7 @@ public sealed class GetWarehouseDetailingQueueHandler(
                 invoice,
                 baseDto.Rolls,
                 fabricCatalogRepository,
+                containerRepository,
                 cancellationToken);
             dtos.Add(SalesInvoiceCatalogEnricher.WithEnrichedRolls(baseDto, enrichedRolls));
         }

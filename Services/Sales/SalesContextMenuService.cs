@@ -69,7 +69,7 @@ public static class SalesContextMenuService
     {
         SalesInvoiceStatus.Draft =>
         [
-            new("العرض والتحرير", "\uE70F", "تعديل الفاتورة", EntityActionId.InvoiceEdit, false),
+            new("العرض والتحرير", "\uE70F", "تعديل", EntityActionId.InvoiceEdit, false),
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
             new("سير العمل", "\uE72A", "إرسال للمستودع", EntityActionId.InvoiceSendToWarehouse, false),
             new("خطر", "\uE711", "إلغاء الفاتورة", EntityActionId.InvoiceCancel, true)
@@ -83,7 +83,8 @@ public static class SalesContextMenuService
         SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval =>
         [
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
-            new("سير العمل", "\uE73E", "اعتماد وتسليم", EntityActionId.InvoiceApproveAndDeliver, false),
+            new("سير العمل", "\uE73E", "اعتماد", EntityActionId.InvoiceApprove, false),
+            new("سير العمل", "\uE7C1", "اعتماد وتسليم", EntityActionId.InvoiceApproveAndDeliver, false),
             new("طباعة", "\uE749", "طباعة", EntityActionId.InvoicePrint, false),
             new("طباعة", "\uE896", "تصدير PDF", EntityActionId.InvoiceExportPdf, false),
             new("خطر", "\uE711", "إلغاء الفاتورة", EntityActionId.InvoiceCancel, true)
@@ -108,14 +109,14 @@ public static class SalesContextMenuService
         SalesInvoiceStatus.PartiallyReturned =>
         [
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
-            new("سير العمل", "\uE72C", "مرتجع إضافي", EntityActionId.InvoiceReturn, false),
-            new("العرض والتحرير", "\uE72C", "عرض المرتجعات", EntityActionId.InvoiceViewReturns, false),
+            new("سير العمل", "\uE72C", "مرتجع", EntityActionId.InvoiceReturn, false),
+            new("العرض والتحرير", "\uE8F1", "عرض المرتجعات", EntityActionId.InvoiceViewReturns, false),
             new("طباعة", "\uE749", "طباعة", EntityActionId.InvoicePrint, false)
         ],
         SalesInvoiceStatus.Returned =>
         [
             new("العرض والتحرير", "\uE8A7", "مركز العمليات (قراءة فقط)", EntityActionId.OpenOperationsCenter, false),
-            new("العرض والتحرير", "\uE72C", "عرض المرتجعات", EntityActionId.InvoiceViewReturns, false),
+            new("العرض والتحرير", "\uE8F1", "عرض المرتجعات", EntityActionId.InvoiceViewReturns, false),
             new("طباعة", "\uE749", "طباعة", EntityActionId.InvoicePrint, false)
         ],
         SalesInvoiceStatus.Cancelled =>

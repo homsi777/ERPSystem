@@ -273,6 +273,12 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             ?? throw new InvalidOperationException("Sales invoice not found.");
 
         var mapped = SalesInvoiceMapper.ToHeaderEntity(aggregate);
+        header.CustomerId = mapped.CustomerId;
+        header.WarehouseId = mapped.WarehouseId;
+        header.ChinaContainerId = mapped.ChinaContainerId;
+        header.PaymentType = mapped.PaymentType;
+        header.PartialPaymentAmount = mapped.PartialPaymentAmount;
+        header.CashboxId = mapped.CashboxId;
         header.Status = mapped.Status;
         header.SubTotal = mapped.SubTotal;
         header.DiscountTotal = mapped.DiscountTotal;
@@ -284,6 +290,9 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         header.ApprovedAt = mapped.ApprovedAt;
         header.PrintedAt = mapped.PrintedAt;
         header.DeliveredAt = mapped.DeliveredAt;
+        header.DeliveredToName = mapped.DeliveredToName;
+        header.DeliveryDriverName = mapped.DeliveryDriverName;
+        header.DeliveryNotes = mapped.DeliveryNotes;
         header.CancelledAt = mapped.CancelledAt;
         header.CancelReason = mapped.CancelReason;
         header.UpdatedAt = DateTime.UtcNow;
@@ -319,6 +328,7 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             Id = i.Id,
             SalesInvoiceId = aggregate.Id,
             LineNumber = i.LineNumber,
+            ChinaContainerId = i.ChinaContainerId,
             FabricItemId = i.FabricItemId,
             FabricColorId = i.FabricColorId,
             RollCount = i.RollCount,
@@ -344,7 +354,9 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             FabricRollId = r.FabricRollId,
             LengthMeters = r.LengthMeters.Value,
             EnteredByUserId = r.EnteredByUserId,
-            EnteredAt = r.EnteredAt
+            EnteredAt = r.EnteredAt,
+            DraftRollNumber = r.DraftRollNumber,
+            DraftLengthMeters = r.DraftLengthMeters
         }), ct);
 
         var existingSession = await context.WarehouseDetailingSessions

@@ -1,6 +1,8 @@
 import { apiRequest } from './client.ts';
 import type {
+  DetailingCandidateRollDto,
   FabricRollListDto,
+  FabricRollSalesReservationDto,
   FabricStockBalanceDto,
   InventoryAlertDto,
   InventoryDashboardDto,
@@ -9,10 +11,13 @@ import type {
   WarehouseListExtendedDto
 } from './types.ts';
 
-export function getFabricStock(warehouseId?: string) {
+export function getFabricStock(warehouseId?: string, searchTerm?: string) {
   const search = new URLSearchParams();
   if (warehouseId) {
     search.set('warehouseId', warehouseId);
+  }
+  if (searchTerm?.trim()) {
+    search.set('search', searchTerm.trim());
   }
 
   const suffix = search.size > 0 ? `?${search.toString()}` : '';
@@ -59,6 +64,40 @@ export function getFabricRollsByStock(params: {
     fabricColorId: params.fabricColorId
   });
   return apiRequest<FabricRollListDto[]>(`/api/v1/inventory/rolls-by-stock?${search.toString()}`);
+}
+
+export function getFabricRollSalesReservations(rollIds: string[], excludeSalesInvoiceId?: string) {
+  const search = new URLSearchParams();
+  for (const rollId of rollIds) {
+    search.append('rollIds', rollId);
+  }
+  if (excludeSalesInvoiceId) {
+    search.set('excludeSalesInvoiceId', excludeSalesInvoiceId);
+  }
+  return apiRequest<FabricRollSalesReservationDto[]>(
+    `/api/v1/inventory/roll-sales-reservations?${search.toString()}`
+  );
+}
+
+export function getDetailingCandidateRolls(params: {
+  warehouseId: string;
+  containerId: string;
+  fabricItemId: string;
+  fabricColorId: string;
+  excludeSalesInvoiceId?: string;
+}) {
+  const search = new URLSearchParams({
+    warehouseId: params.warehouseId,
+    containerId: params.containerId,
+    fabricItemId: params.fabricItemId,
+    fabricColorId: params.fabricColorId
+  });
+  if (params.excludeSalesInvoiceId) {
+    search.set('excludeSalesInvoiceId', params.excludeSalesInvoiceId);
+  }
+  return apiRequest<DetailingCandidateRollDto[]>(
+    `/api/v1/inventory/detailing-candidate-rolls?${search.toString()}`
+  );
 }
 
 export function getInventoryDashboard() {

@@ -26,6 +26,9 @@ public static class DetailingEndpoints
         group.MapPost("/{invoiceId:guid}/complete", CompleteDetailingAsync)
             .WithName("CompleteWarehouseDetailing");
 
+        group.MapPost("/{invoiceId:guid}/save-draft", SaveDetailingDraftAsync)
+            .WithName("SaveWarehouseDetailingDraft");
+
         return app;
     }
 
@@ -88,7 +91,35 @@ public static class DetailingEndpoints
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 
+    private static async Task<IResult> SaveDetailingDraftAsync(
+        Guid invoiceId,
+        [FromBody] SaveWarehouseDetailingDraftRequest request,
+        ICommandHandler<SaveWarehouseDetailingDraftCommand, ApplicationResult> handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new SaveWarehouseDetailingDraftCommand
+            {
+                InvoiceId = invoiceId,
+                RollEntries = request.RollEntries
+                    .Select(entry => new RollDraftEntryCommand
+                    {
+                        RollDetailId = entry.RollDetailId,
+                        RollNumber = entry.RollNumber,
+                        LengthMeters = entry.LengthMeters
+                    })
+                    .ToList()
+            },
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
     private sealed record CompleteWarehouseDetailingRequest(IReadOnlyList<RollLengthEntryRequest> RollEntries);
 
     private sealed record RollLengthEntryRequest(Guid RollDetailId, int? RollNumber, decimal LengthMeters);
+
+    private sealed record SaveWarehouseDetailingDraftRequest(IReadOnlyList<RollDraftEntryRequest> RollEntries);
+
+    private sealed record RollDraftEntryRequest(Guid RollDetailId, int? RollNumber, decimal? LengthMeters);
 }

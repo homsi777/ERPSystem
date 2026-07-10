@@ -56,12 +56,39 @@ namespace ERPSystem.Controls.Sales
         private string _discountReason = "";
         private string _notes = "";
         private SalesWarehouseStockOptionDto? _selectedStock;
+        private ContainerPickItem? _selectedContainer;
         private bool _missingSalePrice;
 
+        public ObservableCollection<SalesWarehouseStockOptionDto> StockOptions { get; } = new();
         public Guid FabricItemId { get; set; }
         public Guid FabricColorId { get; set; }
+        public Guid ChinaContainerId => SelectedContainer?.Id ?? Guid.Empty;
         public int AvailableRollCount { get; set; }
         public decimal AvailableMeters { get; set; }
+
+        public ContainerPickItem? SelectedContainer
+        {
+            get => _selectedContainer;
+            set
+            {
+                if (_selectedContainer?.Id == value?.Id)
+                    return;
+
+                if (_selectedContainer is not null && FabricItemId != Guid.Empty &&
+                    !MockInteractionService.Confirm(
+                        "تغيير حاوية السطر سيمسح التوب المختار والسعر. هل تريد المتابعة؟",
+                        "تغيير حاوية السطر"))
+                    return;
+
+                _selectedContainer = value;
+                ClearStockSelection();
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedContainer)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChinaContainerId)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerDisplay)));
+            }
+        }
+
+        public string ContainerDisplay => SelectedContainer?.Display ?? "اختر الحاوية...";
 
         public bool MissingSalePrice
         {
@@ -258,6 +285,22 @@ namespace ERPSystem.Controls.Sales
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StockSelectionDisplay)));
         }
 
+        internal void ClearStockSelection()
+        {
+            _selectedStock = null;
+            FabricItemId = Guid.Empty;
+            FabricColorId = Guid.Empty;
+            GoodsType = "";
+            BoltCode = "";
+            Color = "";
+            AvailableRollCount = 0;
+            AvailableMeters = 0;
+            OriginalUnitPrice = 0;
+            UnitPrice = 0;
+            MissingSalePrice = false;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StockSelectionDisplay)));
+        }
+
         internal void RefreshStockSelectionDisplay() =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StockSelectionDisplay)));
 
@@ -286,6 +329,7 @@ namespace ERPSystem.Controls.Sales
     {
         private readonly ObservableCollection<SalesInvoiceLineRow> _lines = new();
         public ObservableCollection<SalesWarehouseStockOptionDto> StockOptions { get; } = new();
+        public ObservableCollection<ContainerPickItem> ContainerOptions { get; } = new();
         private Guid? _invoiceId;
         private SalesInvoiceStatus _domainStatus = SalesInvoiceStatus.Draft;
         private decimal _loadedGrandTotal;
@@ -311,12 +355,8 @@ namespace ERPSystem.Controls.Sales
                 CustomerListRefreshHub.RefreshRequested -= OnCustomersRefreshRequested;
                 SalesListRefreshHub.RefreshRequested -= OnSalesListRefreshRequested;
             };
-            CmbContainer.SelectionChanged += async (_, _) =>
-            {
-                await SyncWarehouseForContainerAsync();
-                await ReloadStockOptionsAsync();
-            };
-            CmbWarehouse.SelectionChanged += async (_, _) => await ReloadStockOptionsAsync();
+            CmbContainer.SelectionChanged += async (_, _) => await SyncWarehouseForContainerAsync();
+            CmbWarehouse.SelectionChanged += async (_, _) => await ReloadAllLineStockOptionsAsync();
             _lines.CollectionChanged += OnLinesCollectionChanged;
             CashboxDropdownBinder.WireRefresh(CmbCashbox);
             Loaded += (_, _) => UnsavedWorkGuard.Register(this, "فاتورة بيع جديدة", HasUnsavedWork);
@@ -357,10 +397,17 @@ namespace ERPSystem.Controls.Sales
             if (e.PropertyName is nameof(SalesInvoiceLineRow.RollCount)
                 or nameof(SalesInvoiceLineRow.RollCountText)
                 or nameof(SalesInvoiceLineRow.SelectedStock)
-                or nameof(SalesInvoiceLineRow.FabricItemId))
+                or nameof(SalesInvoiceLineRow.FabricItemId)
+                or nameof(SalesInvoiceLineRow.SelectedContainer))
             {
                 MarkFormDirty();
                 Dispatcher.BeginInvoke(RefreshSummary);
+            }
+
+            if (sender is SalesInvoiceLineRow row &&
+                e.PropertyName is nameof(SalesInvoiceLineRow.SelectedContainer))
+            {
+                _ = ReloadStockOptionsForRowAsync(row);
             }
         }
 
@@ -430,8 +477,6 @@ namespace ERPSystem.Controls.Sales
             }
 
             await LoadLookupsAsync();
-            await SyncWarehouseForContainerAsync();
-            await ReloadStockOptionsAsync();
 
             var editId = SalesNavigationContext.EditInvoiceId;
             if (editId.HasValue)
@@ -602,9 +647,7 @@ namespace ERPSystem.Controls.Sales
                             items.Add(new ContainerPickItem
                             {
                                 Id = c.Id,
-                                Display = string.IsNullOrWhiteSpace(c.SupplierName)
-                                    ? c.ContainerNumber
-                                    : $"{c.ContainerNumber} — {c.SupplierName}"
+                                Display = c.ContainerNumber
                             });
                         }
                     }
@@ -630,9 +673,7 @@ namespace ERPSystem.Controls.Sales
                                 items.Add(new ContainerPickItem
                                 {
                                     Id = c.Id,
-                                    Display = string.IsNullOrWhiteSpace(c.SupplierName)
-                                        ? c.ContainerNumber
-                                        : $"{c.ContainerNumber} — {c.SupplierName}"
+                                    Display = c.ContainerNumber
                                 });
                             }
                         }
@@ -644,9 +685,12 @@ namespace ERPSystem.Controls.Sales
                 }
             }
 
-            CmbContainer.ItemsSource = items;
-            if (items.Count > 0)
-                CmbContainer.SelectedIndex = 0;
+            ContainerOptions.Clear();
+            foreach (var item in items)
+                ContainerOptions.Add(item);
+
+            CmbContainer.ItemsSource = ContainerOptions;
+            CmbContainer.SelectedIndex = -1;
         }
 
         private async Task SyncWarehouseForContainerAsync()
@@ -705,6 +749,11 @@ namespace ERPSystem.Controls.Sales
             SelectContainer(invoice.ChinaContainerId);
             BtnCash.IsChecked = invoice.PaymentType == PaymentType.Cash;
             BtnCredit.IsChecked = invoice.PaymentType == PaymentType.Credit;
+            TxtPartialPayment.Text = invoice.PartialPaymentAmount > 0
+                ? invoice.PartialPaymentAmount.ToString("0.##")
+                : "0";
+            if (invoice.CashboxId is Guid cashboxId && cashboxId != Guid.Empty)
+                CmbCashbox.SelectedValue = cashboxId;
 
             _lineDisplayByNumber.Clear();
             _lines.Clear();
@@ -716,6 +765,7 @@ namespace ERPSystem.Controls.Sales
 
                 var row = new SalesInvoiceLineRow
                 {
+                    SelectedContainer = ContainerOptions.FirstOrDefault(c => c.Id == line.ChinaContainerId),
                     FabricItemId = line.FabricItemId,
                     FabricColorId = line.FabricColorId,
                     GoodsType = line.FabricDisplayName,
@@ -738,7 +788,7 @@ namespace ERPSystem.Controls.Sales
             else
                 RefreshSummary();
 
-            await ReloadStockOptionsAsync();
+            await ReloadAllLineStockOptionsAsync();
             RestoreLineStockSelections();
 
             UpdateStatusBadge();
@@ -750,7 +800,7 @@ namespace ERPSystem.Controls.Sales
         {
             foreach (var row in _lines.Where(r => r.FabricItemId != Guid.Empty))
             {
-                var match = StockOptions.FirstOrDefault(o =>
+                var match = row.StockOptions.FirstOrDefault(o =>
                     o.FabricItemId == row.FabricItemId && o.FabricColorId == row.FabricColorId);
                 if (match is not null)
                     row.AttachStockOption(match);
@@ -774,15 +824,21 @@ namespace ERPSystem.Controls.Sales
             };
         }
 
-        private async Task ReloadStockOptionsAsync()
+        private async Task ReloadAllLineStockOptionsAsync()
         {
-            StockOptions.Clear();
+            foreach (var row in _lines)
+                await ReloadStockOptionsForRowAsync(row);
+        }
+
+        private async Task ReloadStockOptionsForRowAsync(SalesInvoiceLineRow row)
+        {
+            row.StockOptions.Clear();
             UpdateStockEmptyBanner(false, null);
 
             if (!AppServices.IsInitialized)
                 return;
 
-            if (CmbContainer.SelectedItem is not ContainerPickItem container ||
+            if (row.SelectedContainer is not ContainerPickItem container ||
                 CmbWarehouse.SelectedItem is not WarehousePickItem warehouse)
                 return;
 
@@ -804,7 +860,7 @@ namespace ERPSystem.Controls.Sales
 
             UpdateStockEmptyBanner(false, null);
             foreach (var option in result.Value)
-                StockOptions.Add(option);
+                row.StockOptions.Add(option);
         }
 
         private void UpdateStockEmptyBanner(bool visible, string? message)
@@ -861,7 +917,7 @@ namespace ERPSystem.Controls.Sales
             if (_isSaving)
                 return;
 
-            if (!TryGetHeader(out var customerId, out var warehouseId, out var containerId, out var paymentType))
+            if (!TryGetHeader(out var customerId, out var warehouseId, out var containerId, out var paymentType, out var cashboxId))
                 return;
 
             if (_lines.Count == 0 || _lines.All(l => l.RollCount <= 0))
@@ -875,6 +931,12 @@ namespace ERPSystem.Controls.Sales
                 if (row.FabricItemId == Guid.Empty)
                 {
                     MockInteractionService.ShowWarning("اختر صنفاً من المخزون لكل سطر قبل الحفظ.");
+                    return;
+                }
+
+                if (row.ChinaContainerId == Guid.Empty)
+                {
+                    MockInteractionService.ShowWarning("اختر حاوية لكل سطر قبل الحفظ.");
                     return;
                 }
 
@@ -897,6 +959,9 @@ namespace ERPSystem.Controls.Sales
             try
             {
                 var lines = BuildLineCommands();
+                containerId = lines.OrderBy(l => l.LineNumber).First().ChinaContainerId;
+                SelectContainer(containerId);
+                var partialPayment = GetPartialPaymentAmount(paymentType);
 
                 if (_invoiceId is null)
                 {
@@ -907,7 +972,9 @@ namespace ERPSystem.Controls.Sales
                     var createResult = await SalesUiService.Instance.CreateDraftAsync(
                         customerId, warehouseId, containerId, paymentType, lines,
                         string.IsNullOrWhiteSpace(manualNumber) ? null : manualNumber,
-                        GetDiscountAmount());
+                        GetDiscountAmount(),
+                        cashboxId,
+                        partialPayment);
                     if (!ApplicationResultPresenter.Present(createResult))
                         return;
 
@@ -917,7 +984,9 @@ namespace ERPSystem.Controls.Sales
                 {
                     var updateResult = await SalesUiService.Instance.UpdateDraftAsync(
                         _invoiceId.Value, customerId, warehouseId, containerId, paymentType, lines,
-                        GetDiscountAmount());
+                        GetDiscountAmount(),
+                        cashboxId,
+                        partialPayment);
                     if (!ApplicationResultPresenter.Present(updateResult))
                         return;
                 }
@@ -1116,12 +1185,12 @@ namespace ERPSystem.Controls.Sales
             ApplicationResult result;
             if (_domainStatus == SalesInvoiceStatus.Draft)
             {
-                if (!TryGetHeader(out var customerId, out var warehouseId, out var containerId, out var paymentType))
+                if (!TryGetHeader(out var customerId, out var warehouseId, out var containerId, out var paymentType, out var cashboxId))
                     return;
 
                 result = await SalesUiService.Instance.UpdateDraftAsync(
                     _invoiceId.Value, customerId, warehouseId, containerId, paymentType,
-                    BuildLineCommands(), discount);
+                    BuildLineCommands(), discount, cashboxId, GetPartialPaymentAmount(paymentType));
             }
             else
             {
@@ -1237,12 +1306,14 @@ namespace ERPSystem.Controls.Sales
             out Guid customerId,
             out Guid warehouseId,
             out Guid containerId,
-            out PaymentType paymentType)
+            out PaymentType paymentType,
+            out Guid? cashboxId)
         {
             customerId = Guid.Empty;
             warehouseId = Guid.Empty;
             containerId = Guid.Empty;
             paymentType = PaymentType.Cash;
+            cashboxId = null;
 
             if (CmbCustomer.SelectedItem is not CustomerPickItem customer || customer.Id == Guid.Empty)
             {
@@ -1256,17 +1327,34 @@ namespace ERPSystem.Controls.Sales
                 return false;
             }
 
-            if (CmbContainer.SelectedItem is not ContainerPickItem container || container.Id == Guid.Empty)
+            if (CmbCashbox.SelectedValue is not Guid selectedCashboxId || selectedCashboxId == Guid.Empty)
             {
-                MockInteractionService.ShowWarning("اختر الحاوية المرتبطة بالفاتورة.", "فاتورة بيع");
+                MockInteractionService.ShowWarning("اختر الصندوق.", "فاتورة بيع");
                 return false;
             }
 
             customerId = customer.Id;
             warehouseId = warehouse.Id;
-            containerId = container.Id;
+            containerId = CmbContainer.SelectedItem is ContainerPickItem selectedContainer ? selectedContainer.Id : Guid.Empty;
             paymentType = BtnCredit.IsChecked == true ? PaymentType.Credit : PaymentType.Cash;
+            cashboxId = selectedCashboxId;
             return true;
+        }
+
+        private decimal? GetPartialPaymentAmount(PaymentType paymentType)
+        {
+            if (paymentType != PaymentType.Credit)
+                return null;
+
+            var raw = TxtPartialPayment.Text?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(raw) || raw == "0")
+                return null;
+
+            if (!decimal.TryParse(raw.Replace(',', '.'), System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture, out var amount) || amount <= 0)
+                return null;
+
+            return amount;
         }
 
         private List<SalesInvoiceLineCommand> BuildLineCommands()
@@ -1278,6 +1366,7 @@ namespace ERPSystem.Controls.Sales
                 commands.Add(new SalesInvoiceLineCommand
                 {
                     LineNumber = lineNumber++,
+                    ChinaContainerId = row.ChinaContainerId,
                     FabricItemId = row.FabricItemId,
                     FabricColorId = row.FabricColorId,
                     RollCount = row.RollCount,
@@ -1374,10 +1463,19 @@ namespace ERPSystem.Controls.Sales
 
             var header = cell.Column.Header?.ToString();
 
+            if (cell.Column is DataGridTemplateColumn && cell.Column.DisplayIndex == 0)
+            {
+                ItemsGrid.CurrentCell = new DataGridCellInfo(cell);
+                if (!cell.IsFocused)
+                    cell.Focus();
+                ItemsGrid.BeginEdit(e);
+                return;
+            }
+
             if (cell.Column is DataGridComboBoxColumn ||
                 (cell.Column is DataGridTemplateColumn && header == "اختر التوب"))
             {
-                if (StockOptions.Count == 0)
+                if (cell.DataContext is SalesInvoiceLineRow { StockOptions.Count: 0 })
                 {
                     MockInteractionService.ShowWarning(
                         "لا يوجد مخزون لهذه الحاوية في المستودع المختار.\nتأكد من اختيار الحاوية والمستودع أولاً.",
@@ -1495,7 +1593,7 @@ namespace ERPSystem.Controls.Sales
 
         private List<DataGridColumn> GetEditableColumnsForRow(SalesInvoiceLineRow? row)
         {
-            var order = new List<string> { "اختر التوب", "عدد الأثواب", "سعر الوحدة" };
+            var order = new List<string> { "الحاوية", "اختر التوب", "عدد الأثواب", "سعر الوحدة" };
 
             return ItemsGrid.Columns
                 .Where(c => !c.IsReadOnly && order.Contains(c.Header?.ToString() ?? ""))

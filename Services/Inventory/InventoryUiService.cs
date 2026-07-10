@@ -119,11 +119,15 @@ public sealed class InventoryUiService
     }
 
     public async Task<ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>> GetFabricStockAsync(
-        Guid? warehouseId = null, CancellationToken cancellationToken = default)
+        Guid? warehouseId = null,
+        string? search = null,
+        CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<GetFabricStockBalancesHandler>();
-        return await handler.HandleAsync(new GetFabricStockBalancesQuery(BranchId, warehouseId), cancellationToken);
+        return await handler.HandleAsync(
+            new GetFabricStockBalancesQuery(BranchId, warehouseId, search),
+            cancellationToken);
     }
 
     public async Task<ApplicationResult<IReadOnlyList<FabricRollListDto>>> GetFabricRollsByStockAsync(

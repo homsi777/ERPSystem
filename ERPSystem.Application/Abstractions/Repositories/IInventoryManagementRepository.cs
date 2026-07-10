@@ -22,10 +22,16 @@ public interface IInventoryManagementRepository
     Task<IReadOnlyList<InventoryAuditDto>> GetAuditTrailAsync(Guid entityId, string entityType, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<InventoryTimelineDto>> GetTimelineAsync(Guid entityId, string entityType, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<FabricStockBalanceDto>> GetFabricStockBalancesAsync(Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FabricStockBalanceDto>> GetFabricStockBalancesAsync(
+        Guid branchId,
+        Guid? warehouseId = null,
+        string? search = null,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsAsync(Guid warehouseId, CancellationToken cancellationToken = default);
     Task<PaginatedFabricRollDto> GetFabricRollsPageAsync(Guid warehouseId, int pageNumber = 1, int pageSize = 50, int? status = null, string? search = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FabricRollListDto>> GetFabricRollsByStockAsync(Guid warehouseId, Guid containerId, Guid fabricItemId, Guid fabricColorId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FabricRollSalesReservationDto>> GetFabricRollSalesReservationsAsync(IReadOnlyList<Guid> rollIds, Guid? excludeSalesInvoiceId = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DetailingCandidateRollDto>> GetDetailingCandidateRollsAsync(Guid warehouseId, Guid containerId, Guid fabricItemId, Guid fabricColorId, Guid? excludeSalesInvoiceId = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<StockMovementListDto>> GetMovementsAsync(Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<InventoryAlertDto>> GetAlertsAsync(Guid branchId, bool unacknowledgedOnly = true, CancellationToken cancellationToken = default);
     Task<InventoryDashboardDto> GetDashboardAsync(Guid branchId, CancellationToken cancellationToken = default);

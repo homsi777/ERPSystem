@@ -6,6 +6,7 @@ using ERPSystem.Application.Common;
 using ERPSystem.Application.Notifications;
 using ERPSystem.Application.Results;
 using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Domain.Entities.Sales;
 using ERPSystem.Domain.Services;
 using ERPSystem.Domain.Specifications;
@@ -54,11 +55,9 @@ public sealed class CreateSalesInvoiceDraftHandler(
 
         try
         {
-            await inventoryOperations.ValidateContainerForSaleAsync(command.ChinaContainerId, cancellationToken);
             await inventoryOperations.ValidateInvoiceLinesAsync(
                 command.WarehouseId,
-                command.ChinaContainerId,
-                command.Lines.Select(l => (l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
+                command.Lines.Select(l => (l.ChinaContainerId, l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
                 cancellationToken);
 
             var invoiceNumberText = string.IsNullOrWhiteSpace(command.InvoiceNumber)
@@ -69,6 +68,12 @@ public sealed class CreateSalesInvoiceDraftHandler(
                 return ApplicationResult<Guid>.ValidationFailed(nameof(command.InvoiceNumber), "رقم الفاتورة مستخدم مسبقاً.");
 
             var invoiceNumber = new InvoiceNumber(invoiceNumberText);
+            // Header ChinaContainerId is now only the primary container for backward-compatible
+            // display/reporting. Per-line ChinaContainerId is authoritative for stock operations.
+            var primaryContainerId = command.Lines
+                .OrderBy(l => l.LineNumber)
+                .First(l => l.RollCount > 0)
+                .ChinaContainerId;
 
             var userId = currentUserService.UserId ?? Guid.Empty;
             var aggregate = SalesInvoiceAggregate.CreateDraft(
@@ -77,7 +82,7 @@ public sealed class CreateSalesInvoiceDraftHandler(
                 command.BranchId,
                 command.CustomerId,
                 command.WarehouseId,
-                command.ChinaContainerId,
+                primaryContainerId,
                 command.PaymentType,
                 userId);
 
@@ -88,6 +93,7 @@ public sealed class CreateSalesInvoiceDraftHandler(
                     SalesInvoicePriceOverride.Resolve(line, userId, now);
                 var item = SalesInvoiceItem.Create(
                     line.LineNumber,
+                    line.ChinaContainerId,
                     line.FabricItemId,
                     line.FabricColorId,
                     line.RollCount,
@@ -103,6 +109,7 @@ public sealed class CreateSalesInvoiceDraftHandler(
             if (command.DiscountAmount > 0)
                 aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
 
+            aggregate.SetCashboxId(command.CashboxId);
             aggregate.SetPartialPaymentAmount(
                 command.PaymentType == Domain.Enums.PaymentType.Credit && command.PartialPaymentAmount is > 0
                     ? new Money(command.PartialPaymentAmount.Value)
@@ -147,18 +154,23 @@ public sealed class UpdateSalesInvoiceDraftHandler(
 
         try
         {
-            await inventoryOperations.ValidateContainerForSaleAsync(command.ChinaContainerId, cancellationToken);
             await inventoryOperations.ValidateInvoiceLinesAsync(
                 command.WarehouseId,
-                command.ChinaContainerId,
-                command.Lines.Select(l => (l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
+                command.Lines.Select(l => (l.ChinaContainerId, l.FabricItemId, l.FabricColorId, l.RollCount)).ToList(),
                 cancellationToken);
+            // Header ChinaContainerId is now only the primary container for backward-compatible
+            // display/reporting. Per-line ChinaContainerId is authoritative for stock operations.
+            var primaryContainerId = command.Lines
+                .OrderBy(l => l.LineNumber)
+                .First(l => l.RollCount > 0)
+                .ChinaContainerId;
 
             aggregate.UpdateDraftHeader(
                 command.CustomerId,
                 command.WarehouseId,
-                command.ChinaContainerId,
-                command.PaymentType);
+                primaryContainerId,
+                command.PaymentType,
+                command.CashboxId);
 
             var userId = currentUserService.UserId ?? Guid.Empty;
             var now = DateTime.UtcNow;
@@ -169,6 +181,7 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                         SalesInvoicePriceOverride.Resolve(line, userId, now);
                     return SalesInvoiceItem.Create(
                         line.LineNumber,
+                        line.ChinaContainerId,
                         line.FabricItemId,
                         line.FabricColorId,
                         line.RollCount,
@@ -372,9 +385,57 @@ public sealed class CompleteWarehouseDetailingHandler(
     }
 }
 
+public sealed class SaveWarehouseDetailingDraftHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService,
+    ICurrentUserService currentUserService,
+    IDomainEventDispatcher domainEventDispatcher)
+    : ICommandHandler<SaveWarehouseDetailingDraftCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        SaveWarehouseDetailingDraftCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var validation = Validation.ApplicationValidators.Validate(command);
+        if (validation is not null)
+            return validation;
+
+        if (!await permissionService.CanAsync("warehouse.detailing", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to save detailing progress.");
+
+        var aggregate = await invoiceRepository.GetByIdAsync(command.InvoiceId, cancellationToken);
+        if (aggregate is null)
+            return ApplicationResult.NotFound("Invoice not found.");
+
+        try
+        {
+            var userId = currentUserService.UserId ?? Guid.Empty;
+            var entries = command.RollEntries
+                .Select(e => (e.RollDetailId, e.RollNumber, e.LengthMeters))
+                .ToList();
+
+            aggregate.SaveDetailingDraft(entries, userId);
+
+            await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
+            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
+
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult();
+        }
+    }
+}
+
 public sealed class ApproveSalesInvoiceHandler(
     ISalesInvoiceRepository invoiceRepository,
     ICustomerRepository customerRepository,
+    ICashboxRepository cashboxRepository,
+    IReceiptVoucherRepository receiptVoucherRepository,
+    IReceiptInvoicePaymentRepository receiptInvoicePaymentRepository,
+    INumberingService numberingService,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     INotificationService notificationService,
@@ -408,6 +469,22 @@ public sealed class ApproveSalesInvoiceHandler(
         if (customerAggregate is null)
             return ApplicationResult.NotFound("Customer not found.");
 
+        var cashCollectionAmount = ResolveCashCollectionAmount(aggregate);
+        Cashbox? cashbox = null;
+        if (cashCollectionAmount > 0)
+        {
+            if (aggregate.CashboxId is not Guid cashboxId || cashboxId == Guid.Empty)
+                return ApplicationResult.ValidationFailed(
+                    "CashboxId",
+                    "يجب اختيار الصندوق عند البيع النقدي أو عند وجود دفعة جزئية.");
+
+            cashbox = await cashboxRepository.GetByIdAsync(cashboxId, cancellationToken);
+            if (cashbox is null)
+                return ApplicationResult.NotFound("الصندوق المحدد غير موجود.");
+            if (!cashbox.IsActive)
+                return ApplicationResult.ValidationFailed("CashboxId", "الصندوق المحدد غير نشط.");
+        }
+
         try
         {
             await unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -420,6 +497,16 @@ public sealed class ApproveSalesInvoiceHandler(
 
             var cogs = await inventoryOperations.DeductForInvoiceAsync(aggregate, cancellationToken);
             await accountingService.PostSalesInvoiceApprovalAsync(aggregate, cogs, cancellationToken);
+
+            if (cashCollectionAmount > 0 && cashbox is not null)
+            {
+                await PostCashCollectionAsync(
+                    aggregate,
+                    customerAggregate,
+                    cashbox,
+                    cashCollectionAmount,
+                    cancellationToken);
+            }
 
             if (aggregate.TotalLineDiscount.Amount > 0)
             {
@@ -476,6 +563,51 @@ public sealed class ApproveSalesInvoiceHandler(
 
             return ex.ToFailureResult();
         }
+    }
+
+    private static decimal ResolveCashCollectionAmount(SalesInvoiceAggregate invoice)
+    {
+        if (invoice.PaymentType == Domain.Enums.PaymentType.Cash)
+            return invoice.GrandTotal.Amount;
+
+        return invoice.PartialPaymentAmount is { Amount: > 0 } partial
+            ? partial.Amount
+            : 0m;
+    }
+
+    private async Task PostCashCollectionAsync(
+        SalesInvoiceAggregate invoice,
+        CustomerAggregate customerAggregate,
+        Cashbox cashbox,
+        decimal amount,
+        CancellationToken cancellationToken)
+    {
+        var number = await numberingService.NextReceiptNumberAsync(invoice.BranchId, cancellationToken);
+        var voucher = ReceiptVoucher.CreateDraft(
+            number,
+            invoice.CustomerId,
+            cashbox.Id,
+            new Money(amount));
+        voucher.Allocate(invoice.Id, new Money(amount));
+        voucher.Approve();
+        voucher.Post();
+
+        if (customerAggregate.Customer.Type == Domain.Enums.CustomerType.Credit)
+            customerAggregate.RecordPostedReceipt(amount);
+
+        cashbox.ApplyReceipt(new Money(amount));
+
+        await receiptVoucherRepository.AddAsync(voucher, cancellationToken);
+        await receiptInvoicePaymentRepository.AddAsync(
+            ReceiptInvoicePayment.Create(invoice.Id, voucher.Id, new Money(amount)),
+            cancellationToken);
+        await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+        await accountingService.PostReceiptVoucherAsync(
+            voucher.Id,
+            voucher.VoucherNumber,
+            invoice.CustomerId,
+            amount,
+            cancellationToken);
     }
 }
 

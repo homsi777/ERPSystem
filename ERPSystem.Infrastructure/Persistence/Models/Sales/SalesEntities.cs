@@ -11,6 +11,7 @@ public class SalesInvoiceEntity : CancellablePersistenceEntity
     public DateTime InvoiceDate { get; set; }
     public int PaymentType { get; set; }
     public decimal? PartialPaymentAmount { get; set; }
+    public Guid? CashboxId { get; set; }
     public int Status { get; set; }
     public decimal SubTotal { get; set; }
     public decimal DiscountTotal { get; set; }
@@ -73,6 +74,7 @@ public class SalesInvoiceItemEntity : PersistenceEntity
 {
     public Guid SalesInvoiceId { get; set; }
     public int LineNumber { get; set; }
+    public Guid ChinaContainerId { get; set; }
     public Guid FabricItemId { get; set; }
     public Guid FabricColorId { get; set; }
     public int RollCount { get; set; }
@@ -96,6 +98,8 @@ public class SalesInvoiceRollDetailEntity : PersistenceEntity
     public decimal LengthMeters { get; set; }
     public Guid? EnteredByUserId { get; set; }
     public DateTime? EnteredAt { get; set; }
+    public int? DraftRollNumber { get; set; }
+    public decimal? DraftLengthMeters { get; set; }
 }
 
 public class WarehouseDetailingSessionEntity : PersistenceEntity

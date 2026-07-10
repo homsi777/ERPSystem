@@ -429,14 +429,14 @@ internal sealed class InventoryEngine(
             var stock = await context.WarehouseStocks
                 .FirstOrDefaultAsync(s =>
                     s.WarehouseId == invoice.WarehouseId &&
-                    s.ContainerId == invoice.ChinaContainerId &&
+                    s.ContainerId == item.ChinaContainerId &&
                     s.FabricItemId == item.FabricItemId &&
                     s.FabricColorId == item.FabricColorId, cancellationToken)
                 ?? throw new InventoryException("Warehouse stock row not found for reservation.");
 
             var rolls = await context.FabricRolls
                 .Where(r =>
-                    r.ContainerId == invoice.ChinaContainerId &&
+                    r.ContainerId == item.ChinaContainerId &&
                     r.WarehouseId == invoice.WarehouseId &&
                     r.FabricItemId == item.FabricItemId &&
                     r.FabricColorId == item.FabricColorId &&
@@ -487,7 +487,7 @@ internal sealed class InventoryEngine(
         {
             var reservedRolls = await context.FabricRolls.AsNoTracking()
                 .Where(r =>
-                    r.ContainerId == invoice.ChinaContainerId &&
+                    r.ContainerId == item.ChinaContainerId &&
                     r.WarehouseId == invoice.WarehouseId &&
                     r.FabricItemId == item.FabricItemId &&
                     r.FabricColorId == item.FabricColorId &&
@@ -513,10 +513,11 @@ internal sealed class InventoryEngine(
         var resolved = new Dictionary<Guid, decimal>();
         var claimedRollIds = new HashSet<Guid>();
 
-        // Prefetch reserved rolls for this invoice context once.
+        var lineContainerIds = invoice.Items.Select(i => i.ChinaContainerId).Distinct().ToList();
+        // Prefetch candidate rolls for all invoice line containers once.
         var reservedRolls = await context.FabricRolls
             .Where(r =>
-                r.ContainerId == invoice.ChinaContainerId &&
+                lineContainerIds.Contains(r.ContainerId) &&
                 r.WarehouseId == invoice.WarehouseId &&
                 (r.Status == (int)FabricRollStatus.Reserved || r.Status == (int)FabricRollStatus.Available))
             .ToListAsync(cancellationToken);
@@ -532,6 +533,7 @@ internal sealed class InventoryEngine(
             if (entry.RollNumber is int serial and > 0)
             {
                 var roll = reservedRolls.FirstOrDefault(r =>
+                    r.ContainerId == item.ChinaContainerId &&
                     r.RollNumber == serial &&
                     r.FabricItemId == item.FabricItemId &&
                     r.FabricColorId == item.FabricColorId);
@@ -540,7 +542,9 @@ internal sealed class InventoryEngine(
                 {
                     // Allow matching by serial within the invoice container/warehouse even if fabric differs —
                     // warehouse staff may pick the physical roll first; still require same fabric/color for safety.
-                    roll = reservedRolls.FirstOrDefault(r => r.RollNumber == serial);
+                    roll = reservedRolls.FirstOrDefault(r =>
+                        r.ContainerId == item.ChinaContainerId &&
+                        r.RollNumber == serial);
                     if (roll is not null &&
                         (roll.FabricItemId != item.FabricItemId || roll.FabricColorId != item.FabricColorId))
                     {
@@ -600,6 +604,7 @@ internal sealed class InventoryEngine(
 
             var pool = reservedRolls
                 .Where(r =>
+                    r.ContainerId == item.ChinaContainerId &&
                     r.FabricItemId == item.FabricItemId &&
                     r.FabricColorId == item.FabricColorId &&
                     r.Status == (int)FabricRollStatus.Reserved &&
@@ -648,7 +653,7 @@ internal sealed class InventoryEngine(
 
             roll ??= await context.FabricRolls
                 .Where(r =>
-                    r.ContainerId == invoice.ChinaContainerId &&
+                    r.ContainerId == item.ChinaContainerId &&
                     r.WarehouseId == invoice.WarehouseId &&
                     r.FabricItemId == item.FabricItemId &&
                     r.FabricColorId == item.FabricColorId &&
@@ -674,7 +679,7 @@ internal sealed class InventoryEngine(
             var stock = await context.WarehouseStocks
                 .FirstAsync(s =>
                     s.WarehouseId == invoice.WarehouseId &&
-                    s.ContainerId == invoice.ChinaContainerId &&
+                    s.ContainerId == item.ChinaContainerId &&
                     s.FabricItemId == item.FabricItemId &&
                     s.FabricColorId == item.FabricColorId, cancellationToken);
 
@@ -696,7 +701,7 @@ internal sealed class InventoryEngine(
                 FabricColorId = item.FabricColorId,
                 FabricRollId = roll.Id,
                 FabricBatchId = roll.FabricBatchId,
-                ContainerId = invoice.ChinaContainerId,
+                ContainerId = item.ChinaContainerId,
                 QuantityMeters = -meters,
                 UnitCost = roll.CostPerMeter,
                 TotalValue = -meters * roll.CostPerMeter,
@@ -731,7 +736,7 @@ internal sealed class InventoryEngine(
             var soldRolls = await context.FabricRolls
                 .Where(r =>
                     r.WarehouseId == originalInvoice.WarehouseId &&
-                    r.ContainerId == originalInvoice.ChinaContainerId &&
+                    r.ContainerId == originalItem.ChinaContainerId &&
                     r.FabricItemId == originalItem.FabricItemId &&
                     r.FabricColorId == originalItem.FabricColorId)
                 .OrderByDescending(r => r.UpdatedAt ?? r.CreatedAt)
@@ -745,7 +750,7 @@ internal sealed class InventoryEngine(
 
             var stock = await context.WarehouseStocks.FirstOrDefaultAsync(s =>
                 s.WarehouseId == salesReturn.WarehouseId &&
-                s.ContainerId == originalInvoice.ChinaContainerId &&
+                s.ContainerId == originalItem.ChinaContainerId &&
                 s.FabricItemId == originalItem.FabricItemId &&
                 s.FabricColorId == originalItem.FabricColorId, cancellationToken);
 
@@ -755,7 +760,7 @@ internal sealed class InventoryEngine(
                 {
                     Id = Guid.NewGuid(),
                     WarehouseId = salesReturn.WarehouseId,
-                    ContainerId = originalInvoice.ChinaContainerId,
+                    ContainerId = originalItem.ChinaContainerId,
                     FabricItemId = originalItem.FabricItemId,
                     FabricColorId = originalItem.FabricColorId,
                     TotalMeters = returnLine.ReturnMeters,
@@ -780,7 +785,7 @@ internal sealed class InventoryEngine(
                 FabricItemId = originalItem.FabricItemId,
                 FabricColorId = originalItem.FabricColorId,
                 FabricRollId = null,
-                ContainerId = originalInvoice.ChinaContainerId,
+                ContainerId = originalItem.ChinaContainerId,
                 QuantityMeters = returnLine.ReturnMeters,
                 UnitCost = avgCost,
                 TotalValue = returnLine.ReturnMeters * avgCost,
@@ -814,7 +819,7 @@ internal sealed class InventoryEngine(
         {
             var reservedRolls = await context.FabricRolls
                 .Where(r =>
-                    r.ContainerId == invoice.ChinaContainerId &&
+                    r.ContainerId == item.ChinaContainerId &&
                     r.WarehouseId == invoice.WarehouseId &&
                     r.FabricItemId == item.FabricItemId &&
                     r.FabricColorId == item.FabricColorId &&
@@ -824,7 +829,7 @@ internal sealed class InventoryEngine(
             var stock = await context.WarehouseStocks
                 .FirstOrDefaultAsync(s =>
                     s.WarehouseId == invoice.WarehouseId &&
-                    s.ContainerId == invoice.ChinaContainerId &&
+                    s.ContainerId == item.ChinaContainerId &&
                     s.FabricItemId == item.FabricItemId &&
                     s.FabricColorId == item.FabricColorId, cancellationToken);
 

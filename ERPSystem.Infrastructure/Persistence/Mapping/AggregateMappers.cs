@@ -44,6 +44,7 @@ internal static class SalesInvoiceMapper
         InvoiceDate = aggregate.InvoiceDate,
         PaymentType = (int)aggregate.PaymentType,
         PartialPaymentAmount = aggregate.PartialPaymentAmount?.Amount,
+        CashboxId = aggregate.CashboxId,
         Status = (int)aggregate.Status,
         SubTotal = aggregate.SubTotal.Amount,
         DiscountTotal = aggregate.DiscountTotal.Amount,
@@ -83,6 +84,7 @@ internal static class SalesInvoiceMapper
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.PaymentType), (PaymentType)header.PaymentType);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.PartialPaymentAmount),
             header.PartialPaymentAmount is > 0 ? new Money(header.PartialPaymentAmount.Value) : null);
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.CashboxId), header.CashboxId);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.Status), (SalesInvoiceStatus)header.Status);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.SubTotal), new Money(header.SubTotal));
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DiscountTotal), new Money(header.DiscountTotal));
@@ -108,6 +110,8 @@ internal static class SalesInvoiceMapper
             var item = DomainHydrator.Create<SalesInvoiceItem>();
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.Id), i.Id);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.LineNumber), i.LineNumber);
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.ChinaContainerId),
+                i.ChinaContainerId == Guid.Empty ? header.ChinaContainerId : i.ChinaContainerId);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.FabricItemId), i.FabricItemId);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.FabricColorId), i.FabricColorId);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.RollCount), i.RollCount);
@@ -133,6 +137,8 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.LengthMeters), LengthInMeters.FromDecimal(r.LengthMeters));
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.EnteredByUserId), r.EnteredByUserId);
             DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.EnteredAt), r.EnteredAt);
+            DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.DraftRollNumber), r.DraftRollNumber);
+            DomainHydrator.Set(roll, nameof(SalesInvoiceRollDetail.DraftLengthMeters), r.DraftLengthMeters);
             return roll;
         }).ToList();
 

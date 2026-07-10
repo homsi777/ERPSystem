@@ -208,6 +208,7 @@ public static class SalesInvoiceMapper
         InvoiceDate = aggregate.InvoiceDate,
         PaymentType = aggregate.PaymentType,
         PartialPaymentAmount = aggregate.PartialPaymentAmount?.Amount ?? 0,
+        CashboxId = aggregate.CashboxId,
         SubTotal = aggregate.SubTotal.Amount,
         DiscountTotal = aggregate.DiscountTotal.Amount,
         TaxTotal = aggregate.TaxTotal.Amount,
@@ -230,6 +231,7 @@ public static class SalesInvoiceMapper
             {
                 Id = i.Id,
                 LineNumber = i.LineNumber,
+                ChinaContainerId = i.ChinaContainerId,
                 FabricItemId = i.FabricItemId,
                 FabricColorId = i.FabricColorId,
                 RollCount = i.RollCount,
@@ -249,17 +251,27 @@ public static class SalesInvoiceMapper
         InvoiceId = aggregate.Id,
         InvoiceNumber = aggregate.InvoiceNumber.Value,
         CustomerName = customerName,
+        WarehouseId = aggregate.WarehouseId,
         ChinaContainerId = aggregate.ChinaContainerId,
         SentToWarehouseAt = aggregate.SentToWarehouseAt,
         RepresentativeUnitPrice = aggregate.Items.FirstOrDefault()?.UnitPrice.Amount,
         Status = aggregate.DetailingSession?.Status ?? WarehouseDetailingStatus.Pending,
-        Rolls = aggregate.RollDetails.Select(r => new WarehouseDetailingRollDto
+        Rolls = aggregate.RollDetails.Select(r =>
         {
-            RollDetailId = r.Id,
-            SalesInvoiceItemId = r.SalesInvoiceItemId,
-            RollSequence = r.RollSequence.Value,
-            LengthMeters = r.LengthMeters.Value,
-            HasValidLength = r.HasValidLength
+            var item = aggregate.Items.FirstOrDefault(i => i.Id == r.SalesInvoiceItemId);
+            return new WarehouseDetailingRollDto
+            {
+                RollDetailId = r.Id,
+                SalesInvoiceItemId = r.SalesInvoiceItemId,
+                RollSequence = r.RollSequence.Value,
+                FabricItemId = item?.FabricItemId ?? Guid.Empty,
+                FabricColorId = item?.FabricColorId ?? Guid.Empty,
+                LengthMeters = r.LengthMeters.Value,
+                HasValidLength = r.HasValidLength,
+                ChinaContainerId = item?.ChinaContainerId ?? aggregate.ChinaContainerId,
+                DraftRollNumber = r.DraftRollNumber,
+                DraftLengthMeters = r.DraftLengthMeters
+            };
         }).ToList()
     };
 

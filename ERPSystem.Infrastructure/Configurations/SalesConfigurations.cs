@@ -16,7 +16,9 @@ internal sealed class SalesInvoiceConfiguration : IEntityTypeConfiguration<Sales
         builder.Property(x => x.DiscountTotal).HasPrecision(18, 2);
         builder.Property(x => x.TaxTotal).HasPrecision(18, 2);
         builder.Property(x => x.GrandTotal).HasPrecision(18, 2);
+        builder.Property(x => x.PartialPaymentAmount).HasPrecision(18, 2);
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
+        builder.HasIndex(x => x.CashboxId);
         builder.HasQueryFilter(x => x.IsActive && !x.IsArchived);
     }
 }
@@ -34,6 +36,8 @@ internal sealed class SalesInvoiceItemConfiguration : IEntityTypeConfiguration<S
         builder.Property(x => x.DiscountReason).HasMaxLength(300);
         builder.Property(x => x.Notes).HasMaxLength(500);
         builder.HasIndex(x => new { x.SalesInvoiceId, x.LineNumber }).IsUnique();
+        builder.HasIndex(x => x.ChinaContainerId);
+        builder.HasIndex(x => new { x.SalesInvoiceId, x.ChinaContainerId });
     }
 }
 
@@ -44,7 +48,9 @@ internal sealed class SalesInvoiceRollDetailConfiguration : IEntityTypeConfigura
         builder.ToTable("sales_invoice_roll_details", Schemas.Sales);
         builder.HasKey(x => x.Id);
         builder.Property(x => x.LengthMeters).HasPrecision(18, 4);
+        builder.Property(x => x.DraftLengthMeters).HasPrecision(18, 4);
         builder.HasIndex(x => new { x.SalesInvoiceItemId, x.RollSequence }).IsUnique();
+        builder.HasIndex(x => x.FabricRollId);
     }
 }
 

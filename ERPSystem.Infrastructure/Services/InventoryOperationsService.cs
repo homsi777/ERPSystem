@@ -20,17 +20,17 @@ internal sealed class InventoryOperationsService(
 
     public async Task ValidateInvoiceLinesAsync(
         Guid warehouseId,
-        Guid containerId,
-        IReadOnlyList<(Guid FabricItemId, Guid FabricColorId, int RollCount)> lines,
+        IReadOnlyList<(Guid ChinaContainerId, Guid FabricItemId, Guid FabricColorId, int RollCount)> lines,
         CancellationToken cancellationToken = default)
     {
-        await ValidateContainerForSaleAsync(containerId, cancellationToken);
+        foreach (var containerId in lines.Select(l => l.ChinaContainerId).Distinct())
+            await ValidateContainerForSaleAsync(containerId, cancellationToken);
 
         foreach (var line in lines)
         {
             var availableRolls = await context.FabricRolls.AsNoTracking()
                 .CountAsync(r =>
-                    r.ContainerId == containerId &&
+                    r.ContainerId == line.ChinaContainerId &&
                     r.WarehouseId == warehouseId &&
                     r.FabricItemId == line.FabricItemId &&
                     r.FabricColorId == line.FabricColorId &&

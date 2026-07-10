@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
+  getFabricRollSalesReservations,
   getFabricRollsByStock,
   getFabricStock,
   getInventoryAlerts,
@@ -9,7 +10,12 @@ import {
   getInventoryWarehouses
 } from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
-import type { FabricRollListDto, FabricStockBalanceDto, InventoryAlertDto } from '../api/types.ts';
+import type {
+  FabricRollListDto,
+  FabricRollSalesReservationDto,
+  FabricStockBalanceDto,
+  InventoryAlertDto
+} from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
@@ -37,10 +43,83 @@ function rollStatusLabel(status: string) {
   return rollStatusLabels[status] ?? status;
 }
 
+type FabricSearchInsight = {
+  fabricItemId: string;
+  fabricCode: string;
+  fabricName: string;
+  containerCount: number;
+  totalRolls: number;
+  totalMeters: number;
+  availableMeters: number;
+  locations: {
+    containerId: string;
+    containerNumber: string;
+    warehouseName: string;
+    rollCount: number;
+    totalMeters: number;
+    colorCount: number;
+  }[];
+};
+
+function buildSearchInsights(rows: FabricStockBalanceDto[]): FabricSearchInsight[] {
+  const byFabric = new Map<string, FabricStockBalanceDto[]>();
+  for (const row of rows) {
+    const key = row.fabricItemId;
+    const list = byFabric.get(key) ?? [];
+    list.push(row);
+    byFabric.set(key, list);
+  }
+
+  return [...byFabric.entries()]
+    .map(([, group]) => {
+      const first = group[0]!;
+      const byContainer = new Map<string, FabricStockBalanceDto[]>();
+      for (const row of group) {
+        const cKey = `${row.containerId}|${row.warehouseId}`;
+        const list = byContainer.get(cKey) ?? [];
+        list.push(row);
+        byContainer.set(cKey, list);
+      }
+
+      const locations = [...byContainer.values()]
+        .map((cg) => {
+          const c0 = cg[0]!;
+          return {
+            containerId: c0.containerId,
+            containerNumber: c0.containerNumber || '—',
+            warehouseName: c0.warehouseName,
+            rollCount: cg.reduce((s, r) => s + r.rollCount, 0),
+            totalMeters: cg.reduce((s, r) => s + r.totalMeters, 0),
+            colorCount: new Set(cg.map((r) => r.fabricColorId)).size
+          };
+        })
+        .sort((a, b) => b.rollCount - a.rollCount);
+
+      return {
+        fabricItemId: first.fabricItemId,
+        fabricCode: first.fabricCode,
+        fabricName: first.fabricName,
+        containerCount: locations.length,
+        totalRolls: group.reduce((s, r) => s + r.rollCount, 0),
+        totalMeters: group.reduce((s, r) => s + r.totalMeters, 0),
+        availableMeters: group.reduce((s, r) => s + r.availableMeters, 0),
+        locations
+      };
+    })
+    .sort((a, b) => b.totalRolls - a.totalRolls);
+}
+
 export function InventoryPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [containerId, setContainerId] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedRow, setSelectedRow] = useState<FabricStockBalanceDto | null>(null);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 280);
+    return () => window.clearTimeout(handle);
+  }, [searchInput]);
 
   const warehousesQuery = useQuery({
     queryKey: ['inventory', 'warehouses'],
@@ -57,15 +136,17 @@ export function InventoryPage() {
     queryFn: () => getInventoryAlerts()
   });
 
-  // Fetch stock by warehouse only; container is filtered client-side (same as desktop).
+  const serverSearch = debouncedSearch.length >= 2 ? debouncedSearch : undefined;
+
+  // Server search when term ≥ 2 chars; otherwise load by warehouse and filter client-side.
   const stockQuery = useQuery({
-    queryKey: ['inventory', 'stock', warehouseId],
-    queryFn: () => getFabricStock(warehouseId || undefined)
+    queryKey: ['inventory', 'stock', warehouseId, serverSearch ?? ''],
+    queryFn: () => getFabricStock(warehouseId || undefined, serverSearch)
   });
 
   const dashboard = dashboardQuery.data;
   const showWarehouseName = warehouseId.length === 0;
-  const isFiltered = warehouseId.length > 0 || containerId.length > 0;
+  const isFiltered = warehouseId.length > 0 || containerId.length > 0 || debouncedSearch.length > 0;
 
   const containerOptions = useMemo(() => {
     const rows = stockQuery.data ?? [];
@@ -82,12 +163,28 @@ export function InventoryPage() {
   }, [stockQuery.data, warehouseId]);
 
   const filteredStock = useMemo(() => {
-    const rows = stockQuery.data ?? [];
-    if (!containerId) {
-      return rows;
+    let rows = stockQuery.data ?? [];
+    if (containerId) {
+      rows = rows.filter((row) => row.containerId === containerId);
     }
-    return rows.filter((row) => row.containerId === containerId);
-  }, [stockQuery.data, containerId]);
+    // Client-side refine for short terms (< 2) or extra local match when server already filtered.
+    if (debouncedSearch.length > 0 && debouncedSearch.length < 2) {
+      const term = debouncedSearch.toLowerCase();
+      rows = rows.filter(
+        (row) =>
+          row.fabricName.toLowerCase().includes(term) ||
+          row.fabricCode.toLowerCase().includes(term) ||
+          row.colorName.toLowerCase().includes(term) ||
+          (row.containerNumber ?? '').toLowerCase().includes(term)
+      );
+    }
+    return rows;
+  }, [stockQuery.data, containerId, debouncedSearch]);
+
+  const searchInsights = useMemo(
+    () => (debouncedSearch.length >= 2 ? buildSearchInsights(filteredStock) : []),
+    [filteredStock, debouncedSearch]
+  );
 
   const headerSummaryValues = useMemo(() => {
     if (stockQuery.isSuccess) {
@@ -153,12 +250,25 @@ export function InventoryPage() {
 
       <section className="form-panel form-compact form-panel--filter" aria-label="تصفية المخزون">
         <div className="form-section-head">
-          <h2>التصفية</h2>
+          <h2>التصفية والبحث الذكي</h2>
           <Link className="chip-button" to="/inventory/movements">
             حركة المخزون
           </Link>
         </div>
+        <p className="form-hint" style={{ marginBottom: 12 }}>
+          ابحث باسم التوب لمعرفة في أي حاوية موجود، وكم العدد والأمتار في كل حاوية.
+        </p>
         <div className="form-field-row form-field-row--2">
+          <label className="form-field" style={{ gridColumn: '1 / -1' }}>
+            <span className="form-field__label">بحث ذكي</span>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="اسم التوب، الكود، اللون، أو رقم الحاوية…"
+              autoComplete="off"
+            />
+          </label>
           <label className="form-field">
             <span className="form-field__label">المستودع</span>
             <select
@@ -195,6 +305,39 @@ export function InventoryPage() {
         ) : null}
       </section>
 
+      {searchInsights.length > 0 ? (
+        <section className="form-panel form-compact" aria-label="نتائج البحث الذكي">
+          <div className="form-section-head">
+            <h2>
+              نتائج «{debouncedSearch}» — {formatNumber(searchInsights.length)} توب في{' '}
+              {formatNumber(new Set(filteredStock.map((r) => r.containerId)).size)} حاوية
+            </h2>
+          </div>
+          <div className="page-stack" style={{ gap: 10 }}>
+            {searchInsights.slice(0, 8).map((insight) => (
+              <div key={insight.fabricItemId} className="data-card" style={{ padding: 14 }}>
+                <strong>
+                  {insight.fabricName} ({insight.fabricCode})
+                </strong>
+                <p className="form-hint" style={{ margin: '6px 0 8px' }}>
+                  موجود في {formatNumber(insight.containerCount)} حاوية • {formatNumber(insight.totalRolls)} ثوب •{' '}
+                  {formatMeters(insight.totalMeters)} • متاح {formatMeters(insight.availableMeters)}
+                </p>
+                <ul style={{ margin: 0, paddingInlineStart: 18, lineHeight: 1.7 }}>
+                  {insight.locations.slice(0, 12).map((loc) => (
+                    <li key={`${loc.containerId}-${loc.warehouseName}`}>
+                      حاوية {loc.containerNumber} — {loc.warehouseName} — {formatNumber(loc.rollCount)} ثوب —{' '}
+                      {formatMeters(loc.totalMeters)}
+                      {loc.colorCount > 1 ? ` — ${loc.colorCount} ألوان` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {stockQuery.isLoading ? <LoadingState /> : null}
 
       {stockQuery.isError ? (
@@ -208,9 +351,11 @@ export function InventoryPage() {
         <EmptyState
           title="لا توجد أرصدة مخزون"
           description={
-            isFiltered
-              ? 'لا توجد أثواب مطابقة للمستودع/الحاوية المحددين.'
-              : 'ستظهر الأقمشة هنا بعد ترحيلها إلى المستودع.'
+            debouncedSearch.length > 0
+              ? `لا توجد نتائج مطابقة لـ «${debouncedSearch}».`
+              : isFiltered
+                ? 'لا توجد أثواب مطابقة للمستودع/الحاوية المحددين.'
+                : 'ستظهر الأقمشة هنا بعد ترحيلها إلى المستودع.'
           }
         />
       ) : null}
@@ -270,6 +415,18 @@ function RollDetailsModal({ row, onClose }: { row: FabricStockBalanceDto; onClos
   });
 
   const rolls = rollsQuery.data ?? [];
+  const reservationsQuery = useQuery({
+    queryKey: ['inventory', 'roll-sales-reservations', rolls.map((roll) => roll.id).join(',')],
+    queryFn: () => getFabricRollSalesReservations(rolls.map((roll) => roll.id)),
+    enabled: rolls.length > 0
+  });
+  const reservations = useMemo(() => {
+    const map = new Map<string, FabricRollSalesReservationDto>();
+    for (const reservation of reservationsQuery.data ?? []) {
+      map.set(reservation.fabricRollId, reservation);
+    }
+    return map;
+  }, [reservationsQuery.data]);
   const totalRemaining = rolls.reduce((sum, roll) => sum + roll.remainingLengthMeters, 0);
   const totalValue = rolls.reduce((sum, roll) => sum + roll.currentValue, 0);
 
@@ -311,11 +468,12 @@ function RollDetailsModal({ row, onClose }: { row: FabricStockBalanceDto; onClos
                   <th>القيمة $</th>
                   <th>الموقع</th>
                   <th>الحالة</th>
+                  <th>حجز بيع</th>
                 </tr>
               </thead>
               <tbody>
                 {rolls.map((roll) => (
-                  <RollRow key={roll.id} roll={roll} />
+                  <RollRow key={roll.id} roll={roll} reservation={reservations.get(roll.id)} />
                 ))}
               </tbody>
             </table>
@@ -326,7 +484,13 @@ function RollDetailsModal({ row, onClose }: { row: FabricStockBalanceDto; onClos
   );
 }
 
-function RollRow({ roll }: { roll: FabricRollListDto }) {
+function RollRow({
+  roll,
+  reservation
+}: {
+  roll: FabricRollListDto;
+  reservation?: FabricRollSalesReservationDto;
+}) {
   return (
     <tr>
       <td>{roll.rollNumber}</td>
@@ -338,6 +502,15 @@ function RollRow({ roll }: { roll: FabricRollListDto }) {
       <td>{formatCurrency(roll.currentValue)}</td>
       <td>{roll.locationCode ?? '—'}</td>
       <td>{rollStatusLabel(roll.status)}</td>
+      <td>
+        {reservation ? (
+          <Link className="status-pill status-pill--amber" to={`/sales/${reservation.salesInvoiceId}`}>
+            مسودة بيع {reservation.salesInvoiceNumber}
+          </Link>
+        ) : (
+          'â€”'
+        )}
+      </td>
     </tr>
   );
 }

@@ -13,12 +13,14 @@ public sealed class CreateSalesInvoiceDraftCommand
     public PaymentType PaymentType { get; init; }
     public decimal DiscountAmount { get; init; }
     public decimal? PartialPaymentAmount { get; init; }
+    public Guid? CashboxId { get; init; }
     public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
 }
 
 public sealed class SalesInvoiceLineCommand
 {
     public int LineNumber { get; init; }
+    public Guid ChinaContainerId { get; init; }
     public Guid FabricItemId { get; init; }
     public Guid FabricColorId { get; init; }
     public int RollCount { get; init; }
@@ -40,6 +42,7 @@ public sealed class UpdateSalesInvoiceDraftCommand
     public PaymentType PaymentType { get; init; }
     public decimal DiscountAmount { get; init; }
     public decimal? PartialPaymentAmount { get; init; }
+    public Guid? CashboxId { get; init; }
     public IReadOnlyList<SalesInvoiceLineCommand> Lines { get; init; } = [];
 }
 
@@ -67,6 +70,25 @@ public sealed class RollLengthEntryCommand
     public int? RollNumber { get; init; }
     /// <summary>Manual length in meters. Required when <see cref="RollNumber"/> is not provided.</summary>
     public decimal LengthMeters { get; init; }
+}
+
+/// <summary>
+/// Persists partial detailing progress (whatever the employee has typed so far) without requiring
+/// every roll line to be complete and without changing invoice status. Distinct from
+/// <see cref="CompleteWarehouseDetailingCommand"/>, which remains the sole all-or-nothing gate
+/// before status becomes Detailed.
+/// </summary>
+public sealed class SaveWarehouseDetailingDraftCommand
+{
+    public Guid InvoiceId { get; init; }
+    public IReadOnlyList<RollDraftEntryCommand> RollEntries { get; init; } = [];
+}
+
+public sealed class RollDraftEntryCommand
+{
+    public Guid RollDetailId { get; init; }
+    public int? RollNumber { get; init; }
+    public decimal? LengthMeters { get; init; }
 }
 
 public sealed class ApproveSalesInvoiceCommand

@@ -249,8 +249,8 @@ public static class SalesPopupService
             "تأكيد التسليم",
             $"{row.InvoiceNumber} — {row.CustomerName}",
             "\uE7C1",
-            width: 540,
-            maxHeight: 520);
+            width: 620,
+            maxHeight: 640);
         host.SetBody(body);
         _active = host;
         var ok = host.ShowDialog() == true;
@@ -290,6 +290,7 @@ public static class SalesPopupService
 
     public static void ShowReturnsForInvoice(SalesInvoiceListRow row)
     {
+        SalesNavigationContext.BeginViewReturns(row.Id, row.InvoiceNumber);
         MockInteractionService.Navigate(AppModule.Sales, "Returns");
     }
 
@@ -301,12 +302,49 @@ public static class SalesPopupService
         SalesDocumentService.ShowInvoicePreview(oc.Value.Invoice, row.CustomerName, exportPdf);
     }
 
-    public static void CallCustomer(SalesInvoiceListRow row)
+    public static async Task CallCustomerAsync(SalesInvoiceListRow row)
     {
-        MockInteractionService.ShowInfo(
-            $"العميل: {row.CustomerName}\nرقم الفاتورة: {row.InvoiceNumber}\n\n(استخدم بيانات العميل من مركز عمليات العميل)",
-            "اتصل بالعميل");
+        if (!AppServices.IsInitialized)
+        {
+            MockInteractionService.ShowInfo(
+                $"العميل: {row.CustomerName}\nرقم الفاتورة: {row.InvoiceNumber}",
+                "اتصل بالعميل");
+            return;
+        }
+
+        var oc = await SalesUiService.Instance.GetOperationsCenterAsync(row.Id);
+        var phone = oc.IsSuccess ? oc.Value?.CustomerPhone?.Trim() : null;
+
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            MockInteractionService.ShowInfo(
+                $"العميل: {row.CustomerName}\nرقم الفاتورة: {row.InvoiceNumber}\n\nلا يوجد رقم هاتف مسجّل لهذا العميل.",
+                "اتصل بالعميل");
+            return;
+        }
+
+        var copy = MessageBox.Show(
+            $"العميل: {row.CustomerName}\nالهاتف: {phone}\nرقم الفاتورة: {row.InvoiceNumber}\n\nهل تريد نسخ رقم الهاتف؟",
+            "اتصل بالعميل",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information);
+
+        if (copy == MessageBoxResult.Yes)
+        {
+            try
+            {
+                Clipboard.SetText(phone);
+                MockInteractionService.ShowSuccess("تم نسخ رقم الهاتف.", "اتصل بالعميل");
+            }
+            catch
+            {
+                MockInteractionService.ShowWarning("تعذّر نسخ رقم الهاتف.", "اتصل بالعميل");
+            }
+        }
     }
+
+    /// <summary>Compatibility wrapper for sync call sites.</summary>
+    public static void CallCustomer(SalesInvoiceListRow row) => _ = CallCustomerAsync(row);
 
     public static void CompleteSuccess()
     {

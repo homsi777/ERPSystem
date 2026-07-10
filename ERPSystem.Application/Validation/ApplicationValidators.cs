@@ -53,8 +53,7 @@ public static class ApplicationValidators
         ValidateSalesInvoiceDraft(
             command.CustomerId,
             command.WarehouseId,
-            command.ChinaContainerId,
-            command.Lines.Count);
+            command.Lines);
 
     public static ApplicationResult? Validate(UpdateSalesInvoiceDraftCommand command)
     {
@@ -64,25 +63,26 @@ public static class ApplicationValidators
         return ValidateSalesInvoiceDraft(
             command.CustomerId,
             command.WarehouseId,
-            command.ChinaContainerId,
-            command.Lines.Count);
+            command.Lines);
     }
 
     private static ApplicationResult? ValidateSalesInvoiceDraft(
         Guid customerId,
         Guid warehouseId,
-        Guid chinaContainerId,
-        int lineCount)
+        IReadOnlyList<SalesInvoiceLineCommand> lines)
     {
         var errors = new List<ValidationError>();
         if (customerId == Guid.Empty)
             errors.Add(new ValidationError("CustomerId", "Customer is required."));
         if (warehouseId == Guid.Empty)
             errors.Add(new ValidationError("WarehouseId", "Warehouse is required."));
-        if (chinaContainerId == Guid.Empty)
-            errors.Add(new ValidationError("ChinaContainerId", "China container is required."));
-        if (lineCount == 0)
+        if (lines.Count == 0)
             errors.Add(new ValidationError("Lines", "At least one line item is required."));
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].ChinaContainerId == Guid.Empty)
+                errors.Add(new ValidationError($"Lines[{i}].ChinaContainerId", "China container is required for every line."));
+        }
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 
@@ -108,6 +108,23 @@ public static class ApplicationValidators
                     $"RollEntries[{i}]",
                     "أدخل رقم التوب (سيريال) أو الطول بالمتر."));
             }
+        }
+
+        return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
+    }
+
+    public static ApplicationResult? Validate(SaveWarehouseDetailingDraftCommand command)
+    {
+        if (command.InvoiceId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.InvoiceId), "Invoice is required.");
+        if (command.RollEntries.Count == 0)
+            return ApplicationResult.ValidationFailed(nameof(command.RollEntries), "Roll entries are required.");
+
+        var errors = new List<ValidationError>();
+        for (var i = 0; i < command.RollEntries.Count; i++)
+        {
+            if (command.RollEntries[i].RollDetailId == Guid.Empty)
+                errors.Add(new ValidationError($"RollEntries[{i}].RollDetailId", "Roll detail is required."));
         }
 
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;

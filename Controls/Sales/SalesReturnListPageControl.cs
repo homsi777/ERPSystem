@@ -20,15 +20,41 @@ public sealed class SalesReturnListPageControl : UserControl
         ["كل الحالات", "مسودة", "مُرحّل", "ملغى"], 130);
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(300) };
     private string _search = "";
+    private Guid? _filterOriginalInvoiceId;
+    private string? _filterOriginalInvoiceNumber;
 
     public SalesReturnListPageControl()
     {
         Content = _page;
         Configure();
-        Loaded += async (_, _) => await ReloadAsync();
+        Loaded += OnLoaded;
         Unloaded += (_, _) => SalesReturnListRefreshHub.RefreshRequested -= OnRefresh;
         SalesReturnListRefreshHub.RefreshRequested += OnRefresh;
         _timer.Tick += async (_, _) => { _timer.Stop(); await ReloadAsync(); };
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        var (invoiceId, invoiceNumber) = SalesNavigationContext.TakeReturnsFilter();
+        _filterOriginalInvoiceId = invoiceId;
+        _filterOriginalInvoiceNumber = invoiceNumber;
+        ApplyHeader();
+        await ReloadAsync();
+    }
+
+    private void ApplyHeader()
+    {
+        if (_filterOriginalInvoiceId.HasValue)
+        {
+            var label = string.IsNullOrWhiteSpace(_filterOriginalInvoiceNumber)
+                ? "مرتجعات الفاتورة"
+                : $"مرتجعات {_filterOriginalInvoiceNumber}";
+            _page.SetHeader(label, "مرتجعات مرتبطة بهذه الفاتورة فقط", "\uE72C", B("AccentSalesBrush"));
+        }
+        else
+        {
+            _page.SetHeader("مرتجعات البيع", "قائمة مرتجعات فواتير البيع", "\uE72C", B("AccentSalesBrush"));
+        }
     }
 
     private void OnRefresh(object? sender, EventArgs e) => _ = ReloadAsync();
@@ -36,7 +62,7 @@ public sealed class SalesReturnListPageControl : UserControl
     private void Configure()
     {
         _page.Configure(Core.Actions.EntityType.SalesInvoice, AppModule.Sales);
-        _page.SetHeader("مرتجعات البيع", "قائمة مرتجعات فواتير البيع", "\uE72C", B("AccentSalesBrush"));
+        ApplyHeader();
         _page.SetPrimaryButton("مرتجع بيع جديد");
         _page.SetEmptyState("لا توجد مرتجعات بيع", "مرتجع بيع جديد", "\uE72C");
         _page.EnableServerSideSearch();
@@ -79,7 +105,9 @@ public sealed class SalesReturnListPageControl : UserControl
                 _ => null
             };
 
-            var result = await SalesReturnUiService.Instance.GetListAsync(status);
+            var result = await SalesReturnUiService.Instance.GetListAsync(
+                status,
+                originalInvoiceId: _filterOriginalInvoiceId);
             if (!ApplicationResultPresenter.Present(result) || result.Value is null) return;
 
             var rows = result.Value

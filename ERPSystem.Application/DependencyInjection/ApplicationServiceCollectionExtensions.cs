@@ -235,6 +235,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<UpdateSalesInvoiceDiscountCommand, ApplicationResult>, UpdateSalesInvoiceDiscountHandler>();
         services.AddScoped<ICommandHandler<SendSalesInvoiceToWarehouseCommand, ApplicationResult>, SendSalesInvoiceToWarehouseHandler>();
         services.AddScoped<ICommandHandler<CompleteWarehouseDetailingCommand, ApplicationResult>, CompleteWarehouseDetailingHandler>();
+        services.AddScoped<ICommandHandler<SaveWarehouseDetailingDraftCommand, ApplicationResult>, SaveWarehouseDetailingDraftHandler>();
         services.AddScoped<ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>, ApproveSalesInvoiceHandler>();
         services.AddScoped<ICommandHandler<CancelSalesInvoiceCommand, ApplicationResult>, CancelSalesInvoiceHandler>();
         services.AddScoped<ICommandHandler<ConfirmSalesInvoiceDeliveryCommand, ApplicationResult>, ConfirmSalesInvoiceDeliveryHandler>();
@@ -347,6 +348,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetSalesInvoiceOperationsCenterHandler>();
         services.AddScoped<GetWarehouseDetailingQueueHandler>();
         services.AddScoped<GetSalesWarehouseStockHandler>();
+        services.AddScoped<GetFabricRollSalesReservationsHandler>();
+        services.AddScoped<GetDetailingCandidateRollsHandler>();
         services.AddScoped<CheckSalesInvoiceBelowCostHandler>();
         services.AddScoped<GetReportPreviewHandler>();
         services.AddScoped<GetModuleReportHandler>();

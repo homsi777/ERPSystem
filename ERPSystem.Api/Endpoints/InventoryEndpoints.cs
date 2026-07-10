@@ -26,6 +26,12 @@ public static class InventoryEndpoints
         group.MapGet("/rolls-by-stock", GetFabricRollsByStockAsync)
             .WithName("GetInventoryFabricRollsByStock");
 
+        group.MapGet("/roll-sales-reservations", GetRollSalesReservationsAsync)
+            .WithName("GetInventoryRollSalesReservations");
+
+        group.MapGet("/detailing-candidate-rolls", GetDetailingCandidateRollsAsync)
+            .WithName("GetInventoryDetailingCandidateRolls");
+
         group.MapGet("/dashboard", GetDashboardAsync)
             .WithName("GetInventoryDashboard");
 
@@ -40,6 +46,7 @@ public static class InventoryEndpoints
 
     private static async Task<IResult> GetFabricStockAsync(
         [FromQuery] Guid? warehouseId,
+        [FromQuery] string? search,
         ICurrentBranchService branchService,
         GetFabricStockBalancesHandler handler,
         CancellationToken cancellationToken)
@@ -52,7 +59,7 @@ public static class InventoryEndpoints
         }
 
         var result = await handler.HandleAsync(
-            new GetFabricStockBalancesQuery(branchId, warehouseId),
+            new GetFabricStockBalancesQuery(branchId, warehouseId, search),
             cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);
@@ -105,6 +112,35 @@ public static class InventoryEndpoints
     {
         var result = await handler.HandleAsync(
             new GetFabricRollsByStockQuery(warehouseId, containerId, fabricItemId, fabricColorId),
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetRollSalesReservationsAsync(
+        [FromQuery] Guid[] rollIds,
+        [FromQuery] Guid? excludeSalesInvoiceId,
+        GetFabricRollSalesReservationsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new GetFabricRollSalesReservationsQuery(rollIds, excludeSalesInvoiceId),
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetDetailingCandidateRollsAsync(
+        [FromQuery] Guid warehouseId,
+        [FromQuery] Guid containerId,
+        [FromQuery] Guid fabricItemId,
+        [FromQuery] Guid fabricColorId,
+        [FromQuery] Guid? excludeSalesInvoiceId,
+        GetDetailingCandidateRollsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new GetDetailingCandidateRollsQuery(warehouseId, containerId, fabricItemId, fabricColorId, excludeSalesInvoiceId),
             cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);

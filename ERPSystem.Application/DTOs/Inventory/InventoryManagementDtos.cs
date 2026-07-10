@@ -90,6 +90,32 @@ public sealed class FabricRollListDto
     public string? LotCode { get; init; }
 }
 
+public sealed class FabricRollSalesReservationDto
+{
+    public Guid FabricRollId { get; init; }
+    public Guid SalesInvoiceId { get; init; }
+    public string SalesInvoiceNumber { get; init; } = "";
+    public int SalesInvoiceStatus { get; init; }
+}
+
+/// <summary>
+/// Candidate physical roll for warehouse detailing, filtered by the exact same warehouse +
+/// container + fabric + color + status match that <c>InventoryEngine.ResolveDetailingEntriesAsync</c>
+/// uses at completion time, so a roll shown here is guaranteed to be accepted by the resolver.
+/// Reservation-by-another-invoice status is included in the same payload so the UI needs only
+/// one round trip to render both the roll and its warning state.
+/// </summary>
+public sealed class DetailingCandidateRollDto
+{
+    public Guid FabricRollId { get; init; }
+    public int RollNumber { get; init; }
+    public decimal RemainingLengthMeters { get; init; }
+    public string Status { get; init; } = "";
+    public Guid? ReservedInSalesInvoiceId { get; init; }
+    public string? ReservedInSalesInvoiceNumber { get; init; }
+    public int? ReservedInSalesInvoiceStatus { get; init; }
+}
+
 public sealed class PaginatedFabricRollDto
 {
     public IReadOnlyList<FabricRollListDto> Items { get; init; } = [];

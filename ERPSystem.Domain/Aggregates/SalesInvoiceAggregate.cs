@@ -21,6 +21,7 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     public DateTime InvoiceDate { get; private set; }
     public PaymentType PaymentType { get; private set; }
     public Money? PartialPaymentAmount { get; private set; }
+    public Guid? CashboxId { get; private set; }
     public SalesInvoiceStatus Status { get; private set; }
     public Money SubTotal { get; private set; } = Money.Zero();
     public Money DiscountTotal { get; private set; } = Money.Zero();
@@ -100,7 +101,8 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         Guid customerId,
         Guid warehouseId,
         Guid chinaContainerId,
-        PaymentType paymentType)
+        PaymentType paymentType,
+        Guid? cashboxId = null)
     {
         EnsureEditable();
         if (customerId == Guid.Empty)
@@ -114,8 +116,15 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         WarehouseId = warehouseId;
         ChinaContainerId = chinaContainerId;
         PaymentType = paymentType;
+        SetCashboxId(cashboxId);
         if (paymentType == PaymentType.Cash)
             PartialPaymentAmount = null;
+    }
+
+    public void SetCashboxId(Guid? cashboxId)
+    {
+        EnsureEditable();
+        CashboxId = cashboxId is Guid id && id != Guid.Empty ? id : null;
     }
 
     public void SetPartialPaymentAmount(Money? amount)
@@ -174,6 +183,31 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         detail.EnterLength(length, userId);
     }
 
+    /// <summary>
+    /// Persists partial detailing progress (some or all roll lines) without requiring every
+    /// line to be complete and without changing invoice status away from AwaitingDetailing.
+    /// This is a parallel, non-authoritative save — the final resolver/completion gate in
+    /// <see cref="CompleteDetailing"/> is unaffected. The first draft save also transitions the
+    /// detailing session from Pending to InProgress, since there is now something "in progress".
+    /// </summary>
+    public void SaveDetailingDraft(
+        IReadOnlyList<(Guid RollDetailId, int? RollNumber, decimal? LengthMeters)> entries,
+        Guid officerUserId)
+    {
+        EnsureStatus(SalesInvoiceStatus.AwaitingDetailing);
+
+        foreach (var entry in entries)
+        {
+            var detail = _rollDetails.FirstOrDefault(d => d.Id == entry.RollDetailId)
+                ?? throw new WarehouseDetailingException("Roll detail not found.");
+            detail.SaveDraft(entry.RollNumber, entry.LengthMeters);
+        }
+
+        _detailingSession ??= WarehouseDetailingSession.CreatePending(Id);
+        if (_detailingSession.Status == WarehouseDetailingStatus.Pending)
+            _detailingSession.Start(officerUserId);
+    }
+
     public void CompleteDetailing()
     {
         EnsureStatus(SalesInvoiceStatus.AwaitingDetailing);
@@ -223,11 +257,22 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     {
         EnsureStatus(SalesInvoiceStatus.Printed, SalesInvoiceStatus.Approved);
         Status = SalesInvoiceStatus.Delivered;
-        DeliveredAt = deliveredAt ?? DateTime.UtcNow;
+        DeliveredAt = NormalizeUtc(deliveredAt) ?? DateTime.UtcNow;
         DeliveredToName = receivedByName;
         DeliveryDriverName = driverName;
         DeliveryNotes = notes;
-        DeliveryNote.Create($"DN-{InvoiceNumber.Value}", Id, receivedByName);
+    }
+
+    private static DateTime? NormalizeUtc(DateTime? value)
+    {
+        if (value is null) return null;
+        return value.Value.Kind switch
+        {
+            DateTimeKind.Utc => value.Value,
+            DateTimeKind.Local => value.Value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Utc)
+                .Add(value.Value.TimeOfDay)
+        };
     }
 
     public void UpdateWarehouse(Guid warehouseId)

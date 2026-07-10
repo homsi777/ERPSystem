@@ -7,9 +7,14 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.Queries.Inventory;
+using ERPSystem.Application.UseCases.Inventory;
 using ERPSystem.Application.DTOs.Sales;
+using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Services;
 using ERPSystem.Services.Sales;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ERPSystem.Controls.Workspace
 {
@@ -140,7 +145,7 @@ namespace ERPSystem.Controls.Workspace
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
             _btnSave = new Button
             {
-                Content = "التحقق من الأطوال", Style = S("SecondaryButtonStyle"),
+                Content = "حفظ التقدم", Style = S("SecondaryButtonStyle"),
                 Height = 38, Padding = new Thickness(18, 0, 18, 0), Margin = new Thickness(0, 0, 8, 0), IsEnabled = false
             };
             _btnSave.Click += async (_, _) => await TryCompleteAsync(saveOnly: true);
@@ -177,10 +182,16 @@ namespace ERPSystem.Controls.Workspace
                     RollIndex = roll.RollSequence,
                     FabricCode = string.IsNullOrWhiteSpace(roll.FabricCode) ? "—" : roll.FabricCode,
                     Color = string.IsNullOrWhiteSpace(roll.ColorDisplayName) ? "—" : roll.ColorDisplayName,
-                    SerialText = "",
+                    // Previously-saved partial progress (Part 4) pre-populates the inputs so the
+                    // employee doesn't lose work; final resolved length always takes priority.
+                    SerialText = roll.DraftRollNumber is > 0
+                        ? roll.DraftRollNumber.Value.ToString(CultureInfo.InvariantCulture)
+                        : "",
                     LengthText = roll.HasValidLength && roll.LengthMeters > 0
                         ? roll.LengthMeters.ToString(CultureInfo.CurrentCulture)
-                        : "",
+                        : (roll.DraftLengthMeters is > 0
+                            ? roll.DraftLengthMeters.Value.ToString(CultureInfo.CurrentCulture)
+                            : ""),
                     IsCurrent = roll.RollSequence == 1
                 });
             }
@@ -196,24 +207,22 @@ namespace ERPSystem.Controls.Workspace
             if (_isSubmitting)
                 return;
 
+            if (saveOnly)
+            {
+                await SaveDraftAsync();
+                return;
+            }
+
             if (!ValidateAllRolls(out var message))
             {
                 MockInteractionService.ShowWarning(message, "تفصيل غير مكتمل");
                 return;
             }
 
-            if (saveOnly)
-            {
-                MockInteractionService.ShowSuccess(
-                    "جميع الأطوال مُدخلة بشكل صحيح.\nاضغط «إكمال التفصيل وإرسال للمحاسب» للحفظ النهائي.",
-                    "التحقق من الأطوال");
-                return;
-            }
-
             if (_invoiceId is null || !AppServices.IsInitialized)
                 return;
 
-            if (!saveOnly && !MockInteractionService.Confirm("إكمال التفصيل وحفظ الأطوال في النظام؟", "إكمال التفصيل"))
+            if (!MockInteractionService.Confirm("إكمال التفصيل وحفظ الأطوال في النظام؟", "إكمال التفصيل"))
                 return;
 
             _isSubmitting = true;
@@ -226,6 +235,9 @@ namespace ERPSystem.Controls.Workspace
                 }
 
                 var entries = BuildRollEntries();
+                if (!await ConfirmExternalRollReservationsAsync(entries))
+                    return;
+
                 var result = await SalesUiService.Instance.CompleteDetailingAsync(_invoiceId.Value, entries);
                 if (!ApplicationResultPresenter.Present(result))
                     return;
@@ -242,6 +254,58 @@ namespace ERPSystem.Controls.Workspace
             {
                 _isSubmitting = false;
             }
+        }
+
+        /// <summary>
+        /// Real partial-save (Part 4): persists whatever is currently typed — serial and/or length,
+        /// for any subset of rows — without requiring completeness and without resolving a fabric
+        /// roll. Upgrades this button from the previous local-only validation to an actual save.
+        /// </summary>
+        private async Task SaveDraftAsync()
+        {
+            if (_invoiceId is null || !AppServices.IsInitialized)
+                return;
+
+            _isSubmitting = true;
+            try
+            {
+                if (!await SalesUiService.Instance.CanCompleteDetailingAsync())
+                {
+                    MockInteractionService.ShowWarning("لا تملك صلاحية حفظ التفصيل.");
+                    return;
+                }
+
+                var entries = BuildDraftEntries();
+                var result = await SalesUiService.Instance.SaveDetailingDraftAsync(_invoiceId.Value, entries);
+                if (!ApplicationResultPresenter.Present(result))
+                    return;
+
+                DetailingQueueRefreshHub.RequestRefresh();
+                MockInteractionService.ShowSuccess(
+                    "تم حفظ التقدم الحالي. يمكنك إكمال الأثواب المتبقية لاحقاً.",
+                    "حفظ التفصيل");
+            }
+            finally
+            {
+                _isSubmitting = false;
+            }
+        }
+
+        private List<RollDraftEntryCommand> BuildDraftEntries()
+        {
+            var entries = new List<RollDraftEntryCommand>();
+            foreach (var row in _rows)
+            {
+                var hasSerial = TryParseSerial(row.SerialText, out var serial);
+                var hasLength = TryParseLength(row.LengthText, out var length);
+                entries.Add(new RollDraftEntryCommand
+                {
+                    RollDetailId = row.RollDetailId,
+                    RollNumber = hasSerial ? serial : null,
+                    LengthMeters = hasLength ? length : null
+                });
+            }
+            return entries;
         }
 
         private List<RollLengthEntryCommand> BuildRollEntries()
@@ -262,6 +326,53 @@ namespace ERPSystem.Controls.Workspace
                 });
             }
             return entries;
+        }
+
+        private async Task<bool> ConfirmExternalRollReservationsAsync(IReadOnlyList<RollLengthEntryCommand> entries)
+        {
+            if (_invoiceId is not Guid invoiceId || !AppServices.IsInitialized)
+                return true;
+
+            var serials = entries
+                .Where(e => e.RollNumber is > 0)
+                .Select(e => e.RollNumber!.Value)
+                .Distinct()
+                .ToList();
+            if (serials.Count == 0)
+                return true;
+
+            try
+            {
+                using var scope = AppServices.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
+                var rollIds = await db.FabricRolls.AsNoTracking()
+                    .Where(r => serials.Contains(r.RollNumber))
+                    .Select(r => r.Id)
+                    .ToListAsync();
+                if (rollIds.Count == 0)
+                    return true;
+
+                var handler = scope.ServiceProvider.GetRequiredService<GetFabricRollSalesReservationsHandler>();
+                var result = await handler.HandleAsync(
+                    new GetFabricRollSalesReservationsQuery(rollIds, invoiceId));
+
+                if (!result.IsSuccess || result.Value is null || result.Value.Count == 0)
+                    return true;
+
+                var invoices = string.Join("\n", result.Value
+                    .Select(r => $"• مسودة بيع {r.SalesInvoiceNumber}")
+                    .Distinct());
+
+                return MockInteractionService.Confirm(
+                    "تنبيه غير مانع: يوجد توب مذكور في فاتورة بيع أخرى بعد التفصيل:\n\n" +
+                    invoices +
+                    "\n\nهل تريد متابعة إكمال التفصيل؟",
+                    "حجز بيع سابق");
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         private static bool TryParseLength(string text, out decimal length)

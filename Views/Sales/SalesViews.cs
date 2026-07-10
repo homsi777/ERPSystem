@@ -29,14 +29,8 @@ namespace ERPSystem.Views.Sales
 
         private static UserControl BuildInvoiceView()
         {
-            var root = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(16) };
-            var stack = new StackPanel();
-            stack.Children.Add(ErpUiFactory.SectionTitle("عرض فاتورة بيع"));
-            stack.Children.Add(PlaceholderUi.EmptyMessage(
-                "يرجى اختيار فاتورة من قائمة فواتير البيع لعرضها",
-                "افتح قائمة الفواتير ثم اختر فاتورة لفتح مركز العمليات"));
-            root.Content = stack;
-            return Wrap(root);
+            // Legacy submodule entry — redirect users to the real invoice list / operations center flow.
+            return BuildInvoiceList();
         }
 
         private static UserControl BuildDetailing() => new WarehouseDetailingPageControl();

@@ -61,7 +61,7 @@ public sealed class GetFabricStockBalancesHandler(IInventoryManagementRepository
     public async Task<ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>> HandleAsync(
         GetFabricStockBalancesQuery query, CancellationToken cancellationToken = default) =>
         ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>.Success(
-            await repository.GetFabricStockBalancesAsync(query.BranchId, query.WarehouseId, cancellationToken));
+            await repository.GetFabricStockBalancesAsync(query.BranchId, query.WarehouseId, query.Search, cancellationToken));
 }
 
 public sealed class GetInventoryMovementsHandler(IInventoryManagementRepository repository)
@@ -121,6 +121,33 @@ public sealed class GetFabricRollsByStockHandler(IInventoryManagementRepository 
         ApplicationResult<IReadOnlyList<FabricRollListDto>>.Success(
             await repository.GetFabricRollsByStockAsync(
                 query.WarehouseId, query.ContainerId, query.FabricItemId, query.FabricColorId, cancellationToken));
+}
+
+public sealed class GetFabricRollSalesReservationsHandler(IInventoryManagementRepository repository)
+    : IQueryHandler<GetFabricRollSalesReservationsQuery, ApplicationResult<IReadOnlyList<FabricRollSalesReservationDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<FabricRollSalesReservationDto>>> HandleAsync(
+        GetFabricRollSalesReservationsQuery query, CancellationToken cancellationToken = default) =>
+        ApplicationResult<IReadOnlyList<FabricRollSalesReservationDto>>.Success(
+            await repository.GetFabricRollSalesReservationsAsync(
+                query.RollIds.Distinct().ToList(),
+                query.ExcludeSalesInvoiceId,
+                cancellationToken));
+}
+
+public sealed class GetDetailingCandidateRollsHandler(IInventoryManagementRepository repository)
+    : IQueryHandler<GetDetailingCandidateRollsQuery, ApplicationResult<IReadOnlyList<DetailingCandidateRollDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<DetailingCandidateRollDto>>> HandleAsync(
+        GetDetailingCandidateRollsQuery query, CancellationToken cancellationToken = default) =>
+        ApplicationResult<IReadOnlyList<DetailingCandidateRollDto>>.Success(
+            await repository.GetDetailingCandidateRollsAsync(
+                query.WarehouseId,
+                query.ContainerId,
+                query.FabricItemId,
+                query.FabricColorId,
+                query.ExcludeSalesInvoiceId,
+                cancellationToken));
 }
 
 public sealed class GetFabricRollsPageHandler(IInventoryManagementRepository repository)

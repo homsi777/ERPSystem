@@ -15,6 +15,7 @@ public sealed class SalesInvoiceDto
     public DateTime InvoiceDate { get; init; }
     public PaymentType PaymentType { get; init; }
     public decimal PartialPaymentAmount { get; init; }
+    public Guid? CashboxId { get; init; }
     public decimal SubTotal { get; init; }
     public decimal DiscountTotal { get; init; }
     public decimal TaxTotal { get; init; }
@@ -36,6 +37,7 @@ public sealed class SalesInvoiceLineDto
 {
     public Guid Id { get; init; }
     public int LineNumber { get; init; }
+    public Guid ChinaContainerId { get; init; }
     public Guid FabricItemId { get; init; }
     public Guid FabricColorId { get; init; }
     public string FabricDisplayName { get; init; } = "";
@@ -68,6 +70,7 @@ public sealed class WarehouseDetailingDto
     public Guid InvoiceId { get; init; }
     public string InvoiceNumber { get; init; } = "";
     public string CustomerName { get; init; } = "";
+    public Guid WarehouseId { get; init; }
     public Guid ChinaContainerId { get; init; }
     public DateTime? SentToWarehouseAt { get; init; }
     public decimal? RepresentativeUnitPrice { get; init; }
@@ -80,11 +83,25 @@ public sealed class WarehouseDetailingRollDto
     public Guid RollDetailId { get; init; }
     public Guid SalesInvoiceItemId { get; init; }
     public int RollSequence { get; init; }
+    public Guid FabricItemId { get; init; }
+    public Guid FabricColorId { get; init; }
     public string FabricDisplayName { get; init; } = "";
     public string FabricCode { get; init; } = "";
     public string ColorDisplayName { get; init; } = "";
     public decimal LengthMeters { get; init; }
     public bool HasValidLength { get; init; }
+
+    /// <summary>
+    /// The invoice LINE's own container (from the parent SalesInvoiceItem), which may differ from
+    /// the invoice header's primary container on multi-container invoices. Additive — the header
+    /// ChinaContainerId on <see cref="WarehouseDetailingDto"/> is unchanged and still primary/display.
+    /// </summary>
+    public Guid ChinaContainerId { get; init; }
+    public string ContainerDisplay { get; init; } = "";
+
+    /// <summary>Unresolved partial-save values (see Part 4) for pre-populating the UI on revisit.</summary>
+    public int? DraftRollNumber { get; init; }
+    public decimal? DraftLengthMeters { get; init; }
 }
 
 public sealed class SalesWarehouseStockOptionDto

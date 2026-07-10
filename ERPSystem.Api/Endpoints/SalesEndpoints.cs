@@ -96,6 +96,7 @@ public static class SalesEndpoints
             Lines = request.Lines.Select(l => new SalesInvoiceLineCommand
             {
                 LineNumber = l.LineNumber,
+                ChinaContainerId = l.ChinaContainerId,
                 FabricItemId = l.FabricItemId,
                 FabricColorId = l.FabricColorId,
                 RollCount = l.RollCount,
@@ -178,6 +179,7 @@ public static class SalesEndpoints
 
     private sealed record SalesInvoiceLineRequest(
         int LineNumber,
+        Guid ChinaContainerId,
         Guid FabricItemId,
         Guid FabricColorId,
         int RollCount,

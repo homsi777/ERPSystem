@@ -90,14 +90,77 @@ internal static class InventoryContainerFilterUi
     public static IReadOnlyList<FabricStockBalanceDto> ApplyFilters(
         IReadOnlyList<FabricStockBalanceDto> stock,
         Guid? warehouseId,
-        Guid? containerId)
+        Guid? containerId,
+        string? search = null)
     {
         IEnumerable<FabricStockBalanceDto> query = stock;
         if (warehouseId.HasValue)
             query = query.Where(s => s.WarehouseId == warehouseId.Value);
         if (containerId.HasValue)
             query = query.Where(s => s.ContainerId == containerId.Value);
-        return query.ToList();
+
+        var term = search?.Trim();
+        if (!string.IsNullOrWhiteSpace(term))
+        {
+            query = query.Where(s =>
+                ContainsIgnoreCase(s.FabricName, term) ||
+                ContainsIgnoreCase(s.FabricCode, term) ||
+                ContainsIgnoreCase(s.ColorName, term) ||
+                ContainsIgnoreCase(s.ContainerNumber, term) ||
+                ContainsIgnoreCase(s.WarehouseName, term));
+        }
+
+        return query
+            .OrderBy(s => s.FabricName)
+            .ThenBy(s => s.ColorName)
+            .ThenBy(s => s.ContainerNumber)
+            .ToList();
+    }
+
+    public static bool ContainsIgnoreCase(string? value, string term) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Smart insight: for a search hit, summarize where the fabric lives across containers.
+    /// </summary>
+    public static IReadOnlyList<FabricSearchInsight> BuildSearchInsights(
+        IReadOnlyList<FabricStockBalanceDto> filteredStock)
+    {
+        return filteredStock
+            .GroupBy(s => new { s.FabricItemId, s.FabricCode, s.FabricName })
+            .Select(g =>
+            {
+                var containers = g
+                    .GroupBy(x => new { x.ContainerId, x.ContainerNumber, x.WarehouseId, x.WarehouseName })
+                    .Select(cg => new FabricContainerLocation
+                    {
+                        ContainerId = cg.Key.ContainerId,
+                        ContainerNumber = cg.Key.ContainerNumber,
+                        WarehouseId = cg.Key.WarehouseId,
+                        WarehouseName = cg.Key.WarehouseName,
+                        RollCount = cg.Sum(x => x.RollCount),
+                        TotalMeters = cg.Sum(x => x.TotalMeters),
+                        AvailableMeters = cg.Sum(x => x.AvailableMeters),
+                        ColorCount = cg.Select(x => x.FabricColorId).Distinct().Count()
+                    })
+                    .OrderByDescending(c => c.RollCount)
+                    .ToList();
+
+                return new FabricSearchInsight
+                {
+                    FabricItemId = g.Key.FabricItemId,
+                    FabricCode = g.Key.FabricCode,
+                    FabricName = g.Key.FabricName,
+                    ContainerCount = containers.Count,
+                    TotalRolls = g.Sum(x => x.RollCount),
+                    TotalMeters = g.Sum(x => x.TotalMeters),
+                    AvailableMeters = g.Sum(x => x.AvailableMeters),
+                    Locations = containers
+                };
+            })
+            .OrderByDescending(i => i.TotalRolls)
+            .ToList();
     }
 
     public static IReadOnlyList<FabricStockBalanceDto> ScopeForWarehouse(
@@ -188,7 +251,7 @@ internal static class InventoryContainerFilterUi
     {
         panel.Children.Clear();
         panel.Children.Add(CreateMetricCard(
-            "إجمالي Rolls",
+            "إجمالي الأثواب",
             AppFormats.Number(stock.Sum(s => s.RollCount)),
             "\uE8CB",
             new("#F5F3FF", "#DDD6FE", "#7C3AED", "#5B21B6", "#6D28D9")));
@@ -228,7 +291,8 @@ internal static class InventoryContainerFilterUi
         string warehouseLabel,
         ComboBox warehouseCombo,
         string containerLabel,
-        ComboBox containerCombo)
+        ComboBox containerCombo,
+        UIElement? searchBox = null)
     {
         var row = new StackPanel
         {
@@ -236,7 +300,17 @@ internal static class InventoryContainerFilterUi
             Margin = new Thickness(0, 0, 0, 4)
         };
 
-        row.Children.Add(CreateFilterLabel(warehouseLabel));
+        if (searchBox is not null)
+        {
+            row.Children.Add(CreateFilterLabel("بحث ذكي:"));
+            row.Children.Add(searchBox);
+            row.Children.Add(CreateFilterLabel(warehouseLabel, new Thickness(16, 0, 10, 0)));
+        }
+        else
+        {
+            row.Children.Add(CreateFilterLabel(warehouseLabel));
+        }
+
         row.Children.Add(warehouseCombo);
         row.Children.Add(CreateFilterLabel(containerLabel, new Thickness(16, 0, 10, 0)));
         row.Children.Add(containerCombo);
@@ -255,4 +329,28 @@ internal static class InventoryContainerFilterUi
 
     private static SolidColorBrush HexBrush(string hex) =>
         new((Color)ColorConverter.ConvertFromString(hex)!);
+}
+
+internal sealed class FabricSearchInsight
+{
+    public Guid FabricItemId { get; init; }
+    public string FabricCode { get; init; } = "";
+    public string FabricName { get; init; } = "";
+    public int ContainerCount { get; init; }
+    public int TotalRolls { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public IReadOnlyList<FabricContainerLocation> Locations { get; init; } = [];
+}
+
+internal sealed class FabricContainerLocation
+{
+    public Guid ContainerId { get; init; }
+    public string ContainerNumber { get; init; } = "";
+    public Guid WarehouseId { get; init; }
+    public string WarehouseName { get; init; } = "";
+    public int RollCount { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public int ColorCount { get; init; }
 }

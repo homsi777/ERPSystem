@@ -2153,6 +2153,9 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid?>("CancelledByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CashboxId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ChinaContainerId")
                         .HasColumnType("uuid");
 
@@ -2233,6 +2236,8 @@ namespace ERPSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CashboxId");
+
                     b.HasIndex("CompanyId", "InvoiceNumber")
                         .IsUnique();
 
@@ -2249,6 +2254,9 @@ namespace ERPSystem.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChinaContainerId")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("DiscountAmount")
@@ -2314,6 +2322,10 @@ namespace ERPSystem.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChinaContainerId");
+
+                    b.HasIndex("SalesInvoiceId", "ChinaContainerId");
+
                     b.HasIndex("SalesInvoiceId", "LineNumber")
                         .IsUnique();
 
@@ -2331,6 +2343,13 @@ namespace ERPSystem.Infrastructure.Migrations
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("DraftRollNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("DraftLengthMeters")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<DateTime?>("EnteredAt")
                         .HasColumnType("timestamp with time zone");
@@ -2367,6 +2386,8 @@ namespace ERPSystem.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FabricRollId");
 
                     b.HasIndex("SalesInvoiceItemId", "RollSequence")
                         .IsUnique();

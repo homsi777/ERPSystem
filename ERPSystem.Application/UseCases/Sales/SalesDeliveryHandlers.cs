@@ -29,7 +29,17 @@ public sealed class ConfirmSalesInvoiceDeliveryHandler(
 
         try
         {
-            var deliveryDate = command.DeliveryDate == default ? DateTime.UtcNow : command.DeliveryDate;
+            // DatePicker returns Local/Unspecified — PostgreSQL timestamptz requires UTC.
+            var deliveryDate = command.DeliveryDate == default
+                ? DateTime.UtcNow
+                : command.DeliveryDate.Kind switch
+                {
+                    DateTimeKind.Utc => command.DeliveryDate,
+                    DateTimeKind.Local => command.DeliveryDate.ToUniversalTime(),
+                    _ => DateTime.SpecifyKind(command.DeliveryDate.Date, DateTimeKind.Utc)
+                        .Add(command.DeliveryDate.TimeOfDay)
+                };
+
             aggregate.Deliver(command.ReceivedByName, deliveryDate, command.DriverName, command.Notes);
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);

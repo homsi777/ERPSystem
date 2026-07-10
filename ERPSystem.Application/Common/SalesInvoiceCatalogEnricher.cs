@@ -23,6 +23,7 @@ public static class SalesInvoiceCatalogEnricher
             {
                 Id = line.Id,
                 LineNumber = line.LineNumber,
+                ChinaContainerId = line.ChinaContainerId,
                 FabricItemId = line.FabricItemId,
                 FabricColorId = line.FabricColorId,
                 FabricDisplayName = fabric?.NameAr ?? "—",
@@ -30,8 +31,11 @@ public static class SalesInvoiceCatalogEnricher
                 ColorDisplayName = color?.NameAr ?? "—",
                 RollCount = line.RollCount,
                 UnitPrice = line.UnitPrice,
+                OriginalUnitPrice = line.OriginalUnitPrice,
                 TotalLengthMeters = line.TotalLengthMeters,
                 LineTotal = line.LineTotal,
+                DiscountAmount = line.DiscountAmount,
+                DiscountReason = line.DiscountReason,
                 Notes = line.Notes
             });
         }
@@ -43,6 +47,7 @@ public static class SalesInvoiceCatalogEnricher
         SalesInvoiceAggregate aggregate,
         IReadOnlyList<WarehouseDetailingRollDto> rolls,
         IFabricCatalogRepository catalog,
+        IChinaContainerRepository containerRepository,
         CancellationToken cancellationToken = default)
     {
         if (rolls.Count == 0)
@@ -50,6 +55,20 @@ public static class SalesInvoiceCatalogEnricher
 
         var itemsById = aggregate.Items.ToDictionary(i => i.Id);
         var enriched = new List<WarehouseDetailingRollDto>(rolls.Count);
+        var containerDisplayCache = new Dictionary<Guid, string>();
+
+        async Task<string> ResolveContainerDisplayAsync(Guid containerId)
+        {
+            if (containerId == Guid.Empty)
+                return "—";
+            if (containerDisplayCache.TryGetValue(containerId, out var cached))
+                return cached;
+
+            var container = await containerRepository.GetByIdAsync(containerId, cancellationToken);
+            var display = container?.ContainerNumber.Value ?? "—";
+            containerDisplayCache[containerId] = display;
+            return display;
+        }
 
         foreach (var roll in rolls)
         {
@@ -60,11 +79,17 @@ public static class SalesInvoiceCatalogEnricher
                     RollDetailId = roll.RollDetailId,
                     SalesInvoiceItemId = roll.SalesInvoiceItemId,
                     RollSequence = roll.RollSequence,
+                    FabricItemId = roll.FabricItemId,
+                    FabricColorId = roll.FabricColorId,
                     FabricDisplayName = "—",
                     FabricCode = "—",
                     ColorDisplayName = "—",
                     LengthMeters = roll.LengthMeters,
-                    HasValidLength = roll.HasValidLength
+                    HasValidLength = roll.HasValidLength,
+                    ChinaContainerId = roll.ChinaContainerId,
+                    ContainerDisplay = await ResolveContainerDisplayAsync(roll.ChinaContainerId),
+                    DraftRollNumber = roll.DraftRollNumber,
+                    DraftLengthMeters = roll.DraftLengthMeters
                 });
                 continue;
             }
@@ -76,11 +101,17 @@ public static class SalesInvoiceCatalogEnricher
                 RollDetailId = roll.RollDetailId,
                 SalesInvoiceItemId = roll.SalesInvoiceItemId,
                 RollSequence = roll.RollSequence,
+                FabricItemId = item.FabricItemId,
+                FabricColorId = item.FabricColorId,
                 FabricDisplayName = fabric?.NameAr ?? "—",
                 FabricCode = fabric?.Code ?? "—",
                 ColorDisplayName = color?.NameAr ?? "—",
                 LengthMeters = roll.LengthMeters,
-                HasValidLength = roll.HasValidLength
+                HasValidLength = roll.HasValidLength,
+                ChinaContainerId = item.ChinaContainerId,
+                ContainerDisplay = await ResolveContainerDisplayAsync(item.ChinaContainerId),
+                DraftRollNumber = roll.DraftRollNumber,
+                DraftLengthMeters = roll.DraftLengthMeters
             });
         }
 

@@ -1,5 +1,6 @@
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
+using ERPSystem.Core.Sales;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Inventory;
@@ -9,6 +10,7 @@ using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
 using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Finance;
+using ERPSystem.Services.Sales;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -71,6 +73,12 @@ namespace ERPSystem.Services
 
             e.Handled = true;
             var entity = UnwrapEntity(item, entityType) ?? item;
+
+            if (entityType == EntityType.SalesInvoice && entity is SalesInvoiceListRow salesRow)
+            {
+                SalesContextMenuService.Show(salesRow, row);
+                return;
+            }
 
             if (entityType == EntityType.Warehouse && entity is WarehouseListExtendedDto wh)
             {
@@ -180,6 +188,12 @@ namespace ERPSystem.Services
             if (captured.RequiresConfirmation &&
                 !ConfirmationDialogService.ConfirmDangerous(captured.LabelAr, displayName))
                 return;
+
+            if (entityType == EntityType.SalesInvoice && entity is SalesInvoiceListRow salesRow)
+            {
+                SalesActionRouter.Handle(captured.Id, salesRow);
+                return;
+            }
 
             if (CustomerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                 return;

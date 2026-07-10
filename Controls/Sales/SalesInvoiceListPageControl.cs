@@ -20,7 +20,19 @@ public sealed class SalesInvoiceListPageControl : UserControl
 {
     private readonly ErpListModuleControl _page = new();
     private readonly ComboBox _statusFilter = ErpUiFactory.FilterCombo(
-        ["كل الحالات", "مسودة", "بانتظار التفصيل", "مفصلة", "معتمدة", "ملغاة"], 140);
+        [
+            "كل الحالات",
+            "مسودة",
+            "بانتظار التفصيل",
+            "مفصلة",
+            "جاهزة للاعتماد",
+            "معتمدة",
+            "مطبوعة",
+            "مُسلَّمة",
+            "مرتجع جزئي",
+            "مرتجعة",
+            "ملغاة"
+        ], 160);
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private string _pendingSearch = "";
     private int _totalCount;
@@ -110,26 +122,7 @@ public sealed class SalesInvoiceListPageControl : UserControl
                 return;
             SalesPopupService.ShowOperationsCenter(row);
         };
-
-        g.MouseRightButtonUp += (_, e) =>
-        {
-            if (e.OriginalSource is not DependencyObject dep) return;
-            var rowContainer = FindAncestor<DataGridRow>(dep);
-            if (rowContainer?.Item is not SalesInvoiceListRow row) return;
-            g.SelectedItem = row;
-            SalesContextMenuService.Show(row, g);
-            e.Handled = true;
-        };
-    }
-
-    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
-    {
-        while (current is not null)
-        {
-            if (current is T t) return t;
-            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
-        }
-        return null;
+        // Right-click task menu is handled by RowContextMenuService → SalesContextMenuService.
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -218,7 +211,12 @@ public sealed class SalesInvoiceListPageControl : UserControl
         "مسودة" => SalesInvoiceStatus.Draft,
         "بانتظار التفصيل" => SalesInvoiceStatus.AwaitingDetailing,
         "مفصلة" => SalesInvoiceStatus.Detailed,
+        "جاهزة للاعتماد" => SalesInvoiceStatus.ReadyForApproval,
         "معتمدة" => SalesInvoiceStatus.Approved,
+        "مطبوعة" => SalesInvoiceStatus.Printed,
+        "مُسلَّمة" => SalesInvoiceStatus.Delivered,
+        "مرتجع جزئي" => SalesInvoiceStatus.PartiallyReturned,
+        "مرتجعة" => SalesInvoiceStatus.Returned,
         "ملغاة" => SalesInvoiceStatus.Cancelled,
         _ => null
     };

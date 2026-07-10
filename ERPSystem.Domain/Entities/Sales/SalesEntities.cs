@@ -8,6 +8,7 @@ public class SalesInvoiceItem
 {
     public Guid Id { get; private set; }
     public int LineNumber { get; private set; }
+    public Guid ChinaContainerId { get; private set; }
     public Guid FabricItemId { get; private set; }
     public Guid FabricColorId { get; private set; }
     public int RollCount { get; private set; }
@@ -31,6 +32,7 @@ public class SalesInvoiceItem
 
     public static SalesInvoiceItem Create(
         int lineNumber,
+        Guid chinaContainerId,
         Guid fabricItemId,
         Guid fabricColorId,
         int rollCount,
@@ -44,12 +46,16 @@ public class SalesInvoiceItem
         if (unitPrice.Amount <= 0)
             throw new ValidationException("سعر البيع يجب أن يكون أكبر من صفر.");
 
+        if (chinaContainerId == Guid.Empty)
+            throw new ValidationException("China container is required for every sales invoice line.");
+
         var baseline = originalUnitPrice is { Amount: > 0 } original ? original : unitPrice;
 
         return new()
         {
             Id = Guid.NewGuid(),
             LineNumber = lineNumber,
+            ChinaContainerId = chinaContainerId,
             FabricItemId = fabricItemId,
             FabricColorId = fabricColorId,
             RollCount = rollCount,
@@ -85,6 +91,16 @@ public class SalesInvoiceRollDetail
     public Guid? EnteredByUserId { get; private set; }
     public DateTime? EnteredAt { get; private set; }
 
+    /// <summary>
+    /// Unresolved serial the employee has typed so far (partial save). Not validated against
+    /// inventory and not tied to <see cref="FabricRollId"/> — purely for re-populating the UI on
+    /// a later visit. Cleared once the roll is finally resolved via <see cref="EnterLength"/>.
+    /// </summary>
+    public int? DraftRollNumber { get; private set; }
+
+    /// <summary>Unresolved manual length the employee has typed so far (partial save). See <see cref="DraftRollNumber"/>.</summary>
+    public decimal? DraftLengthMeters { get; private set; }
+
     private SalesInvoiceRollDetail() { }
 
     public static SalesInvoiceRollDetail Create(Guid itemId, RollNumber rollSequence) => new()
@@ -102,6 +118,13 @@ public class SalesInvoiceRollDetail
     }
 
     public void AssignFabricRoll(Guid fabricRollId) => FabricRollId = fabricRollId;
+
+    /// <summary>Persists whatever the employee has typed so far, without resolving or validating it.</summary>
+    public void SaveDraft(int? rollNumber, decimal? lengthMeters)
+    {
+        DraftRollNumber = rollNumber;
+        DraftLengthMeters = lengthMeters;
+    }
 
     public bool HasValidLength => LengthMeters.Value > 0;
 }

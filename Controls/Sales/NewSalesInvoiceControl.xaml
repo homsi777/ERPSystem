@@ -531,6 +531,22 @@
                               BeginningEdit="ItemsGrid_BeginningEdit"
                               PreparingCellForEdit="ItemsGrid_PreparingCellForEdit">
                         <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="الحاوية" Width="170">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ContainerDisplay}"
+                                                   Style="{StaticResource InvoiceGridCellText}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding ContainerOptions, ElementName=InvoiceRoot}"
+                                                  DisplayMemberPath="Display"
+                                                  SelectedItem="{Binding SelectedContainer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  Style="{StaticResource EnterpriseComboBoxStyle}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="اختر التوب" Width="320">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -541,7 +557,7 @@
                                 <DataGridTemplateColumn.CellEditingTemplate>
                                     <DataTemplate>
                                         <local:FabricStockAutocompleteEditor
-                                            StockOptions="{Binding StockOptions, ElementName=InvoiceRoot}"
+                                            StockOptions="{Binding StockOptions}"
                                             SelectedStock="{Binding SelectedStock, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>

@@ -203,7 +203,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             }).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<FabricStockBalanceDto>> GetFabricStockBalancesAsync(
-        Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
+        Guid branchId, Guid? warehouseId = null, string? search = null, CancellationToken cancellationToken = default)
     {
         var warehouseIds = warehouseId.HasValue
             ? [warehouseId.Value]
@@ -214,6 +214,9 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
 
         if (warehouseIds.Count == 0)
             return [];
+
+        var term = search?.Trim();
+        var hasSearch = !string.IsNullOrWhiteSpace(term);
 
         var rollCosts = context.FabricRolls.AsNoTracking()
             .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0)
@@ -240,7 +243,12 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 into rollCostJoin
             from rc in rollCostJoin.DefaultIfEmpty()
             where warehouseIds.Contains(s.WarehouseId) && s.TotalMeters > 0
-            orderby s.TotalMeters descending
+                  && (!hasSearch
+                      || f.Code.Contains(term!)
+                      || f.NameAr.Contains(term!)
+                      || c.NameAr.Contains(term!)
+                      || (container != null && container.ContainerNumber.Contains(term!)))
+            orderby f.NameAr, c.NameAr, container != null ? container.ContainerNumber : "", s.TotalMeters descending
             select new FabricStockBalanceDto
             {
                 WarehouseId = s.WarehouseId,
@@ -498,6 +506,93 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<FabricRollSalesReservationDto>> GetFabricRollSalesReservationsAsync(
+        IReadOnlyList<Guid> rollIds,
+        Guid? excludeSalesInvoiceId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = rollIds.Where(id => id != Guid.Empty).Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        var activeStatuses = new[]
+        {
+            (int)SalesInvoiceStatus.Detailed,
+            (int)SalesInvoiceStatus.ReadyForApproval,
+            (int)SalesInvoiceStatus.Approved,
+            (int)SalesInvoiceStatus.Printed
+        };
+
+        var query =
+            from detail in context.SalesInvoiceRollDetails.AsNoTracking()
+            join invoice in context.SalesInvoices.AsNoTracking() on detail.SalesInvoiceId equals invoice.Id
+            where detail.FabricRollId.HasValue &&
+                  ids.Contains(detail.FabricRollId.Value) &&
+                  activeStatuses.Contains(invoice.Status)
+            select new { detail.FabricRollId, invoice.Id, invoice.InvoiceNumber, invoice.Status };
+
+        if (excludeSalesInvoiceId.HasValue)
+            query = query.Where(x => x.Id != excludeSalesInvoiceId.Value);
+
+        return await query
+            .GroupBy(x => x.FabricRollId!.Value)
+            .Select(g => g
+                .OrderByDescending(x => x.Status)
+                .Select(x => new FabricRollSalesReservationDto
+                {
+                    FabricRollId = g.Key,
+                    SalesInvoiceId = x.Id,
+                    SalesInvoiceNumber = x.InvoiceNumber,
+                    SalesInvoiceStatus = x.Status
+                })
+                .First())
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DetailingCandidateRollDto>> GetDetailingCandidateRollsAsync(
+        Guid warehouseId,
+        Guid containerId,
+        Guid fabricItemId,
+        Guid fabricColorId,
+        Guid? excludeSalesInvoiceId = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Same prefetch filter as InventoryEngine.ResolveDetailingEntriesAsync (container +
+        // warehouse + fabric + color + status Reserved/Available) so a roll shown here is
+        // guaranteed to be accepted by the resolver at final completion.
+        var rolls = await context.FabricRolls.AsNoTracking()
+            .Where(r =>
+                r.WarehouseId == warehouseId &&
+                r.ContainerId == containerId &&
+                r.FabricItemId == fabricItemId &&
+                r.FabricColorId == fabricColorId &&
+                (r.Status == (int)FabricRollStatus.Reserved || r.Status == (int)FabricRollStatus.Available))
+            .OrderBy(r => r.RollNumber)
+            .ToListAsync(cancellationToken);
+
+        if (rolls.Count == 0)
+            return [];
+
+        var rollIds = rolls.Select(r => r.Id).ToList();
+        var reservations = await GetFabricRollSalesReservationsAsync(rollIds, excludeSalesInvoiceId, cancellationToken);
+        var reservationByRoll = reservations.ToDictionary(r => r.FabricRollId);
+
+        return rolls.Select(r =>
+        {
+            reservationByRoll.TryGetValue(r.Id, out var reservation);
+            return new DetailingCandidateRollDto
+            {
+                FabricRollId = r.Id,
+                RollNumber = r.RollNumber,
+                RemainingLengthMeters = r.RemainingLengthMeters,
+                Status = ((FabricRollStatus)r.Status).ToString(),
+                ReservedInSalesInvoiceId = reservation?.SalesInvoiceId,
+                ReservedInSalesInvoiceNumber = reservation?.SalesInvoiceNumber,
+                ReservedInSalesInvoiceStatus = reservation?.SalesInvoiceStatus
+            };
+        }).ToList();
+    }
+
     public async Task<IReadOnlyList<StockMovementListDto>> GetMovementsAsync(
         Guid branchId, Guid? warehouseId = null, CancellationToken cancellationToken = default)
     {
@@ -597,7 +692,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         };
 
         var branchId = w.BranchId;
-        var stockBalances = await GetFabricStockBalancesAsync(branchId, warehouseId, cancellationToken);
+        var stockBalances = await GetFabricStockBalancesAsync(branchId, warehouseId, cancellationToken: cancellationToken);
         var locations = await GetLocationsAsync(warehouseId, cancellationToken);
         var movements = await GetMovementsAsync(branchId, warehouseId, cancellationToken);
         var audit = await GetAuditTrailAsync(warehouseId, "Warehouse", cancellationToken);

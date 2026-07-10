@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   approveSalesInvoice,
@@ -370,6 +370,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
 
 type DraftLine = {
   key: string;
+  containerId: string;
   stockKey: string;
   rollCount: string;
   unitPrice: string;
@@ -414,26 +415,47 @@ function SalesCreatePage() {
     }
   }, [warehouseId, warehousesQuery.data]);
 
-  const stockQuery = useQuery({
-    queryKey: ['sales-warehouse-stock', containerId, warehouseId],
-    queryFn: () => getSalesWarehouseStock(containerId, warehouseId),
-    enabled: containerId.length > 0 && warehouseId.length > 0
+  const selectedLineContainerIds = useMemo(
+    () => Array.from(new Set(lines.map((line) => line.containerId).filter(Boolean))),
+    [lines]
+  );
+
+  const stockQueries = useQueries({
+    queries: selectedLineContainerIds.map((lineContainerId) => ({
+      queryKey: ['sales-warehouse-stock', lineContainerId, warehouseId],
+      queryFn: () => getSalesWarehouseStock(lineContainerId, warehouseId),
+      enabled: lineContainerId.length > 0 && warehouseId.length > 0
+    }))
   });
 
-  const stockOptions = stockQuery.data ?? [];
+  const stockByContainer = useMemo(() => {
+    const map = new Map<string, SalesWarehouseStockOptionDto[]>();
+    selectedLineContainerIds.forEach((lineContainerId, index) => {
+      map.set(lineContainerId, stockQueries[index]?.data ?? []);
+    });
+    return map;
+  }, [selectedLineContainerIds, stockQueries]);
+  const stockOptions: SalesWarehouseStockOptionDto[] = [];
+  const stockQuery = {
+    isLoading: false,
+    isError: false,
+    isSuccess: false,
+    error: null as unknown,
+    refetch: async () => undefined
+  };
 
   function stockKeyOf(option: SalesWarehouseStockOptionDto) {
     return `${option.fabricItemId}::${option.fabricColorId}`;
   }
 
-  function findStock(stockKey: string) {
-    return stockOptions.find((option) => stockKeyOf(option) === stockKey);
+  function findStock(line: DraftLine) {
+    return (stockByContainer.get(line.containerId) ?? []).find((option) => stockKeyOf(option) === line.stockKey);
   }
 
   function addLine() {
     setLines((current) => [
       ...current,
-      { key: `${Date.now()}-${Math.random()}`, stockKey: '', rollCount: '1', unitPrice: '0' }
+      { key: `${Date.now()}-${Math.random()}`, containerId: '', stockKey: '', rollCount: '1', unitPrice: '0' }
     ]);
   }
 
@@ -447,7 +469,7 @@ function SalesCreatePage() {
 
   const estimatedTotal = useMemo(() => {
     return lines.reduce((sum, line) => {
-      const stock = findStock(line.stockKey);
+      const stock = findStock(line);
       if (!stock || stock.availableRollCount === 0) {
         return sum;
       }
@@ -456,19 +478,20 @@ function SalesCreatePage() {
       return sum + rolls * avgPerRoll * toNumber(line.unitPrice);
     }, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, stockOptions]);
+  }, [lines, stockByContainer]);
 
   const mutation = useMutation({
     mutationFn: () => {
       const payloadLines: CreateSalesInvoiceLineRequest[] = lines
         .map((line, index): CreateSalesInvoiceLineRequest | null => {
-          const stock = findStock(line.stockKey);
+          const stock = findStock(line);
           if (!stock) {
             return null;
           }
           const unitPrice = toNumber(line.unitPrice);
           return {
             lineNumber: index + 1,
+            chinaContainerId: line.containerId,
             fabricItemId: stock.fabricItemId,
             fabricColorId: stock.fabricColorId,
             rollCount: Math.round(toNumber(line.rollCount)),
@@ -483,7 +506,7 @@ function SalesCreatePage() {
       return createSalesInvoice({
         customerId,
         warehouseId,
-        chinaContainerId: containerId,
+        chinaContainerId: payloadLines[0]?.chinaContainerId ?? containerId,
         paymentType: Number(paymentType) as PaymentType,
         discountAmount: toNumber(discount),
         partialPaymentAmount:
@@ -502,13 +525,17 @@ function SalesCreatePage() {
       setToast({ tone: 'error', message: 'اختر العميل أولاً.' });
       return;
     }
-    if (!containerId) {
+    if (false && !containerId) {
       setToast({ tone: 'error', message: 'اختر الحاوية المصدر أولاً.' });
       return;
     }
     const validLines = lines.filter((line) => line.stockKey && toNumber(line.rollCount) > 0);
     if (validLines.length === 0) {
       setToast({ tone: 'error', message: 'أضف صنفًا واحدًا على الأقل مع عدد أثواب صحيح.' });
+      return;
+    }
+    if (validLines.some((line) => !line.containerId)) {
+      setToast({ tone: 'error', message: 'Choose a container for every invoice line.' });
       return;
     }
     if (paymentType === '1') {
@@ -610,7 +637,7 @@ function SalesCreatePage() {
               className="chip-button"
               type="button"
               onClick={addLine}
-              disabled={!containerId || !warehouseId || stockQuery.isLoading}
+              disabled={!warehouseId}
             >
               + إضافة
             </button>
@@ -629,7 +656,10 @@ function SalesCreatePage() {
 
           <div className="line-items">
             {lines.map((line, index) => {
-              const stock = findStock(line.stockKey);
+              const lineStockOptions = stockByContainer.get(line.containerId) ?? [];
+              const lineStockQueryIndex = selectedLineContainerIds.indexOf(line.containerId);
+              const lineStockQuery = lineStockQueryIndex >= 0 ? stockQueries[lineStockQueryIndex] : undefined;
+              const stock = findStock(line);
               return (
                 <article className="line-item" key={line.key}>
                   <div className="line-item__head">
@@ -639,11 +669,38 @@ function SalesCreatePage() {
                     </button>
                   </div>
                   <label className="form-field form-field--wide">
+                    <span className="form-field__label">الحاوية</span>
+                    <select
+                      value={line.containerId}
+                      onChange={(event) => {
+                        if (
+                          line.stockKey &&
+                          !window.confirm('Changing the line container will clear the selected item and price. Continue?')
+                        ) {
+                          return;
+                        }
+                        updateLine(line.key, {
+                          containerId: event.target.value,
+                          stockKey: '',
+                          unitPrice: '0'
+                        });
+                      }}
+                    >
+                      <option value="">اختر الحاوية...</option>
+                      {(containersQuery.data?.items ?? []).map((container) => (
+                        <option key={container.id} value={container.id}>
+                          {container.containerNumber}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="form-field form-field--wide">
                     <span className="form-field__label">الصنف</span>
                     <select
                       value={line.stockKey}
+                      disabled={!line.containerId || !warehouseId || lineStockQuery?.isLoading}
                       onChange={(event) => {
-                        const option = findStock(event.target.value);
+                        const option = lineStockOptions.find((item) => stockKeyOf(item) === event.target.value);
                         updateLine(line.key, {
                           stockKey: event.target.value,
                           unitPrice: option?.salePricePerMeter != null ? String(option.salePricePerMeter) : line.unitPrice
@@ -651,13 +708,16 @@ function SalesCreatePage() {
                       }}
                     >
                       <option value="">اختر الصنف...</option>
-                      {stockOptions.map((option) => (
+                      {lineStockOptions.map((option) => (
                         <option key={stockKeyOf(option)} value={stockKeyOf(option)}>
                           {option.display}
                         </option>
                       ))}
                     </select>
                   </label>
+                  {line.containerId && lineStockQuery?.isSuccess && lineStockOptions.length === 0 ? (
+                    <p className="form-hint form-hint--warn">No available stock for this container.</p>
+                  ) : null}
                   <div className="form-field-row form-field-row--2">
                     <label className="form-field">
                       <span className="form-field__label">الأثواب</span>

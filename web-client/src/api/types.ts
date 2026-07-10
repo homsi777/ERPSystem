@@ -516,6 +516,13 @@ export type FabricRollListDto = {
   lotCode: string | null;
 };
 
+export type FabricRollSalesReservationDto = {
+  fabricRollId: string;
+  salesInvoiceId: string;
+  salesInvoiceNumber: string;
+  salesInvoiceStatus: number;
+};
+
 export type PaginatedFabricRollDto = {
   items: FabricRollListDto[];
   totalCount: number;
@@ -574,17 +581,26 @@ export type WarehouseDetailingRollDto = {
   rollDetailId: string;
   salesInvoiceItemId: string;
   rollSequence: number;
+  fabricItemId: string;
+  fabricColorId: string;
   fabricDisplayName: string;
   fabricCode: string;
   colorDisplayName: string;
   lengthMeters: number;
   hasValidLength: boolean;
+  /** The invoice LINE's own container — may differ from the header container on multi-container invoices. */
+  chinaContainerId: string;
+  containerDisplay: string;
+  /** Previously-saved partial progress (not yet resolved/finalized). */
+  draftRollNumber: number | null;
+  draftLengthMeters: number | null;
 };
 
 export type WarehouseDetailingDto = {
   invoiceId: string;
   invoiceNumber: string;
   customerName: string;
+  warehouseId: string;
   chinaContainerId: string;
   sentToWarehouseAt: string | null;
   representativeUnitPrice: number | null;
@@ -602,6 +618,26 @@ export type RollLengthEntryRequest = {
 
 export type CompleteWarehouseDetailingRequest = {
   rollEntries: RollLengthEntryRequest[];
+};
+
+export type RollDraftEntryRequest = {
+  rollDetailId: string;
+  rollNumber?: number | null;
+  lengthMeters?: number | null;
+};
+
+export type SaveWarehouseDetailingDraftRequest = {
+  rollEntries: RollDraftEntryRequest[];
+};
+
+export type DetailingCandidateRollDto = {
+  fabricRollId: string;
+  rollNumber: number;
+  remainingLengthMeters: number;
+  status: string;
+  reservedInSalesInvoiceId: string | null;
+  reservedInSalesInvoiceNumber: string | null;
+  reservedInSalesInvoiceStatus: number | null;
 };
 
 export type DashboardSummaryDto = {
@@ -624,6 +660,7 @@ export type PaymentType = 0 | 1;
 export type SalesInvoiceLineDto = {
   id: string;
   lineNumber: number;
+  chinaContainerId: string;
   fabricItemId: string;
   fabricColorId: string;
   fabricDisplayName: string;
@@ -714,6 +751,7 @@ export type SalesWarehouseStockOptionDto = {
 
 export type CreateSalesInvoiceLineRequest = {
   lineNumber: number;
+  chinaContainerId: string;
   fabricItemId: string;
   fabricColorId: string;
   rollCount: number;

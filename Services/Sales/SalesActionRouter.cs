@@ -58,7 +58,7 @@ public static class SalesActionRouter
                 break;
 
             case EntityActionId.InvoiceCallCustomer:
-                SalesPopupService.CallCustomer(row);
+                _ = SalesPopupService.CallCustomerAsync(row);
                 break;
 
             case EntityActionId.InvoiceViewReturns:
@@ -115,7 +115,7 @@ public static class SalesActionRouter
                 _ = SalesPopupService.PrintAsync(row, exportPdf: true);
                 return true;
             case "sales:call-customer":
-                SalesPopupService.CallCustomer(row);
+                _ = SalesPopupService.CallCustomerAsync(row);
                 return true;
             default:
                 return false;
