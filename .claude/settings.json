@@ -19,7 +19,22 @@
       "Bash(curl -s -X POST http://localhost:5218/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"Admin@123\"}')",
       "Bash(curl -s http://localhost:5218/api/v1/detailing/queue?warehouseId=55555555-5555-5555-5555-555555555555 -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
       "Bash(curl -s http://localhost:5218/api/v1/detailing/queue?warehouseId=7d9886ed-7e21-44da-af4a-468df9402e8e -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
-      "Bash(dotnet test *)"
+      "Bash(dotnet test *)",
+      "Bash(PGPASSWORD=12345678 psql -h localhost -p 5432 -U postgres -d erp_pro -c \"\\\\dt\")",
+      "Bash(command -v python3)",
+      "Bash(command -v python)",
+      "Bash(command -v node)",
+      "Bash(command -v dotnet)",
+      "Bash(python -c 'import socket; s=socket.socket\\(\\); s.settimeout\\(2\\) *)",
+      "Bash(python -c \"import psycopg2; print\\('have psycopg2'\\)\")",
+      "Bash(python -m pip show psycopg2-binary)",
+      "Bash(python -)",
+      "Bash(git check-ignore *)",
+      "Bash(xargs -I{} basename {})",
+      "Bash(xargs grep -l \"ReceiptVoucher\\\\|PurchaseInvoicePayment\\\\|ReceiptInvoicePayment\\\\|PaymentVoucher\")",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Homsi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Homsi-Desktop-POS-ERP-C--ERPSystem\\\\621a51fb-bc4a-4c55-bb00-1ddec6c98791\\\\scratchpad\")"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -1,0 +1,1 @@
+ssh -p 2727 -i "C:\Users\Homsi\.ssh\alamal_ab_tunnel" -o StrictHostKeyChecking=accept-new -o BatchMode=yes ubuntu@65.21.136.217 "sudo bash /opt/erpsystem/src/deploy/deploy-app.sh"
