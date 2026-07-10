@@ -1727,6 +1727,37 @@ svg {
   gap: 8px;
 }
 
+.form-panel--search {
+  border: 2px solid rgba(24, 95, 165, 0.28);
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.95), #fff 72%);
+  box-shadow: 0 8px 24px rgba(24, 95, 165, 0.08);
+}
+
+.form-panel--search-results {
+  border: 1px solid rgba(24, 95, 165, 0.18);
+  background: rgba(239, 246, 255, 0.55);
+}
+
+.inventory-search-hint {
+  margin-block: 0;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.inventory-insight-card {
+  padding: 14px;
+}
+
+.inventory-insight-card__summary {
+  margin: 6px 0 8px;
+}
+
+.inventory-insight-card__list {
+  margin: 0;
+  padding-inline-start: 18px;
+  line-height: 1.7;
+}
+
 .form-panel--filter .form-section-head {
   margin-block-end: 0;
 }

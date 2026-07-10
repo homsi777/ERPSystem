@@ -18,36 +18,16 @@ public sealed class InventoryFabricStockPageControl : UserControl
     private readonly ComboBox _containerFilter = InventoryContainerFilterUi.CreateComboBox(200);
     private readonly TextBox _searchBox;
     private readonly WrapPanel _summaryCards = new();
-    private readonly Border _insightHost = new()
-    {
-        Visibility = Visibility.Collapsed,
-        Margin = new Thickness(0, 8, 0, 8),
-        Padding = new Thickness(14, 12, 14, 12),
-        CornerRadius = new CornerRadius(10),
-        BorderThickness = new Thickness(1)
-    };
+    private readonly Border _insightHost = InventoryContainerFilterUi.CreateInsightHost();
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(280) };
     private bool _suppressFilterChange;
     private IReadOnlyList<FabricStockBalanceDto> _allStock = [];
-    private string _pendingSearch = "";
 
     public InventoryFabricStockPageControl()
     {
-        _searchBox = new TextBox
-        {
-            Width = 280,
-            Height = 34,
-            VerticalContentAlignment = VerticalAlignment.Center,
-            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
-            FontSize = 13,
-            Padding = new Thickness(10, 0, 10, 0),
-            ToolTip = "ابحث باسم التوب أو الكود أو اللون أو رقم الحاوية"
-        };
+        _searchBox = InventoryContainerFilterUi.CreateSearchBox(280);
         if (System.Windows.Application.Current.Resources["EnterpriseInputStyle"] is Style inputStyle)
             _searchBox.Style = inputStyle;
-
-        _insightHost.Background = Hex("#EFF6FF");
-        _insightHost.BorderBrush = Hex("#BFDBFE");
 
         var root = new DockPanel { Margin = new Thickness(16) };
 
@@ -91,17 +71,7 @@ public sealed class InventoryFabricStockPageControl : UserControl
         _grid.MouseDoubleClick += (_, _) => _ = ShowRollDetailsAsync();
         _warehouseFilter.SelectionChanged += (_, _) => OnFilterChanged(rebindContainers: true);
         _containerFilter.SelectionChanged += (_, _) => OnFilterChanged(rebindContainers: false);
-        _searchBox.TextChanged += (_, _) =>
-        {
-            _pendingSearch = _searchBox.Text ?? "";
-            _searchTimer.Stop();
-            _searchTimer.Start();
-        };
-        _searchTimer.Tick += async (_, _) =>
-        {
-            _searchTimer.Stop();
-            await ApplySearchAsync(_pendingSearch);
-        };
+        InventoryContainerFilterUi.WireSearchDebounced(_searchBox, _searchTimer, term => _ = ApplySearchAsync(term));
 
         Loaded += async (_, _) => await LoadAsync();
         ErpDataRefreshHub.DataChanged += OnDataChanged;
@@ -207,104 +177,7 @@ public sealed class InventoryFabricStockPageControl : UserControl
     {
         _grid.ItemsSource = stock;
         InventoryContainerFilterUi.PopulateStockSummaryCards(_summaryCards, stock);
-        RenderSearchInsight(stock, searchTerm);
-    }
-
-    private void RenderSearchInsight(IReadOnlyList<FabricStockBalanceDto> stock, string? searchTerm)
-    {
-        if (string.IsNullOrWhiteSpace(searchTerm) || stock.Count == 0)
-        {
-            _insightHost.Visibility = Visibility.Collapsed;
-            _insightHost.Child = null;
-            return;
-        }
-
-        var insights = InventoryContainerFilterUi.BuildSearchInsights(stock);
-        if (insights.Count == 0)
-        {
-            _insightHost.Visibility = Visibility.Collapsed;
-            _insightHost.Child = null;
-            return;
-        }
-
-        var root = new StackPanel();
-        root.Children.Add(new TextBlock
-        {
-            Text = $"نتائج البحث عن «{searchTerm}» — {insights.Count} توب في {stock.Select(s => s.ContainerId).Distinct().Count()} حاوية",
-            FontWeight = FontWeights.SemiBold,
-            FontSize = 13,
-            Foreground = Hex("#1E3A8A"),
-            Margin = new Thickness(0, 0, 0, 8)
-        });
-
-        foreach (var insight in insights.Take(8))
-        {
-            var card = new Border
-            {
-                Background = Brushes.White,
-                BorderBrush = Hex("#DBEAFE"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(12, 10, 12, 10),
-                Margin = new Thickness(0, 0, 0, 8)
-            };
-
-            var body = new StackPanel();
-            body.Children.Add(new TextBlock
-            {
-                Text = $"{insight.FabricName} ({insight.FabricCode})",
-                FontWeight = FontWeights.SemiBold,
-                FontSize = 13,
-                Foreground = Hex("#0F172A")
-            });
-            body.Children.Add(new TextBlock
-            {
-                Text = $"موجود في {insight.ContainerCount} حاوية • {AppFormats.Number(insight.TotalRolls)} ثوب • {AppFormats.Number(insight.TotalMeters, 0)} م • متاح {AppFormats.Number(insight.AvailableMeters, 0)} م",
-                FontSize = 11,
-                Foreground = Hex("#475569"),
-                Margin = new Thickness(0, 4, 0, 8)
-            });
-
-            foreach (var loc in insight.Locations.Take(12))
-            {
-                var line = new TextBlock
-                {
-                    Text = $"• حاوية {loc.ContainerNumber} — {loc.WarehouseName} — {AppFormats.Number(loc.RollCount)} ثوب — {AppFormats.Number(loc.TotalMeters, 0)} م" +
-                           (loc.ColorCount > 1 ? $" — {loc.ColorCount} ألوان" : ""),
-                    FontSize = 12,
-                    Foreground = Hex("#1E293B"),
-                    Margin = new Thickness(4, 0, 0, 2)
-                };
-                body.Children.Add(line);
-            }
-
-            if (insight.Locations.Count > 12)
-            {
-                body.Children.Add(new TextBlock
-                {
-                    Text = $"… و {insight.Locations.Count - 12} حاوية إضافية في الجدول أدناه",
-                    FontSize = 11,
-                    Foreground = Hex("#64748B"),
-                    Margin = new Thickness(4, 4, 0, 0)
-                });
-            }
-
-            card.Child = body;
-            root.Children.Add(card);
-        }
-
-        if (insights.Count > 8)
-        {
-            root.Children.Add(new TextBlock
-            {
-                Text = $"… و {insights.Count - 8} توب إضافي ظاهر في الجدول",
-                FontSize = 11,
-                Foreground = Hex("#64748B")
-            });
-        }
-
-        _insightHost.Child = root;
-        _insightHost.Visibility = Visibility.Visible;
+        InventoryContainerFilterUi.RenderSearchInsightPanel(_insightHost, stock, searchTerm);
     }
 
     private async Task ShowRollDetailsAsync()
@@ -312,9 +185,6 @@ public sealed class InventoryFabricStockPageControl : UserControl
         if (_grid.SelectedItem is FabricStockBalanceDto row)
             await FabricRollDetailsPopup.ShowForStockRowAsync(row);
     }
-
-    private static SolidColorBrush Hex(string hex) =>
-        new((Color)ColorConverter.ConvertFromString(hex)!);
 }
 
 public sealed class InventoryTransferListPageControl : UserControl

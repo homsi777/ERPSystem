@@ -1,9 +1,11 @@
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Core;
+using ERPSystem.Helpers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace ERPSystem.Controls.Inventory;
 
@@ -285,6 +287,146 @@ internal static class InventoryContainerFilterUi
             Language = XmlLanguage.GetLanguage("en-US")
         };
         return textBlock;
+    }
+
+    public static TextBox CreateSearchBox(double width = 320) => new()
+    {
+        Width = width,
+        Height = 36,
+        VerticalContentAlignment = VerticalAlignment.Center,
+        FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
+        FontSize = 13,
+        Padding = new Thickness(10, 0, 10, 0),
+        ToolTip = "ابحث باسم التوب أو الكود أو اللون أو رقم الحاوية"
+    };
+
+    public static Border CreateInsightHost() => new()
+    {
+        Visibility = Visibility.Collapsed,
+        Margin = new Thickness(0, 8, 0, 8),
+        Padding = new Thickness(14, 12, 14, 12),
+        CornerRadius = new CornerRadius(10),
+        BorderThickness = new Thickness(1),
+        Background = HexBrush("#EFF6FF"),
+        BorderBrush = HexBrush("#BFDBFE")
+    };
+
+    public static void WireSearchDebounced(
+        TextBox searchBox,
+        DispatcherTimer timer,
+        Action<string> onSearch)
+    {
+        var pending = "";
+        searchBox.TextChanged += (_, _) =>
+        {
+            pending = searchBox.Text ?? "";
+            timer.Stop();
+            timer.Start();
+        };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            onSearch(pending);
+        };
+    }
+
+    public static void RenderSearchInsightPanel(
+        Border insightHost,
+        IReadOnlyList<FabricStockBalanceDto> stock,
+        string? searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm) || stock.Count == 0)
+        {
+            insightHost.Visibility = Visibility.Collapsed;
+            insightHost.Child = null;
+            return;
+        }
+
+        var insights = BuildSearchInsights(stock);
+        if (insights.Count == 0)
+        {
+            insightHost.Visibility = Visibility.Collapsed;
+            insightHost.Child = null;
+            return;
+        }
+
+        var root = new StackPanel();
+        root.Children.Add(new TextBlock
+        {
+            Text = $"نتائج البحث عن «{searchTerm}» — {insights.Count} توب في {stock.Select(s => s.ContainerId).Distinct().Count()} حاوية",
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 13,
+            Foreground = HexBrush("#1E3A8A"),
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+
+        foreach (var insight in insights.Take(8))
+        {
+            var card = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = HexBrush("#DBEAFE"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var body = new StackPanel();
+            body.Children.Add(new TextBlock
+            {
+                Text = $"{insight.FabricName} ({insight.FabricCode})",
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 13,
+                Foreground = HexBrush("#0F172A")
+            });
+            body.Children.Add(new TextBlock
+            {
+                Text = $"موجود في {insight.ContainerCount} حاوية • {AppFormats.Number(insight.TotalRolls)} ثوب • {AppFormats.Number(insight.TotalMeters, 0)} م • متاح {AppFormats.Number(insight.AvailableMeters, 0)} م",
+                FontSize = 11,
+                Foreground = HexBrush("#475569"),
+                Margin = new Thickness(0, 4, 0, 8)
+            });
+
+            foreach (var loc in insight.Locations.Take(12))
+            {
+                body.Children.Add(new TextBlock
+                {
+                    Text = $"• حاوية {loc.ContainerNumber} — {loc.WarehouseName} — {AppFormats.Number(loc.RollCount)} ثوب — {AppFormats.Number(loc.TotalMeters, 0)} م" +
+                           (loc.ColorCount > 1 ? $" — {loc.ColorCount} ألوان" : ""),
+                    FontSize = 12,
+                    Foreground = HexBrush("#1E293B"),
+                    Margin = new Thickness(4, 0, 0, 2)
+                });
+            }
+
+            if (insight.Locations.Count > 12)
+            {
+                body.Children.Add(new TextBlock
+                {
+                    Text = $"… و {insight.Locations.Count - 12} حاوية إضافية في الجدول أدناه",
+                    FontSize = 11,
+                    Foreground = HexBrush("#64748B"),
+                    Margin = new Thickness(4, 4, 0, 0)
+                });
+            }
+
+            card.Child = body;
+            root.Children.Add(card);
+        }
+
+        if (insights.Count > 8)
+        {
+            root.Children.Add(new TextBlock
+            {
+                Text = $"… و {insights.Count - 8} توب إضافي ظاهر في الجدول",
+                FontSize = 11,
+                Foreground = HexBrush("#64748B")
+            });
+        }
+
+        insightHost.Child = root;
+        insightHost.Visibility = Visibility.Visible;
     }
 
     public static StackPanel CreateFilterRow(

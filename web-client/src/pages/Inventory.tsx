@@ -233,33 +233,18 @@ export function InventoryPage() {
   return (
     <AppShell title="المخزون" summary={headerSummary}>
       <div className="page-stack">
-      {alertsQuery.isSuccess && alertsQuery.data.length > 0 ? (
-        <>
-          <section className="record-list mobile-only" aria-label="تنبيهات المخزون">
-            {alertsQuery.data.map((alert) => (
-              <AlertMobileCard key={alert.id} alert={alert} />
-            ))}
-          </section>
-          <section className="card-list desktop-only" aria-label="تنبيهات المخزون">
-            {alertsQuery.data.map((alert) => (
-              <AlertDesktopCard key={alert.id} alert={alert} />
-            ))}
-          </section>
-        </>
-      ) : null}
-
-      <section className="form-panel form-compact form-panel--filter" aria-label="تصفية المخزون">
+      <section className="form-panel form-compact form-panel--filter form-panel--search" aria-label="بحث المخزون">
         <div className="form-section-head">
-          <h2>التصفية والبحث الذكي</h2>
+          <h2>بحث ذكي عن التوب</h2>
           <Link className="chip-button" to="/inventory/movements">
             حركة المخزون
           </Link>
         </div>
-        <p className="form-hint" style={{ marginBottom: 12 }}>
+        <p className="form-hint inventory-search-hint">
           ابحث باسم التوب لمعرفة في أي حاوية موجود، وكم العدد والأمتار في كل حاوية.
         </p>
         <div className="form-field-row form-field-row--2">
-          <label className="form-field" style={{ gridColumn: '1 / -1' }}>
+          <label className="form-field form-field--wide">
             <span className="form-field__label">بحث ذكي</span>
             <input
               type="search"
@@ -267,6 +252,7 @@ export function InventoryPage() {
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="اسم التوب، الكود، اللون، أو رقم الحاوية…"
               autoComplete="off"
+              aria-label="بحث ذكي عن التوب في المخزون"
             />
           </label>
           <label className="form-field">
@@ -306,7 +292,7 @@ export function InventoryPage() {
       </section>
 
       {searchInsights.length > 0 ? (
-        <section className="form-panel form-compact" aria-label="نتائج البحث الذكي">
+        <section className="form-panel form-compact form-panel--search-results" aria-label="نتائج البحث الذكي">
           <div className="form-section-head">
             <h2>
               نتائج «{debouncedSearch}» — {formatNumber(searchInsights.length)} توب في{' '}
@@ -315,15 +301,15 @@ export function InventoryPage() {
           </div>
           <div className="page-stack" style={{ gap: 10 }}>
             {searchInsights.slice(0, 8).map((insight) => (
-              <div key={insight.fabricItemId} className="data-card" style={{ padding: 14 }}>
+              <div key={insight.fabricItemId} className="data-card inventory-insight-card">
                 <strong>
                   {insight.fabricName} ({insight.fabricCode})
                 </strong>
-                <p className="form-hint" style={{ margin: '6px 0 8px' }}>
+                <p className="form-hint inventory-insight-card__summary">
                   موجود في {formatNumber(insight.containerCount)} حاوية • {formatNumber(insight.totalRolls)} ثوب •{' '}
                   {formatMeters(insight.totalMeters)} • متاح {formatMeters(insight.availableMeters)}
                 </p>
-                <ul style={{ margin: 0, paddingInlineStart: 18, lineHeight: 1.7 }}>
+                <ul className="inventory-insight-card__list">
                   {insight.locations.slice(0, 12).map((loc) => (
                     <li key={`${loc.containerId}-${loc.warehouseName}`}>
                       حاوية {loc.containerNumber} — {loc.warehouseName} — {formatNumber(loc.rollCount)} ثوب —{' '}
@@ -336,6 +322,21 @@ export function InventoryPage() {
             ))}
           </div>
         </section>
+      ) : null}
+
+      {alertsQuery.isSuccess && alertsQuery.data.length > 0 ? (
+        <>
+          <section className="record-list mobile-only" aria-label="تنبيهات المخزون">
+            {alertsQuery.data.map((alert) => (
+              <AlertMobileCard key={alert.id} alert={alert} />
+            ))}
+          </section>
+          <section className="card-list desktop-only" aria-label="تنبيهات المخزون">
+            {alertsQuery.data.map((alert) => (
+              <AlertDesktopCard key={alert.id} alert={alert} />
+            ))}
+          </section>
+        </>
       ) : null}
 
       {stockQuery.isLoading ? <LoadingState /> : null}
