@@ -666,7 +666,7 @@ public static class DatabaseSeeder
         {
             context.SalesPostingProfiles.Add(new SalesPostingProfileEntity
             {
-                Id = Guid.Parse("s1000001-0001-0001-0001-000000000001"),
+                Id = SalesPostingProfileIds.Default,
                 CompanyId = DefaultCompanyId,
                 AccountsReceivableAccountId = AccountingAccountIds.AccountsReceivable,
                 SalesRevenueAccountId = AccountingAccountIds.SalesRevenue,

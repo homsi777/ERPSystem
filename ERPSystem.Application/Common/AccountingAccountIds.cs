@@ -27,3 +27,8 @@ public static class SalesTaxCodeIds
 {
     public static readonly Guid DefaultVat15Exclusive = Guid.Parse("c1000002-0002-0002-0002-000000000002");
 }
+
+public static class SalesPostingProfileIds
+{
+    public static readonly Guid Default = Guid.Parse("d1000001-0001-0001-0001-000000000001");
+}
