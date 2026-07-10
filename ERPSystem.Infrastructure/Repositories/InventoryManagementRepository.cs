@@ -4,7 +4,9 @@ using ERPSystem.Domain.Entities.Inventory;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Models.Catalog;
+using ERPSystem.Infrastructure.Persistence.Models.ChinaImport;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
+using ERPSystem.Infrastructure.Persistence.Models.Parties;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERPSystem.Infrastructure.Repositories;
@@ -1589,6 +1591,302 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             RecentAudit = audit.Take(5).ToList()
         };
     }
+
+    public async Task<IReadOnlyList<FabricSearchProfileDto>> GetFabricSearchProfilesAsync(
+        Guid branchId,
+        string search,
+        Guid? warehouseId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var stock = await GetFabricStockBalancesAsync(branchId, warehouseId, search, cancellationToken);
+        if (stock.Count == 0)
+            return [];
+
+        var fabricIds = stock.Select(s => s.FabricItemId).Distinct().ToList();
+        var containerIds = stock.Where(s => s.ContainerId != Guid.Empty).Select(s => s.ContainerId).Distinct().ToList();
+
+        var fabrics = await (
+            from f in context.FabricItems.AsNoTracking()
+            join c in context.FabricCategories.AsNoTracking() on f.CategoryId equals c.Id into catJoin
+            from c in catJoin.DefaultIfEmpty()
+            where fabricIds.Contains(f.Id)
+            select new { f.Id, f.Code, f.NameAr, CategoryName = c == null ? "—" : c.NameAr }
+        ).ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var rolls = await context.FabricRolls.AsNoTracking()
+            .Where(r => fabricIds.Contains(r.FabricItemId) && r.RemainingLengthMeters > 0)
+            .Select(r => new
+            {
+                r.FabricItemId,
+                r.FabricColorId,
+                r.ContainerId,
+                r.WarehouseId,
+                r.CostPerMeter,
+                r.SalePricePerMeter,
+                r.RemainingLengthMeters
+            })
+            .ToListAsync(cancellationToken);
+
+        var containers = containerIds.Count == 0
+            ? []
+            : await context.Containers.AsNoTracking()
+                .Where(c => containerIds.Contains(c.Id))
+                .ToListAsync(cancellationToken);
+
+        var supplierIds = containers.Select(c => c.SupplierId).Distinct().ToList();
+        var suppliers = supplierIds.Count == 0
+            ? new Dictionary<Guid, SupplierEntity>()
+            : await context.Suppliers.AsNoTracking()
+                .Where(s => supplierIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, cancellationToken);
+
+        var typeLines = containerIds.Count == 0
+            ? []
+            : await context.ContainerFabricTypeLines.AsNoTracking()
+                .Where(l => containerIds.Contains(l.ContainerId) && l.FabricItemId.HasValue && fabricIds.Contains(l.FabricItemId.Value))
+                .ToListAsync(cancellationToken);
+
+        var movementEvents = await (
+            from line in context.StockMovementLines.AsNoTracking()
+            join movement in context.StockMovements.AsNoTracking() on line.MovementId equals movement.Id
+            join wh in context.Warehouses.AsNoTracking() on movement.WarehouseId equals wh.Id
+            where fabricIds.Contains(line.FabricItemId) && wh.BranchId == branchId
+            orderby movement.MovementDate descending
+            select new
+            {
+                line.FabricItemId,
+                movement.MovementDate,
+                movement.MovementNumber,
+                movement.Type,
+                WarehouseName = wh.NameAr,
+                line.QuantityMeters,
+                line.TotalValue
+            })
+            .Take(400)
+            .ToListAsync(cancellationToken);
+
+        return fabricIds
+            .Select(fabricId =>
+            {
+                var fabricStock = stock.Where(s => s.FabricItemId == fabricId).ToList();
+                var fabricRolls = rolls.Where(r => r.FabricItemId == fabricId).ToList();
+                var fabricMeta = fabrics.GetValueOrDefault(fabricId);
+
+                var salePrices = fabricRolls
+                    .Where(r => r.SalePricePerMeter.HasValue && r.SalePricePerMeter.Value > 0)
+                    .Select(r => r.SalePricePerMeter!.Value)
+                    .Concat(typeLines
+                        .Where(l => l.FabricItemId == fabricId && l.SalePricePerMeterUsd > 0)
+                        .Select(l => l.SalePricePerMeterUsd))
+                    .ToList();
+
+                var costs = fabricRolls.Where(r => r.CostPerMeter > 0).Select(r => r.CostPerMeter).ToList();
+
+                var colors = fabricStock
+                    .GroupBy(s => new { s.FabricColorId, s.ColorName })
+                    .Select(g =>
+                    {
+                        var colorRolls = fabricRolls.Where(r => r.FabricColorId == g.Key.FabricColorId).ToList();
+                        var colorSale = colorRolls
+                            .Where(r => r.SalePricePerMeter.HasValue && r.SalePricePerMeter.Value > 0)
+                            .Select(r => r.SalePricePerMeter!.Value)
+                            .ToList();
+                        var colorCost = colorRolls.Where(r => r.CostPerMeter > 0).Select(r => r.CostPerMeter).ToList();
+                        return new FabricSearchColorBreakdownDto
+                        {
+                            FabricColorId = g.Key.FabricColorId,
+                            ColorName = g.Key.ColorName,
+                            RollCount = g.Sum(x => x.RollCount),
+                            TotalMeters = g.Sum(x => x.TotalMeters),
+                            AvailableMeters = g.Sum(x => x.AvailableMeters),
+                            ReservedMeters = g.Sum(x => x.ReservedMeters),
+                            InventoryValue = g.Sum(x => x.InventoryValue),
+                            AvgSalePricePerMeter = colorSale.Count > 0 ? colorSale.Average() : null,
+                            AvgCostPerMeter = colorCost.Count > 0 ? colorCost.Average() : null,
+                            ContainerCount = g.Select(x => x.ContainerId).Distinct().Count()
+                        };
+                    })
+                    .OrderByDescending(c => c.TotalMeters)
+                    .ToList();
+
+                var locations = fabricStock
+                    .OrderBy(s => s.WarehouseName)
+                    .ThenBy(s => s.ContainerNumber)
+                    .ThenBy(s => s.ColorName)
+                    .Select(s =>
+                    {
+                        var locRolls = fabricRolls.Where(r =>
+                            r.WarehouseId == s.WarehouseId &&
+                            r.ContainerId == s.ContainerId &&
+                            r.FabricColorId == s.FabricColorId).ToList();
+                        var locSale = locRolls
+                            .Where(r => r.SalePricePerMeter.HasValue && r.SalePricePerMeter.Value > 0)
+                            .Select(r => r.SalePricePerMeter!.Value)
+                            .ToList();
+                        var locCost = locRolls.Where(r => r.CostPerMeter > 0).Select(r => r.CostPerMeter).ToList();
+                        return new FabricSearchLocationDetailDto
+                        {
+                            WarehouseId = s.WarehouseId,
+                            WarehouseName = s.WarehouseName,
+                            ContainerId = s.ContainerId,
+                            ContainerNumber = s.ContainerNumber,
+                            FabricColorId = s.FabricColorId,
+                            ColorName = s.ColorName,
+                            RollCount = s.RollCount,
+                            TotalMeters = s.TotalMeters,
+                            AvailableMeters = s.AvailableMeters,
+                            ReservedMeters = s.ReservedMeters,
+                            InventoryValue = s.InventoryValue,
+                            AvgCostPerMeter = locCost.Count > 0 ? locCost.Average() : null,
+                            AvgSalePricePerMeter = locSale.Count > 0 ? locSale.Average() : null
+                        };
+                    })
+                    .ToList();
+
+                var fabricContainerIds = fabricStock.Where(s => s.ContainerId != Guid.Empty).Select(s => s.ContainerId).Distinct().ToList();
+                var containerJourney = fabricContainerIds
+                    .Select(cid =>
+                    {
+                        var container = containers.FirstOrDefault(c => c.Id == cid);
+                        if (container is null)
+                            return null;
+
+                        var line = typeLines
+                            .Where(l => l.ContainerId == cid && l.FabricItemId == fabricId)
+                            .OrderByDescending(l => l.SalePricePerMeterUsd)
+                            .FirstOrDefault();
+                        var legStock = fabricStock.Where(s => s.ContainerId == cid).ToList();
+                        suppliers.TryGetValue(container.SupplierId, out var supplier);
+
+                        return new FabricSearchContainerLegDto
+                        {
+                            ContainerId = cid,
+                            ContainerNumber = container.ContainerNumber,
+                            StatusLabel = MapContainerStatusLabel(container.Status),
+                            SupplierName = supplier?.NameAr ?? supplier?.Name,
+                            ShipmentDate = container.ShipmentDate,
+                            ArrivalDate = container.ArrivalDate,
+                            ApprovedAt = container.ApprovedAt,
+                            RollCount = legStock.Sum(s => s.RollCount),
+                            TotalMeters = legStock.Sum(s => s.TotalMeters),
+                            LandedCostPerMeter = line?.LandedCostPerMeterUsd > 0 ? line.LandedCostPerMeterUsd : null,
+                            SalePricePerMeter = line?.SalePricePerMeterUsd > 0 ? line.SalePricePerMeterUsd : null,
+                            Warehouses = legStock.Select(s => s.WarehouseName).Distinct().OrderBy(x => x).ToList()
+                        };
+                    })
+                    .Where(x => x is not null)
+                    .Cast<FabricSearchContainerLegDto>()
+                    .OrderByDescending(x => x.TotalMeters)
+                    .ToList();
+
+                var timeline = new List<FabricSearchJourneyEventDto>();
+                foreach (var leg in containerJourney)
+                {
+                    if (leg.ShipmentDate is { } shipped)
+                    {
+                        timeline.Add(new FabricSearchJourneyEventDto
+                        {
+                            OccurredAt = shipped,
+                            Category = "China",
+                            Title = $"شحن حاوية {leg.ContainerNumber}",
+                            Description = $"المورد: {leg.SupplierName ?? "—"} • {leg.StatusLabel}"
+                        });
+                    }
+                    if (leg.ArrivalDate.HasValue)
+                    {
+                        timeline.Add(new FabricSearchJourneyEventDto
+                        {
+                            OccurredAt = leg.ArrivalDate.Value,
+                            Category = "China",
+                            Title = $"وصول حاوية {leg.ContainerNumber}",
+                            Description = $"الحالة: {leg.StatusLabel}"
+                        });
+                    }
+                    if (leg.ApprovedAt.HasValue)
+                    {
+                        timeline.Add(new FabricSearchJourneyEventDto
+                        {
+                            OccurredAt = leg.ApprovedAt.Value,
+                            Category = "China",
+                            Title = $"اعتماد حاوية {leg.ContainerNumber}",
+                            Description = leg.SalePricePerMeter.HasValue
+                                ? $"سعر البيع: ${leg.SalePricePerMeter.Value:N2}/م"
+                                : "تم اعتماد التكلفة والتسعير"
+                        });
+                    }
+                }
+
+                foreach (var evt in movementEvents.Where(e => e.FabricItemId == fabricId).Take(25))
+                {
+                    timeline.Add(new FabricSearchJourneyEventDto
+                    {
+                        OccurredAt = evt.MovementDate,
+                        Category = "Inventory",
+                        Title = MapMovementTitle(evt.Type),
+                        Description = $"{evt.WarehouseName} • {Math.Abs(evt.QuantityMeters):N0} م • {evt.MovementNumber}"
+                    });
+                }
+
+                timeline = timeline
+                    .OrderByDescending(t => t.OccurredAt)
+                    .Take(30)
+                    .ToList();
+
+                return new FabricSearchProfileDto
+                {
+                    FabricItemId = fabricId,
+                    FabricCode = fabricMeta?.Code ?? fabricStock[0].FabricCode,
+                    FabricName = fabricMeta?.NameAr ?? fabricStock[0].FabricName,
+                    CategoryName = fabricMeta?.CategoryName ?? "—",
+                    TotalRolls = fabricStock.Sum(s => s.RollCount),
+                    TotalMeters = fabricStock.Sum(s => s.TotalMeters),
+                    AvailableMeters = fabricStock.Sum(s => s.AvailableMeters),
+                    ReservedMeters = fabricStock.Sum(s => s.ReservedMeters),
+                    InventoryValue = fabricStock.Sum(s => s.InventoryValue),
+                    AvgCostPerMeter = costs.Count > 0 ? costs.Average() : null,
+                    AvgSalePricePerMeter = salePrices.Count > 0 ? salePrices.Average() : null,
+                    MinSalePricePerMeter = salePrices.Count > 0 ? salePrices.Min() : null,
+                    MaxSalePricePerMeter = salePrices.Count > 0 ? salePrices.Max() : null,
+                    WarehouseCount = fabricStock.Select(s => s.WarehouseId).Distinct().Count(),
+                    ContainerCount = fabricContainerIds.Count,
+                    ColorCount = colors.Count,
+                    Colors = colors,
+                    Locations = locations,
+                    ContainerJourney = containerJourney,
+                    JourneyTimeline = timeline
+                };
+            })
+            .OrderByDescending(p => p.TotalRolls)
+            .ToList();
+    }
+
+    private static string MapContainerStatusLabel(int status) => ((ChinaContainerStatus)status) switch
+    {
+        ChinaContainerStatus.Draft => "مسودة",
+        ChinaContainerStatus.InTransit => "قيد الشحن",
+        ChinaContainerStatus.Arrived => "وصلت",
+        ChinaContainerStatus.UnderReview => "قيد المراجعة",
+        ChinaContainerStatus.LandingCostReviewed => "روجّعت التكلفة",
+        ChinaContainerStatus.Approved => "معتمدة",
+        ChinaContainerStatus.InWarehouse => "في المستودع",
+        ChinaContainerStatus.Closed => "مغلقة",
+        ChinaContainerStatus.Archived => "مؤرشفة",
+        ChinaContainerStatus.Cancelled => "ملغاة",
+        _ => status.ToString()
+    };
+
+    private static string MapMovementTitle(int type) => ((MovementType)type) switch
+    {
+        MovementType.Import => "استيراد للمخزون",
+        MovementType.Purchase => "شراء",
+        MovementType.Sale => "بيع",
+        MovementType.SaleReturn => "مرتجع بيع",
+        MovementType.Transfer => "مناقلة مخزون",
+        MovementType.OpeningBalance => "رصيد افتتاحي",
+        MovementType.Stocktake => "جرد",
+        MovementType.Adjustment => "تسوية مخزون",
+        _ => "حركة مخزون"
+    };
 
     private static Warehouse MapWarehouse(WarehouseEntity e) =>
         Warehouse.FromPersistence(e.Id, e.BranchId, e.Code, e.NameAr, e.City,

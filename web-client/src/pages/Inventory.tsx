@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   getFabricRollSalesReservations,
   getFabricRollsByStock,
+  getFabricSearchProfiles,
   getFabricStock,
   getInventoryAlerts,
   getInventoryDashboard,
@@ -13,6 +14,7 @@ import { ApiError } from '../api/client.ts';
 import type {
   FabricRollListDto,
   FabricRollSalesReservationDto,
+  FabricSearchProfileDto,
   FabricStockBalanceDto,
   InventoryAlertDto
 } from '../api/types.ts';
@@ -25,7 +27,7 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatCurrency, formatMeters, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatDateOnly, formatMeters, formatNumber } from '../lib/format.ts';
 import { inventoryStatusLabels } from '../lib/enums.ts';
 
 const rollStatusLabels: Record<string, string> = {
@@ -43,70 +45,31 @@ function rollStatusLabel(status: string) {
   return rollStatusLabels[status] ?? status;
 }
 
-type FabricSearchInsight = {
-  fabricItemId: string;
-  fabricCode: string;
-  fabricName: string;
-  containerCount: number;
-  totalRolls: number;
-  totalMeters: number;
-  availableMeters: number;
-  locations: {
-    containerId: string;
-    containerNumber: string;
-    warehouseName: string;
-    rollCount: number;
-    totalMeters: number;
-    colorCount: number;
-  }[];
-};
+function formatPricePerMeter(value: number | null | undefined) {
+  return value != null && value > 0 ? `${formatCurrency(value)}/م` : '—';
+}
 
-function buildSearchInsights(rows: FabricStockBalanceDto[]): FabricSearchInsight[] {
-  const byFabric = new Map<string, FabricStockBalanceDto[]>();
-  for (const row of rows) {
-    const key = row.fabricItemId;
-    const list = byFabric.get(key) ?? [];
-    list.push(row);
-    byFabric.set(key, list);
+function filterProfileByContainer(profile: FabricSearchProfileDto, selectedContainerId: string): FabricSearchProfileDto {
+  if (!selectedContainerId) {
+    return profile;
   }
 
-  return [...byFabric.entries()]
-    .map(([, group]) => {
-      const first = group[0]!;
-      const byContainer = new Map<string, FabricStockBalanceDto[]>();
-      for (const row of group) {
-        const cKey = `${row.containerId}|${row.warehouseId}`;
-        const list = byContainer.get(cKey) ?? [];
-        list.push(row);
-        byContainer.set(cKey, list);
-      }
+  const locations = profile.locations.filter((loc) => loc.containerId === selectedContainerId);
+  const containerJourney = profile.containerJourney.filter((leg) => leg.containerId === selectedContainerId);
+  const containerIds = new Set(locations.map((loc) => loc.containerId));
 
-      const locations = [...byContainer.values()]
-        .map((cg) => {
-          const c0 = cg[0]!;
-          return {
-            containerId: c0.containerId,
-            containerNumber: c0.containerNumber || '—',
-            warehouseName: c0.warehouseName,
-            rollCount: cg.reduce((s, r) => s + r.rollCount, 0),
-            totalMeters: cg.reduce((s, r) => s + r.totalMeters, 0),
-            colorCount: new Set(cg.map((r) => r.fabricColorId)).size
-          };
-        })
-        .sort((a, b) => b.rollCount - a.rollCount);
-
-      return {
-        fabricItemId: first.fabricItemId,
-        fabricCode: first.fabricCode,
-        fabricName: first.fabricName,
-        containerCount: locations.length,
-        totalRolls: group.reduce((s, r) => s + r.rollCount, 0),
-        totalMeters: group.reduce((s, r) => s + r.totalMeters, 0),
-        availableMeters: group.reduce((s, r) => s + r.availableMeters, 0),
-        locations
-      };
-    })
-    .sort((a, b) => b.totalRolls - a.totalRolls);
+  return {
+    ...profile,
+    totalRolls: locations.reduce((sum, loc) => sum + loc.rollCount, 0),
+    totalMeters: locations.reduce((sum, loc) => sum + loc.totalMeters, 0),
+    availableMeters: locations.reduce((sum, loc) => sum + loc.availableMeters, 0),
+    reservedMeters: locations.reduce((sum, loc) => sum + loc.reservedMeters, 0),
+    inventoryValue: locations.reduce((sum, loc) => sum + loc.inventoryValue, 0),
+    warehouseCount: new Set(locations.map((loc) => loc.warehouseId)).size,
+    containerCount: containerIds.size,
+    locations,
+    containerJourney
+  };
 }
 
 export function InventoryPage() {
@@ -143,6 +106,24 @@ export function InventoryPage() {
     queryKey: ['inventory', 'stock', warehouseId, serverSearch ?? ''],
     queryFn: () => getFabricStock(warehouseId || undefined, serverSearch)
   });
+
+  const showRichSearch = debouncedSearch.length >= 2;
+
+  const profileQuery = useQuery({
+    queryKey: ['inventory', 'fabric-search-profiles', debouncedSearch, warehouseId],
+    queryFn: () => getFabricSearchProfiles(debouncedSearch, warehouseId || undefined),
+    enabled: showRichSearch
+  });
+
+  const searchProfiles = useMemo(() => {
+    if (!profileQuery.data) {
+      return [];
+    }
+
+    return profileQuery.data
+      .map((profile) => filterProfileByContainer(profile, containerId))
+      .filter((profile) => profile.locations.length > 0);
+  }, [profileQuery.data, containerId]);
 
   const dashboard = dashboardQuery.data;
   const showWarehouseName = warehouseId.length === 0;
@@ -181,12 +162,15 @@ export function InventoryPage() {
     return rows;
   }, [stockQuery.data, containerId, debouncedSearch]);
 
-  const searchInsights = useMemo(
-    () => (debouncedSearch.length >= 2 ? buildSearchInsights(filteredStock) : []),
-    [filteredStock, debouncedSearch]
-  );
-
   const headerSummaryValues = useMemo(() => {
+    if (showRichSearch && profileQuery.isSuccess && searchProfiles.length > 0) {
+      return {
+        totalValue: searchProfiles.reduce((sum, profile) => sum + profile.inventoryValue, 0),
+        totalRolls: searchProfiles.reduce((sum, profile) => sum + profile.totalRolls, 0),
+        itemCount: searchProfiles.length
+      };
+    }
+
     if (stockQuery.isSuccess) {
       return {
         totalValue: filteredStock.reduce((sum, row) => sum + row.inventoryValue, 0),
@@ -204,7 +188,7 @@ export function InventoryPage() {
     }
 
     return { totalValue: 0, totalRolls: 0, itemCount: 0 };
-  }, [stockQuery.isSuccess, filteredStock, isFiltered, dashboard]);
+  }, [showRichSearch, profileQuery.isSuccess, searchProfiles, stockQuery.isSuccess, filteredStock, isFiltered, dashboard]);
 
   function handleWarehouseChange(nextWarehouseId: string) {
     setWarehouseId(nextWarehouseId);
@@ -241,7 +225,7 @@ export function InventoryPage() {
           </Link>
         </div>
         <p className="form-hint inventory-search-hint">
-          ابحث باسم التوب لمعرفة في أي حاوية موجود، وكم العدد والأمتار في كل حاوية.
+          ابحث باسم التوب أو الكود لعرض ملف كامل: سعر البيع، التكلفة، المستودعات، الحاويات، الألوان، ورحلة التوب.
         </p>
         <div className="form-field-row form-field-row--2">
           <label className="form-field form-field--wide">
@@ -291,36 +275,35 @@ export function InventoryPage() {
         ) : null}
       </section>
 
-      {searchInsights.length > 0 ? (
-        <section className="form-panel form-compact form-panel--search-results" aria-label="نتائج البحث الذكي">
+      {showRichSearch ? (
+        <section className="form-panel form-compact form-panel--search-results" aria-label="ملفات التوب">
           <div className="form-section-head">
-            <h2>
-              نتائج «{debouncedSearch}» — {formatNumber(searchInsights.length)} توب في{' '}
-              {formatNumber(new Set(filteredStock.map((r) => r.containerId)).size)} حاوية
-            </h2>
+            <h2>ملف التوب — «{debouncedSearch}»</h2>
           </div>
-          <div className="page-stack" style={{ gap: 10 }}>
-            {searchInsights.slice(0, 8).map((insight) => (
-              <div key={insight.fabricItemId} className="data-card inventory-insight-card">
-                <strong>
-                  {insight.fabricName} ({insight.fabricCode})
-                </strong>
-                <p className="form-hint inventory-insight-card__summary">
-                  موجود في {formatNumber(insight.containerCount)} حاوية • {formatNumber(insight.totalRolls)} ثوب •{' '}
-                  {formatMeters(insight.totalMeters)} • متاح {formatMeters(insight.availableMeters)}
-                </p>
-                <ul className="inventory-insight-card__list">
-                  {insight.locations.slice(0, 12).map((loc) => (
-                    <li key={`${loc.containerId}-${loc.warehouseName}`}>
-                      حاوية {loc.containerNumber} — {loc.warehouseName} — {formatNumber(loc.rollCount)} ثوب —{' '}
-                      {formatMeters(loc.totalMeters)}
-                      {loc.colorCount > 1 ? ` — ${loc.colorCount} ألوان` : ''}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+
+          {profileQuery.isLoading ? <LoadingState /> : null}
+
+          {profileQuery.isError ? (
+            <ErrorState
+              message={profileQuery.error instanceof ApiError ? profileQuery.error.message : 'تعذّر تحميل ملف التوب.'}
+              onRetry={() => void profileQuery.refetch()}
+            />
+          ) : null}
+
+          {profileQuery.isSuccess && searchProfiles.length === 0 ? (
+            <EmptyState
+              title="لا توجد نتائج"
+              description={`لا يوجد توب مطابق لـ «${debouncedSearch}» ضمن التصفية الحالية.`}
+            />
+          ) : null}
+
+          {profileQuery.isSuccess && searchProfiles.length > 0 ? (
+            <div className="fabric-profile-list">
+              {searchProfiles.map((profile) => (
+                <FabricSearchProfileCard key={profile.fabricItemId} profile={profile} />
+              ))}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -339,16 +322,16 @@ export function InventoryPage() {
         </>
       ) : null}
 
-      {stockQuery.isLoading ? <LoadingState /> : null}
+      {!showRichSearch && stockQuery.isLoading ? <LoadingState /> : null}
 
-      {stockQuery.isError ? (
+      {!showRichSearch && stockQuery.isError ? (
         <ErrorState
           message={stockQuery.error instanceof ApiError ? stockQuery.error.message : 'حدث خطأ غير متوقع.'}
           onRetry={() => void stockQuery.refetch()}
         />
       ) : null}
 
-      {stockQuery.isSuccess && filteredStock.length === 0 ? (
+      {!showRichSearch && stockQuery.isSuccess && filteredStock.length === 0 ? (
         <EmptyState
           title="لا توجد أرصدة مخزون"
           description={
@@ -361,7 +344,7 @@ export function InventoryPage() {
         />
       ) : null}
 
-      {stockQuery.isSuccess && filteredStock.length > 0 ? (
+      {!showRichSearch && stockQuery.isSuccess && filteredStock.length > 0 ? (
         <>
           <section className="record-list mobile-only" aria-label="أرصدة الأقمشة">
             {filteredStock.map((row) => (
@@ -393,6 +376,126 @@ export function InventoryPage() {
       {selectedRow ? <RollDetailsModal row={selectedRow} onClose={() => setSelectedRow(null)} /> : null}
       </div>
     </AppShell>
+  );
+}
+
+function FabricSearchProfileCard({ profile }: { profile: FabricSearchProfileDto }) {
+  const saleRange =
+    profile.minSalePricePerMeter != null &&
+    profile.maxSalePricePerMeter != null &&
+    profile.minSalePricePerMeter !== profile.maxSalePricePerMeter
+      ? `${formatPricePerMeter(profile.minSalePricePerMeter)} – ${formatPricePerMeter(profile.maxSalePricePerMeter)}`
+      : formatPricePerMeter(profile.avgSalePricePerMeter);
+
+  return (
+    <article className="fabric-profile-card">
+      <header className="fabric-profile-card__head">
+        <div>
+          <h3 className="fabric-profile-card__title">
+            {profile.fabricName} ({profile.fabricCode})
+          </h3>
+          <p className="fabric-profile-card__meta">الفئة: {profile.categoryName}</p>
+        </div>
+        <span className="status-pill status-pill--green">{formatNumber(profile.totalRolls)} توب</span>
+      </header>
+
+      <dl className="fabric-profile-card__stats">
+        <RecordField label="إجمالي الأمتار" value={formatMeters(profile.totalMeters)} />
+        <RecordField label="متاح" value={formatMeters(profile.availableMeters)} />
+        <RecordField label="محجوز" value={formatMeters(profile.reservedMeters)} />
+        <RecordField label="قيمة المخزون" value={formatCurrency(profile.inventoryValue)} emphasis />
+        <RecordField label="سعر البيع" value={saleRange} />
+        <RecordField label="متوسط التكلفة" value={formatPricePerMeter(profile.avgCostPerMeter)} />
+        <RecordField label="المستودعات" value={formatNumber(profile.warehouseCount)} />
+        <RecordField label="الحاويات" value={formatNumber(profile.containerCount)} />
+        <RecordField label="الألوان" value={formatNumber(profile.colorCount)} />
+      </dl>
+
+      <details className="fabric-profile-section" open>
+        <summary>توزيع الألوان ({formatNumber(profile.colors.length)})</summary>
+        <ul className="fabric-profile-section__list">
+          {profile.colors.map((color) => (
+            <li key={color.fabricColorId}>
+              <strong>{color.colorName}</strong>
+              <span>
+                {formatNumber(color.rollCount)} توب • {formatMeters(color.totalMeters)} • متاح{' '}
+                {formatMeters(color.availableMeters)} • {formatNumber(color.containerCount)} حاوية
+              </span>
+              <span>
+                بيع {formatPricePerMeter(color.avgSalePricePerMeter)} • تكلفة{' '}
+                {formatPricePerMeter(color.avgCostPerMeter)} • {formatCurrency(color.inventoryValue)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <details className="fabric-profile-section" open>
+        <summary>المواقع التفصيلية ({formatNumber(profile.locations.length)})</summary>
+        <ul className="fabric-profile-section__list">
+          {profile.locations.map((loc) => (
+            <li key={`${loc.warehouseId}-${loc.containerId}-${loc.fabricColorId}`}>
+              <strong>
+                {loc.warehouseName} — حاوية {loc.containerNumber} — {loc.colorName}
+              </strong>
+              <span>
+                {formatNumber(loc.rollCount)} توب • {formatMeters(loc.totalMeters)} • متاح{' '}
+                {formatMeters(loc.availableMeters)}
+                {loc.reservedMeters > 0 ? ` • محجوز ${formatMeters(loc.reservedMeters)}` : ''}
+              </span>
+              <span>
+                بيع {formatPricePerMeter(loc.avgSalePricePerMeter)} • تكلفة {formatPricePerMeter(loc.avgCostPerMeter)} •{' '}
+                {formatCurrency(loc.inventoryValue)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      {profile.containerJourney.length > 0 ? (
+        <details className="fabric-profile-section">
+          <summary>رحلة الحاويات ({formatNumber(profile.containerJourney.length)})</summary>
+          <ul className="fabric-profile-section__list">
+            {profile.containerJourney.map((leg) => (
+              <li key={leg.containerId}>
+                <strong>
+                  حاوية {leg.containerNumber} — {leg.statusLabel}
+                </strong>
+                <span>
+                  {formatNumber(leg.rollCount)} توب • {formatMeters(leg.totalMeters)} • المستودعات:{' '}
+                  {leg.warehouses.length > 0 ? leg.warehouses.join('، ') : '—'}
+                </span>
+                <span>
+                  المورد: {leg.supplierName ?? '—'} • شحن {formatDateOnly(leg.shipmentDate)} • وصول{' '}
+                  {formatDateOnly(leg.arrivalDate)} • اعتماد {formatDateOnly(leg.approvedAt)}
+                </span>
+                <span>
+                  تكلفة {formatPricePerMeter(leg.landedCostPerMeter)} • بيع {formatPricePerMeter(leg.salePricePerMeter)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
+      {profile.journeyTimeline.length > 0 ? (
+        <details className="fabric-profile-section">
+          <summary>الخط الزمني ({formatNumber(profile.journeyTimeline.length)})</summary>
+          <ol className="fabric-profile-timeline">
+            {profile.journeyTimeline.map((event, index) => (
+              <li key={`${event.occurredAt}-${event.title}-${index}`}>
+                <time dateTime={event.occurredAt}>{formatDate(event.occurredAt)}</time>
+                <div>
+                  <strong>{event.title}</strong>
+                  <p>{event.description}</p>
+                  <span className="fabric-profile-timeline__tag">{event.category === 'China' ? 'الصين' : 'المخزون'}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
+    </article>
   );
 }
 

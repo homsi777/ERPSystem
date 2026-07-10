@@ -7,6 +7,7 @@ public sealed record GetInventoryWarehouseOperationsCenterQuery(Guid WarehouseId
 public sealed record GetInventoryWarehouseDetailQuery(Guid WarehouseId);
 public sealed record GetInventoryDashboardQuery(Guid BranchId);
 public sealed record GetFabricStockBalancesQuery(Guid BranchId, Guid? WarehouseId = null, string? Search = null);
+public sealed record GetFabricSearchProfilesQuery(Guid BranchId, string Search, Guid? WarehouseId = null);
 public sealed record GetInventoryMovementsQuery(Guid BranchId, Guid? WarehouseId = null);
 public sealed record GetInventoryAlertsQuery(Guid BranchId, bool UnacknowledgedOnly = true);
 public sealed record GetStockTransfersQuery(Guid BranchId);

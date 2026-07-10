@@ -1780,6 +1780,131 @@ svg {
   line-height: 1.7;
 }
 
+.fabric-profile-list {
+  display: grid;
+  gap: 12px;
+}
+
+.fabric-profile-card {
+  background: #fff;
+  border: 1px solid rgba(24, 95, 165, 0.16);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+}
+
+.fabric-profile-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.fabric-profile-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.fabric-profile-card__meta {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+}
+
+.fabric-profile-card__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0 0 12px;
+}
+
+.fabric-profile-section {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.fabric-profile-section > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.fabric-profile-section__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.fabric-profile-section__list li {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(239, 246, 255, 0.65);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.fabric-profile-section__list li strong {
+  color: #0f172a;
+}
+
+.fabric-profile-section__list li span {
+  color: #475569;
+}
+
+.fabric-profile-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.fabric-profile-timeline li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border-inline-start: 3px solid var(--color-primary);
+}
+
+.fabric-profile-timeline time {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.fabric-profile-timeline p {
+  margin: 2px 0 0;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.fabric-profile-timeline__tag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(24, 95, 165, 0.12);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@media (min-width: 641px) {
+  .fabric-profile-card__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .form-panel--filter .form-section-head {
   margin-block-end: 0;
 }

@@ -283,6 +283,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetInventoryOperationsCenterHandler>();
         services.AddScoped<GetInventoryDashboardHandler>();
         services.AddScoped<GetFabricStockBalancesHandler>();
+        services.AddScoped<GetFabricSearchProfilesHandler>();
         services.AddScoped<GetInventoryMovementsHandler>();
         services.AddScoped<GetInventoryAlertsHandler>();
         services.AddScoped<GetStockTransfersHandler>();

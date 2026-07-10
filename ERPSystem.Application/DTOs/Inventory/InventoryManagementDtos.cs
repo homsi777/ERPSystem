@@ -406,3 +406,82 @@ public sealed class OpeningStockListDto
     public string Status { get; init; } = "";
     public decimal TotalValue { get; init; }
 }
+
+public sealed class FabricSearchProfileDto
+{
+    public Guid FabricItemId { get; init; }
+    public string FabricCode { get; init; } = "";
+    public string FabricName { get; init; } = "";
+    public string CategoryName { get; init; } = "";
+    public int TotalRolls { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public decimal ReservedMeters { get; init; }
+    public decimal InventoryValue { get; init; }
+    public decimal? AvgCostPerMeter { get; init; }
+    public decimal? AvgSalePricePerMeter { get; init; }
+    public decimal? MinSalePricePerMeter { get; init; }
+    public decimal? MaxSalePricePerMeter { get; init; }
+    public int WarehouseCount { get; init; }
+    public int ContainerCount { get; init; }
+    public int ColorCount { get; init; }
+    public IReadOnlyList<FabricSearchColorBreakdownDto> Colors { get; init; } = [];
+    public IReadOnlyList<FabricSearchLocationDetailDto> Locations { get; init; } = [];
+    public IReadOnlyList<FabricSearchContainerLegDto> ContainerJourney { get; init; } = [];
+    public IReadOnlyList<FabricSearchJourneyEventDto> JourneyTimeline { get; init; } = [];
+}
+
+public sealed class FabricSearchColorBreakdownDto
+{
+    public Guid FabricColorId { get; init; }
+    public string ColorName { get; init; } = "";
+    public int RollCount { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public decimal ReservedMeters { get; init; }
+    public decimal InventoryValue { get; init; }
+    public decimal? AvgSalePricePerMeter { get; init; }
+    public decimal? AvgCostPerMeter { get; init; }
+    public int ContainerCount { get; init; }
+}
+
+public sealed class FabricSearchLocationDetailDto
+{
+    public Guid WarehouseId { get; init; }
+    public string WarehouseName { get; init; } = "";
+    public Guid ContainerId { get; init; }
+    public string ContainerNumber { get; init; } = "";
+    public Guid FabricColorId { get; init; }
+    public string ColorName { get; init; } = "";
+    public int RollCount { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal AvailableMeters { get; init; }
+    public decimal ReservedMeters { get; init; }
+    public decimal InventoryValue { get; init; }
+    public decimal? AvgCostPerMeter { get; init; }
+    public decimal? AvgSalePricePerMeter { get; init; }
+}
+
+public sealed class FabricSearchContainerLegDto
+{
+    public Guid ContainerId { get; init; }
+    public string ContainerNumber { get; init; } = "";
+    public string StatusLabel { get; init; } = "";
+    public string? SupplierName { get; init; }
+    public DateTime? ShipmentDate { get; init; }
+    public DateTime? ArrivalDate { get; init; }
+    public DateTime? ApprovedAt { get; init; }
+    public int RollCount { get; init; }
+    public decimal TotalMeters { get; init; }
+    public decimal? LandedCostPerMeter { get; init; }
+    public decimal? SalePricePerMeter { get; init; }
+    public IReadOnlyList<string> Warehouses { get; init; } = [];
+}
+
+public sealed class FabricSearchJourneyEventDto
+{
+    public DateTime OccurredAt { get; init; }
+    public string Title { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string Category { get; init; } = "";
+}

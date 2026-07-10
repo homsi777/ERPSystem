@@ -17,6 +17,9 @@ public static class InventoryEndpoints
         group.MapGet("/stock", GetFabricStockAsync)
             .WithName("GetFabricStockBalances");
 
+        group.MapGet("/fabric-search-profiles", GetFabricSearchProfilesAsync)
+            .WithName("GetFabricSearchProfiles");
+
         group.MapGet("/warehouses", GetWarehouseListAsync)
             .WithName("GetInventoryWarehouseList");
 
@@ -60,6 +63,27 @@ public static class InventoryEndpoints
 
         var result = await handler.HandleAsync(
             new GetFabricStockBalancesQuery(branchId, warehouseId, search),
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetFabricSearchProfilesAsync(
+        [FromQuery] string search,
+        [FromQuery] Guid? warehouseId,
+        ICurrentBranchService branchService,
+        GetFabricSearchProfilesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(
+            new GetFabricSearchProfilesQuery(branchId, search, warehouseId),
             cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);

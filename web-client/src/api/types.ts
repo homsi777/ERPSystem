@@ -63,6 +63,80 @@ export type FabricStockBalanceDto = {
   inventoryValue: number;
 };
 
+export type FabricSearchProfileDto = {
+  fabricItemId: string;
+  fabricCode: string;
+  fabricName: string;
+  categoryName: string;
+  totalRolls: number;
+  totalMeters: number;
+  availableMeters: number;
+  reservedMeters: number;
+  inventoryValue: number;
+  avgCostPerMeter: number | null;
+  avgSalePricePerMeter: number | null;
+  minSalePricePerMeter: number | null;
+  maxSalePricePerMeter: number | null;
+  warehouseCount: number;
+  containerCount: number;
+  colorCount: number;
+  colors: FabricSearchColorBreakdownDto[];
+  locations: FabricSearchLocationDetailDto[];
+  containerJourney: FabricSearchContainerLegDto[];
+  journeyTimeline: FabricSearchJourneyEventDto[];
+};
+
+export type FabricSearchColorBreakdownDto = {
+  fabricColorId: string;
+  colorName: string;
+  rollCount: number;
+  totalMeters: number;
+  availableMeters: number;
+  reservedMeters: number;
+  inventoryValue: number;
+  avgSalePricePerMeter: number | null;
+  avgCostPerMeter: number | null;
+  containerCount: number;
+};
+
+export type FabricSearchLocationDetailDto = {
+  warehouseId: string;
+  warehouseName: string;
+  containerId: string;
+  containerNumber: string;
+  fabricColorId: string;
+  colorName: string;
+  rollCount: number;
+  totalMeters: number;
+  availableMeters: number;
+  reservedMeters: number;
+  inventoryValue: number;
+  avgCostPerMeter: number | null;
+  avgSalePricePerMeter: number | null;
+};
+
+export type FabricSearchContainerLegDto = {
+  containerId: string;
+  containerNumber: string;
+  statusLabel: string;
+  supplierName: string | null;
+  shipmentDate: string | null;
+  arrivalDate: string | null;
+  approvedAt: string | null;
+  rollCount: number;
+  totalMeters: number;
+  landedCostPerMeter: number | null;
+  salePricePerMeter: number | null;
+  warehouses: string[];
+};
+
+export type FabricSearchJourneyEventDto = {
+  occurredAt: string;
+  title: string;
+  description: string;
+  category: string;
+};
+
 export type PagedResult<T> = {
   items: T[];
   page: number;

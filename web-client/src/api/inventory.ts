@@ -3,6 +3,7 @@ import type {
   DetailingCandidateRollDto,
   FabricRollListDto,
   FabricRollSalesReservationDto,
+  FabricSearchProfileDto,
   FabricStockBalanceDto,
   InventoryAlertDto,
   InventoryDashboardDto,
@@ -22,6 +23,14 @@ export function getFabricStock(warehouseId?: string, searchTerm?: string) {
 
   const suffix = search.size > 0 ? `?${search.toString()}` : '';
   return apiRequest<FabricStockBalanceDto[]>(`/api/v1/inventory/stock${suffix}`);
+}
+
+export function getFabricSearchProfiles(searchTerm: string, warehouseId?: string) {
+  const search = new URLSearchParams({ search: searchTerm.trim() });
+  if (warehouseId) {
+    search.set('warehouseId', warehouseId);
+  }
+  return apiRequest<FabricSearchProfileDto[]>(`/api/v1/inventory/fabric-search-profiles?${search.toString()}`);
 }
 
 export function getInventoryWarehouses() {

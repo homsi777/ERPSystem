@@ -64,6 +64,24 @@ public sealed class GetFabricStockBalancesHandler(IInventoryManagementRepository
             await repository.GetFabricStockBalancesAsync(query.BranchId, query.WarehouseId, query.Search, cancellationToken));
 }
 
+public sealed class GetFabricSearchProfilesHandler(IInventoryManagementRepository repository)
+    : IQueryHandler<GetFabricSearchProfilesQuery, ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>> HandleAsync(
+        GetFabricSearchProfilesQuery query, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query.Search) || query.Search.Trim().Length < 2)
+            return ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>.Success([]);
+
+        return ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>.Success(
+            await repository.GetFabricSearchProfilesAsync(
+                query.BranchId,
+                query.Search.Trim(),
+                query.WarehouseId,
+                cancellationToken));
+    }
+}
+
 public sealed class GetInventoryMovementsHandler(IInventoryManagementRepository repository)
     : IQueryHandler<GetInventoryMovementsQuery, ApplicationResult<IReadOnlyList<StockMovementListDto>>>
 {
