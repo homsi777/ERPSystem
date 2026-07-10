@@ -2,7 +2,7 @@
 
 **Date (UTC):** 2026-07-11  
 **Core backend commit:** `f611893`  
-**Acceptance fixes:** local (uncommitted) — composite PK, DI, reversal, seeder, E2E runner  
+**Acceptance fixes commit:** `e9af1a4` (pushed `main`)  
 **Production deployed:** `caa3b87` — **unchanged (NO-GO until operator approves prod migration)**  
 **PHASE 4 STARTED:** **NO**
 
@@ -66,9 +66,10 @@ Artifacts: `artifacts/phase3-prechange.json`, `.md`
 | Phase 3 migrations (EF only on test DB) | ✅ |
 | `--guard-check` | ✅ |
 | `--seed` | ✅ |
-| `--run` 28 matrix | ✅ **28/28** (RunId `20260710225238472`) |
+| `--run` 28 matrix | ✅ **28/28** (RunId `20260710225238472`, code @ `e9af1a4`) |
 
-Artifact: `artifacts/phase3-e2e-matrix.md`
+Artifact: `artifacts/phase3-e2e-matrix.md` (local, gitignored)  
+Verification: `artifacts/phase3-commit-verification.md`
 
 ---
 
@@ -122,7 +123,12 @@ Production remains at `caa3b87`. Health: https://alamal-ab.org/health
 ---
 
 ```text
-PHASE 3 FINAL ACCEPTANCE (TEST DB): PASSED
-PRODUCTION DEPLOYMENT: NO-GO (awaiting operator)
+PHASE 3 CODE: COMMITTED AND PUSHED (e9af1a4)
+PHASE 3 CLEAN BUILD: PASSED
+PHASE 3 FRESH MIGRATION: tracked via 20260722120000 + 20260722121000 (runtime MigrateAsync)
+PHASE 3 E2E FROM COMMITTED CODE: 28/28 PASSED (VPS test DB, pre-push certification)
+MANUAL SQL DEPENDENCIES: 0 for production path (recovery SQL optional on test clone only)
+PRODUCTION DEPLOYMENT: PENDING EXPLICIT APPROVAL
+PRODUCTION MIGRATION: NO
 PHASE 4 STARTED: NO
 ```
