@@ -76,6 +76,7 @@ public sealed class PostReceiptVoucherHandler(
     ICustomerRepository customerRepository,
     ICashboxRepository cashboxRepository,
     IIntegratedAccountingService integratedAccounting,
+    IPostingSaveCoordinator postingSaveCoordinator,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     INotificationService notificationService)
@@ -105,6 +106,8 @@ public sealed class PostReceiptVoucherHandler(
 
         try
         {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
             if (voucher.Status == Domain.Enums.VoucherStatus.Draft)
                 voucher.Approve();
 
@@ -122,7 +125,9 @@ public sealed class PostReceiptVoucherHandler(
                 voucher.Amount.Amount,
                 cancellationToken);
 
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            var recovery = integratedAccounting.ConsumePendingPostingRequests();
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recovery, cancellationToken);
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
 
             await notificationService.PublishAsync(new ReceiptVoucherPostedNotification
             {
@@ -135,6 +140,7 @@ public sealed class PostReceiptVoucherHandler(
         }
         catch (Exception ex)
         {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
             return ex.ToFailureResult();
         }
     }
@@ -188,6 +194,7 @@ public sealed class PostPaymentVoucherHandler(
     IPurchaseInvoicePaymentRepository purchasePaymentRepository,
     ICashboxRepository cashboxRepository,
     IIntegratedAccountingService integratedAccounting,
+    IPostingSaveCoordinator postingSaveCoordinator,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService)
     : ICommandHandler<PostPaymentVoucherCommand, ApplicationResult>
@@ -216,6 +223,8 @@ public sealed class PostPaymentVoucherHandler(
 
         try
         {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
             voucher.Approve();
             voucher.Post();
             cashbox.ApplyPayment(voucher.Amount);
@@ -246,12 +255,16 @@ public sealed class PostPaymentVoucherHandler(
             }
 
             await supplierRepository.UpdateAsync(supplierAgg, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var recovery = integratedAccounting.ConsumePendingPostingRequests();
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recovery, cancellationToken);
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
 
             return ApplicationResult.Success();
         }
         catch (Exception ex)
         {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
             return ex.ToFailureResult();
         }
     }

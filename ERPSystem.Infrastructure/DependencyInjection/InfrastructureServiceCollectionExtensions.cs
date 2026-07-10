@@ -89,6 +89,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IInventoryOperationsService, InventoryOperationsService>();
         services.AddScoped<IPurchaseInventoryService, PurchaseInventoryService>();
         services.AddScoped<IIntegratedAccountingService, IntegratedAccountingService>();
+        services.AddScoped<IPostingSaveCoordinator, PostingSaveCoordinator>();
+        services.AddScoped<IAccountingPostingEngine, AccountingPostingEngine>();
+        services.AddScoped<IAccountingIdempotencyService, AccountingIdempotencyService>();
         services.AddScoped<IAccountingBaselineReportService, AccountingBaselineReportService>();
         services.AddScoped<IAccountingHealthCheckService, AccountingHealthCheckService>();
         services.AddScoped<IContainerWarehouseImportService, ContainerWarehouseImportService>();

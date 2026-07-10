@@ -1,3 +1,4 @@
+using ERPSystem.Application.Posting;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Purchasing;
 
@@ -8,6 +9,8 @@ public sealed record JournalLineSpec(Guid AccountId, decimal Debit, decimal Cred
 
 public interface IIntegratedAccountingService
 {
+    /// <summary>Posting requests awaiting SaveChanges recovery since last consume.</summary>
+    IReadOnlyList<PostingRequest> ConsumePendingPostingRequests();
     /// <summary>
     /// Posts the journal entry for a unified opening balance document
     /// (DocumentType.FinanceOpeningBalance). Idempotent per document id.

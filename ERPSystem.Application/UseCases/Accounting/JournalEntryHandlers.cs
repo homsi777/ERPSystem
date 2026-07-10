@@ -59,7 +59,7 @@ public sealed class CreateJournalEntryHandler(
 
             Domain.Validators.JournalValidator.ValidateDraft(aggregate);
 
-            await journalEntryRepository.AddAsync(aggregate, command.CompanyId, command.BranchId, cancellationToken);
+            await journalEntryRepository.AddAsync(aggregate, command.CompanyId, command.BranchId, cancellationToken: cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult<Guid>.Success(aggregate.Id);
@@ -190,7 +190,7 @@ public sealed class ReverseJournalEntryHandler(
             var reversal = aggregate.CreateReversal(reversalNumber, userId);
 
             await journalEntryRepository.UpdateAsync(aggregate, cancellationToken);
-            await journalEntryRepository.AddAsync(reversal, companyId, branchId, cancellationToken);
+            await journalEntryRepository.AddAsync(reversal, companyId, branchId, cancellationToken: cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             return ApplicationResult<Guid>.Success(reversal.Id);

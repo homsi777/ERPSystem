@@ -442,6 +442,7 @@ public sealed class ApproveSalesInvoiceHandler(
     ICurrentUserService currentUserService,
     IInventoryOperationsService inventoryOperations,
     IIntegratedAccountingService accountingService,
+    IPostingSaveCoordinator postingSaveCoordinator,
     IAuditLogRepository auditLogRepository,
     ICurrentBranchService currentBranchService,
     IDomainEventDispatcher domainEventDispatcher)
@@ -497,6 +498,7 @@ public sealed class ApproveSalesInvoiceHandler(
 
             var cogs = await inventoryOperations.DeductForInvoiceAsync(aggregate, cancellationToken);
             await accountingService.PostSalesInvoiceApprovalAsync(aggregate, cogs, cancellationToken);
+            var recoveryRequests = accountingService.ConsumePendingPostingRequests().ToList();
 
             if (cashCollectionAmount > 0 && cashbox is not null)
             {
@@ -506,6 +508,7 @@ public sealed class ApproveSalesInvoiceHandler(
                     cashbox,
                     cashCollectionAmount,
                     cancellationToken);
+                recoveryRequests.AddRange(accountingService.ConsumePendingPostingRequests());
             }
 
             if (aggregate.TotalLineDiscount.Amount > 0)
@@ -533,7 +536,13 @@ public sealed class ApproveSalesInvoiceHandler(
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await customerRepository.UpdateAsync(customerAggregate, cancellationToken);
-            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
+
+            var events = aggregate.DomainEvents.ToList();
+            aggregate.ClearDomainEvents();
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recoveryRequests, cancellationToken);
+            if (events.Count > 0)
+                await domainEventDispatcher.DispatchAsync(events, cancellationToken);
+
             await unitOfWork.CommitTransactionAsync(cancellationToken);
 
             await notificationService.PublishAsync(new SalesInvoiceApprovedNotification

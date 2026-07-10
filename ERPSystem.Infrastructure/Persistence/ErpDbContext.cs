@@ -104,6 +104,8 @@ public sealed class ErpDbContext(DbContextOptions<ErpDbContext> options) : DbCon
     public DbSet<JournalEntryEntity> JournalEntries => Set<JournalEntryEntity>();
     public DbSet<JournalEntryLineEntity> JournalEntryLines => Set<JournalEntryLineEntity>();
     public DbSet<JournalBookEntity> JournalBooks => Set<JournalBookEntity>();
+    public DbSet<AccountingPostingAttemptEntity> AccountingPostingAttempts => Set<AccountingPostingAttemptEntity>();
+    public DbSet<AccountingIdempotencyRecordEntity> AccountingIdempotencyRecords => Set<AccountingIdempotencyRecordEntity>();
 
     // settings
     public DbSet<SystemSettingEntity> SystemSettings => Set<SystemSettingEntity>();

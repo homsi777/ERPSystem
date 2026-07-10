@@ -218,7 +218,9 @@ public sealed class ApproveContainerHandler(
     ICurrentUserService currentUserService,
     IAuditLogRepository auditLogRepository,
     ICurrentBranchService currentBranchService,
-    IDomainEventDispatcher domainEventDispatcher)
+    IIntegratedAccountingService accountingService,
+    IPostingSaveCoordinator postingSaveCoordinator,
+    INotificationService notificationService)
     : ICommandHandler<ApproveContainerCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -241,6 +243,8 @@ public sealed class ApproveContainerHandler(
 
         try
         {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
             var previousStatus = aggregate.Status;
             var userId = currentUserService.UserId ?? Guid.Empty;
             aggregate.Approve(userId);
@@ -256,11 +260,24 @@ public sealed class ApproveContainerHandler(
                 aggregate.Status,
                 cancellationToken: cancellationToken);
 
-            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
+            await accountingService.PostContainerApprovalAsync(aggregate, cancellationToken);
+            var recovery = accountingService.ConsumePendingPostingRequests();
+
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recovery, cancellationToken);
+
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            await notificationService.PublishAsync(new ContainerApprovedNotification
+            {
+                ContainerId = aggregate.Id,
+                ContainerNumber = aggregate.ContainerNumber.Value
+            }, cancellationToken);
+
             return ApplicationResult.Success();
         }
         catch (Exception ex)
         {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
             return ex.ToFailureResult();
         }
     }
@@ -274,6 +291,8 @@ public sealed class MoveContainerToWarehouseHandler(
     ICurrentUserService currentUserService,
     ICurrentBranchService currentBranchService,
     IContainerWarehouseImportService warehouseImportService,
+    IIntegratedAccountingService accountingService,
+    IPostingSaveCoordinator postingSaveCoordinator,
     IDomainEventDispatcher domainEventDispatcher)
     : ICommandHandler<MoveContainerToWarehouseCommand, ApplicationResult>
 {
@@ -318,7 +337,13 @@ public sealed class MoveContainerToWarehouseHandler(
                 $"warehouseId={command.WarehouseId}",
                 cancellationToken);
 
-            await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
+            var events = aggregate.DomainEvents.ToList();
+            aggregate.ClearDomainEvents();
+            var recovery = accountingService.ConsumePendingPostingRequests();
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recovery, cancellationToken);
+            if (events.Count > 0)
+                await domainEventDispatcher.DispatchAsync(events, cancellationToken);
+
             await unitOfWork.CommitTransactionAsync(cancellationToken);
             return ApplicationResult.Success();
         }

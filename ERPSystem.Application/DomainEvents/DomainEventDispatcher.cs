@@ -55,15 +55,8 @@ public sealed class DomainEventDispatcher(IServiceProvider serviceProvider) : ID
     private async Task HandleContainerApprovedAsync(ContainerApproved e, CancellationToken cancellationToken)
     {
         using var scope = serviceProvider.CreateScope();
-        var containerRepo = scope.ServiceProvider.GetRequiredService<Abstractions.Repositories.IChinaContainerRepository>();
-        var accounting = scope.ServiceProvider.GetRequiredService<IIntegratedAccountingService>();
         var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
-        var container = await containerRepo.GetByIdAsync(e.ContainerId, cancellationToken);
-        if (container is null)
-            return;
-
-        await accounting.PostContainerApprovalAsync(container, cancellationToken);
         await notifications.PublishAsync(new ContainerApprovedNotification
         {
             ContainerId = e.ContainerId,

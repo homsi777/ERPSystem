@@ -1,3 +1,4 @@
+using ERPSystem.Application.Posting;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Enums;
 
@@ -11,7 +12,12 @@ public interface IJournalEntryRepository
         Guid companyId,
         JournalEntryStatus? status = null,
         CancellationToken cancellationToken = default);
-    Task AddAsync(AccountingAggregate entry, Guid companyId, Guid branchId, CancellationToken cancellationToken = default);
+    Task AddAsync(
+        AccountingAggregate entry,
+        Guid companyId,
+        Guid branchId,
+        JournalEntryPostMetadata? postingMetadata = null,
+        CancellationToken cancellationToken = default);
     Task UpdateAsync(AccountingAggregate entry, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<JournalEntryListRow> Items, int TotalCount)> GetPagedAsync(
         Guid companyId,

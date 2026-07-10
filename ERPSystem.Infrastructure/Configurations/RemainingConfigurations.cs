@@ -154,8 +154,44 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
         builder.ToTable("journal_entries", Schemas.Accounting);
         builder.HasKey(x => x.Id);
         builder.Property(x => x.EntryNumber).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.PostingIdentityVersion).HasDefaultValue(1);
+        builder.Property(x => x.IdempotencyKey).HasMaxLength(200);
+        builder.Property(x => x.CorrelationId).HasMaxLength(100);
         builder.HasIndex(x => new { x.CompanyId, x.EntryNumber }).IsUnique();
         builder.HasIndex(x => x.JournalBookId);
+        builder.HasIndex(x => new { x.CompanyId, x.SourceType, x.SourceId, x.PostingKind })
+            .IsUnique()
+            .HasFilter("\"PostingIdentityVersion\" = 2 AND \"SourceType\" IS NOT NULL AND \"SourceId\" IS NOT NULL AND \"PostingKind\" IS NOT NULL AND \"IsActive\" = true")
+            .HasDatabaseName("IX_journal_entries_posting_identity_v2");
+    }
+}
+
+internal sealed class AccountingPostingAttemptConfiguration : IEntityTypeConfiguration<AccountingPostingAttemptEntity>
+{
+    public void Configure(EntityTypeBuilder<AccountingPostingAttemptEntity> builder)
+    {
+        builder.ToTable("accounting_posting_attempts", Schemas.Accounting);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.IdempotencyKey).HasMaxLength(200);
+        builder.Property(x => x.CorrelationId).HasMaxLength(100);
+        builder.Property(x => x.ErrorCode).HasMaxLength(100);
+        builder.Property(x => x.ErrorMessage).HasMaxLength(2000);
+        builder.HasIndex(x => new { x.CompanyId, x.SourceType, x.SourceId, x.PostingKind });
+        builder.HasIndex(x => new { x.Status, x.StartedAt });
+    }
+}
+
+internal sealed class AccountingIdempotencyRecordConfiguration : IEntityTypeConfiguration<AccountingIdempotencyRecordEntity>
+{
+    public void Configure(EntityTypeBuilder<AccountingIdempotencyRecordEntity> builder)
+    {
+        builder.ToTable("accounting_idempotency_records", Schemas.Accounting);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Operation).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.IdempotencyKey).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.RequestHash).HasMaxLength(128).IsRequired();
+        builder.Property(x => x.FailureCode).HasMaxLength(100);
+        builder.HasIndex(x => new { x.CompanyId, x.UserId, x.Operation, x.IdempotencyKey }).IsUnique();
     }
 }
 

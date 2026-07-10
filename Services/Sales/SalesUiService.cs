@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Sales;
@@ -80,6 +81,7 @@ public static class SalesCatalogDefaults
 
 public sealed class SalesUiService
 {
+    private static readonly ConcurrentDictionary<Guid, byte> ApproveInFlight = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ICurrentBranchService _branch;
 
@@ -239,9 +241,19 @@ public sealed class SalesUiService
         Guid invoiceId,
         CancellationToken cancellationToken = default)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>>();
-        return await handler.HandleAsync(new ApproveSalesInvoiceCommand { InvoiceId = invoiceId }, cancellationToken);
+        if (!ApproveInFlight.TryAdd(invoiceId, 0))
+            return ApplicationResult.Conflict("جاري تنفيذ اعتماد الفاتورة. يرجى الانتظار.");
+
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>>();
+            return await handler.HandleAsync(new ApproveSalesInvoiceCommand { InvoiceId = invoiceId }, cancellationToken);
+        }
+        finally
+        {
+            ApproveInFlight.TryRemove(invoiceId, out _);
+        }
     }
 
     public async Task<ApplicationResult<IReadOnlyList<SalesInvoiceBelowCostLineDto>>> CheckBelowCostAsync(

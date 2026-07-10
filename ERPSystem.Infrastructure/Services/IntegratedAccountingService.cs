@@ -2,12 +2,11 @@ using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
+using ERPSystem.Application.Posting;
 using ERPSystem.Domain.Aggregates;
-using ERPSystem.Domain.Entities.Accounting;
 using ERPSystem.Domain.Entities.Purchasing;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Domain.Exceptions;
-using ERPSystem.Domain.ValueObjects;
 using ERPSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,12 +14,20 @@ namespace ERPSystem.Infrastructure.Services;
 
 internal sealed class IntegratedAccountingService(
     ErpDbContext context,
-    IJournalEntryRepository journalRepository,
-    INumberingService numberingService,
-    IUnitOfWork unitOfWork,
+    IAccountingPostingEngine postingEngine,
     ICurrentUserService currentUserService,
     ICurrentBranchService currentBranchService) : IIntegratedAccountingService
 {
+    private readonly List<PostingRequest> _pendingRecoveryRequests = [];
+
+    /// <summary>Posting requests created since last consume — used for unique-violation recovery on SaveChanges.</summary>
+    public IReadOnlyList<PostingRequest> ConsumePendingPostingRequests()
+    {
+        var copy = _pendingRecoveryRequests.ToList();
+        _pendingRecoveryRequests.Clear();
+        return copy;
+    }
+
     public Task PostContainerApprovalAsync(ContainerAggregate container, CancellationToken cancellationToken = default)
     {
         if (container.LandingCost is null)
@@ -30,10 +37,10 @@ internal sealed class IntegratedAccountingService(
         if (totalExpenses <= 0)
             return Task.CompletedTask;
 
-        return PostIfNotExistsAsync(
+        return PostViaEngineAsync(
             DocumentType.ChinaContainer,
             container.Id,
-            "اعتماد حاوية",
+            PostingKind.ChinaContainerLandingCost,
             JournalBookIds.Purchase,
             $"اعتماد حاوية {container.ContainerNumber.Value} — تكاليف وصول",
             [
@@ -52,10 +59,10 @@ internal sealed class IntegratedAccountingService(
         if (inventoryValue <= 0)
             return Task.CompletedTask;
 
-        return PostIfNotExistsAsync(
+        return PostViaEngineAsync(
             DocumentType.ChinaContainer,
             container.Id,
-            "تفعيل مخزون",
+            PostingKind.ChinaContainerInventoryActivation,
             JournalBookIds.General,
             $"تفعيل مخزون حاوية {container.ContainerNumber.Value}",
             [
@@ -65,7 +72,7 @@ internal sealed class IntegratedAccountingService(
             cancellationToken);
     }
 
-    public async Task PostSalesInvoiceApprovalAsync(
+    public Task PostSalesInvoiceApprovalAsync(
         SalesInvoiceAggregate invoice,
         decimal cogsAmount,
         CancellationToken cancellationToken = default)
@@ -89,10 +96,10 @@ internal sealed class IntegratedAccountingService(
             lines.Add((AccountingAccountIds.InventoryAsset, 0m, cogsAmount, "صرف مخزون", null));
         }
 
-        await PostIfNotExistsAsync(
+        return PostViaEngineAsync(
             DocumentType.SalesInvoice,
             invoice.Id,
-            null,
+            PostingKind.SalesInvoicePosting,
             JournalBookIds.Sales,
             $"فاتورة بيع {invoice.InvoiceNumber.Value}",
             lines,
@@ -105,10 +112,10 @@ internal sealed class IntegratedAccountingService(
         Guid customerId,
         decimal amount,
         CancellationToken cancellationToken = default) =>
-        PostIfNotExistsAsync(
+        PostViaEngineAsync(
             DocumentType.ReceiptVoucher,
             voucherId,
-            null,
+            PostingKind.ReceiptVoucher,
             JournalBookIds.Cash,
             $"سند قبض {voucherNumber}",
             [
@@ -125,10 +132,10 @@ internal sealed class IntegratedAccountingService(
         Guid cashAccountId,
         decimal amount,
         CancellationToken cancellationToken = default) =>
-        PostIfNotExistsAsync(
+        PostViaEngineAsync(
             DocumentType.PaymentVoucher,
             voucherId,
-            null,
+            PostingKind.PaymentVoucher,
             JournalBookIds.Cash,
             $"سند صرف {voucherNumber}",
             [
@@ -160,21 +167,18 @@ internal sealed class IntegratedAccountingService(
         lines.Add((payablesAccountId, 0m, invoice.TotalAmount.Amount,
             $"فاتورة شراء {invoice.InvoiceNumber}", invoice.SupplierId));
 
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.PurchaseInvoice,
             invoice.Id,
-            null,
+            PostingKind.PurchaseInvoice,
             JournalBookIds.Purchase,
             $"فاتورة شراء {invoice.InvoiceNumber}",
             lines,
             cancellationToken,
             invoice.InvoiceDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.PurchaseInvoice && j.SourceId == invoice.Id)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstAsync(cancellationToken);
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.PurchaseInvoice, invoice.Id, cancellationToken);
     }
 
     public async Task<string> PostSalesReturnAsync(
@@ -195,21 +199,19 @@ internal sealed class IntegratedAccountingService(
             lines.Add((AccountingAccountIds.CostOfGoodsSold, 0m, cogsReversalAmount, "عكس تكلفة مبيعات — مرتجع", null));
         }
 
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.SalesReturn,
             salesReturn.Id,
-            null,
+            PostingKind.SalesReturn,
             JournalBookIds.Sales,
             $"مرتجع مبيعات {salesReturn.ReturnNumber} — فاتورة {salesReturn.OriginalInvoiceNumber}",
             lines,
             cancellationToken,
             salesReturn.ReturnDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.SalesReturn && j.SourceId == salesReturn.Id)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstOrDefaultAsync(cancellationToken) ?? "";
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.SalesReturn, salesReturn.Id, cancellationToken)
+            ?? "";
     }
 
     public async Task<string> PostPurchaseReturnAsync(
@@ -230,20 +232,18 @@ internal sealed class IntegratedAccountingService(
         lines.Add((payablesAccountId, purchaseReturn.TotalAmount.Amount, 0m,
             $"مرتجع شراء {purchaseReturn.ReturnNumber}", null));
 
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.PurchaseReturn,
             purchaseReturn.Id,
-            null,
+            PostingKind.PurchaseReturn,
             JournalBookIds.Purchase,
             $"مرتجع شراء {purchaseReturn.ReturnNumber}",
             lines,
             cancellationToken,
             purchaseReturn.ReturnDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.PurchaseReturn && j.SourceId == purchaseReturn.Id)
-            .Select(j => j.EntryNumber)
-            .FirstAsync(cancellationToken);
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.PurchaseReturn, purchaseReturn.Id, cancellationToken);
     }
 
     public async Task<string> ReversePurchaseInvoiceAsync(
@@ -267,21 +267,19 @@ internal sealed class IntegratedAccountingService(
         lines.Add((payablesAccountId, invoice.TotalAmount.Amount, 0m,
             $"إلغاء فاتورة شراء {invoice.InvoiceNumber}", invoice.SupplierId));
 
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.PurchaseInvoiceReversal,
             invoice.Id,
-            null,
+            PostingKind.PurchaseInvoiceReversal,
             JournalBookIds.Purchase,
             $"إلغاء فاتورة شراء {invoice.InvoiceNumber}",
             lines,
             cancellationToken,
             DateTime.UtcNow);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.PurchaseInvoiceReversal && j.SourceId == invoice.Id)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstOrDefaultAsync(cancellationToken) ?? "";
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.PurchaseInvoiceReversal, invoice.Id, cancellationToken)
+            ?? "";
     }
 
     public async Task<string> PostCashboxTransferAsync(
@@ -296,10 +294,10 @@ internal sealed class IntegratedAccountingService(
         if (amount <= 0)
             return "";
 
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.CashboxTransfer,
             transferId,
-            null,
+            PostingKind.CashboxTransfer,
             JournalBookIds.Cash,
             $"تحويل بين الصناديق {transferNumber}",
             [
@@ -309,14 +307,12 @@ internal sealed class IntegratedAccountingService(
             cancellationToken,
             transferDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.CashboxTransfer && j.SourceId == transferId)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstOrDefaultAsync(cancellationToken) ?? "";
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.CashboxTransfer, transferId, cancellationToken)
+            ?? "";
     }
 
-    [Obsolete("Use IOpeningBalanceEngine.PostPartyOpeningBalanceAsync via OpeningBalanceUiService. This bypasses the unified OpeningBalanceDocument workflow.")]
+    [Obsolete("Use IOpeningBalanceEngine.PostPartyOpeningBalanceAsync via OpeningBalanceUiService.")]
     public async Task<string> PostCustomerOpeningBalanceAsync(
         Guid customerId,
         Guid receivablesAccountId,
@@ -329,10 +325,10 @@ internal sealed class IntegratedAccountingService(
             return "";
 
         var note = string.IsNullOrWhiteSpace(referenceNote) ? "رصيد افتتاحي عميل" : referenceNote.Trim();
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.CustomerOpeningBalance,
             customerId,
-            null,
+            PostingKind.CustomerOpeningBalance,
             JournalBookIds.General,
             note,
             [
@@ -342,11 +338,8 @@ internal sealed class IntegratedAccountingService(
             cancellationToken,
             postingDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.CustomerOpeningBalance && j.SourceId == customerId)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstAsync(cancellationToken);
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.CustomerOpeningBalance, customerId, cancellationToken);
     }
 
     public async Task<string> PostOpeningBalanceDocumentAsync(
@@ -361,21 +354,19 @@ internal sealed class IntegratedAccountingService(
             .Select(l => (l.AccountId, l.Debit, l.Credit, l.Narrative, l.PartyId))
             .ToList();
 
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.FinanceOpeningBalance,
             documentId,
-            null,
+            PostingKind.FinanceOpeningBalance,
             JournalBookIds.General,
             description,
             mapped,
             cancellationToken,
             postingDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.FinanceOpeningBalance && j.SourceId == documentId)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstOrDefaultAsync(cancellationToken) ?? documentNumber;
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.FinanceOpeningBalance, documentId, cancellationToken)
+            ?? documentNumber;
     }
 
     public Task PostExpensePaymentAsync(
@@ -388,20 +379,20 @@ internal sealed class IntegratedAccountingService(
         if (amountBase <= 0)
             return Task.CompletedTask;
 
-        return PostIfNotExistsAsync(
+        return PostViaEngineAsync(
             DocumentType.ExpensePayment,
             paymentId,
-            null,
+            PostingKind.ExpensePayment,
             JournalBookIds.Cash,
             description,
             [
                 (AccountingAccountIds.OperatingExpenses, amountBase, 0m, description, null),
-                (AccountingAccountIds.CashUsd, 0m, amountBase, "صرف مصروف", null)
+                (AccountingAccountIds.CashUsd, 0m, amountBase, description, null)
             ],
             cancellationToken);
     }
 
-    [Obsolete("Use IOpeningBalanceEngine.PostPartyOpeningBalanceAsync via OpeningBalanceUiService. This bypasses the unified OpeningBalanceDocument workflow.")]
+    [Obsolete("Use IOpeningBalanceEngine.PostPartyOpeningBalanceAsync via OpeningBalanceUiService.")]
     public async Task<string> PostSupplierOpeningBalanceAsync(
         Guid supplierId,
         Guid payablesAccountId,
@@ -414,10 +405,10 @@ internal sealed class IntegratedAccountingService(
             return "";
 
         var note = string.IsNullOrWhiteSpace(referenceNote) ? "رصيد افتتاحي مورد" : referenceNote.Trim();
-        await PostIfNotExistsAsync(
+        var result = await PostViaEngineAsync(
             DocumentType.SupplierOpeningBalance,
             supplierId,
-            null,
+            PostingKind.SupplierOpeningBalance,
             JournalBookIds.General,
             note,
             [
@@ -427,90 +418,73 @@ internal sealed class IntegratedAccountingService(
             cancellationToken,
             postingDate);
 
-        return await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)DocumentType.SupplierOpeningBalance && j.SourceId == supplierId)
-            .OrderByDescending(j => j.EntryDate)
-            .Select(j => j.EntryNumber)
-            .FirstAsync(cancellationToken);
+        return result.JournalEntryNumber
+            ?? await LookupEntryNumberAsync(DocumentType.SupplierOpeningBalance, supplierId, cancellationToken);
     }
 
-    private async Task PostIfNotExistsAsync(
+    private async Task<PostingResult> PostViaEngineAsync(
         DocumentType sourceType,
         Guid sourceId,
-        string? descriptionContains,
+        PostingKind postingKind,
         Guid journalBookId,
         string description,
         IReadOnlyList<(Guid AccountId, decimal Debit, decimal Credit, string Narrative, Guid? PartyId)> lines,
         CancellationToken cancellationToken,
-        DateTime? entryDate = null)
+        DateTime? entryDate = null,
+        string? idempotencyKey = null,
+        string? correlationId = null)
     {
-        var query = context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceType == (int)sourceType && j.SourceId == sourceId);
-
-        if (!string.IsNullOrWhiteSpace(descriptionContains))
-            query = query.Where(j => j.Description.Contains(descriptionContains));
-
-        if (await query.AnyAsync(cancellationToken))
-            return;
-
         var activeLines = lines.Where(l => l.Debit > 0 || l.Credit > 0).ToList();
         if (activeLines.Count == 0)
-            return;
+            return PostingResult.Succeeded(Guid.Empty, "", Guid.Empty, alreadyPosted: true);
 
-        await CreateAndPostJournalAsync(description, sourceType, sourceId, journalBookId, activeLines, cancellationToken, entryDate);
-    }
-
-    private async Task CreateAndPostJournalAsync(
-        string description,
-        DocumentType sourceType,
-        Guid sourceId,
-        Guid journalBookId,
-        IReadOnlyList<(Guid AccountId, decimal Debit, decimal Credit, string Narrative, Guid? PartyId)> lines,
-        CancellationToken cancellationToken,
-        DateTime? entryDate = null)
-    {
         var branchId = currentBranchService.BranchId ?? Guid.Empty;
         var companyId = currentBranchService.CompanyId ?? Guid.Empty;
+        var userId = currentUserService.UserId ?? Guid.Empty;
         if (branchId == Guid.Empty || companyId == Guid.Empty)
             throw new AccountingException(
-                "تعذر إنشاء القيد المحاسبي: سياق الفرع/الشركة غير محدد. يرجى التحقق من إعدادات النظام.");
+                "تعذر إنشاء القيد المحاسبي: سياق الفرع/الشركة غير محدد.");
 
-        var accountIds = lines.Select(l => l.AccountId).Distinct().ToList();
-        var existingAccounts = await context.Accounts.AsNoTracking()
-            .Where(a => accountIds.Contains(a.Id))
-            .Select(a => a.Id)
-            .ToListAsync(cancellationToken);
-        if (existingAccounts.Count < accountIds.Count)
+        var request = new PostingRequest
         {
-            var missing = accountIds.Except(existingAccounts).ToList();
-            throw new AccountingException(
-                $"تعذر إنشاء القيد المحاسبي: {missing.Count} من الحسابات المطلوبة غير مكوّنة. " +
-                "يرجى التحقق من إعدادات المحاسبة (شجرة الحسابات).");
-        }
+            CompanyId = companyId,
+            BranchId = branchId,
+            SourceType = sourceType,
+            SourceId = sourceId,
+            PostingKind = postingKind,
+            PostingDate = entryDate ?? DateTime.UtcNow,
+            UserId = userId,
+            IdempotencyKey = idempotencyKey,
+            CorrelationId = correlationId,
+            Description = description,
+            JournalBookId = journalBookId,
+            Lines = activeLines.Select(l => new PostingLineRequest
+            {
+                AccountId = l.AccountId,
+                Debit = l.Debit,
+                Credit = l.Credit,
+                Narrative = l.Narrative,
+                PartyId = l.PartyId
+            }).ToList()
+        };
 
-        var entryNumber = await numberingService.NextJournalEntryNumberAsync(branchId, cancellationToken);
-        var userId = currentUserService.UserId ?? Guid.Empty;
-        var aggregate = AccountingAggregate.CreateDraft(
-            entryNumber,
-            entryDate ?? DateTime.UtcNow,
-            description,
-            userId,
-            sourceType,
-            sourceId,
-            journalBookId);
+        var result = await postingEngine.PostAsync(request, cancellationToken);
+        if (!result.Success)
+            throw new AccountingException(result.ErrorMessage ?? "Posting failed.");
 
-        foreach (var line in lines)
-        {
-            aggregate.AddLine(JournalEntryLine.Create(
-                line.AccountId,
-                new Money(line.Debit),
-                new Money(line.Credit),
-                line.Narrative,
-                line.PartyId));
-        }
+        if (!result.AlreadyPosted)
+            _pendingRecoveryRequests.Add(request);
 
-        aggregate.Post(userId);
-        await journalRepository.AddAsync(aggregate, companyId, branchId, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return result;
     }
+
+    private async Task<string> LookupEntryNumberAsync(
+        DocumentType sourceType,
+        Guid sourceId,
+        CancellationToken cancellationToken) =>
+        await context.JournalEntries.AsNoTracking()
+            .Where(j => j.SourceType == (int)sourceType && j.SourceId == sourceId)
+            .OrderByDescending(j => j.EntryDate)
+            .Select(j => j.EntryNumber)
+            .FirstOrDefaultAsync(cancellationToken) ?? "";
 }

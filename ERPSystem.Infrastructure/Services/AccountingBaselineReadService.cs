@@ -126,7 +126,7 @@ internal static class AccountingBaselineReadService
         {
             BuildCheck(
                 "duplicate_journal_entries",
-                "قيود محاسبية مكررة (SourceType + SourceId)",
+                "قيود محاسبية مكررة Legacy (SourceType + SourceId — ما قبل PostingKind)",
                 AccountingHealthSeverity.Critical,
                 baseline.DuplicateJournalEntries.Count,
                 baseline.DuplicateJournalEntries.Take(5).Select(d =>
@@ -233,7 +233,7 @@ internal static class AccountingBaselineReadService
         };
     }
 
-    private static AccountingHealthCheckItemDto BuildCheck(
+    internal static AccountingHealthCheckItemDto BuildCheck(
         string checkId,
         string title,
         AccountingHealthSeverity severity,
@@ -882,6 +882,8 @@ internal sealed class AccountingBaselineReportService(ErpDbContext context)
 internal sealed class AccountingHealthCheckService(ErpDbContext context)
     : IAccountingHealthCheckService
 {
+    private static readonly TimeSpan StuckPostingThreshold = TimeSpan.FromMinutes(15);
+
     public async Task<AccountingHealthCheckResultDto> RunAsync(
         Guid? companyId = null,
         CancellationToken cancellationToken = default)
@@ -889,6 +891,101 @@ internal sealed class AccountingHealthCheckService(ErpDbContext context)
         var baseline = await new AccountingBaselineReportService(context)
             .GenerateAsync(companyId, cancellationToken);
 
-        return AccountingBaselineReadService.BuildHealthCheck(baseline);
+        var checks = AccountingBaselineReadService.BuildHealthCheck(baseline).Checks.ToList();
+        var resolvedCompanyId = baseline.CompanyId;
+
+        checks.AddRange(await BuildPostingProtectionChecksAsync(resolvedCompanyId, cancellationToken));
+
+        return new AccountingHealthCheckResultDto
+        {
+            GeneratedAtUtc = baseline.GeneratedAtUtc,
+            CompanyId = baseline.CompanyId,
+            CompanyName = baseline.CompanyName,
+            Checks = checks,
+            PassCount = checks.Count(c => c.Status == AccountingHealthStatus.Pass),
+            FailCount = checks.Count(c => c.Status == AccountingHealthStatus.Fail),
+            CriticalFailCount = checks.Count(c =>
+                c.Status == AccountingHealthStatus.Fail && c.Severity == AccountingHealthSeverity.Critical)
+        };
+    }
+
+    private async Task<IReadOnlyList<AccountingHealthCheckItemDto>> BuildPostingProtectionChecksAsync(
+        Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        var stuckCutoff = DateTime.UtcNow.Subtract(StuckPostingThreshold);
+
+        var protectedDuplicateGroups = await context.JournalEntries.AsNoTracking()
+            .Where(j => j.CompanyId == companyId
+                        && j.PostingIdentityVersion == 2
+                        && j.SourceType != null
+                        && j.SourceId != null
+                        && j.PostingKind != null
+                        && j.IsActive)
+            .GroupBy(j => new { j.SourceType, j.SourceId, j.PostingKind })
+            .Where(g => g.Count() > 1)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var legacyDuplicateCount = await context.JournalEntries.AsNoTracking()
+            .Where(j => j.CompanyId == companyId && j.SourceType != null && j.SourceId != null && j.IsActive)
+            .GroupBy(j => new { j.SourceType, j.SourceId })
+            .Where(g => g.Count() > 1)
+            .CountAsync(cancellationToken);
+
+        var stuckAttempts = await context.AccountingPostingAttempts.AsNoTracking()
+            .Where(a => a.CompanyId == companyId
+                        && a.Status == (int)PostingAttemptStatus.Posting
+                        && a.StartedAt < stuckCutoff)
+            .CountAsync(cancellationToken);
+
+        var failedAttempts = await context.AccountingPostingAttempts.AsNoTracking()
+            .Where(a => a.CompanyId == companyId && a.Status == (int)PostingAttemptStatus.PostingFailed)
+            .CountAsync(cancellationToken);
+
+        var v2WithoutKind = await context.JournalEntries.AsNoTracking()
+            .Where(j => j.CompanyId == companyId && j.PostingIdentityVersion == 2 && j.PostingKind == null)
+            .CountAsync(cancellationToken);
+
+        return
+        [
+            AccountingBaselineReadService.BuildCheck(
+                "duplicate_protected_posting_identities",
+                "تكرار هوية ترحيل محمية (v2: Company+Source+PostingKind)",
+                AccountingHealthSeverity.Critical,
+                protectedDuplicateGroups.Count,
+                protectedDuplicateGroups.Select(d =>
+                    $"{d.Key.SourceType}/{d.Key.SourceId}/kind={d.Key.PostingKind} × {d.Count}")),
+
+            AccountingBaselineReadService.BuildCheck(
+                "legacy_critical_duplicate_evidence",
+                "دليل Legacy Critical — تكرار تاريخي محفوظ (Phase 2)",
+                AccountingHealthSeverity.Critical,
+                legacyDuplicateCount,
+                legacyDuplicateCount > 0
+                    ? ["Historical duplicate preserved — e.g. JE-MAIN-000001 / JE-MAIN-000002 for ChinaContainer b9e96735"]
+                    : []),
+
+            AccountingBaselineReadService.BuildCheck(
+                "stuck_posting_attempts",
+                "محاولات ترحيل عالقة في حالة Posting",
+                AccountingHealthSeverity.Critical,
+                stuckAttempts,
+                stuckAttempts > 0 ? [$"{stuckAttempts} attempt(s) older than {StuckPostingThreshold.TotalMinutes:N0} minutes"] : []),
+
+            AccountingBaselineReadService.BuildCheck(
+                "failed_posting_attempts",
+                "محاولات ترحيل فاشلة",
+                AccountingHealthSeverity.Warning,
+                failedAttempts,
+                failedAttempts > 0 ? [$"{failedAttempts} failed posting attempt(s)"] : []),
+
+            AccountingBaselineReadService.BuildCheck(
+                "journal_entries_v2_without_posting_kind",
+                "قيود v2 بدون PostingKind",
+                AccountingHealthSeverity.Critical,
+                v2WithoutKind,
+                v2WithoutKind > 0 ? [$"{v2WithoutKind} protected entry(ies) missing PostingKind"] : [])
+        ];
     }
 }

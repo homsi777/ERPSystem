@@ -773,7 +773,12 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
         return list;
     }
 
-    public async Task AddAsync(AccountingAggregate entry, Guid companyId, Guid branchId, CancellationToken cancellationToken = default)
+    public async Task AddAsync(
+        AccountingAggregate entry,
+        Guid companyId,
+        Guid branchId,
+        ERPSystem.Application.Posting.JournalEntryPostMetadata? postingMetadata = null,
+        CancellationToken cancellationToken = default)
     {
         await context.JournalEntries.AddAsync(new JournalEntryEntity
         {
@@ -786,6 +791,10 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
             Status = (int)entry.Status,
             SourceType = entry.SourceType.HasValue ? (int)entry.SourceType.Value : null,
             SourceId = entry.SourceId,
+            PostingKind = postingMetadata is null ? null : (int)postingMetadata.PostingKind,
+            PostingIdentityVersion = postingMetadata?.PostingIdentityVersion ?? 1,
+            IdempotencyKey = postingMetadata?.IdempotencyKey,
+            CorrelationId = postingMetadata?.CorrelationId,
             CreatedByUserId = entry.CreatedByUserId,
             PostedAt = entry.PostedAt.HasValue ? UtcDateTimeNormalizer.ToUtc(entry.PostedAt.Value) : null,
             PostedByUserId = entry.PostedByUserId,

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
@@ -31,6 +32,7 @@ public sealed class SupplierPickItem
 
 public sealed class ContainerUiService
 {
+    private static readonly ConcurrentDictionary<Guid, byte> ApproveInFlight = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ICurrentBranchService _branch;
 
@@ -412,10 +414,20 @@ public sealed class ContainerUiService
         Guid containerId,
         CancellationToken cancellationToken = default)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var handler = scope.ServiceProvider
-            .GetRequiredService<ICommandHandler<ApproveContainerCommand, ApplicationResult>>();
-        return await handler.HandleAsync(new ApproveContainerCommand { ContainerId = containerId }, cancellationToken);
+        if (!ApproveInFlight.TryAdd(containerId, 0))
+            return ApplicationResult.Conflict("جاري تنفيذ اعتماد الحاوية. يرجى الانتظار.");
+
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var handler = scope.ServiceProvider
+                .GetRequiredService<ICommandHandler<ApproveContainerCommand, ApplicationResult>>();
+            return await handler.HandleAsync(new ApproveContainerCommand { ContainerId = containerId }, cancellationToken);
+        }
+        finally
+        {
+            ApproveInFlight.TryRemove(containerId, out _);
+        }
     }
 
     public async Task<IReadOnlyList<WarehouseListDto>> GetWarehousesAsync(
