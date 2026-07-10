@@ -130,19 +130,46 @@ internal sealed class IntegratedAccountingService(
         Guid voucherId,
         string voucherNumber,
         Guid customerId,
-        decimal amount,
-        CancellationToken cancellationToken = default) =>
-        PostViaEngineAsync(
+        Guid debitAccountId,
+        decimal totalAmount,
+        decimal allocatedToArAmount,
+        bool isReversal = false,
+        Guid? originalVoucherId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var arAmount = Math.Min(allocatedToArAmount, totalAmount);
+        var advanceAmount = totalAmount - arAmount;
+        var lines = new List<(Guid, decimal, decimal, string, Guid?)>();
+
+        if (isReversal)
+        {
+            if (arAmount > 0)
+                lines.Add((AccountingAccountIds.AccountsReceivable, arAmount, 0m, "عكس سند قبض — ذمم", customerId));
+            if (advanceAmount > 0)
+                lines.Add((FinanceAccountIds.CustomerAdvances, advanceAmount, 0m, "عكس سند قبض — دفعة مقدمة", customerId));
+            lines.Add((debitAccountId, 0m, totalAmount, "عكس سند قبض — نقد/بنك", null));
+        }
+        else
+        {
+            lines.Add((debitAccountId, totalAmount, 0m, "تحصيل نقدي/بنكي", null));
+            if (arAmount > 0)
+                lines.Add((AccountingAccountIds.AccountsReceivable, 0m, arAmount, "تسوية ذمم عميل", customerId));
+            if (advanceAmount > 0)
+                lines.Add((FinanceAccountIds.CustomerAdvances, 0m, advanceAmount, "دفعة مقدمة غير مخصصة", customerId));
+        }
+
+        var postingKind = isReversal ? PostingKind.ReceiptVoucherReversal : PostingKind.ReceiptVoucherCollection;
+        var description = isReversal ? $"عكس سند قبض {voucherNumber}" : $"سند قبض {voucherNumber}";
+
+        return PostViaEngineAsync(
             DocumentType.ReceiptVoucher,
             voucherId,
-            PostingKind.ReceiptVoucher,
+            postingKind,
             JournalBookIds.Cash,
-            $"سند قبض {voucherNumber}",
-            [
-                (AccountingAccountIds.CashUsd, amount, 0m, "تحصيل نقدي", null),
-                (AccountingAccountIds.AccountsReceivable, 0m, amount, "تسوية ذمم عميل", customerId)
-            ],
+            description,
+            lines,
             cancellationToken);
+    }
 
     public Task PostPaymentVoucherAsync(
         Guid voucherId,

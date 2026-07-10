@@ -10,6 +10,8 @@ public enum PostingKind
     ChinaContainerInventoryActivation = 2,
     SalesInvoicePosting = 10,
     ReceiptVoucher = 20,
+    ReceiptVoucherCollection = 21,
+    ReceiptVoucherReversal = 22,
     SalesReturn = 30,
     PurchaseInvoice = 40,
     PurchaseReturn = 41,

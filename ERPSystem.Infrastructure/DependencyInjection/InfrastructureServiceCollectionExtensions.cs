@@ -69,7 +69,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddScoped<IPurchaseReturnRepository, PurchaseReturnRepository>();
         services.AddScoped<IPurchaseInvoicePaymentRepository, PurchaseInvoicePaymentRepository>();
-        services.AddScoped<IReceiptVoucherRepository, ReceiptVoucherRepository>();
+        services.AddScoped<IPaymentMethodRepository, PaymentMethodRepository>();
+        services.AddScoped<IBankAccountRepository, BankAccountRepository>();
         services.AddScoped<IPaymentVoucherRepository, PaymentVoucherRepository>();
         services.AddScoped<ICashboxRepository, CashboxRepository>();
         services.AddScoped<ICashboxTransferRepository, CashboxTransferRepository>();
@@ -95,7 +96,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPostingSaveCoordinator, PostingSaveCoordinator>();
         services.AddScoped<IAccountingPostingEngine, AccountingPostingEngine>();
         services.AddScoped<IAccountingIdempotencyService, AccountingIdempotencyService>();
-        services.AddScoped<IAccountingBaselineReportService, AccountingBaselineReportService>();
+        services.AddScoped<ICashboxPostingValidator, CashboxPostingValidator>();
+        services.AddScoped<IBankAccountPostingValidator, BankAccountPostingValidator>();
+        services.AddScoped<IReceiptTenderResolver, ReceiptTenderResolver>();
+        services.AddScoped<IReceiptPostingService, ReceiptPostingService>();
+        services.AddScoped<ICashboxBalanceService, CashboxBalanceService>();
+        services.AddScoped<ICashboxReconciliationService, CashboxReconciliationService>();
         services.AddScoped<IAccountingHealthCheckService, AccountingHealthCheckService>();
         services.AddScoped<IContainerWarehouseImportService, ContainerWarehouseImportService>();
         services.AddScoped<IGlobalSearchService, GlobalSearchService>();

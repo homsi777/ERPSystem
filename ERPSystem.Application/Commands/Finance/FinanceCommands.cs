@@ -1,12 +1,19 @@
 namespace ERPSystem.Application.Commands.Finance;
 
+using ERPSystem.Application.Common;
+
 public sealed class CreateReceiptVoucherCommand
 {
     public Guid CompanyId { get; init; }
     public Guid BranchId { get; init; }
     public Guid CustomerId { get; init; }
     public Guid CashboxId { get; init; }
+    public Guid PaymentMethodId { get; init; } = PaymentMethodIds.Cash;
     public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public decimal ExchangeRate { get; init; } = 1m;
+    public Guid? BankAccountId { get; init; }
+    public string? Reference { get; init; }
     public IReadOnlyList<ReceiptInvoiceAllocationInput> Allocations { get; init; } = [];
 }
 
@@ -16,14 +23,30 @@ public sealed class ReceiptInvoiceAllocationInput
     public decimal Amount { get; init; }
 }
 
+public sealed class PostReceiptVoucherCommand
+{
+    public Guid VoucherId { get; init; }
+    public string? IdempotencyKey { get; init; }
+}
+
 public sealed class ApproveReceiptVoucherCommand
 {
     public Guid VoucherId { get; init; }
 }
 
-public sealed class PostReceiptVoucherCommand
+public sealed class CancelReceiptVoucherCommand
 {
     public Guid VoucherId { get; init; }
+    public string Reason { get; init; } = "";
+}
+
+public sealed class ReverseReceiptVoucherCommand
+{
+    public Guid ReceiptVoucherId { get; init; }
+    public DateTime ReversalDate { get; init; } = DateTime.UtcNow;
+    public string Reason { get; init; } = "";
+    public Guid UserId { get; init; }
+    public string? IdempotencyKey { get; init; }
 }
 
 public sealed class CreatePaymentVoucherCommand

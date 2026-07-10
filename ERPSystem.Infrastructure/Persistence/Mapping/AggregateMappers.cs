@@ -486,16 +486,72 @@ internal static class FinanceMapper
     {
         var voucher = DomainHydrator.Create<ReceiptVoucher>();
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.Id), entity.Id);
+        DomainHydrator.Set(voucher, nameof(ReceiptVoucher.CompanyId), entity.CompanyId);
+        DomainHydrator.Set(voucher, nameof(ReceiptVoucher.BranchId), entity.BranchId);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.VoucherNumber), entity.VoucherNumber);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.CustomerId), entity.CustomerId);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.CashboxId), entity.CashboxId);
+        DomainHydrator.Set(voucher, nameof(ReceiptVoucher.PaymentMethodId), entity.PaymentMethodId ?? PaymentMethodIds.Cash);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.Amount), new Money(entity.Amount));
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.VoucherDate), entity.VoucherDate);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.Status), (VoucherStatus)entity.Status);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.PostedAt), entity.PostedAt);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.CancelledAt), entity.CancelledAt);
         DomainHydrator.Set(voucher, nameof(ReceiptVoucher.CancelReason), entity.CancelReason);
+        DomainHydrator.Set(voucher, nameof(ReceiptVoucher.ReversalOfId), entity.ReversalOfId);
+        DomainHydrator.Set(voucher, nameof(ReceiptVoucher.ReversalReason), entity.ReversalReason);
+        DomainHydrator.Set(voucher, nameof(ReceiptVoucher.ReversedAt), entity.ReversedAt);
         return voucher;
+    }
+
+    public static ReceiptTenderLine ToTenderDomain(ReceiptTenderLineEntity entity)
+    {
+        var line = DomainHydrator.Create<ReceiptTenderLine>();
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.Id), entity.Id);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.ReceiptVoucherId), entity.ReceiptVoucherId);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.PaymentMethodId), entity.PaymentMethodId);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.CashboxId), entity.CashboxId);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.BankAccountId), entity.BankAccountId);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.Amount), new Money(entity.Amount, entity.Currency));
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.Currency), entity.Currency);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.ExchangeRate), entity.ExchangeRate);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.BaseAmount), entity.BaseAmount);
+        DomainHydrator.Set(line, nameof(ReceiptTenderLine.Reference), entity.Reference);
+        return line;
+    }
+
+    public static PaymentMethod ToPaymentMethodDomain(PaymentMethodEntity entity)
+    {
+        var method = DomainHydrator.Create<PaymentMethod>();
+        DomainHydrator.Set(method, nameof(PaymentMethod.Id), entity.Id);
+        DomainHydrator.Set(method, nameof(PaymentMethod.CompanyId), entity.CompanyId);
+        DomainHydrator.Set(method, nameof(PaymentMethod.Kind), (PaymentMethodKind)entity.Kind);
+        DomainHydrator.Set(method, nameof(PaymentMethod.Code), entity.Code);
+        DomainHydrator.Set(method, nameof(PaymentMethod.Name), entity.Name);
+        DomainHydrator.Set(method, nameof(PaymentMethod.RequiresCashbox), entity.RequiresCashbox);
+        DomainHydrator.Set(method, nameof(PaymentMethod.RequiresBankAccount), entity.RequiresBankAccount);
+        DomainHydrator.Set(method, nameof(PaymentMethod.RequiresReference), entity.RequiresReference);
+        DomainHydrator.Set(method, nameof(PaymentMethod.AllowsMixedTender), entity.AllowsMixedTender);
+        DomainHydrator.Set(method, nameof(PaymentMethod.RequiresClearingAccount), entity.RequiresClearingAccount);
+        DomainHydrator.Set(method, nameof(PaymentMethod.IsActive), entity.IsActive);
+        return method;
+    }
+
+    public static BankAccount ToBankAccountDomain(BankAccountEntity entity)
+    {
+        var bank = DomainHydrator.Create<BankAccount>();
+        DomainHydrator.Set(bank, nameof(BankAccount.Id), entity.Id);
+        DomainHydrator.Set(bank, nameof(BankAccount.CompanyId), entity.CompanyId);
+        DomainHydrator.Set(bank, nameof(BankAccount.BranchId), entity.BranchId);
+        DomainHydrator.Set(bank, nameof(BankAccount.Code), entity.Code);
+        DomainHydrator.Set(bank, nameof(BankAccount.Name), entity.Name);
+        DomainHydrator.Set(bank, nameof(BankAccount.BankName), entity.BankName);
+        DomainHydrator.Set(bank, nameof(BankAccount.Iban), entity.Iban);
+        DomainHydrator.Set(bank, nameof(BankAccount.AccountNumberMasked), entity.AccountNumberMasked);
+        DomainHydrator.Set(bank, nameof(BankAccount.GlAccountId), entity.GlAccountId);
+        DomainHydrator.Set(bank, nameof(BankAccount.Currency), entity.Currency);
+        DomainHydrator.Set(bank, nameof(BankAccount.IsActive), entity.IsActive);
+        return bank;
     }
 
     public static PaymentVoucher ToDomain(PaymentVoucherEntity entity)
@@ -515,6 +571,7 @@ internal static class FinanceMapper
     {
         var cashbox = DomainHydrator.Create<Cashbox>();
         DomainHydrator.Set(cashbox, nameof(Cashbox.Id), entity.Id);
+        DomainHydrator.Set(cashbox, nameof(Cashbox.CompanyId), entity.CompanyId ?? Guid.Empty);
         DomainHydrator.Set(cashbox, nameof(Cashbox.BranchId), entity.BranchId);
         DomainHydrator.Set(cashbox, nameof(Cashbox.Code), entity.Code);
         DomainHydrator.Set(cashbox, nameof(Cashbox.Name), entity.Name);
@@ -522,6 +579,8 @@ internal static class FinanceMapper
         DomainHydrator.Set(cashbox, nameof(Cashbox.Currency), entity.Currency);
         DomainHydrator.Set(cashbox, nameof(Cashbox.IsActive), entity.IsActive);
         DomainHydrator.Set(cashbox, nameof(Cashbox.AccountId), entity.AccountId);
+        DomainHydrator.Set(cashbox, nameof(Cashbox.AllowNegativeBalance), entity.AllowNegativeBalance);
+        DomainHydrator.Set(cashbox, nameof(Cashbox.OpeningDate), entity.OpeningDate);
         return cashbox;
     }
 

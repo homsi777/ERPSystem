@@ -494,6 +494,8 @@ public sealed class ApproveSalesInvoiceHandler(
                 return ApplicationResult.NotFound("الصندوق المحدد غير موجود.");
             if (!cashbox.IsActive)
                 return ApplicationResult.ValidationFailed("CashboxId", "الصندوق المحدد غير نشط.");
+            if (cashbox.AccountId is not Guid accountId || accountId == Guid.Empty)
+                return ApplicationResult.ValidationFailed("CashboxId", "الصندوق المحدد لا يملك حساب GL مرتبط.");
         }
 
         try
@@ -611,10 +613,14 @@ public sealed class ApproveSalesInvoiceHandler(
         CancellationToken cancellationToken)
     {
         var number = await numberingService.NextReceiptNumberAsync(invoice.BranchId, cancellationToken);
+        var companyId = invoice.CompanyId;
         var voucher = ReceiptVoucher.CreateDraft(
+            companyId,
+            invoice.BranchId,
             number,
             invoice.CustomerId,
             cashbox.Id,
+            PaymentMethodIds.Cash,
             new Money(amount));
         voucher.Allocate(invoice.Id, new Money(amount));
         voucher.Approve();
@@ -626,16 +632,23 @@ public sealed class ApproveSalesInvoiceHandler(
         cashbox.ApplyReceipt(new Money(amount));
 
         await receiptVoucherRepository.AddAsync(voucher, cancellationToken);
+        await receiptVoucherRepository.AddTenderLineAsync(
+            ReceiptTenderLine.CreateCash(voucher.Id, PaymentMethodIds.Cash, cashbox.Id, new Money(amount)),
+            cancellationToken);
         await receiptInvoicePaymentRepository.AddAsync(
             ReceiptInvoicePayment.Create(invoice.Id, voucher.Id, new Money(amount)),
             cancellationToken);
         await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+
+        var allocated = amount;
         await accountingService.PostReceiptVoucherAsync(
             voucher.Id,
             voucher.VoucherNumber,
             invoice.CustomerId,
+            cashbox.AccountId ?? throw new ValidationException($"الصندوق '{cashbox.Code}' لا يملك حساب GL."),
             amount,
-            cancellationToken);
+            allocated,
+            cancellationToken: cancellationToken);
     }
 }
 

@@ -6,5 +6,6 @@ public enum VoucherStatus
     Approved = 1,
     Posted = 2,
     Cancelled = 3,
-    Reversed = 4
+    Reversed = 4,
+    Submitted = 5
 }

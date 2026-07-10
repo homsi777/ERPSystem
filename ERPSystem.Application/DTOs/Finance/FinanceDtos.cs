@@ -101,3 +101,70 @@ public sealed class CashboxOperationsCenterDto
     public IReadOnlyList<CashboxMovementDto> RecentMovements { get; init; } = [];
     public IReadOnlyList<CashboxTransferListDto> RecentTransfers { get; init; } = [];
 }
+
+public sealed class ReceiptTenderLineDto
+{
+    public Guid PaymentMethodId { get; init; }
+    public Guid? CashboxId { get; init; }
+    public Guid? BankAccountId { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public decimal ExchangeRate { get; init; } = 1m;
+    public string? Reference { get; init; }
+    public string? ChequeNumber { get; init; }
+    public DateTime? ChequeDate { get; init; }
+    public string? CardReference { get; init; }
+}
+
+public sealed class PaymentMethodDto
+{
+    public Guid Id { get; init; }
+    public string Code { get; init; } = "";
+    public string Name { get; init; } = "";
+    public PaymentMethodKind Kind { get; init; }
+    public bool RequiresCashbox { get; init; }
+    public bool RequiresBankAccount { get; init; }
+    public bool RequiresReference { get; init; }
+}
+
+public sealed class BankAccountListDto
+{
+    public Guid Id { get; init; }
+    public string Code { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string BankName { get; init; } = "";
+    public Guid GlAccountId { get; init; }
+    public string Currency { get; init; } = "USD";
+    public bool IsActive { get; init; }
+}
+
+public sealed class CashboxBalanceReportDto
+{
+    public Guid CashboxId { get; init; }
+    public string CashboxCode { get; init; } = "";
+    public string CashboxName { get; init; } = "";
+    public Guid? AccountId { get; init; }
+    public decimal OpeningBalance { get; init; }
+    public decimal PostedReceipts { get; init; }
+    public decimal PostedPayments { get; init; }
+    public decimal Reversals { get; init; }
+    public decimal GlBalance { get; init; }
+    public decimal OperationalBalance { get; init; }
+    public decimal Difference { get; init; }
+}
+
+public sealed class CashboxReconciliationRowDto
+{
+    public Guid CashboxId { get; init; }
+    public string CashboxCode { get; init; } = "";
+    public string CashboxName { get; init; } = "";
+    public Guid? CashboxAccountId { get; init; }
+    public string Currency { get; init; } = "USD";
+    public decimal OperationalBalance { get; init; }
+    public decimal? GlBalance { get; init; }
+    public decimal? Difference { get; init; }
+    public string Classification { get; init; } = "";
+    public string? LastTransaction { get; init; }
+    public int UnpostedVoucherCount { get; init; }
+    public int ReversedVoucherCount { get; init; }
+}

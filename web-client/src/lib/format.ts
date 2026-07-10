@@ -4,6 +4,9 @@
  */
 const DISPLAY_LOCALE = 'ar-SY-u-nu-latn';
 
+/** Empty table/detail placeholder — Unicode escape avoids source-file encoding corruption (mojibake). */
+export const EMPTY_CELL = '\u2014';
+
 const numberFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   maximumFractionDigits: 2
 });

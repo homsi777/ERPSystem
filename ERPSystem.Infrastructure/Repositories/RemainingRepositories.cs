@@ -518,16 +518,58 @@ internal sealed class ReceiptVoucherRepository(ErpDbContext context) : IReceiptV
         await context.ReceiptVouchers.AddAsync(new ReceiptVoucherEntity
         {
             Id = voucher.Id,
+            CompanyId = voucher.CompanyId,
+            BranchId = voucher.BranchId,
             VoucherNumber = voucher.VoucherNumber,
             CustomerId = voucher.CustomerId,
             CashboxId = voucher.CashboxId,
+            PaymentMethodId = voucher.PaymentMethodId,
             Amount = voucher.Amount.Amount,
             VoucherDate = voucher.VoucherDate,
             Status = (int)voucher.Status,
             PostedAt = voucher.PostedAt,
             CancelledAt = voucher.CancelledAt,
-            CancelReason = voucher.CancelReason
+            CancelReason = voucher.CancelReason,
+            ReversalOfId = voucher.ReversalOfId,
+            ReversalReason = voucher.ReversalReason,
+            ReversedAt = voucher.ReversedAt
         }, cancellationToken);
+
+    public async Task AddTenderLineAsync(ReceiptTenderLine line, CancellationToken cancellationToken = default) =>
+        await context.ReceiptTenderLines.AddAsync(new ReceiptTenderLineEntity
+        {
+            Id = line.Id,
+            ReceiptVoucherId = line.ReceiptVoucherId,
+            PaymentMethodId = line.PaymentMethodId,
+            CashboxId = line.CashboxId,
+            BankAccountId = line.BankAccountId,
+            Amount = line.Amount.Amount,
+            Currency = line.Currency,
+            ExchangeRate = line.ExchangeRate,
+            BaseAmount = line.BaseAmount,
+            Reference = line.Reference,
+            ChequeNumber = line.ChequeNumber,
+            ChequeDate = line.ChequeDate,
+            CardReference = line.CardReference
+        }, cancellationToken);
+
+    public async Task<IReadOnlyList<ReceiptTenderLine>> GetTenderLinesAsync(
+        Guid voucherId, CancellationToken cancellationToken = default)
+    {
+        var entities = await context.ReceiptTenderLines.AsNoTracking()
+            .Where(t => t.ReceiptVoucherId == voucherId)
+            .ToListAsync(cancellationToken);
+        return entities.Select(FinanceMapper.ToTenderDomain).ToList();
+    }
+
+    public async Task<decimal> GetAllocatedTotalAsync(Guid voucherId, CancellationToken cancellationToken = default) =>
+        await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(p => p.ReceiptVoucherId == voucherId)
+            .SumAsync(p => p.Amount, cancellationToken);
+
+    public Task<bool> ExistsByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default) =>
+        context.ReceiptVouchers.AsNoTracking()
+            .AnyAsync(v => v.IdempotencyKey == idempotencyKey, cancellationToken);
 
     public async Task UpdateAsync(ReceiptVoucher voucher, CancellationToken cancellationToken = default)
     {
@@ -537,6 +579,8 @@ internal sealed class ReceiptVoucherRepository(ErpDbContext context) : IReceiptV
         entity.PostedAt = voucher.PostedAt;
         entity.CancelledAt = voucher.CancelledAt;
         entity.CancelReason = voucher.CancelReason;
+        entity.ReversalReason = voucher.ReversalReason;
+        entity.ReversedAt = voucher.ReversedAt;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }
@@ -682,13 +726,16 @@ internal sealed class CashboxRepository(ErpDbContext context) : ICashboxReposito
         await context.Cashboxes.AddAsync(new CashboxEntity
         {
             Id = cashbox.Id,
+            CompanyId = cashbox.CompanyId == Guid.Empty ? null : cashbox.CompanyId,
             BranchId = cashbox.BranchId,
             Code = cashbox.Code,
             Name = cashbox.Name,
             Balance = cashbox.Balance.Amount,
             Currency = cashbox.Currency,
             IsActive = cashbox.IsActive,
-            AccountId = cashbox.AccountId
+            AccountId = cashbox.AccountId,
+            AllowNegativeBalance = cashbox.AllowNegativeBalance,
+            OpeningDate = cashbox.OpeningDate
         }, cancellationToken);
 
     public async Task UpdateAsync(Cashbox cashbox, CancellationToken cancellationToken = default)
@@ -1100,5 +1147,38 @@ internal sealed class UserRepository(ErpDbContext context) : IUserRepository
         DomainHydrator.Set(user, nameof(User.FullNameEn), entity.FullNameEn);
         DomainHydrator.Set(user, nameof(User.IsActive), entity.IsActive);
         return user;
+    }
+}
+
+internal sealed class PaymentMethodRepository(ErpDbContext context) : IPaymentMethodRepository
+{
+    public async Task<IReadOnlyList<PaymentMethod>> GetActiveForCompanyAsync(
+        Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var entities = await context.PaymentMethods.AsNoTracking()
+            .Where(m => m.CompanyId == companyId && m.IsActive)
+            .OrderBy(m => m.Code)
+            .ToListAsync(cancellationToken);
+        return entities.Select(FinanceMapper.ToPaymentMethodDomain).ToList();
+    }
+}
+
+internal sealed class BankAccountRepository(ErpDbContext context) : IBankAccountRepository
+{
+    public async Task<BankAccount?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.BankAccounts.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+        return entity is null ? null : FinanceMapper.ToBankAccountDomain(entity);
+    }
+
+    public async Task<IReadOnlyList<BankAccount>> GetActiveForCompanyAsync(
+        Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var entities = await context.BankAccounts.AsNoTracking()
+            .Where(b => b.CompanyId == companyId && b.IsActive)
+            .OrderBy(b => b.Code)
+            .ToListAsync(cancellationToken);
+        return entities.Select(FinanceMapper.ToBankAccountDomain).ToList();
     }
 }

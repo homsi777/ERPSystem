@@ -36,7 +36,11 @@ public interface IIntegratedAccountingService
         Guid voucherId,
         string voucherNumber,
         Guid customerId,
-        decimal amount,
+        Guid debitAccountId,
+        decimal totalAmount,
+        decimal allocatedToArAmount,
+        bool isReversal = false,
+        Guid? originalVoucherId = null,
         CancellationToken cancellationToken = default);
 
     Task PostPaymentVoucherAsync(

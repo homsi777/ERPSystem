@@ -36,7 +36,7 @@ public sealed class CreateCashboxHandler(
         if (await cashboxRepository.ExistsByCodeAsync(command.BranchId, code, cancellationToken: cancellationToken))
             return ApplicationResult<Guid>.ValidationFailed(nameof(command.Code), "Cashbox code already exists.");
 
-        var cashbox = Cashbox.Create(command.BranchId, code, command.Name.Trim(), command.Currency);
+        var cashbox = Cashbox.Create(command.CompanyId, command.BranchId, code, command.Name.Trim(), command.Currency);
         await cashboxRepository.AddAsync(cashbox, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return ApplicationResult<Guid>.Success(cashbox.Id);

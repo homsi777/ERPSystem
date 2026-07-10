@@ -98,6 +98,9 @@ public sealed class ErpDbContext(DbContextOptions<ErpDbContext> options) : DbCon
     public DbSet<PaymentVoucherEntity> PaymentVouchers => Set<PaymentVoucherEntity>();
     public DbSet<CashboxEntity> Cashboxes => Set<CashboxEntity>();
     public DbSet<CashboxTransferEntity> CashboxTransfers => Set<CashboxTransferEntity>();
+    public DbSet<PaymentMethodEntity> PaymentMethods => Set<PaymentMethodEntity>();
+    public DbSet<BankAccountEntity> BankAccounts => Set<BankAccountEntity>();
+    public DbSet<ReceiptTenderLineEntity> ReceiptTenderLines => Set<ReceiptTenderLineEntity>();
     public DbSet<CostCenterEntity> CostCenters => Set<CostCenterEntity>();
     public DbSet<OpeningBalanceDocumentEntity> OpeningBalanceDocuments => Set<OpeningBalanceDocumentEntity>();
     public DbSet<OpeningBalanceLineEntity> OpeningBalanceLines => Set<OpeningBalanceLineEntity>();

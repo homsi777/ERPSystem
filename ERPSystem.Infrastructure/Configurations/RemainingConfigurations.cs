@@ -263,6 +263,42 @@ internal sealed class CashboxConfiguration : IEntityTypeConfiguration<CashboxEnt
     }
 }
 
+internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<PaymentMethodEntity>
+{
+    public void Configure(EntityTypeBuilder<PaymentMethodEntity> builder)
+    {
+        builder.ToTable("payment_methods", Schemas.Finance);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
+        builder.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
+    }
+}
+
+internal sealed class BankAccountConfiguration : IEntityTypeConfiguration<BankAccountEntity>
+{
+    public void Configure(EntityTypeBuilder<BankAccountEntity> builder)
+    {
+        builder.ToTable("bank_accounts", Schemas.Finance);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
+        builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
+    }
+}
+
+internal sealed class ReceiptTenderLineConfiguration : IEntityTypeConfiguration<ReceiptTenderLineEntity>
+{
+    public void Configure(EntityTypeBuilder<ReceiptTenderLineEntity> builder)
+    {
+        builder.ToTable("receipt_tender_lines", Schemas.Finance);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Amount).HasPrecision(18, 2);
+        builder.Property(x => x.BaseAmount).HasPrecision(18, 2);
+        builder.Property(x => x.ExchangeRate).HasPrecision(18, 6);
+        builder.HasIndex(x => x.ReceiptVoucherId);
+    }
+}
+
 internal sealed class PurchaseInvoiceConfiguration : IEntityTypeConfiguration<PurchaseInvoiceEntity>
 {
     public void Configure(EntityTypeBuilder<PurchaseInvoiceEntity> builder)

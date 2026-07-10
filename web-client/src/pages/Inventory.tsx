@@ -27,7 +27,7 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatCurrency, formatDate, formatDateOnly, formatMeters, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatDateOnly, formatMeters, formatNumber, EMPTY_CELL } from '../lib/format.ts';
 import { inventoryStatusLabels } from '../lib/enums.ts';
 
 const rollStatusLabels: Record<string, string> = {
@@ -46,7 +46,7 @@ function rollStatusLabel(status: string) {
 }
 
 function formatPricePerMeter(value: number | null | undefined) {
-  return value != null && value > 0 ? `${formatCurrency(value)}/م` : '—';
+  return value != null && value > 0 ? `${formatCurrency(value)}/م` : EMPTY_CELL;
 }
 
 function filterProfileByContainer(profile: FabricSearchProfileDto, selectedContainerId: string): FabricSearchProfileDto {
@@ -463,10 +463,10 @@ function FabricSearchProfileCard({ profile }: { profile: FabricSearchProfileDto 
                 </strong>
                 <span>
                   {formatNumber(leg.rollCount)} توب • {formatMeters(leg.totalMeters)} • المستودعات:{' '}
-                  {leg.warehouses.length > 0 ? leg.warehouses.join('، ') : '—'}
+                  {leg.warehouses.length > 0 ? leg.warehouses.join('، ') : EMPTY_CELL}
                 </span>
                 <span>
-                  المورد: {leg.supplierName ?? '—'} • شحن {formatDateOnly(leg.shipmentDate)} • وصول{' '}
+                  المورد: {leg.supplierName ?? EMPTY_CELL} • شحن {formatDateOnly(leg.shipmentDate)} • وصول{' '}
                   {formatDateOnly(leg.arrivalDate)} • اعتماد {formatDateOnly(leg.approvedAt)}
                 </span>
                 <span>
@@ -537,7 +537,7 @@ function RollDetailsModal({ row, onClose }: { row: FabricStockBalanceDto; onClos
   return (
     <Modal
       title={`${row.fabricName} — ${row.colorName}`}
-      subtitle={`الحاوية ${row.containerNumber || '—'} • المستودع ${row.warehouseName}`}
+      subtitle={`الحاوية ${row.containerNumber || EMPTY_CELL} • المستودع ${row.warehouseName}`}
       onClose={onClose}
     >
       {rollsQuery.isLoading ? <LoadingState /> : null}
@@ -598,13 +598,13 @@ function RollRow({
   return (
     <tr>
       <td>{roll.rollNumber}</td>
-      <td>{roll.lotCode ?? '—'}</td>
-      <td>{roll.barcode ?? '—'}</td>
+      <td>{roll.lotCode ?? EMPTY_CELL}</td>
+      <td dir="ltr">{roll.barcode ?? EMPTY_CELL}</td>
       <td>{formatMeters(roll.lengthMeters)}</td>
       <td>{formatMeters(roll.remainingLengthMeters)}</td>
       <td>{formatCurrency(roll.costPerMeter)}</td>
       <td>{formatCurrency(roll.currentValue)}</td>
-      <td>{roll.locationCode ?? '—'}</td>
+      <td>{roll.locationCode ?? EMPTY_CELL}</td>
       <td>{rollStatusLabel(roll.status)}</td>
       <td>
         {reservation ? (
@@ -612,7 +612,7 @@ function RollRow({
             مسودة بيع {reservation.salesInvoiceNumber}
           </Link>
         ) : (
-          'â€”'
+          EMPTY_CELL
         )}
       </td>
     </tr>
