@@ -34,6 +34,7 @@ public static class ModuleReportRegistry
             new("sal.detailing", "طابور التفصيل", "فواتير بانتظار التفصيل بالمستودع", "\uE8CB", "العمليات"),
             new("sal.returns", "مرتجعات البيع", "ملخص المرتجعات", "\uE7A6", "المبيعات"),
             new("sal.delivery", "التسليم", "فواتير جاهزة للتسليم", "\uE898", "العمليات"),
+            new("sal.tax_report", "تقرير ضريبة المبيعات", "ضريبة المخرجات من Snapshots مجمدة", "\uE8A1", "الضريبة", true),
         ],
         AppModule.Customers =>
         [

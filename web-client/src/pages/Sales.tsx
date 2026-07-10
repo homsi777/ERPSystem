@@ -3,11 +3,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   approveSalesInvoice,
+  calculateSalesInvoiceTax,
   cancelSalesInvoice,
   createSalesInvoice,
   getSalesInvoice,
   getSalesInvoices,
   getSalesWarehouseStock,
+  getTaxCodes,
   sendSalesInvoiceToWarehouse
 } from '../api/sales.ts';
 import { getCustomers } from '../api/customers.ts';
@@ -15,11 +17,13 @@ import { getContainers } from '../api/containers.ts';
 import { getInventoryWarehouses } from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
 import type {
+  CalculateSalesInvoiceTaxRequest,
   CreateSalesInvoiceLineRequest,
   PaymentType,
   SalesInvoiceDto,
   SalesInvoiceStatus,
-  SalesWarehouseStockOptionDto
+  SalesWarehouseStockOptionDto,
+  TaxCodeDto
 } from '../api/types.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
@@ -42,6 +46,8 @@ import {
 } from '../lib/enums.ts';
 
 const LIST_PAGE_SIZE = 100;
+/** Seeded default VAT 15% exclusive — matches ERPSystem.Application.Common.SalesTaxCodeIds */
+const DEFAULT_VAT_TAX_CODE_ID = 'c1000002-0002-0002-0002-000000000002';
 
 type ToastState = { tone: 'success' | 'error'; message: string };
 
@@ -374,6 +380,7 @@ type DraftLine = {
   stockKey: string;
   rollCount: string;
   unitPrice: string;
+  taxCodeId: string;
 };
 
 function SalesCreatePage() {
@@ -386,6 +393,7 @@ function SalesCreatePage() {
   const [discount, setDiscount] = useState('0');
   const [partialPayment, setPartialPayment] = useState('0');
   const [lines, setLines] = useState<DraftLine[]>([]);
+  const [debouncedTaxRequest, setDebouncedTaxRequest] = useState<CalculateSalesInvoiceTaxRequest | null>(null);
 
   const customersQuery = useQuery({
     queryKey: ['customers', 'lookup'],
@@ -401,6 +409,25 @@ function SalesCreatePage() {
     queryKey: ['containers', 'in-warehouse'],
     queryFn: () => getContainers({ status: 6, page: 1, pageSize: 200 })
   });
+
+  const taxCodesQuery = useQuery({
+    queryKey: ['sales', 'tax-codes'],
+    queryFn: () => getTaxCodes()
+  });
+
+  const taxCodes = taxCodesQuery.data ?? [];
+
+  function defaultTaxCodeId(codes: TaxCodeDto[]) {
+    if (codes.some((code) => code.id === DEFAULT_VAT_TAX_CODE_ID)) {
+      return DEFAULT_VAT_TAX_CODE_ID;
+    }
+    return codes[0]?.id ?? '';
+  }
+
+  function taxCodeLabel(code: TaxCodeDto) {
+    const rateLabel = `${formatNumber(code.rate * 100)}%`;
+    return `${code.code} — ${code.name} (${rateLabel}${code.isInclusive ? '، شامل' : ''})`;
+  }
 
   useEffect(() => {
     if (warehouseId || !warehousesQuery.data || warehousesQuery.data.length === 0) {
@@ -455,7 +482,14 @@ function SalesCreatePage() {
   function addLine() {
     setLines((current) => [
       ...current,
-      { key: `${Date.now()}-${Math.random()}`, containerId: '', stockKey: '', rollCount: '1', unitPrice: '0' }
+      {
+        key: `${Date.now()}-${Math.random()}`,
+        containerId: '',
+        stockKey: '',
+        rollCount: '1',
+        unitPrice: '0',
+        taxCodeId: defaultTaxCodeId(taxCodes)
+      }
     ]);
   }
 
@@ -467,18 +501,58 @@ function SalesCreatePage() {
     setLines((current) => current.filter((line) => line.key !== key));
   }
 
-  const estimatedTotal = useMemo(() => {
-    return lines.reduce((sum, line) => {
-      const stock = findStock(line);
-      if (!stock || stock.availableRollCount === 0) {
-        return sum;
-      }
-      const rolls = toNumber(line.rollCount);
-      const avgPerRoll = stock.availableMeters / stock.availableRollCount;
-      return sum + rolls * avgPerRoll * toNumber(line.unitPrice);
-    }, 0);
+  function netLineAmount(line: DraftLine) {
+    const stock = findStock(line);
+    if (!stock || stock.availableRollCount === 0) {
+      return 0;
+    }
+    const rolls = toNumber(line.rollCount);
+    const avgPerRoll = stock.availableMeters / stock.availableRollCount;
+    return rolls * avgPerRoll * toNumber(line.unitPrice);
+  }
+
+  const taxPreviewRequest = useMemo((): CalculateSalesInvoiceTaxRequest | null => {
+    const previewLines = lines
+      .map((line, index) => {
+        const amount = netLineAmount(line);
+        if (amount <= 0 || !line.stockKey) {
+          return null;
+        }
+        return {
+          lineNumber: index + 1,
+          netLineAmount: amount,
+          lineDiscountTotal: 0,
+          taxCodeId: line.taxCodeId || null
+        };
+      })
+      .filter((line): line is NonNullable<typeof line> => line !== null);
+
+    if (previewLines.length === 0) {
+      return null;
+    }
+
+    return {
+      invoiceDate: new Date().toISOString(),
+      invoiceDiscountTotal: toNumber(discount),
+      lines: previewLines
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, stockByContainer]);
+  }, [lines, discount, stockByContainer]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedTaxRequest(taxPreviewRequest), 300);
+    return () => window.clearTimeout(handle);
+  }, [taxPreviewRequest]);
+
+  const taxPreviewQuery = useQuery({
+    queryKey: ['sales-invoice-tax-preview', debouncedTaxRequest],
+    queryFn: () => calculateSalesInvoiceTax(debouncedTaxRequest!),
+    enabled: debouncedTaxRequest !== null && debouncedTaxRequest.lines.length > 0
+  });
+
+  const taxPreview = taxPreviewQuery.data;
+  const previewGrandTotal = taxPreview?.grandTotal ?? 0;
+  const previewValidationErrors = taxPreview?.validationErrors ?? [];
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -498,7 +572,8 @@ function SalesCreatePage() {
             unitPrice,
             originalUnitPrice: stock.salePricePerMeter ?? unitPrice,
             discountReason: null,
-            notes: null
+            notes: null,
+            taxCodeId: line.taxCodeId || null
           };
         })
         .filter((line): line is CreateSalesInvoiceLineRequest => line !== null);
@@ -538,13 +613,17 @@ function SalesCreatePage() {
       setToast({ tone: 'error', message: 'Choose a container for every invoice line.' });
       return;
     }
+    if (previewValidationErrors.length > 0) {
+      setToast({ tone: 'error', message: previewValidationErrors[0] ?? 'تعذّر التحقق من الضريبة.' });
+      return;
+    }
     if (paymentType === '1') {
       const partial = toNumber(partialPayment);
       if (partial < 0) {
         setToast({ tone: 'error', message: 'مبلغ الدفعة لا يمكن أن يكون سالباً.' });
         return;
       }
-      if (estimatedTotal > 0 && partial > estimatedTotal) {
+      if (previewGrandTotal > 0 && partial > previewGrandTotal) {
         setToast({ tone: 'error', message: 'مبلغ الدفعة لا يمكن أن يتجاوز إجمالي الفاتورة.' });
         return;
       }
@@ -728,6 +807,21 @@ function SalesCreatePage() {
                       <input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(line.key, { unitPrice: event.target.value })} />
                     </label>
                   </div>
+                  <label className="form-field form-field--wide">
+                    <span className="form-field__label">رمز الضريبة</span>
+                    <select
+                      value={line.taxCodeId}
+                      disabled={taxCodesQuery.isLoading}
+                      onChange={(event) => updateLine(line.key, { taxCodeId: event.target.value })}
+                    >
+                      <option value="">بدون ضريبة</option>
+                      {taxCodes.map((code) => (
+                        <option key={code.id} value={code.id}>
+                          {taxCodeLabel(code)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   {stock ? (
                     <p className="line-item__meta">
                       متاح {formatNumber(stock.availableRollCount)} ثوب · {formatMeters(stock.availableMeters)}
@@ -742,10 +836,72 @@ function SalesCreatePage() {
 
         <div className="sales-create__footer">
           <div className="sales-create__total">
-            <span>الإجمالي التقديري</span>
-            <strong>{formatCurrency(estimatedTotal)}</strong>
+            {taxPreviewQuery.isFetching && debouncedTaxRequest ? (
+              <p className="form-hint">جار حساب الضريبة...</p>
+            ) : null}
+            {taxPreviewQuery.isError ? (
+              <p className="form-hint form-hint--warn">{getErrorMessage(taxPreviewQuery.error)}</p>
+            ) : null}
+            {previewValidationErrors.length > 0 ? (
+              <ul className="form-hint form-hint--warn" aria-label="أخطاء التحقق من الضريبة">
+                {previewValidationErrors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            ) : null}
+            {taxPreview ? (
+              <div className="line-list">
+                <div className="price-row">
+                  <span>الإجمالي الفرعي</span>
+                  <strong>{formatCurrency(taxPreview.subtotalBeforeDiscount)}</strong>
+                </div>
+                {taxPreview.lineDiscountTotal > 0 ? (
+                  <div className="price-row">
+                    <span>خصومات الأصناف</span>
+                    <strong>{formatCurrency(taxPreview.lineDiscountTotal)}</strong>
+                  </div>
+                ) : null}
+                {taxPreview.invoiceDiscountTotal > 0 ? (
+                  <div className="price-row">
+                    <span>خصم الفاتورة</span>
+                    <strong>{formatCurrency(taxPreview.invoiceDiscountTotal)}</strong>
+                  </div>
+                ) : null}
+                <div className="price-row">
+                  <span>المبلغ الخاضع للضريبة</span>
+                  <strong>{formatCurrency(taxPreview.taxableAmount)}</strong>
+                </div>
+                <div className="price-row">
+                  <span>إجمالي الضريبة</span>
+                  <strong>{formatCurrency(taxPreview.taxTotal)}</strong>
+                </div>
+                {taxPreview.roundingDifference !== 0 ? (
+                  <div className="price-row">
+                    <span>فرق التقريب</span>
+                    <strong>{formatCurrency(taxPreview.roundingDifference)}</strong>
+                  </div>
+                ) : null}
+                <div className="price-row">
+                  <span>الإجمالي</span>
+                  <strong>{formatCurrency(taxPreview.grandTotal)}</strong>
+                </div>
+              </div>
+            ) : (
+              <>
+                <span>الإجمالي</span>
+                <strong>{formatCurrency(0)}</strong>
+              </>
+            )}
           </div>
-          <button className="primary-button sales-create__submit" type="submit" disabled={mutation.isPending}>
+          {/*
+            Web create saves a draft only. Invoice approval (inventory + tax GL posting)
+            is not available on this screen — use the invoice detail page after warehouse detailing.
+          */}
+          <button
+            className="primary-button sales-create__submit"
+            type="submit"
+            disabled={mutation.isPending || previewValidationErrors.length > 0 || taxPreviewQuery.isFetching}
+          >
             {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء مسودة'}
           </button>
         </div>

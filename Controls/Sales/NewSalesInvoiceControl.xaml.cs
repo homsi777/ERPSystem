@@ -3,6 +3,7 @@ using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Queries.Containers;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.Services;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Controls.Finance;
 using ERPSystem.Core;
@@ -41,6 +42,14 @@ namespace ERPSystem.Controls.Sales
         public string Display { get; init; } = "";
     }
 
+    public sealed class TaxCodePickItem
+    {
+        public Guid Id { get; init; }
+        public string Display { get; init; } = "";
+        public decimal Rate { get; init; }
+        public bool IsInclusive { get; init; }
+    }
+
     public class SalesInvoiceLineRow : INotifyPropertyChanged
     {
         private string _goodsType = "";
@@ -58,8 +67,16 @@ namespace ERPSystem.Controls.Sales
         private SalesWarehouseStockOptionDto? _selectedStock;
         private ContainerPickItem? _selectedContainer;
         private bool _missingSalePrice;
+        private TaxCodePickItem? _selectedTaxCode;
+        private decimal _previewTaxAmount;
+        private decimal _previewTaxableAmount;
+        private string _taxRateDisplay = "—";
+        private string _isTaxInclusiveDisplay = "—";
 
         public ObservableCollection<SalesWarehouseStockOptionDto> StockOptions { get; } = new();
+        public Guid LineId { get; set; }
+        internal decimal LoadedNetLineAmount { get; set; }
+        internal decimal LoadedLineDiscount { get; set; }
         public Guid FabricItemId { get; set; }
         public Guid FabricColorId { get; set; }
         public Guid ChinaContainerId => SelectedContainer?.Id ?? Guid.Empty;
@@ -234,6 +251,71 @@ namespace ERPSystem.Controls.Sales
             set => SetField(ref _notes, value ?? "");
         }
 
+        public TaxCodePickItem? SelectedTaxCode
+        {
+            get => _selectedTaxCode;
+            set
+            {
+                if (!SetField(ref _selectedTaxCode, value))
+                    return;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TaxCodeId)));
+            }
+        }
+
+        public Guid? TaxCodeId => SelectedTaxCode?.Id;
+
+        public decimal PreviewTaxAmount
+        {
+            get => _previewTaxAmount;
+            set
+            {
+                if (!SetField(ref _previewTaxAmount, value))
+                    return;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreviewTaxAmountText)));
+            }
+        }
+
+        public decimal PreviewTaxableAmount
+        {
+            get => _previewTaxableAmount;
+            set => SetField(ref _previewTaxableAmount, value);
+        }
+
+        public string TaxRateDisplay
+        {
+            get => _taxRateDisplay;
+            set => SetField(ref _taxRateDisplay, value ?? "—");
+        }
+
+        public string IsTaxInclusiveDisplay
+        {
+            get => _isTaxInclusiveDisplay;
+            set => SetField(ref _isTaxInclusiveDisplay, value ?? "—");
+        }
+
+        public string PreviewTaxAmountText =>
+            PreviewTaxAmount > 0 ? FormatUnitPriceDisplay(PreviewTaxAmount) : "—";
+
+        internal void ApplyTaxPreview(SalesInvoiceTaxPreviewLineDto preview)
+        {
+            PreviewTaxAmount = preview.TaxAmount;
+            PreviewTaxableAmount = preview.TaxableAmount;
+            TaxRateDisplay = preview.TaxRate > 0
+                ? $"{preview.TaxRate * 100m:N1}%"
+                : "—";
+            IsTaxInclusiveDisplay = preview.TaxCodeId is null
+                ? "—"
+                : preview.IsInclusive ? "شامل" : "غير شامل";
+        }
+
+        internal void ClearTaxPreview()
+        {
+            PreviewTaxAmount = 0;
+            PreviewTaxableAmount = 0;
+            TaxRateDisplay = "—";
+            IsTaxInclusiveDisplay = "—";
+        }
+
         internal static string FormatUnitPriceDisplay(decimal value) =>
             value.ToString("N2", CultureInfo.CurrentCulture);
 
@@ -330,12 +412,25 @@ namespace ERPSystem.Controls.Sales
         private readonly ObservableCollection<SalesInvoiceLineRow> _lines = new();
         public ObservableCollection<SalesWarehouseStockOptionDto> StockOptions { get; } = new();
         public ObservableCollection<ContainerPickItem> ContainerOptions { get; } = new();
+        public ObservableCollection<TaxCodePickItem> TaxCodeOptions { get; } = new();
         private Guid? _invoiceId;
         private SalesInvoiceStatus _domainStatus = SalesInvoiceStatus.Draft;
         private decimal _loadedGrandTotal;
         private decimal _loadedSubTotal;
         private decimal _loadedDiscountTotal;
+        private decimal _loadedTaxTotal;
+        private decimal _loadedTaxableAmount;
+        private decimal _loadedLineDiscountTotal;
+        private decimal _loadedRoundingDifference;
         private decimal _loadedTotalMeters;
+        private bool _isLegacyUntaxed;
+        private bool _hasTaxPreview;
+        private decimal _previewTaxTotal;
+        private decimal _previewTaxableAmount;
+        private decimal _previewLineDiscountTotal;
+        private decimal _previewRoundingDifference;
+        private decimal _previewGrandTotal;
+        private bool _taxPreviewRefreshScheduled;
         private readonly Dictionary<int, string> _lineDisplayByNumber = new();
         private bool _cellEditFailed;
         private bool _isSaving;
@@ -396,12 +491,18 @@ namespace ERPSystem.Controls.Sales
         {
             if (e.PropertyName is nameof(SalesInvoiceLineRow.RollCount)
                 or nameof(SalesInvoiceLineRow.RollCountText)
+                or nameof(SalesInvoiceLineRow.UnitPrice)
+                or nameof(SalesInvoiceLineRow.UnitPriceText)
+                or nameof(SalesInvoiceLineRow.OriginalUnitPrice)
+                or nameof(SalesInvoiceLineRow.SelectedTaxCode)
+                or nameof(SalesInvoiceLineRow.TaxCodeId)
                 or nameof(SalesInvoiceLineRow.SelectedStock)
                 or nameof(SalesInvoiceLineRow.FabricItemId)
                 or nameof(SalesInvoiceLineRow.SelectedContainer))
             {
                 MarkFormDirty();
                 Dispatcher.BeginInvoke(RefreshSummary);
+                ScheduleTaxPreviewRefresh();
             }
 
             if (sender is SalesInvoiceLineRow row &&
@@ -490,6 +591,7 @@ namespace ERPSystem.Controls.Sales
 
             UpdateStatusBadge();
             UpdateWorkflowUi();
+            ScheduleTaxPreviewRefresh();
         }
 
         private void OnSalesListRefreshRequested(object? sender, EventArgs e)
@@ -531,6 +633,30 @@ namespace ERPSystem.Controls.Sales
             await LoadWarehousesAsync();
             await LoadContainersAsync();
             await LoadCashboxesAsync();
+            await LoadTaxCodesAsync();
+        }
+
+        private async Task LoadTaxCodesAsync()
+        {
+            TaxCodeOptions.Clear();
+            if (!AppServices.IsInitialized)
+                return;
+
+            var effectiveOn = DpDate.SelectedDate ?? DateTime.Today;
+            var result = await SalesUiService.Instance.GetTaxCodesAsync(effectiveOn);
+            if (!result.IsSuccess || result.Value is null)
+                return;
+
+            foreach (var code in result.Value)
+            {
+                TaxCodeOptions.Add(new TaxCodePickItem
+                {
+                    Id = code.Id,
+                    Display = $"{code.Code} — {code.Name}",
+                    Rate = code.Rate,
+                    IsInclusive = code.IsInclusive
+                });
+            }
         }
 
         private async Task LoadCashboxesAsync()
@@ -739,6 +865,11 @@ namespace ERPSystem.Controls.Sales
             _loadedSubTotal = invoice.SubTotal;
             _loadedGrandTotal = invoice.GrandTotal;
             _loadedDiscountTotal = invoice.DiscountTotal;
+            _loadedTaxTotal = invoice.TaxTotal;
+            _loadedTaxableAmount = invoice.Lines.Sum(l => l.TaxableAmount);
+            _loadedLineDiscountTotal = invoice.Lines.Sum(l => l.DiscountAmount);
+            _loadedRoundingDifference = invoice.RoundingDifference;
+            _isLegacyUntaxed = invoice.IsLegacyUntaxed;
             _loadedTotalMeters = invoice.Lines.Sum(l => l.TotalLengthMeters);
 
             TxtInvoiceNumber.Text = invoice.InvoiceNumber;
@@ -765,6 +896,7 @@ namespace ERPSystem.Controls.Sales
 
                 var row = new SalesInvoiceLineRow
                 {
+                    LineId = line.Id,
                     SelectedContainer = ContainerOptions.FirstOrDefault(c => c.Id == line.ChinaContainerId),
                     FabricItemId = line.FabricItemId,
                     FabricColorId = line.FabricColorId,
@@ -777,8 +909,21 @@ namespace ERPSystem.Controls.Sales
                     MissingSalePrice = line.UnitPrice <= 0,
                     LengthStatus = BuildLengthStatus(line, _domainStatus),
                     DiscountReason = line.DiscountReason ?? "",
-                    Notes = line.Notes ?? ""
+                    Notes = line.Notes ?? "",
+                    SelectedTaxCode = TaxCodeOptions.FirstOrDefault(t => t.Id == line.TaxCodeId),
+                    PreviewTaxAmount = line.TaxAmount,
+                    PreviewTaxableAmount = line.TaxableAmount,
+                    TaxRateDisplay = line.TaxRate > 0 ? $"{line.TaxRate * 100m:N1}%" : "—",
+                    IsTaxInclusiveDisplay = line.TaxCodeId is null
+                        ? "—"
+                        : line.IsTaxInclusive ? "شامل" : "غير شامل"
                 };
+
+                if (line.LineTotal > 0 || line.TotalLengthMeters > 0)
+                {
+                    row.LoadedNetLineAmount = line.LineTotal;
+                    row.LoadedLineDiscount = line.DiscountAmount;
+                }
                 row.RefreshStockSelectionDisplay();
                 _lines.Add(row);
             }
@@ -794,6 +939,7 @@ namespace ERPSystem.Controls.Sales
             UpdateStatusBadge();
             UpdateWorkflowUi();
             MarkFormClean();
+            ScheduleTaxPreviewRefresh();
         }
 
         private void RestoreLineStockSelections()
@@ -1126,8 +1272,15 @@ namespace ERPSystem.Controls.Sales
             TxtDiscount.IsEnabled = canEditDiscount;
             BtnApplyDiscount.IsEnabled = canEditDiscount && _invoiceId.HasValue;
 
-            FinancialSummaryPanel.Visibility = isDetailed ? Visibility.Visible : Visibility.Collapsed;
+            FinancialSummaryPanel.Visibility = isDetailed || HasTaxSummaryToShow()
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            TaxSummaryPanel.Visibility = isDetailed || HasTaxSummaryToShow()
+                ? Visibility.Visible
+                : Visibility.Collapsed;
             TxtPendingLengthsMessage.Visibility = isDetailed ? Visibility.Collapsed : Visibility.Visible;
+
+            UpdateTaxSummaryUi(isDetailed);
 
             if (canEditDiscount || isDetailed)
                 TxtDiscount.Text = FormatDiscountEntryText(_loadedDiscountTotal);
@@ -1142,6 +1295,154 @@ namespace ERPSystem.Controls.Sales
                 TxtSubTotalCurrency.Text = currencyLabel;
                 TxtGrandTotalCurrency.Text = currencyLabel;
             }
+            else if (HasTaxSummaryToShow())
+            {
+                TxtSubTotal.Text = (_previewTaxableAmount + _previewLineDiscountTotal)
+                    .ToString("N2", CultureInfo.CurrentCulture);
+                TxtGrandTotal.Text = (_previewGrandTotal > 0 ? _previewGrandTotal : _loadedGrandTotal)
+                    .ToString("N2", CultureInfo.CurrentCulture);
+            }
+        }
+
+        private bool HasTaxSummaryToShow() =>
+            _hasTaxPreview && (_previewTaxTotal > 0 || _lines.Any(l => l.TaxCodeId is not null));
+
+        private void UpdateTaxSummaryUi(bool isDetailed)
+        {
+            var taxable = isDetailed ? _loadedTaxableAmount : _previewTaxableAmount;
+            var taxTotal = isDetailed ? _loadedTaxTotal : _previewTaxTotal;
+            var lineDiscount = isDetailed ? _loadedLineDiscountTotal : _previewLineDiscountTotal;
+            var rounding = isDetailed ? _loadedRoundingDifference : _previewRoundingDifference;
+
+            TxtTaxableAmount.Text = taxable > 0
+                ? taxable.ToString("N2", CultureInfo.CurrentCulture)
+                : "—";
+            TxtTaxTotal.Text = taxTotal > 0
+                ? taxTotal.ToString("N2", CultureInfo.CurrentCulture)
+                : "—";
+            TxtLineDiscountSummary.Text = lineDiscount > 0
+                ? lineDiscount.ToString("N2", CultureInfo.CurrentCulture)
+                : "—";
+            TxtRoundingDifference.Text = rounding != 0
+                ? rounding.ToString("N2", CultureInfo.CurrentCulture)
+                : "—";
+
+            TxtLegacyTaxBanner.Visibility = _isLegacyUntaxed ? Visibility.Visible : Visibility.Collapsed;
+            if (_isLegacyUntaxed)
+            {
+                TxtLegacyTaxBanner.Text =
+                    "فاتورة قديمة بدون ضريبة — لا تُطبَّق قواعد الضريبة الجديدة على هذا المستند.";
+            }
+        }
+
+        private void ScheduleTaxPreviewRefresh()
+        {
+            if (_taxPreviewRefreshScheduled)
+                return;
+
+            _taxPreviewRefreshScheduled = true;
+            Dispatcher.BeginInvoke(() =>
+            {
+                _taxPreviewRefreshScheduled = false;
+                _ = RefreshTaxPreviewAsync();
+            }, System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private async Task RefreshTaxPreviewAsync()
+        {
+            if (!AppServices.IsInitialized)
+                return;
+
+            var actionableLines = _lines
+                .Where(l => l.RollCount > 0 && l.FabricItemId != Guid.Empty)
+                .ToList();
+
+            if (actionableLines.Count == 0)
+            {
+                _hasTaxPreview = false;
+                _previewTaxTotal = 0;
+                _previewTaxableAmount = 0;
+                _previewLineDiscountTotal = 0;
+                _previewRoundingDifference = 0;
+                _previewGrandTotal = 0;
+                foreach (var row in _lines)
+                    row.ClearTaxPreview();
+                UpdateTaxSummaryUi(_domainStatus >= SalesInvoiceStatus.Detailed
+                    && _domainStatus is not SalesInvoiceStatus.Cancelled);
+                UpdateWorkflowUi();
+                return;
+            }
+
+            var lineNumber = 1;
+            var requests = new List<SalesInvoiceTaxPreviewLineRequest>();
+            foreach (var row in actionableLines)
+            {
+                var (net, discount) = BuildPreviewLineAmounts(row);
+                requests.Add(new SalesInvoiceTaxPreviewLineRequest
+                {
+                    LineId = row.LineId != Guid.Empty ? row.LineId : Guid.NewGuid(),
+                    LineNumber = lineNumber++,
+                    NetLineAmount = net,
+                    LineDiscountTotal = discount,
+                    TaxCodeId = row.TaxCodeId
+                });
+            }
+
+            var invoiceDate = DpDate.SelectedDate ?? DateTime.Today;
+            var result = await SalesUiService.Instance.CalculateTaxPreviewAsync(
+                invoiceDate,
+                GetDiscountAmount(),
+                requests);
+
+            if (!result.IsSuccess || result.Value is null)
+            {
+                _hasTaxPreview = false;
+                UpdateTaxSummaryUi(_domainStatus >= SalesInvoiceStatus.Detailed
+                    && _domainStatus is not SalesInvoiceStatus.Cancelled);
+                UpdateWorkflowUi();
+                return;
+            }
+
+            var preview = result.Value;
+            _hasTaxPreview = true;
+            _previewTaxTotal = preview.TaxTotal;
+            _previewTaxableAmount = preview.TaxableAmount;
+            _previewLineDiscountTotal = preview.LineDiscountTotal;
+            _previewRoundingDifference = preview.RoundingDifference;
+            _previewGrandTotal = preview.GrandTotal;
+
+            foreach (var row in _lines)
+                row.ClearTaxPreview();
+
+            foreach (var previewLine in preview.Lines)
+            {
+                var index = previewLine.LineNumber - 1;
+                if (index < 0 || index >= actionableLines.Count)
+                    continue;
+                actionableLines[index].ApplyTaxPreview(previewLine);
+            }
+
+            var isDetailed = _domainStatus >= SalesInvoiceStatus.Detailed
+                && _domainStatus is not SalesInvoiceStatus.Cancelled;
+            UpdateTaxSummaryUi(isDetailed);
+            UpdateWorkflowUi();
+        }
+
+        private static (decimal NetLineAmount, decimal LineDiscountTotal) BuildPreviewLineAmounts(SalesInvoiceLineRow row)
+        {
+            if (row.LoadedNetLineAmount > 0)
+                return (row.LoadedNetLineAmount, row.LoadedLineDiscount);
+
+            if (row.RollCount <= 0 || row.UnitPrice <= 0)
+                return (0m, 0m);
+
+            var avgMeters = row.AvailableRollCount > 0
+                ? row.AvailableMeters / row.AvailableRollCount
+                : 0m;
+            var estimatedMeters = row.RollCount * avgMeters;
+            var net = estimatedMeters * row.UnitPrice;
+            var discount = row.HasDiscount ? row.PerMeterDiscount * estimatedMeters : 0m;
+            return (net, discount);
         }
 
         // Header-level discount is retired in favour of per-line price overrides
@@ -1375,7 +1676,8 @@ namespace ERPSystem.Controls.Sales
                     DiscountReason = row.HasDiscount && !string.IsNullOrWhiteSpace(row.DiscountReason)
                         ? row.DiscountReason.Trim()
                         : null,
-                    Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim()
+                    Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim(),
+                    TaxCodeId = row.TaxCodeId
                 });
             }
             return commands;
@@ -1473,7 +1775,7 @@ namespace ERPSystem.Controls.Sales
             }
 
             if (cell.Column is DataGridComboBoxColumn ||
-                (cell.Column is DataGridTemplateColumn && header == "اختر التوب"))
+                (cell.Column is DataGridTemplateColumn && header is "اختر التوب" or "كود الضريبة"))
             {
                 if (cell.DataContext is SalesInvoiceLineRow { StockOptions.Count: 0 })
                 {
@@ -1593,7 +1895,7 @@ namespace ERPSystem.Controls.Sales
 
         private List<DataGridColumn> GetEditableColumnsForRow(SalesInvoiceLineRow? row)
         {
-            var order = new List<string> { "الحاوية", "اختر التوب", "عدد الأثواب", "سعر الوحدة" };
+            var order = new List<string> { "الحاوية", "اختر التوب", "عدد الأثواب", "سعر الوحدة", "كود الضريبة" };
 
             return ItemsGrid.Columns
                 .Where(c => !c.IsReadOnly && order.Contains(c.Header?.ToString() ?? ""))
@@ -1692,6 +1994,7 @@ namespace ERPSystem.Controls.Sales
 
             var showWarning = _lines.Any(l => l.MissingSalePrice && l.FabricItemId != Guid.Empty);
             SalePriceWarningBanner.Visibility = showWarning ? Visibility.Visible : Visibility.Collapsed;
+            ScheduleTaxPreviewRefresh();
             UpdateWorkflowUi();
         }
 

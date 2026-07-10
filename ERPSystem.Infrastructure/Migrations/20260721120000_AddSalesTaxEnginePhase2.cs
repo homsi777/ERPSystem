@@ -1,3 +1,5 @@
+using ERPSystem.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -7,6 +9,8 @@ namespace ERPSystem.Infrastructure.Migrations;
 /// <summary>
 /// Phase 2 — Sales Tax Engine (additive only). Historical invoices flagged as legacy untaxed.
 /// </summary>
+[DbContext(typeof(ErpDbContext))]
+[Migration("20260721120000_AddSalesTaxEnginePhase2")]
 public partial class AddSalesTaxEnginePhase2 : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

@@ -55,6 +55,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IPermissionService>(sp => sp.GetRequiredService<PermissionService>());
         services.AddSingleton<ISalesTaxEngine, Tax.SalesTaxEngine>();
         services.AddScoped<SalesInvoiceTaxService>();
+        services.AddScoped<SalesInvoiceTaxPreviewService>();
         RegisterCustomerHandlers(services);
         RegisterSupplierHandlers(services);
         RegisterPurchaseHandlers(services);
@@ -248,6 +249,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CancelSalesReturnCommand, ApplicationResult>, CancelSalesReturnHandler>();
         services.AddScoped<GetSalesReturnListHandler>();
         services.AddScoped<GetSalesReturnDetailsHandler>();
+        services.AddScoped<GetTaxCodesHandler>();
+        services.AddScoped<CalculateSalesInvoiceTaxHandler>();
         services.AddScoped<GetSalesTaxReportHandler>();
         services.AddScoped<GetDeliveryQueueHandler>();
         services.AddScoped<GetInvoicePaymentHistoryHandler>();

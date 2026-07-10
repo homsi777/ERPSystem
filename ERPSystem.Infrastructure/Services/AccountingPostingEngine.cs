@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
@@ -24,10 +26,10 @@ internal sealed class AccountingPostingEngine(
 
     public async Task<PostingResult> PostAsync(PostingRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateRequest(request);
-
         try
         {
+            ValidateRequest(request);
+
             var existing = await FindProtectedEntryAsync(request, cancellationToken);
             if (existing is not null)
             {
@@ -64,7 +66,8 @@ internal sealed class AccountingPostingEngine(
                 request.UserId,
                 request.SourceType,
                 request.SourceId,
-                request.JournalBookId);
+                request.JournalBookId,
+                CreateProtectedEntryId(request));
 
             foreach (var line in request.Lines.Where(l => l.Debit > 0 || l.Credit > 0))
             {
@@ -76,8 +79,8 @@ internal sealed class AccountingPostingEngine(
                     line.PartyId));
             }
 
-            aggregate.Post(request.UserId);
             AccountingPostingPolicy.EnsureCanPost(aggregate);
+            aggregate.Post(request.UserId);
 
             await journalRepository.AddAsync(
                 aggregate,
@@ -198,7 +201,21 @@ internal sealed class AccountingPostingEngine(
         }
 
         if (Math.Abs(debit - credit) > BalanceTolerance)
-            throw new AccountingException("Posting lines are not balanced.");
+            throw new AccountingException(
+                $"Posting lines are not balanced (debit={debit:0.####}, credit={credit:0.####}, difference={debit - credit:0.####}).");
+    }
+
+    private static Guid CreateProtectedEntryId(PostingRequest request)
+    {
+        var identity =
+            $"{request.CompanyId:N}|{(int)request.SourceType}|{request.SourceId:N}|{(int)request.PostingKind}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(identity));
+        var bytes = hash[..16];
+
+        // RFC 4122 variant + deterministic version marker.
+        bytes[6] = (byte)((bytes[6] & 0x0F) | 0x50);
+        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
+        return new Guid(bytes);
     }
 
     private async Task ValidateAccountsAsync(PostingRequest request, CancellationToken cancellationToken)

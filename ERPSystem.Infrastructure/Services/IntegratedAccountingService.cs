@@ -3,6 +3,7 @@ using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.Posting;
+using ERPSystem.Application.Tax;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Purchasing;
 using ERPSystem.Domain.Enums;
@@ -94,27 +95,12 @@ internal sealed class IntegratedAccountingService(
             throw new ValidationException(
                 "VAT Payable account is not configured. Configure sales posting profile before approving taxed invoices.");
 
-        var revenueCredit = netReceivable - taxTotal + lineDiscount;
+        var posting = SalesInvoiceApprovalPostingBuilder.Build(
+            invoice, arAccount, revenueAccount, discountAccount, vatAccount);
 
-        var lines = new List<(Guid, decimal, decimal, string, Guid?)>
-        {
-            (arAccount, netReceivable, 0m, "ذمم عميل — فاتورة بيع", invoice.CustomerId),
-            (revenueAccount, 0m, revenueCredit, "إيراد مبيعات أقمشة", null)
-        };
-
-        if (lineDiscount > 0)
-            lines.Add((discountAccount, lineDiscount, 0m, "خصم مبيعات ممنوح", invoice.CustomerId));
-
-        if (taxTotal > 0)
-        {
-            foreach (var group in invoice.ItemTaxSnapshots
-                         .Where(s => s.TaxAmount.Amount > 0)
-                         .GroupBy(s => s.SalesTaxAccountId ?? vatAccount!.Value))
-            {
-                var amount = group.Sum(g => g.TaxAmount.Amount);
-                lines.Add((group.Key, 0m, amount, "ضريبة مبيعات مستحقة", null));
-            }
-        }
+        var lines = posting.Lines
+            .Select(l => (l.AccountId, l.Debit, l.Credit, l.Narrative, l.PartyId))
+            .ToList();
 
         if (Math.Abs(invoice.RoundingDifference) >= 0.01m && profile?.RoundingAccountId is Guid roundingAccount)
         {

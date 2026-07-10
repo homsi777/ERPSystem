@@ -2,8 +2,10 @@ using ERPSystem.Api.Mapping;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Queries.Sales;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.Services;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Application.UseCases.Sales;
 using ERPSystem.Domain.Enums;
@@ -27,6 +29,9 @@ public static class SalesEndpoints
         group.MapPost("invoices/{invoiceId:guid}/cancel", CancelInvoiceAsync).WithName("CancelSalesInvoice");
         group.MapGet("invoices/{invoiceId:guid}/below-cost", GetBelowCostAsync).WithName("GetSalesInvoiceBelowCost");
         group.MapGet("warehouse-stock", GetWarehouseStockAsync).WithName("GetSalesWarehouseStock");
+        group.MapGet("tax-codes", GetTaxCodesAsync).WithName("GetSalesTaxCodes");
+        group.MapPost("invoices/calculate", CalculateInvoiceTaxAsync).WithName("CalculateSalesInvoiceTax");
+        group.MapGet("tax-report", GetTaxReportAsync).WithName("GetSalesTaxReport");
 
         return app;
     }
@@ -103,7 +108,8 @@ public static class SalesEndpoints
                 UnitPrice = l.UnitPrice,
                 OriginalUnitPrice = l.OriginalUnitPrice == 0 ? l.UnitPrice : l.OriginalUnitPrice,
                 DiscountReason = l.DiscountReason,
-                Notes = l.Notes
+                Notes = l.Notes,
+                TaxCodeId = l.TaxCodeId
             }).ToList()
         }, cancellationToken);
 
@@ -167,6 +173,73 @@ public static class SalesEndpoints
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 
+    private static async Task<IResult> GetTaxCodesAsync(
+        [FromQuery] DateTime? effectiveOn,
+        ICurrentBranchService branchService,
+        GetTaxCodesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new GetTaxCodesQuery
+        {
+            CompanyId = companyId,
+            EffectiveOn = effectiveOn
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> CalculateInvoiceTaxAsync(
+        [FromBody] CalculateSalesInvoiceTaxRequest request,
+        ICurrentBranchService branchService,
+        CalculateSalesInvoiceTaxHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new CalculateSalesInvoiceTaxQuery
+        {
+            CompanyId = companyId,
+            InvoiceDate = request.InvoiceDate == default ? DateTime.UtcNow : request.InvoiceDate,
+            InvoiceDiscountTotal = request.InvoiceDiscountTotal,
+            Lines = request.Lines.Select(l => new SalesInvoiceTaxPreviewLineRequest
+            {
+                LineId = l.LineId ?? Guid.Empty,
+                LineNumber = l.LineNumber,
+                NetLineAmount = l.NetLineAmount,
+                LineDiscountTotal = l.LineDiscountTotal,
+                TaxCodeId = l.TaxCodeId
+            }).ToList()
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetTaxReportAsync(
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        [FromQuery] bool includeLegacy,
+        ICurrentBranchService branchService,
+        GetSalesTaxReportHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new GetSalesTaxReportQuery
+        {
+            CompanyId = companyId,
+            FromDate = from,
+            ToDate = to,
+            IncludeLegacy = includeLegacy
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
     private sealed record CreateSalesInvoiceRequest(
         Guid CustomerId,
         Guid WarehouseId,
@@ -186,7 +259,20 @@ public static class SalesEndpoints
         decimal UnitPrice,
         decimal OriginalUnitPrice,
         string? DiscountReason,
-        string? Notes);
+        string? Notes,
+        Guid? TaxCodeId);
+
+    private sealed record CalculateSalesInvoiceTaxRequest(
+        DateTime InvoiceDate,
+        decimal InvoiceDiscountTotal,
+        IReadOnlyList<CalculateSalesInvoiceTaxLineRequest> Lines);
+
+    private sealed record CalculateSalesInvoiceTaxLineRequest(
+        int LineNumber,
+        Guid? LineId,
+        decimal NetLineAmount,
+        decimal LineDiscountTotal,
+        Guid? TaxCodeId);
 
     private sealed record CancelSalesInvoiceRequest(string? Reason);
 }

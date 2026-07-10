@@ -592,6 +592,28 @@
                             <DataGridTextColumn Header="سعر الوحدة" Binding="{Binding UnitPriceText, UpdateSourceTrigger=PropertyChanged}" Width="90"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"
                                                 EditingElementStyle="{StaticResource InvoiceGridEditText}"/>
+                            <DataGridTemplateColumn Header="كود الضريبة" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding SelectedTaxCode.Display, TargetNullValue=—}"
+                                                   Style="{StaticResource InvoiceGridCellText}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellEditingTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding TaxCodeOptions, ElementName=InvoiceRoot}"
+                                                  DisplayMemberPath="Display"
+                                                  SelectedItem="{Binding SelectedTaxCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  Style="{StaticResource InvoiceGridCombo}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellEditingTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="نسبة الضريبة" Binding="{Binding TaxRateDisplay}" Width="90"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
+                            <DataGridTextColumn Header="مبلغ الضريبة" Binding="{Binding PreviewTaxAmountText}" Width="90"
+                                                IsReadOnly="True"
+                                                ElementStyle="{StaticResource InvoiceGridCellText}"/>
                             <DataGridTemplateColumn Header="الخصم" Width="90" IsReadOnly="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -765,6 +787,67 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+                    </Border>
+
+                    <Border x:Name="TaxSummaryPanel" Visibility="Collapsed"
+                            Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1"
+                            CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="ملخص الضريبة" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,0,10"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="الأساس الخاضع" Style="{StaticResource InvoiceFieldLabel}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#475569" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtTaxableAmount" Text="—" FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="#334155" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="إجمالي الضريبة" Style="{StaticResource InvoiceFieldLabel}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#0369A1" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtTaxTotal" Text="—" FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="#0284C7" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="خصم الأسطر (تقديري)" Style="{StaticResource InvoiceFieldLabel}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#BE123C" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtLineDiscountSummary" Text="—" FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="#E11D48" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Text="فرق التقريب" Style="{StaticResource InvoiceFieldLabel}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="$" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock x:Name="TxtRoundingDifference" Text="—" FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="#475569" FontFamily="Segoe UI, Tahoma, Arial"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock x:Name="TxtLegacyTaxBanner" Visibility="Collapsed"
+                                       Margin="0,10,0,0" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="#92400E" TextWrapping="Wrap"
+                                       FontFamily="Segoe UI, Tahoma, Arial"/>
+                        </StackPanel>
                     </Border>
                     <TextBlock x:Name="TxtPendingLengthsMessage"
                                Text="لا يمكن حساب المبلغ قبل أن يُدخل أمين المستودع طول كل ثوب على حدة"

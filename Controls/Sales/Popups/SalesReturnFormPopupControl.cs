@@ -36,6 +36,16 @@ public sealed class SalesReturnFormPopupControl : UserControl
     private readonly TextBox _txtNotes = new() { Height = 60, TextWrapping = TextWrapping.Wrap };
     private readonly DatePicker _dpDate = new() { SelectedDate = DateTime.Today, Height = 32 };
     private readonly TextBlock _txtTotal = new() { FontSize = 14, FontWeight = FontWeights.Bold };
+    private readonly TextBlock _txtTaxSummary = new() { FontSize = 11, Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+    private readonly TextBlock _legacyBanner = new()
+    {
+        Text = "فاتورة تاريخية — لا يُعكس ضريبة (Legacy Untaxed)",
+        Visibility = Visibility.Collapsed,
+        Foreground = Brushes.DarkOrange,
+        FontStyle = FontStyles.Italic,
+        Margin = new Thickness(0, 0, 0, 8)
+    };
+    private bool _isLegacyUntaxed;
     private readonly DataGrid _grid;
 
     public SalesReturnFormPopupControl(Guid invoiceId, string invoiceNumber, string customerName)
@@ -73,8 +83,11 @@ public sealed class SalesReturnFormPopupControl : UserControl
         Grid.SetRow(notes2, 1);
         top.Children.Add(notes2);
 
-        Grid.SetRow(top, 0);
-        root.Children.Add(top);
+        var headerStack = new StackPanel();
+        headerStack.Children.Add(top);
+        headerStack.Children.Add(_legacyBanner);
+        Grid.SetRow(headerStack, 0);
+        root.Children.Add(headerStack);
 
         // Lines grid
         _grid = new DataGrid
@@ -96,7 +109,10 @@ public sealed class SalesReturnFormPopupControl : UserControl
         _grid.Columns.Add(new DataGridTextColumn { Header = "الأمتار الأصلية", Binding = new Binding(nameof(SalesReturnLineRow.OriginalMeters)) { StringFormat = "N2", Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 130 });
         _grid.Columns.Add(new DataGridTextColumn { Header = "أمتار المرتجع", Binding = new Binding(nameof(SalesReturnLineRow.ReturnMeters)) { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged, StringFormat = "N2" }, Width = 130 });
         _grid.Columns.Add(new DataGridTextColumn { Header = "سعر الوحدة", Binding = new Binding(nameof(SalesReturnLineRow.UnitPrice)) { StringFormat = "N2", Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 120 });
-        _grid.Columns.Add(new DataGridTextColumn { Header = "الإجمالي", Binding = new Binding(nameof(SalesReturnLineRow.LineTotal)) { StringFormat = "N2", Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 130 });
+        _grid.Columns.Add(new DataGridTextColumn { Header = "الإجمالي", Binding = new Binding(nameof(SalesReturnLineRow.LineTotal)) { StringFormat = "N2", Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 110 });
+        _grid.Columns.Add(new DataGridTextColumn { Header = "ض. أصلية", Binding = new Binding(nameof(SalesReturnLineRow.OriginalTaxAmount)) { StringFormat = "N2", Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 90 });
+        _grid.Columns.Add(new DataGridTextColumn { Header = "ض. مرتجع", Binding = new Binding(nameof(SalesReturnLineRow.ReturnTaxAmount)) { StringFormat = "N2", Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 90 });
+        _grid.Columns.Add(new DataGridTextColumn { Header = "كود ض.", Binding = new Binding(nameof(SalesReturnLineRow.TaxCodeDisplay)) { Mode = BindingMode.OneWay }, IsReadOnly = true, Width = 70 });
         _grid.CellEditEnding += (_, _) => Dispatcher.BeginInvoke(new Action(RecalcTotal), System.Windows.Threading.DispatcherPriority.Background);
 
         Grid.SetRow(_grid, 1);
@@ -116,6 +132,7 @@ public sealed class SalesReturnFormPopupControl : UserControl
             Foreground = (Brush)System.Windows.Application.Current.Resources["TextSecondaryBrush"]
         });
         totalPanel.Children.Add(_txtTotal);
+        totalPanel.Children.Add(_txtTaxSummary);
         Grid.SetColumn(totalPanel, 0);
         bottom.Children.Add(totalPanel);
 
@@ -167,6 +184,9 @@ public sealed class SalesReturnFormPopupControl : UserControl
         var oc = await SalesUiService.Instance.GetOperationsCenterAsync(_invoiceId);
         if (!ApplicationResultPresenter.Present(oc) || oc.Value?.Invoice is null) return;
 
+        _isLegacyUntaxed = oc.Value.Invoice.IsLegacyUntaxed;
+        _legacyBanner.Visibility = _isLegacyUntaxed ? Visibility.Visible : Visibility.Collapsed;
+
         _lines.Clear();
         foreach (var line in oc.Value.Invoice.Lines.OrderBy(l => l.LineNumber))
         {
@@ -179,7 +199,11 @@ public sealed class SalesReturnFormPopupControl : UserControl
                 ColorDisplay = line.ColorDisplayName,
                 OriginalMeters = meters,
                 ReturnMeters = 0m,
-                UnitPrice = line.UnitPrice
+                UnitPrice = line.UnitPrice,
+                OriginalTaxableAmount = line.TaxableAmount,
+                OriginalTaxAmount = line.TaxAmount,
+                TaxCode = line.TaxCode,
+                TaxRate = line.TaxRate
             };
             row.PropertyChanged += (_, _) => RecalcTotal();
             _lines.Add(row);
@@ -190,7 +214,15 @@ public sealed class SalesReturnFormPopupControl : UserControl
     private void RecalcTotal()
     {
         var total = _lines.Sum(l => l.LineTotal);
-        _txtTotal.Text = $"${total:N2}";
+        var returnTax = _isLegacyUntaxed ? 0m : _lines.Sum(l => l.ReturnTaxAmount);
+        var netReturn = total + returnTax;
+        _txtTotal.Text = $"${netReturn:N2}";
+        if (_isLegacyUntaxed)
+            _txtTaxSummary.Text = "لا ضريبة معكوسة — فاتورة Legacy";
+        else if (returnTax > 0)
+            _txtTaxSummary.Text = $"صافي البضاعة: ${total:N2}  •  ضريبة معكوسة: ${returnTax:N2}  •  (من Snapshot الأصلي — لا تعديل يدوي)";
+        else
+            _txtTaxSummary.Text = "";
     }
 
     private async Task SaveAndOptionallyPostAsync(bool post)
@@ -276,15 +308,25 @@ public sealed class SalesReturnFormPopupControl : UserControl
         public string ColorDisplay { get; init; } = "";
         public decimal OriginalMeters { get; init; }
         public decimal UnitPrice { get; init; }
+        public decimal OriginalTaxableAmount { get; init; }
+        public decimal OriginalTaxAmount { get; init; }
+        public string? TaxCode { get; init; }
+        public decimal TaxRate { get; init; }
 
         private decimal _returnMeters;
         public decimal ReturnMeters
         {
             get => _returnMeters;
-            set { if (_returnMeters == value) return; _returnMeters = value; OnChanged(); OnChanged(nameof(LineTotal)); }
+            set { if (_returnMeters == value) return; _returnMeters = value; OnChanged(); OnChanged(nameof(LineTotal)); OnChanged(nameof(ReturnTaxAmount)); OnChanged(nameof(ReturnTaxableAmount)); }
         }
 
         public decimal LineTotal => ReturnMeters * UnitPrice;
+
+        public decimal ReturnTaxableAmount => OriginalMeters <= 0 ? 0m : Math.Round(OriginalTaxableAmount * (ReturnMeters / OriginalMeters), 2);
+
+        public decimal ReturnTaxAmount => OriginalMeters <= 0 ? 0m : Math.Round(OriginalTaxAmount * (ReturnMeters / OriginalMeters), 2);
+
+        public string TaxCodeDisplay => string.IsNullOrWhiteSpace(TaxCode) ? "—" : $"{TaxCode} {TaxRate:P0}";
 
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnChanged([CallerMemberName] string? name = null) =>

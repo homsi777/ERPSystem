@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="PackingListParseDiag" />
+    <InternalsVisibleTo Include="ERPSystem.Application.Tests" />
   </ItemGroup>
 
 </Project>

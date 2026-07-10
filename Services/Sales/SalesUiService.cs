@@ -8,6 +8,7 @@ using ERPSystem.Application.DTOs.Warehouses;
 using ERPSystem.Application.Queries.Sales;
 using ERPSystem.Application.Queries.Warehouses;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.Services;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Application.UseCases.Sales;
 using ERPSystem.Domain.Enums;
@@ -423,6 +424,53 @@ public sealed class SalesUiService
         {
             InvoiceId = invoiceId,
             RollEntries = rollEntries
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<IReadOnlyList<TaxCodeDto>>> GetTaxCodesAsync(
+        DateTime? effectiveOn = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetTaxCodesHandler>();
+        return await handler.HandleAsync(new GetTaxCodesQuery
+        {
+            CompanyId = CompanyId,
+            EffectiveOn = effectiveOn
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<SalesInvoiceTaxPreviewDto>> CalculateTaxPreviewAsync(
+        DateTime invoiceDate,
+        decimal invoiceDiscountTotal,
+        IReadOnlyList<SalesInvoiceTaxPreviewLineRequest> lines,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<CalculateSalesInvoiceTaxHandler>();
+        return await handler.HandleAsync(new CalculateSalesInvoiceTaxQuery
+        {
+            CompanyId = CompanyId,
+            InvoiceDate = invoiceDate,
+            InvoiceDiscountTotal = invoiceDiscountTotal,
+            Lines = lines
+        }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<SalesTaxReportDto>> GetTaxReportAsync(
+        DateTime from,
+        DateTime to,
+        bool includeLegacy = true,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetSalesTaxReportHandler>();
+        return await handler.HandleAsync(new GetSalesTaxReportQuery
+        {
+            CompanyId = CompanyId,
+            FromDate = from,
+            ToDate = to,
+            IncludeLegacy = includeLegacy
         }, cancellationToken);
     }
 

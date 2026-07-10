@@ -20,6 +20,8 @@ public sealed class SalesInvoiceDto
     public decimal DiscountTotal { get; init; }
     public decimal TaxTotal { get; init; }
     public decimal GrandTotal { get; init; }
+    public decimal RoundingDifference { get; init; }
+    public bool IsLegacyUntaxed { get; init; }
     public DateTime? SentToWarehouseAt { get; init; }
     public DateTime? DetailedAt { get; init; }
     public DateTime? ApprovedAt { get; init; }
@@ -50,6 +52,14 @@ public sealed class SalesInvoiceLineDto
     public decimal LineTotal { get; init; }
     public decimal DiscountAmount { get; init; }
     public string? DiscountReason { get; init; }
+    public Guid? TaxCodeId { get; init; }
+    public string? TaxCode { get; init; }
+    public string? TaxName { get; init; }
+    public decimal TaxRate { get; init; }
+    public TaxCategory? TaxCategory { get; init; }
+    public bool IsTaxInclusive { get; init; }
+    public decimal TaxableAmount { get; init; }
+    public decimal TaxAmount { get; init; }
     public string? Notes { get; init; }
 }
 

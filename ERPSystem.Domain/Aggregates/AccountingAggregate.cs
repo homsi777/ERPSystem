@@ -38,8 +38,10 @@ public sealed class AccountingAggregate : AggregateRoot
         Guid createdByUserId,
         DocumentType? sourceType = null,
         Guid? sourceId = null,
-        Guid? journalBookId = null) => new()
+        Guid? journalBookId = null,
+        Guid? id = null) => new()
     {
+        Id = id ?? Guid.NewGuid(),
         EntryNumber = entryNumber,
         EntryDate = entryDate,
         Description = description,

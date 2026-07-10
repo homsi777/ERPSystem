@@ -7,7 +7,7 @@ public sealed class TempDetailingDiagnosticTests
     private const string ConnectionString =
         "Host=localhost;Port=5432;Database=erp_pro;Username=postgres;Password=12345678";
 
-    [Fact]
+    [Fact(Skip = "Diagnostic dump only — not part of certification suite.")]
     public async Task Dump_awaiting_detailing_invoices_and_rolls()
     {
         await using var conn = new NpgsqlConnection(ConnectionString);

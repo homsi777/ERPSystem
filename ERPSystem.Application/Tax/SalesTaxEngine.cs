@@ -94,7 +94,9 @@ public sealed class SalesTaxEngine : ISalesTaxEngine
         taxTotal = SalesTaxRounding.RoundTax(taxTotal);
         taxableTotal = SalesTaxRounding.RoundMoney(taxableTotal);
         var grandTotal = SalesTaxRounding.RoundMoney(grandFromLines);
-        var expectedGrand = SalesTaxRounding.RoundMoney(allocationBase - invoiceDiscount + taxTotal);
+        // Taxable + tax is valid for both exclusive and inclusive pricing.
+        // Adding tax to allocationBase double-counts VAT on inclusive lines.
+        var expectedGrand = SalesTaxRounding.RoundMoney(taxableTotal + taxTotal);
         var roundingDifference = SalesTaxRounding.RoundMoney(grandTotal - expectedGrand);
         if (Math.Abs(roundingDifference) <= 0.01m)
             grandTotal = expectedGrand;

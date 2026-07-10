@@ -213,6 +213,8 @@ public static class SalesInvoiceMapper
         DiscountTotal = aggregate.DiscountTotal.Amount,
         TaxTotal = aggregate.TaxTotal.Amount,
         GrandTotal = aggregate.GrandTotal.Amount,
+        RoundingDifference = aggregate.RoundingDifference,
+        IsLegacyUntaxed = aggregate.IsLegacyUntaxed,
         SentToWarehouseAt = aggregate.SentToWarehouseAt,
         DetailedAt = aggregate.DetailedAt,
         ApprovedAt = aggregate.ApprovedAt,
@@ -227,6 +229,7 @@ public static class SalesInvoiceMapper
         {
             var lineRolls = aggregate.RollDetails.Where(r => r.SalesInvoiceItemId == i.Id);
             var totalLength = lineRolls.Where(r => r.HasValidLength).Sum(r => r.LengthMeters.Value);
+            var snap = aggregate.ItemTaxSnapshots.FirstOrDefault(s => s.SalesInvoiceItemId == i.Id);
             return new SalesInvoiceLineDto
             {
                 Id = i.Id,
@@ -241,6 +244,14 @@ public static class SalesInvoiceMapper
                 LineTotal = i.LineTotal.Amount,
                 DiscountAmount = i.DiscountAmount.Amount,
                 DiscountReason = i.DiscountReason,
+                TaxCodeId = i.TaxCodeId,
+                TaxCode = snap?.TaxCode,
+                TaxName = snap?.TaxName,
+                TaxRate = snap?.TaxRate ?? 0m,
+                TaxCategory = snap is null ? null : snap.TaxRate <= 0 && snap.TaxAmount.Amount == 0 ? TaxCategory.Exempt : TaxCategory.Standard,
+                IsTaxInclusive = snap?.IsInclusive ?? false,
+                TaxableAmount = snap?.TaxableAmount.Amount ?? 0m,
+                TaxAmount = snap?.TaxAmount.Amount ?? 0m,
                 Notes = i.Notes
             };
         }).ToList()

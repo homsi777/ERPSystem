@@ -25,5 +25,5 @@ public static class AccountingAccountIds
 
 public static class SalesTaxCodeIds
 {
-    public static readonly Guid DefaultVat15Exclusive = Guid.Parse("t1000001-0001-0001-0001-000000000001");
+    public static readonly Guid DefaultVat15Exclusive = Guid.Parse("c1000002-0002-0002-0002-000000000002");
 }

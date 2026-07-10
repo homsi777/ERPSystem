@@ -23,6 +23,7 @@ public sealed class SalesTaxEngineTests
         Assert.Equal(1000m, result.TaxableAmount);
         Assert.Equal(150m, result.TaxTotal);
         Assert.Equal(1150m, result.GrandTotal);
+        Assert.Equal(0m, result.RoundingDifference);
     }
 
     [Fact]
@@ -41,6 +42,7 @@ public sealed class SalesTaxEngineTests
         Assert.Equal(1000m, result.TaxableAmount);
         Assert.Equal(150m, result.TaxTotal);
         Assert.Equal(1150m, result.GrandTotal);
+        Assert.Equal(0m, result.RoundingDifference);
     }
 
     [Fact]

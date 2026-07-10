@@ -200,7 +200,7 @@ public static class SalesDocumentService
                 {
                     col.Spacing(12);
                     col.Item().Element(e => CustomerBox(e, invoice, customerName));
-                    col.Item().Element(e => LinesTable(e, invoice.Lines));
+                    col.Item().Element(e => LinesTable(e, invoice, invoice.Lines));
                     col.Item().AlignRight().Element(e => TotalsBox(e, invoice));
                     col.Item().PaddingTop(20).Text("شكراً لتعاملكم معنا").FontSize(11).Bold().AlignCenter();
                 });
@@ -241,7 +241,7 @@ public static class SalesDocumentService
                 {
                     col.Spacing(12);
                     col.Item().Element(e => CustomerBox(e, invoice, customerName));
-                    col.Item().Element(e => LinesTable(e, invoice.Lines));
+                    col.Item().Element(e => LinesTable(e, invoice, invoice.Lines));
 
                     col.Item().PaddingTop(30).Row(r =>
                     {
@@ -288,15 +288,17 @@ public static class SalesDocumentService
             col.Item().Text(customerName).FontSize(12).SemiBold();
         });
 
-    private static void LinesTable(IContainer c, IReadOnlyList<SalesInvoiceLineDto> lines) =>
+    private static void LinesTable(IContainer c, SalesInvoiceDto invoice, IReadOnlyList<SalesInvoiceLineDto> lines) =>
         c.Table(t =>
         {
             t.ColumnsDefinition(cd =>
             {
                 cd.ConstantColumn(28);
-                cd.RelativeColumn(4);
+                cd.RelativeColumn(3);
                 cd.RelativeColumn(2);
                 cd.ConstantColumn(50);
+                cd.RelativeColumn(2);
+                cd.RelativeColumn(2);
                 cd.RelativeColumn(2);
                 cd.RelativeColumn(2);
             });
@@ -309,6 +311,8 @@ public static class SalesDocumentService
                 h.Cell().Element(HeaderCell).AlignCenter().Text("الأطباق");
                 h.Cell().Element(HeaderCell).AlignRight().Text("السعر");
                 h.Cell().Element(HeaderCell).AlignRight().Text("الإجمالي");
+                h.Cell().Element(HeaderCell).AlignRight().Text("الضريبة");
+                h.Cell().Element(HeaderCell).AlignRight().Text("كود");
             });
 
             var i = 1;
@@ -320,6 +324,8 @@ public static class SalesDocumentService
                 t.Cell().Element(BodyCell).AlignCenter().Text(line.RollCount.ToString());
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.UnitPrice:N2}");
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.LineTotal:N2}");
+                t.Cell().Element(BodyCell).AlignRight().Text(line.TaxAmount > 0 ? $"{line.TaxAmount:N2}" : "—");
+                t.Cell().Element(BodyCell).AlignRight().Text(line.TaxCode ?? "—");
                 i++;
             }
 
@@ -331,11 +337,33 @@ public static class SalesDocumentService
         });
 
     private static void TotalsBox(IContainer c, SalesInvoiceDto invoice) =>
-        c.Width(240).Padding(6).Column(col =>
+        c.Width(280).Padding(6).Column(col =>
         {
-            AddRow(col, "الإجمالي الفرعي", invoice.SubTotal);
-            if (invoice.DiscountTotal != 0m) AddRow(col, "الخصم", -invoice.DiscountTotal);
-            if (invoice.TaxTotal != 0m) AddRow(col, "الضريبة", invoice.TaxTotal);
+            if (invoice.IsLegacyUntaxed)
+            {
+                col.Item().Text("فاتورة تاريخية — بدون ضريبة (Legacy Untaxed)")
+                    .FontSize(9).Italic().FontColor(QColors.Grey.Darken1);
+            }
+
+            var lineDiscount = invoice.Lines.Sum(l => l.DiscountAmount);
+            AddRow(col, "المجموع الفرعي", invoice.SubTotal);
+            if (lineDiscount > 0) AddRow(col, "خصم الأسطر", -lineDiscount);
+            if (invoice.DiscountTotal != 0m) AddRow(col, "خصم الفاتورة", -invoice.DiscountTotal);
+            if (!invoice.IsLegacyUntaxed)
+            {
+                var taxable = invoice.Lines.Sum(l => l.TaxableAmount);
+                if (taxable > 0) AddRow(col, "المبلغ الخاضع", taxable);
+            }
+            if (invoice.TaxTotal != 0m)
+            {
+                AddRow(col, "الضريبة", invoice.TaxTotal);
+                foreach (var group in invoice.Lines.Where(l => l.TaxAmount > 0).GroupBy(l => l.TaxCode))
+                {
+                    AddRow(col, $"  {group.Key} ({group.First().TaxRate:P0})", group.Sum(x => x.TaxAmount));
+                }
+            }
+            if (Math.Abs(invoice.RoundingDifference) >= 0.01m)
+                AddRow(col, "فرق التقريب", invoice.RoundingDifference);
             col.Item().PaddingTop(4).BorderTop(1).BorderColor(QColors.Grey.Medium);
             col.Item().PaddingTop(4).Row(r =>
             {

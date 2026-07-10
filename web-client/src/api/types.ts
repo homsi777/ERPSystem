@@ -730,6 +730,95 @@ export type DashboardSummaryDto = {
 // ── Sales invoices ────────────────────────────────────────────────
 export type SalesInvoiceStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type PaymentType = 0 | 1;
+export type TaxPriceMode = 0 | 1;
+export type TaxCategory = 0 | 1 | 2;
+
+export type TaxCodeDto = {
+  id: string;
+  code: string;
+  name: string;
+  rate: number;
+  priceMode: TaxPriceMode;
+  category: TaxCategory;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isInclusive: boolean;
+};
+
+export type SalesInvoiceTaxPreviewLineDto = {
+  lineId: string;
+  lineNumber: number;
+  taxCodeId: string | null;
+  taxCode: string | null;
+  taxName: string | null;
+  taxRate: number;
+  taxCategory: TaxCategory | null;
+  isInclusive: boolean;
+  lineDiscountTotal: number;
+  taxableAmount: number;
+  taxAmount: number;
+  lineGrandTotal: number;
+};
+
+export type SalesTaxSummaryLineDto = {
+  taxCodeId: string | null;
+  taxCode: string | null;
+  taxName: string | null;
+  taxRate: number;
+  taxableAmount: number;
+  taxAmount: number;
+};
+
+export type SalesInvoiceTaxPreviewDto = {
+  subtotalBeforeDiscount: number;
+  lineDiscountTotal: number;
+  invoiceDiscountTotal: number;
+  taxableAmount: number;
+  taxTotal: number;
+  grandTotal: number;
+  roundingDifference: number;
+  lines: SalesInvoiceTaxPreviewLineDto[];
+  taxSummary: SalesTaxSummaryLineDto[];
+  validationErrors: string[];
+};
+
+export type CalculateSalesInvoiceTaxLineRequest = {
+  lineNumber: number;
+  lineId?: string | null;
+  netLineAmount: number;
+  lineDiscountTotal: number;
+  taxCodeId?: string | null;
+};
+
+export type CalculateSalesInvoiceTaxRequest = {
+  invoiceDate: string;
+  invoiceDiscountTotal: number;
+  lines: CalculateSalesInvoiceTaxLineRequest[];
+};
+
+export type SalesTaxReportRowDto = {
+  invoiceNumber: string;
+  invoiceDate: string;
+  customerName: string;
+  taxCode: string | null;
+  taxRate: number;
+  taxableAmount: number;
+  taxAmount: number;
+  isLegacyUntaxed: boolean;
+  journalEntryNumber: string | null;
+  postingStatus: string;
+};
+
+export type SalesTaxReportSummaryDto = {
+  taxCode: string | null;
+  taxableAmount: number;
+  taxAmount: number;
+};
+
+export type SalesTaxReportDto = {
+  rows: SalesTaxReportRowDto[];
+  summaryByTaxCode: SalesTaxReportSummaryDto[];
+};
 
 export type SalesInvoiceLineDto = {
   id: string;
@@ -747,6 +836,14 @@ export type SalesInvoiceLineDto = {
   lineTotal: number;
   discountAmount: number;
   discountReason: string | null;
+  taxCodeId: string | null;
+  taxCode: string | null;
+  taxName: string | null;
+  taxRate: number;
+  taxCategory: TaxCategory | null;
+  isTaxInclusive: boolean;
+  taxableAmount: number;
+  taxAmount: number;
   notes: string | null;
 };
 
@@ -833,6 +930,7 @@ export type CreateSalesInvoiceLineRequest = {
   originalUnitPrice: number;
   discountReason: string | null;
   notes: string | null;
+  taxCodeId?: string | null;
 };
 
 export type CreateSalesInvoiceRequest = {

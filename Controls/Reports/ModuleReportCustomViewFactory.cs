@@ -1,6 +1,7 @@
 using ERPSystem.Controls.Accounting;
 using ERPSystem.Controls.Capital;
 using ERPSystem.Controls.Expenses;
+using ERPSystem.Controls.Sales;
 using ERPSystem.Core;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +17,7 @@ public static class ModuleReportCustomViewFactory
         (AppModule.Expenses, "exp.detailed") => Wrap(new ExpenseReportsControl()),
         (AppModule.CapitalPartners, "cap.summary") => Wrap(new CapitalReportsControl()),
         (AppModule.CapitalPartners, "cap.statement") => Wrap(new CapitalReportsControl()),
+        (AppModule.Sales, "sal.tax_report") => Wrap(new SalesTaxReportPageControl()),
         _ => null
     };
 

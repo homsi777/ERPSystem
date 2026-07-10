@@ -1,11 +1,15 @@
 import { apiRequest } from './client.ts';
 import type {
+  CalculateSalesInvoiceTaxRequest,
   CreateSalesInvoiceRequest,
   PagedResult,
   SalesInvoiceDto,
   SalesInvoiceOperationsCenterDto,
   SalesInvoiceStatus,
-  SalesWarehouseStockOptionDto
+  SalesInvoiceTaxPreviewDto,
+  SalesTaxReportDto,
+  SalesWarehouseStockOptionDto,
+  TaxCodeDto
 } from './types.ts';
 
 export type SalesInvoiceListParams = {
@@ -62,4 +66,29 @@ export function cancelSalesInvoice(invoiceId: string, reason: string) {
 export function getSalesWarehouseStock(containerId: string, warehouseId: string) {
   const searchParams = new URLSearchParams({ containerId, warehouseId });
   return apiRequest<SalesWarehouseStockOptionDto[]>(`/api/v1/sales/warehouse-stock?${searchParams.toString()}`);
+}
+
+export function getTaxCodes(effectiveOn?: string) {
+  const searchParams = new URLSearchParams();
+  if (effectiveOn) {
+    searchParams.set('effectiveOn', effectiveOn);
+  }
+  const query = searchParams.toString();
+  return apiRequest<TaxCodeDto[]>(`/api/v1/sales/tax-codes${query ? `?${query}` : ''}`);
+}
+
+export function calculateSalesInvoiceTax(request: CalculateSalesInvoiceTaxRequest) {
+  return apiRequest<SalesInvoiceTaxPreviewDto>('/api/v1/sales/invoices/calculate', {
+    method: 'POST',
+    body: request
+  });
+}
+
+export function getSalesTaxReport(from: string, to: string, includeLegacy = false) {
+  const searchParams = new URLSearchParams({
+    from,
+    to,
+    includeLegacy: String(includeLegacy)
+  });
+  return apiRequest<SalesTaxReportDto>(`/api/v1/sales/tax-report?${searchParams.toString()}`);
 }
