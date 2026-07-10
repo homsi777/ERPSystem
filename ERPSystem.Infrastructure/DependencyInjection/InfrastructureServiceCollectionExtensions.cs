@@ -65,6 +65,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ISalesPostingProfileRepository, SalesPostingProfileRepository>();
         services.AddScoped<ISalesTaxReportRepository, SalesTaxReportRepository>();
         services.AddScoped<IReceiptInvoicePaymentRepository, ReceiptInvoicePaymentRepository>();
+        services.AddScoped<IReceiptVoucherRepository, ReceiptVoucherRepository>();
         services.AddScoped<IPurchaseInvoiceRepository, PurchaseInvoiceRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddScoped<IPurchaseReturnRepository, PurchaseReturnRepository>();

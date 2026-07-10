@@ -268,7 +268,7 @@ internal sealed class PaymentMethodConfiguration : IEntityTypeConfiguration<Paym
     public void Configure(EntityTypeBuilder<PaymentMethodEntity> builder)
     {
         builder.ToTable("payment_methods", Schemas.Finance);
-        builder.HasKey(x => x.Id);
+        builder.HasKey(x => new { x.CompanyId, x.Id });
         builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(100).IsRequired();
         builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
@@ -296,6 +296,10 @@ internal sealed class ReceiptTenderLineConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.BaseAmount).HasPrecision(18, 2);
         builder.Property(x => x.ExchangeRate).HasPrecision(18, 6);
         builder.HasIndex(x => x.ReceiptVoucherId);
+        builder.HasOne<ReceiptVoucherEntity>()
+            .WithMany()
+            .HasForeignKey(x => x.ReceiptVoucherId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

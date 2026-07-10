@@ -58,7 +58,7 @@ static async Task<int> WriteCashboxMappingAsync(ErpDbContext context, string art
 {
     var cashboxes = await context.Cashboxes.AsNoTracking()
         .Join(context.Branches.AsNoTracking(), c => c.BranchId, b => b.Id, (c, b) => new { c, b.CompanyId })
-        .Join(context.Companies.AsNoTracking(), x => x.CompanyId, co => co.Id, (x, co) => new { x.c, co.NameEn })
+        .Join(context.Companies.AsNoTracking(), x => x.CompanyId, co => co.Id, (x, co) => new { x.c, x.CompanyId, co.NameEn })
         .OrderBy(x => x.NameEn).ThenBy(x => x.c.Code)
         .ToListAsync();
 
@@ -150,7 +150,7 @@ static async Task<int> WriteLegacyReceiptsAsync(ErpDbContext context, string art
                 actualGl = debitLine.AccountId.ToString();
                 if (debitLine.AccountId == AccountingAccountIds.CashUsd)
                     classification = "PostedToLegacyCashUsd";
-                else if (row.c.AccountId is Guid expected && debitLine.AccountId == expected)
+                else if (row.c.AccountId is Guid expectedAccountId && debitLine.AccountId == expectedAccountId)
                     classification = "Correct";
                 else if (row.c.AccountId is null)
                     classification = "MissingCashbox";

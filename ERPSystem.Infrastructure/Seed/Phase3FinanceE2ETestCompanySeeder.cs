@@ -368,6 +368,24 @@ public static class Phase3FinanceE2ETestCompanySeeder
             });
         }
 
+        if (!await context.WarehouseStocks.AnyAsync(
+                s => s.ContainerId == Phase3FinanceE2ETestCompanyIds.ContainerId, ct))
+        {
+            var totalMeters = Phase3FinanceE2ETestCompanyIds.SeedRollCount * Phase3FinanceE2ETestCompanyIds.DefaultRollMeters;
+            context.WarehouseStocks.Add(new WarehouseStockEntity
+            {
+                Id = Guid.NewGuid(),
+                WarehouseId = Phase3FinanceE2ETestCompanyIds.WarehouseId,
+                FabricItemId = Phase3FinanceE2ETestCompanyIds.FabricItemId,
+                FabricColorId = Phase3FinanceE2ETestCompanyIds.FabricColorId,
+                ContainerId = Phase3FinanceE2ETestCompanyIds.ContainerId,
+                RollCount = Phase3FinanceE2ETestCompanyIds.SeedRollCount,
+                TotalMeters = totalMeters,
+                ReservedMeters = 0m,
+                AvailableMeters = totalMeters
+            });
+        }
+
         var existingRolls = await context.FabricRolls.CountAsync(
             r => r.ContainerId == Phase3FinanceE2ETestCompanyIds.ContainerId, ct);
         for (var i = existingRolls + 1; i <= Phase3FinanceE2ETestCompanyIds.SeedRollCount; i++)

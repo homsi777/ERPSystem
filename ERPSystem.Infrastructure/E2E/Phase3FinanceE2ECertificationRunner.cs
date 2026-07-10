@@ -66,34 +66,34 @@ public sealed class Phase3FinanceE2ECertificationRunner(
 
         var matrix = new List<Phase3MatrixResult>(28)
         {
-            await Test01_CashReceiptCashboxAAsync(ct),
-            await Test02_CashReceiptCashboxB_AUnchangedAsync(ct),
-            await Test03_NoAccountCashboxRejectedAsync(ct),
-            await Test04_InactiveCashboxRejectedAsync(ct),
-            await Test05_CrossCompanyCashboxRejectedAsync(ct),
-            await Test06_CrossCompanyGlRejectedAsync(ct),
-            await Test07_BankTransferWithReferenceAsync(ct),
-            await Test08_BankWithoutReferenceRejectedAsync(ct),
-            await Test09_CurrencyMismatchRejectedAsync(ct),
-            await Test10_DraftEditAllowedAsync(ct),
-            await Test11_PostedImmutabilityRejectedAsync(ct),
-            await Test12_DraftCancelNoFinancialEffectAsync(ct),
-            await Test13_ReceiptReversalAsync(ct),
-            await Test14_DuplicateReversalNoSecondJournalAsync(ct),
-            await Test15_IdempotentPostingSameKeyAsync(ct),
-            await Test16_ConcurrentPostingOneJournalAsync(ct),
-            await Test17_AutomaticCashSaleReceiptAsync(ct),
-            await Test18_AutoReceiptRollbackNoAccountAsync(ct),
-            await Test19_PostPermissionDeniedAsync(ct),
-            await Test20_CreatePermissionDeniedAsync(ct),
-            await Test21_CashboxAReconciliationDiffZeroAsync(ct),
-            await Test22_LegacyReceiptClassificationReadOnlyAsync(ct),
-            await Test23_PdfParityAsync(ct),
-            await Test24_WpfApiParityAsync(ct),
-            await Test25_MultiCompanyIsolationAsync(ct),
-            await Test26_PostingAttemptAuditAsync(ct),
-            await Test27_JournalSourceIdentityAsync(ct),
-            await Test28_NoCashUsdInNewReceiptLinesAsync(ct)
+            await RunIsolatedAsync(Test01_CashReceiptCashboxAAsync, ct),
+            await RunIsolatedAsync(Test02_CashReceiptCashboxB_AUnchangedAsync, ct),
+            await RunIsolatedAsync(Test03_NoAccountCashboxRejectedAsync, ct),
+            await RunIsolatedAsync(Test04_InactiveCashboxRejectedAsync, ct),
+            await RunIsolatedAsync(Test05_CrossCompanyCashboxRejectedAsync, ct),
+            await RunIsolatedAsync(Test06_CrossCompanyGlRejectedAsync, ct),
+            await RunIsolatedAsync(Test07_BankTransferWithReferenceAsync, ct),
+            await RunIsolatedAsync(Test08_BankWithoutReferenceRejectedAsync, ct),
+            await RunIsolatedAsync(Test09_CurrencyMismatchRejectedAsync, ct),
+            await RunIsolatedAsync(Test10_DraftEditAllowedAsync, ct),
+            await RunIsolatedAsync(Test11_PostedImmutabilityRejectedAsync, ct),
+            await RunIsolatedAsync(Test12_DraftCancelNoFinancialEffectAsync, ct),
+            await RunIsolatedAsync(Test13_ReceiptReversalAsync, ct),
+            await RunIsolatedAsync(Test14_DuplicateReversalNoSecondJournalAsync, ct),
+            await RunIsolatedAsync(Test15_IdempotentPostingSameKeyAsync, ct),
+            await RunIsolatedAsync(Test16_ConcurrentPostingOneJournalAsync, ct),
+            await RunIsolatedAsync(Test17_AutomaticCashSaleReceiptAsync, ct),
+            await RunIsolatedAsync(Test18_AutoReceiptRollbackNoAccountAsync, ct),
+            await RunIsolatedAsync(Test19_PostPermissionDeniedAsync, ct),
+            await RunIsolatedAsync(Test20_CreatePermissionDeniedAsync, ct),
+            await RunIsolatedAsync(Test21_CashboxAReconciliationDiffZeroAsync, ct),
+            await RunIsolatedAsync(Test22_LegacyReceiptClassificationReadOnlyAsync, ct),
+            await RunIsolatedAsync(Test23_PdfParityAsync, ct),
+            await RunIsolatedAsync(Test24_WpfApiParityAsync, ct),
+            await RunIsolatedAsync(Test25_MultiCompanyIsolationAsync, ct),
+            await RunIsolatedAsync(Test26_PostingAttemptAuditAsync, ct),
+            await RunIsolatedAsync(Test27_JournalSourceIdentityAsync, ct),
+            await RunIsolatedAsync(Test28_NoCashUsdInNewReceiptLinesAsync, ct)
         };
 
         return new Phase3FinanceE2ERunResult
@@ -237,23 +237,25 @@ public sealed class Phase3FinanceE2ECertificationRunner(
 
     private async Task<Phase3MatrixResult> Test06_CrossCompanyGlRejectedAsync(CancellationToken ct)
     {
-        var cashbox = await context.Cashboxes
-            .FirstAsync(c => c.Id == Phase3FinanceE2ETestCompanyIds.CashboxB, ct);
-        var originalAccountId = cashbox.AccountId;
-        cashbox.AccountId = AccountingAccountIds.CashUsd;
-        await context.SaveChangesAsync(ct);
+        var cashboxId = Phase3FinanceE2ETestCompanyIds.CashboxB;
+        var originalAccountId = await context.Cashboxes.AsNoTracking()
+            .Where(c => c.Id == cashboxId)
+            .Select(c => c.AccountId)
+            .FirstAsync(ct);
+
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""UPDATE finance.cashboxes SET "AccountId" = {AccountingAccountIds.CashUsd} WHERE "Id" = {cashboxId}""");
 
         try
         {
-            var create = await createReceipt.HandleAsync(BuildCashCreate(
-                Phase3FinanceE2ETestCompanyIds.CashboxB, 10m), ct);
+            var create = await createReceipt.HandleAsync(BuildCashCreate(cashboxId, 10m), ct);
             return Result(6, "CrossCompanyGlRejected", !create.IsSuccess,
                 create.ErrorMessage ?? string.Join("; ", create.ValidationErrors.Select(e => e.Message)));
         }
         finally
         {
-            cashbox.AccountId = originalAccountId;
-            await context.SaveChangesAsync(ct);
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""UPDATE finance.cashboxes SET "AccountId" = {originalAccountId} WHERE "Id" = {cashboxId}""");
         }
     }
 
@@ -398,7 +400,7 @@ public sealed class Phase3FinanceE2ECertificationRunner(
             UserId = Guid.Parse("00000000-0000-0000-0000-000000000001")
         }, ct);
         if (!reverse.IsSuccess)
-            return Fail(13, "ReceiptReversal", reverse.ErrorMessage ?? "reverse failed");
+            return Fail(13, "ReceiptReversal", DescribeResult(reverse));
 
         var status = await context.ReceiptVouchers.AsNoTracking()
             .Where(v => v.Id == id).Select(v => v.Status).FirstAsync(ct);
@@ -424,7 +426,7 @@ public sealed class Phase3FinanceE2ECertificationRunner(
             UserId = Guid.Parse("00000000-0000-0000-0000-000000000001")
         }, ct);
         if (!first.IsSuccess)
-            return Fail(14, "DuplicateReversal", first.ErrorMessage ?? "first reverse failed");
+            return Fail(14, "DuplicateReversal", DescribeResult(first));
 
         var second = await reverseReceipt.HandleAsync(new ReverseReceiptVoucherCommand
         {
@@ -808,6 +810,14 @@ public sealed class Phase3FinanceE2ECertificationRunner(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private async Task<Phase3MatrixResult> RunIsolatedAsync(
+        Func<CancellationToken, Task<Phase3MatrixResult>> test,
+        CancellationToken ct)
+    {
+        context.ChangeTracker.Clear();
+        return await test(ct);
+    }
+
     private CreateReceiptVoucherCommand BuildCashCreate(
         Guid cashboxId, decimal amount, bool allocate = false) => new()
     {
@@ -835,12 +845,12 @@ public sealed class Phase3FinanceE2ECertificationRunner(
     {
         var create = await createReceipt.HandleAsync(BuildCashCreate(cashboxId, amount, allocate), ct);
         if (!create.IsSuccess)
-            return (false, Guid.Empty, create.ErrorMessage ?? "create failed");
+            return (false, Guid.Empty, DescribeResult(create));
 
         var post = await PostFullyAsync(create.Value, ct);
         return post.IsSuccess
             ? (true, create.Value, "OK")
-            : (false, create.Value, post.ErrorMessage ?? "post failed");
+            : (false, create.Value, DescribeResult(post));
     }
 
     private async Task<ApplicationResult> PostFullyAsync(Guid voucherId, CancellationToken ct)
@@ -929,7 +939,7 @@ public sealed class Phase3FinanceE2ECertificationRunner(
             ]
         }, ct);
         if (!create.IsSuccess)
-            throw new InvalidOperationException(create.ErrorMessage ?? "create cash invoice failed");
+            throw new InvalidOperationException(DescribeResult(create));
 
         var sendResult = await send.HandleAsync(new SendSalesInvoiceToWarehouseCommand { InvoiceId = create.Value }, ct);
         if (!sendResult.IsSuccess)
@@ -951,6 +961,11 @@ public sealed class Phase3FinanceE2ECertificationRunner(
 
         return create.Value;
     }
+
+    private static string DescribeResult(ApplicationResult result) =>
+        result.ValidationErrors.Count > 0
+            ? string.Join("; ", result.ValidationErrors.Select(e => $"{e.Field}: {e.Message}"))
+            : result.ErrorMessage ?? result.Status.ToString();
 
     private Phase3E2EPermissionGate RequirePermissionGate()
     {

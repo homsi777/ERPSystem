@@ -31,11 +31,11 @@ services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
 services.AddSingleton<ICurrentUserService, E2ETestCurrentUserService>();
 services.AddSingleton<ICurrentBranchService, E2ETestBranchService>();
 services.AddSingleton<Phase3E2EPermissionGate>();
-services.AddSingleton<IPermissionService>(sp => sp.GetRequiredService<Phase3E2EPermissionGate>());
 services.AddInfrastructure(new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:DefaultConnection"] = testConnection })
     .Build());
 services.AddApplication();
+services.AddScoped<IPermissionService>(sp => sp.GetRequiredService<Phase3E2EPermissionGate>());
 services.AddScoped<Phase3FinanceE2ECertificationRunner>();
 
 await using var provider = services.BuildServiceProvider();

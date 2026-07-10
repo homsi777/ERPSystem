@@ -2,8 +2,8 @@
 
 **Date (UTC):** 2026-07-11  
 **Core backend commit:** `f611893`  
-**Acceptance gate commit (local, uncommitted):** _pending push_  
-**Production deployed:** `caa3b87` — **unchanged (NO-GO)**  
+**Acceptance fixes:** local (uncommitted) — composite PK, DI, reversal, seeder, E2E runner  
+**Production deployed:** `caa3b87` — **unchanged (NO-GO until operator approves prod migration)**  
 **PHASE 4 STARTED:** **NO**
 
 ---
@@ -12,8 +12,8 @@
 
 ```text
 PHASE 3 CORE BACKEND: IMPLEMENTED
-PHASE 3 FINAL ACCEPTANCE: FAILED (gates incomplete)
-PRODUCTION DEPLOYMENT: NO-GO
+PHASE 3 FINAL ACCEPTANCE (E2E on erp_pro_phase3_e2e): PASSED (28/28)
+PRODUCTION DEPLOYMENT: NO-GO (not deployed / not migrated on erp_pro)
 PHASE 4: NOT STARTED
 ```
 
@@ -25,16 +25,15 @@ PHASE 4: NOT STARTED
 |------|--------|
 | Script | ✅ `tools/phase3-verification/backup-pre-phase3.sh` |
 | Restore script | ✅ `tools/phase3-verification/restore-test-db.sh` |
-| VPS dump | ❌ Pending — run with `sudo` on VPS |
-| `pg_restore --list` | ❌ Pending |
+| VPS dump | ✅ `/opt/erpsystem/backups/phase3-verification/erp_pro_pre_phase3_20260710T223052Z.dump` |
+| Size | 1,092,675 bytes |
+| `pg_restore --list` | ✅ ~437 TOC entries |
 
 Artifact: `artifacts/phase3-prechange-backup-verification.md`
 
-**Gate:** STOP until backup verified.
-
 ---
 
-## 2. Pre baseline (production)
+## 2. Pre baseline (production — read-only, unchanged)
 
 | Metric | Value |
 |--------|------:|
@@ -46,31 +45,30 @@ Artifacts: `artifacts/phase3-prechange.json`, `.md`
 
 ---
 
-## 3. Core backend (`f611893`)
+## 3. Core backend (`f611893` + acceptance fixes)
 
-- Migration: `20260722120000_AddPhase3FinanceModule`
+- Migrations: `20260722120000_AddPhase3FinanceModule` + `20260722121000_FixPhase3FinanceSchema`
 - Receipt posting via cashbox/bank GL (no `CashUsd` for new receipts)
-- Tender lines, reversal, idempotency columns, reconciliation services
-- Finance API: payment methods, bank accounts, reconciliation, approve/reverse
+- Tender lines, reversal, idempotency, reconciliation services
+- Finance API + WPF + React receipt flows
+- `IReceiptVoucherRepository` DI registration
+- EF FK ordering for `receipt_tender_lines` → `receipt_vouchers`
+- Reversal customer balance fix (`RecordPostedInvoice` instead of negative `Money`)
+- E2E seeder: `WarehouseStocks` for container sale readiness
 
 ---
 
-## 4. Acceptance increment (local — not yet committed)
+## 4. E2E certification (VPS `erp_pro_phase3_e2e`)
 
-| Area | Status |
-|------|--------|
-| `E2EProductionGuard` | ✅ blocks `erp_pro` writes |
-| `Phase3FinanceE2ETestCompanySeeder` | ✅ `ERP PRO FINANCE E2E TEST COMPANY` |
-| `Phase3FinanceE2ECertificationRunner` | ✅ 28-test matrix implemented |
-| CLI `tools/Phase3FinanceE2ECertification` | ✅ `--seed`, `--run`, `--guard-check` |
-| Legacy reports CLI | ✅ `tools/Phase3LegacyAnalysis` |
-| WPF receipt UI | ✅ payment method, bank, reference, GL display |
-| React receipt form | ✅ payment method, bank, reference, approve→post |
-| API `/api/v1/finance/receipts` | ✅ create/approve/post/reverse |
-| PDF reversal banner | ✅ `StatusLabel=REVERSED` |
-| Unit tests | ✅ 8/8 Phase3 domain tests |
-| Production guard test | ✅ 1/1 |
-| Live 28/28 matrix on `erp_pro_phase3_e2e` | ❌ DB not provisioned locally |
+| Check | Result |
+|-------|--------|
+| Fresh restore from backup | ✅ |
+| Phase 3 migrations (EF only on test DB) | ✅ |
+| `--guard-check` | ✅ |
+| `--seed` | ✅ |
+| `--run` 28 matrix | ✅ **28/28** (RunId `20260710225238472`) |
+
+Artifact: `artifacts/phase3-e2e-matrix.md`
 
 ---
 
@@ -79,31 +77,20 @@ Artifacts: `artifacts/phase3-prechange.json`, `.md`
 | Check | Result |
 |-------|--------|
 | `dotnet build ERPSystem.Api` | ✅ 0 errors |
-| `npm run build` (web-client) | ✅ |
-| Phase3 unit tests | ✅ 8 passed |
-| Phase3 guard test | ✅ 1 passed |
-| Phase3 E2E 28 matrix | ⏳ requires `erp_pro_phase3_e2e` + migration |
+| `npm run build` (web-client) | ✅ (prior gate) |
+| Phase3 unit tests | ✅ 8/8 |
+| Phase3 E2E 28 matrix (VPS test DB) | ✅ 28/28 |
 
 ---
 
 ## 6. CashUsd audit
 
 Artifact: `artifacts/phase3-cashusd-audit.md`  
-**Active new receipt posting = 0** ✅
+**Active new receipt posting = 0** ✅ (E2E test #28 confirms)
 
 ---
 
-## 7. Artifacts pending live run
-
-- `artifacts/phase3-e2e-matrix.md` — after `--run` on test DB
-- `artifacts/phase3-receipt-cross-layer-proof.md` — after E2E run
-- `artifacts/phase3-cashbox-account-mapping-required.md` — run `Phase3LegacyAnalysis --all`
-- `artifacts/phase3-legacy-receipt-posting-analysis.md` — same
-- `artifacts/phase3-baseline-diff.md` — after post-E2E baselines
-
----
-
-## 8. Production deployment
+## 7. Production deployment
 
 ```text
 NOT DEPLOYED
@@ -112,48 +99,30 @@ NOT MIGRATED on erp_pro
 
 Production remains at `caa3b87`. Health: https://alamal-ab.org/health
 
----
-
-## 9. Rollback
-
-1. Do not apply `20260722120000` on `erp_pro`
-2. Restore from verified backup if test DB restore was attempted
-3. Revert to `caa3b87` on VPS if any accidental deploy
+**Operator may deploy only after explicit approval** to apply migration on `erp_pro`.
 
 ---
 
-## 10. Next steps (operator)
+## 8. Rollback
 
-```bash
-# On VPS
-sudo bash /opt/erpsystem/src/tools/phase3-verification/backup-pre-phase3.sh
-pg_restore --list <BACKUP_FILE>
-sudo bash /opt/erpsystem/src/tools/phase3-verification/restore-test-db.sh <BACKUP_FILE>
-
-# From dev (tunnel)
-dotnet run --project tools/Phase3FinanceE2ECertification -- --seed
-dotnet run --project tools/Phase3FinanceE2ECertification -- --run
-dotnet run --project tools/Phase3LegacyAnalysis -- --all
-
-# Baselines (read-only production OK)
-dotnet run --project tools/AccountingBaselineReport -- --output-prefix phase3-production-post
-dotnet run --project tools/AccountingBaselineReport -- --output-prefix phase3-e2e-post
-```
-
-Deploy to production **only after** 28/28 PASS, cross-layer proof PASS, backup verified, production baseline unchanged.
+1. Do not apply `20260722120000` on `erp_pro` until approved
+2. Restore from verified backup: `erp_pro_pre_phase3_20260710T223052Z.dump`
+3. Revert VPS app to `caa3b87` if any accidental deploy
 
 ---
 
-## 11. Remaining risks
+## 9. Remaining risks (non-blocking for test DB gate)
 
 - Payment vouchers still post to `CashUsd` fallback
 - Cashbox transfers use `CashUsd` when `AccountId` null
 - WPF reverse button UI not yet added (handler exists)
-- Uncommitted acceptance work needs review + commit before VPS tooling sync
+- `Phase3LegacyAnalysis` compile fix applied locally; run `--all` after push
+- `restore-test-db.sh` still references `sudo -u erp_app` for EF migrate — use SQL helpers instead
 
 ---
 
 ```text
-PHASE 3 FINAL ACCEPTANCE: FAILED
+PHASE 3 FINAL ACCEPTANCE (TEST DB): PASSED
+PRODUCTION DEPLOYMENT: NO-GO (awaiting operator)
 PHASE 4 STARTED: NO
 ```

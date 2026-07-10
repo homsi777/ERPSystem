@@ -359,7 +359,7 @@ public sealed class ReverseReceiptVoucherHandler(
             original.MarkReversed(command.Reason);
 
             if (customer.Customer.Type == CustomerType.Credit)
-                customer.RecordPostedReceipt(-original.Amount.Amount);
+                customer.RecordPostedInvoice(original.Amount.Amount);
             cashbox.ApplyPayment(original.Amount);
 
             await voucherRepository.AddAsync(reversal, cancellationToken);
