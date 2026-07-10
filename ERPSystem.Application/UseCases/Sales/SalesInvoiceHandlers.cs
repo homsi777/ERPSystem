@@ -5,9 +5,11 @@ using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.Notifications;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.Services;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Domain.Entities.Sales;
+using ERPSystem.Domain.Exceptions;
 using ERPSystem.Domain.Services;
 using ERPSystem.Domain.Specifications;
 using ERPSystem.Domain.ValueObjects;
@@ -102,7 +104,8 @@ public sealed class CreateSalesInvoiceDraftHandler(
                     originalPrice,
                     reason,
                     modifiedBy,
-                    modifiedAt);
+                    modifiedAt,
+                    line.TaxCodeId);
                 aggregate.AddItem(item);
             }
 
@@ -190,7 +193,8 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                         originalPrice,
                         reason,
                         modifiedBy,
-                        modifiedAt);
+                        modifiedAt,
+                        line.TaxCodeId);
                 })
                 .ToList();
 
@@ -222,7 +226,8 @@ public sealed class UpdateSalesInvoiceDraftHandler(
 public sealed class UpdateSalesInvoiceDiscountHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
-    IPermissionService permissionService)
+    IPermissionService permissionService,
+    SalesInvoiceTaxService salesInvoiceTaxService)
     : ICommandHandler<UpdateSalesInvoiceDiscountCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
@@ -244,6 +249,7 @@ public sealed class UpdateSalesInvoiceDiscountHandler(
         try
         {
             aggregate.SetDiscountTotal(new Money(command.DiscountAmount));
+            await salesInvoiceTaxService.ApplyTaxToInvoiceAsync(aggregate, freezeSnapshots: false, cancellationToken);
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult.Success();
@@ -305,6 +311,7 @@ public sealed class CompleteWarehouseDetailingHandler(
     INotificationService notificationService,
     ICurrentUserService currentUserService,
     IInventoryOperationsService inventoryOperations,
+    SalesInvoiceTaxService salesInvoiceTaxService,
     IDomainEventDispatcher domainEventDispatcher)
     : ICommandHandler<CompleteWarehouseDetailingCommand, ApplicationResult>
 {
@@ -352,6 +359,7 @@ public sealed class CompleteWarehouseDetailingHandler(
                 return ApplicationResult.Conflict("All roll lengths must be entered before completing detailing.");
 
             aggregate.CompleteDetailing();
+            await salesInvoiceTaxService.ApplyTaxToInvoiceAsync(aggregate, freezeSnapshots: false, cancellationToken);
 
             // ResolveDetailingEntriesAsync already pinned every roll detail to a specific fabric
             // roll (by serial, or by best-available match for length-only entries), so approval-time
@@ -443,6 +451,8 @@ public sealed class ApproveSalesInvoiceHandler(
     IInventoryOperationsService inventoryOperations,
     IIntegratedAccountingService accountingService,
     IPostingSaveCoordinator postingSaveCoordinator,
+    SalesInvoiceTaxService salesInvoiceTaxService,
+    ISalesPostingProfileRepository postingProfileRepository,
     IAuditLogRepository auditLogRepository,
     ICurrentBranchService currentBranchService,
     IDomainEventDispatcher domainEventDispatcher)
@@ -489,6 +499,15 @@ public sealed class ApproveSalesInvoiceHandler(
         try
         {
             await unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            await salesInvoiceTaxService.ApplyTaxToInvoiceAsync(aggregate, freezeSnapshots: true, cancellationToken);
+            var postingProfile = await postingProfileRepository.GetForCompanyAsync(aggregate.CompanyId, cancellationToken);
+            if (aggregate.TaxTotal.Amount > 0)
+            {
+                if (postingProfile is null)
+                    throw new ValidationException("Sales posting profile is not configured.");
+                await salesInvoiceTaxService.EnsureTaxPostingReadyAsync(aggregate, postingProfile, cancellationToken);
+            }
 
             CreditLimitChecker.EnsureWithinLimit(customerAggregate, aggregate.GrandTotal);
 

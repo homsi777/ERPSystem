@@ -50,6 +50,8 @@ internal static class SalesInvoiceMapper
         DiscountTotal = aggregate.DiscountTotal.Amount,
         TaxTotal = aggregate.TaxTotal.Amount,
         GrandTotal = aggregate.GrandTotal.Amount,
+        RoundingDifference = aggregate.RoundingDifference,
+        IsLegacyUntaxed = aggregate.IsLegacyUntaxed,
         CreatedByUserId = aggregate.CreatedByUserId,
         ApprovedByUserId = aggregate.ApprovedByUserId,
         SentToWarehouseAt = aggregate.SentToWarehouseAt,
@@ -70,7 +72,8 @@ internal static class SalesInvoiceMapper
         SalesInvoiceEntity header,
         IReadOnlyList<SalesInvoiceItemEntity> items,
         IReadOnlyList<SalesInvoiceRollDetailEntity> rolls,
-        WarehouseDetailingSessionEntity? session)
+        WarehouseDetailingSessionEntity? session,
+        IReadOnlyList<SalesInvoiceItemTaxEntity> itemTaxes)
     {
         var aggregate = DomainHydrator.Create<SalesInvoiceAggregate>();
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.Id), header.Id);
@@ -90,6 +93,8 @@ internal static class SalesInvoiceMapper
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.DiscountTotal), new Money(header.DiscountTotal));
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.TaxTotal), new Money(header.TaxTotal));
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.GrandTotal), new Money(header.GrandTotal));
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.RoundingDifference), header.RoundingDifference);
+        DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.IsLegacyUntaxed), header.IsLegacyUntaxed);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.CreatedByUserId), header.CreatedByUserId);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.ApprovedByUserId), header.ApprovedByUserId);
         DomainHydrator.Set(aggregate, nameof(SalesInvoiceAggregate.SentToWarehouseAt), header.SentToWarehouseAt);
@@ -124,7 +129,25 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.PriceModifiedByUserId), i.PriceModifiedByUserId);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.PriceModifiedAt), i.PriceModifiedAt);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.Notes), i.Notes);
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.TaxCodeId), i.TaxCodeId);
             return item;
+        }).ToList();
+
+        var domainTaxSnapshots = itemTaxes.Select(t =>
+        {
+            var snap = DomainHydrator.Create<SalesInvoiceItemTaxSnapshot>();
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.Id), t.Id);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.SalesInvoiceItemId), t.SalesInvoiceItemId);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.TaxCodeId), t.TaxCodeId);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.TaxCode), t.TaxCode);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.TaxName), t.TaxName);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.TaxRate), t.TaxRate);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.TaxableAmount), new Money(t.TaxableAmount));
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.TaxAmount), new Money(t.TaxAmount));
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.IsInclusive), t.IsInclusive);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.SalesTaxAccountId), t.SalesTaxAccountId);
+            DomainHydrator.Set(snap, nameof(SalesInvoiceItemTaxSnapshot.IsFrozen), t.IsFrozen);
+            return snap;
         }).ToList();
 
         var domainRolls = rolls.Select(r =>
@@ -144,6 +167,7 @@ internal static class SalesInvoiceMapper
 
         AggregateCollectionHelper.SetPrivateList(aggregate, "_items", domainItems);
         AggregateCollectionHelper.SetPrivateList(aggregate, "_rollDetails", domainRolls);
+        AggregateCollectionHelper.SetPrivateList(aggregate, "_itemTaxSnapshots", domainTaxSnapshots);
 
         if (session is not null)
         {
@@ -180,6 +204,8 @@ internal static class SalesReturnMapper
         Notes = aggregate.Notes,
         Status = (int)aggregate.Status,
         TotalAmount = aggregate.TotalAmount.Amount,
+        TaxTotal = aggregate.TaxTotal.Amount,
+        IsLegacyUntaxedReturn = aggregate.IsLegacyUntaxedReturn,
         CreatedByUserId = aggregate.CreatedByUserId,
         PostedByUserId = aggregate.PostedByUserId,
         PostedAt = aggregate.PostedAt,
@@ -203,6 +229,8 @@ internal static class SalesReturnMapper
         DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.Notes), header.Notes);
         DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.Status), (VoucherStatus)header.Status);
         DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.TotalAmount), new Money(header.TotalAmount));
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.TaxTotal), new Money(header.TaxTotal));
+        DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.IsLegacyUntaxedReturn), header.IsLegacyUntaxedReturn);
         DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.CreatedByUserId), header.CreatedByUserId);
         DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.PostedByUserId), header.PostedByUserId);
         DomainHydrator.Set(aggregate, nameof(SalesReturnAggregate.PostedAt), header.PostedAt);

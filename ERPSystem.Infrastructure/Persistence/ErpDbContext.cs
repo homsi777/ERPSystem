@@ -79,6 +79,10 @@ public sealed class ErpDbContext(DbContextOptions<ErpDbContext> options) : DbCon
     public DbSet<SalesReturnEntity> SalesReturns => Set<SalesReturnEntity>();
     public DbSet<SalesReturnLineEntity> SalesReturnLines => Set<SalesReturnLineEntity>();
     public DbSet<ReceiptInvoicePaymentEntity> ReceiptInvoicePayments => Set<ReceiptInvoicePaymentEntity>();
+    public DbSet<TaxCodeEntity> TaxCodes => Set<TaxCodeEntity>();
+    public DbSet<SalesPostingProfileEntity> SalesPostingProfiles => Set<SalesPostingProfileEntity>();
+    public DbSet<SalesInvoiceItemTaxEntity> SalesInvoiceItemTaxes => Set<SalesInvoiceItemTaxEntity>();
+    public DbSet<SalesReturnLineTaxEntity> SalesReturnLineTaxes => Set<SalesReturnLineTaxEntity>();
 
     // purchasing
     public DbSet<PurchaseInvoiceEntity> PurchaseInvoices => Set<PurchaseInvoiceEntity>();

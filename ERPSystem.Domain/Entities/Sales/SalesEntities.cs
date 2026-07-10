@@ -28,6 +28,9 @@ public class SalesInvoiceItem
     public DateTime? PriceModifiedAt { get; private set; }
     public string? Notes { get; private set; }
 
+    /// <summary>Selected tax code for new invoices. Null means no tax on this line.</summary>
+    public Guid? TaxCodeId { get; private set; }
+
     private SalesInvoiceItem() { }
 
     public static SalesInvoiceItem Create(
@@ -41,7 +44,8 @@ public class SalesInvoiceItem
         Money? originalUnitPrice = null,
         string? discountReason = null,
         Guid? priceModifiedByUserId = null,
-        DateTime? priceModifiedAt = null)
+        DateTime? priceModifiedAt = null,
+        Guid? taxCodeId = null)
     {
         if (unitPrice.Amount <= 0)
             throw new ValidationException("سعر البيع يجب أن يكون أكبر من صفر.");
@@ -64,8 +68,14 @@ public class SalesInvoiceItem
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
             DiscountReason = string.IsNullOrWhiteSpace(discountReason) ? null : discountReason.Trim(),
             PriceModifiedByUserId = priceModifiedByUserId,
-            PriceModifiedAt = priceModifiedAt
+            PriceModifiedAt = priceModifiedAt,
+            TaxCodeId = taxCodeId is Guid id && id != Guid.Empty ? id : null
         };
+    }
+
+    public void SetTaxCodeId(Guid? taxCodeId)
+    {
+        TaxCodeId = taxCodeId is Guid id && id != Guid.Empty ? id : null;
     }
 
     public void RecalculateTotal(IReadOnlyList<SalesInvoiceRollDetail> rollDetails)

@@ -11,6 +11,7 @@ using ERPSystem.Infrastructure.Persistence.Models.Finance;
 using ERPSystem.Infrastructure.Persistence.Models.Identity;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
 using ERPSystem.Infrastructure.Persistence.Models.Parties;
+using ERPSystem.Infrastructure.Persistence.Models.Sales;
 using ERPSystem.Infrastructure.Persistence.Models.Settings;
 using ERPSystem.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,7 @@ public static class DatabaseSeeder
         await EnsureAdminPasswordAsync(context, passwordHasher, logger, cancellationToken);
         await EnsureChinaImportReferenceDataAsync(context, cancellationToken);
         await EnsureIntegratedAccountingAccountsAsync(context, cancellationToken);
+        await EnsureSalesTaxConfigurationAsync(context, cancellationToken);
         await EnsureJournalBooksAsync(context, cancellationToken);
         await EnsureAccountingPermissionsAsync(context, cancellationToken);
         await EnsureSupplierPermissionsAsync(context, cancellationToken);
@@ -283,7 +285,9 @@ public static class DatabaseSeeder
             (AccountingAccountIds.CostOfGoodsSold, "5100", "تكلفة مبيعات", "Cost of Goods Sold", "Expense", AccountingAccountIds.RootExpense),
             (AccountingAccountIds.OperatingExpenses, "5210", "مصاريف تشغيل", "Operating Expenses", "Expense", AccountingAccountIds.RootExpense),
             (AccountingAccountIds.OpeningBalanceEquity, "3100", "أرصدة افتتاحية", "Opening Balance Equity", "Equity", AccountingAccountIds.RootEquity),
-            (AccountingAccountIds.PartnerCapital, "3200", "رأس مال الشركاء", "Partner Capital", "Equity", AccountingAccountIds.RootEquity)
+            (AccountingAccountIds.PartnerCapital, "3200", "رأس مال الشركاء", "Partner Capital", "Equity", AccountingAccountIds.RootEquity),
+            (AccountingAccountIds.VatPayable, "2200", "ضريبة مبيعات مستحقة", "VAT Payable", "Liability", AccountingAccountIds.RootLiabilities),
+            (AccountingAccountIds.RoundingDifference, "5290", "فروقات تقريب", "Rounding Differences", "Expense", AccountingAccountIds.RootExpense)
         };
 
         foreach (var (id, code, nameAr, nameEn, type, parentId) in accounts)
@@ -604,5 +608,76 @@ public static class DatabaseSeeder
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_cashbox_transfers_BranchId_TransferNumber"
                 ON finance.cashbox_transfers ("BranchId", "TransferNumber");
             """, cancellationToken);
+    }
+
+    private static async Task EnsureSalesTaxConfigurationAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        if (!await context.Companies.AnyAsync(cancellationToken))
+            return;
+
+        if (!await context.Accounts.AnyAsync(a => a.Id == AccountingAccountIds.VatPayable, cancellationToken))
+        {
+            context.Accounts.Add(new AccountEntity
+            {
+                Id = AccountingAccountIds.VatPayable,
+                CompanyId = DefaultCompanyId,
+                Code = "2200",
+                NameAr = "ضريبة مبيعات مستحقة",
+                NameEn = "VAT Payable",
+                AccountType = "Liability",
+                ParentId = AccountingAccountIds.RootLiabilities,
+                IsPostable = true
+            });
+        }
+
+        if (!await context.Accounts.AnyAsync(a => a.Id == AccountingAccountIds.RoundingDifference, cancellationToken))
+        {
+            context.Accounts.Add(new AccountEntity
+            {
+                Id = AccountingAccountIds.RoundingDifference,
+                CompanyId = DefaultCompanyId,
+                Code = "5290",
+                NameAr = "فروقات تقريب",
+                NameEn = "Rounding Differences",
+                AccountType = "Expense",
+                ParentId = AccountingAccountIds.RootExpense,
+                IsPostable = true
+            });
+        }
+
+        if (!await context.TaxCodes.AnyAsync(t => t.Id == SalesTaxCodeIds.DefaultVat15Exclusive, cancellationToken))
+        {
+            context.TaxCodes.Add(new TaxCodeEntity
+            {
+                Id = SalesTaxCodeIds.DefaultVat15Exclusive,
+                CompanyId = DefaultCompanyId,
+                Code = "VAT15",
+                Name = "VAT 15% (Tax Exclusive)",
+                Rate = 0.15m,
+                PriceMode = (int)TaxPriceMode.Exclusive,
+                Category = (int)TaxCategory.Standard,
+                SalesTaxAccountId = AccountingAccountIds.VatPayable,
+                EffectiveFrom = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive = true
+            });
+        }
+
+        if (!await context.SalesPostingProfiles.AnyAsync(p => p.CompanyId == DefaultCompanyId, cancellationToken))
+        {
+            context.SalesPostingProfiles.Add(new SalesPostingProfileEntity
+            {
+                Id = Guid.Parse("s1000001-0001-0001-0001-000000000001"),
+                CompanyId = DefaultCompanyId,
+                AccountsReceivableAccountId = AccountingAccountIds.AccountsReceivable,
+                SalesRevenueAccountId = AccountingAccountIds.SalesRevenue,
+                SalesDiscountAccountId = AccountingAccountIds.SalesDiscounts,
+                VatPayableAccountId = AccountingAccountIds.VatPayable,
+                InventoryAccountId = AccountingAccountIds.InventoryAsset,
+                CogsAccountId = AccountingAccountIds.CostOfGoodsSold,
+                RoundingAccountId = AccountingAccountIds.RoundingDifference
+            });
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

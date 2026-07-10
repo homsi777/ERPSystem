@@ -30,6 +30,7 @@ public sealed class SalesInvoiceLineCommand
     public decimal OriginalUnitPrice { get; init; }
 
     public string? DiscountReason { get; init; }
+    public Guid? TaxCodeId { get; init; }
     public string? Notes { get; init; }
 }
 

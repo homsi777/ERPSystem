@@ -4,6 +4,7 @@ using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.Services;
 using ERPSystem.Domain.Aggregates;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Domain.Exceptions;
@@ -169,7 +170,19 @@ public sealed class PostSalesReturnHandler(
             await unitOfWork.BeginTransactionAsync(cancellationToken);
 
             var cogsReversal = await inventoryOperations.ReceiveSalesReturnAsync(aggregate, invoice, cancellationToken);
-            var journalNumber = await accountingService.PostSalesReturnAsync(aggregate, cogsReversal, cancellationToken);
+            var taxResult = SalesReturnTaxCalculator.Compute(aggregate, invoice);
+            aggregate.ApplyReturnTax(
+                taxResult.TaxTotal,
+                taxResult.CustomerCreditTotal,
+                taxResult.IsLegacyUntaxedReturn,
+                taxResult.TaxIncludedInLineTotals);
+
+            var journalNumber = await accountingService.PostSalesReturnAsync(
+                aggregate,
+                cogsReversal,
+                taxResult.TaxTotal,
+                taxResult.TaxByAccount,
+                cancellationToken);
 
             var userId = currentUserService.UserId ?? Guid.Empty;
             aggregate.Post(userId, journalNumber);
@@ -178,7 +191,7 @@ public sealed class PostSalesReturnHandler(
             var customer = await customerRepository.GetByIdAsync(invoice.CustomerId, cancellationToken);
             if (customer is not null)
             {
-                customer.RecordSalesReturn(aggregate.TotalAmount.Amount);
+                customer.RecordSalesReturn(taxResult.CustomerCreditTotal);
                 await customerRepository.UpdateAsync(customer, cancellationToken);
             }
 

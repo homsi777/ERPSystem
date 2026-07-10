@@ -26,6 +26,10 @@ public sealed class SalesReturnAggregate : AggregateRoot
     public string? Notes { get; private set; }
     public VoucherStatus Status { get; private set; }
     public Money TotalAmount { get; private set; } = Money.Zero();
+    public Money TaxTotal { get; private set; } = Money.Zero();
+    public Money CustomerCreditTotal { get; private set; } = Money.Zero();
+    public bool IsLegacyUntaxedReturn { get; private set; }
+    public bool TaxIncludedInLineTotals { get; private set; }
     public Guid CreatedByUserId { get; private set; }
     public Guid? PostedByUserId { get; private set; }
     public DateTime? PostedAt { get; private set; }
@@ -102,6 +106,16 @@ public sealed class SalesReturnAggregate : AggregateRoot
         Reason = reason;
         ReasonNotes = reasonNotes;
         Notes = notes;
+    }
+
+    public void ApplyReturnTax(decimal taxTotal, decimal customerCreditTotal, bool isLegacy, bool taxIncludedInLines)
+    {
+        if (Status != VoucherStatus.Draft)
+            throw new DomainException("Only draft returns can be modified.");
+        TaxTotal = new Money(taxTotal);
+        CustomerCreditTotal = new Money(customerCreditTotal);
+        IsLegacyUntaxedReturn = isLegacy;
+        TaxIncludedInLineTotals = taxIncludedInLines;
     }
 
     public void Post(Guid postedByUserId, string journalEntryNumber)

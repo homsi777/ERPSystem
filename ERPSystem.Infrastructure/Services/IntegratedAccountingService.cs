@@ -16,7 +16,8 @@ internal sealed class IntegratedAccountingService(
     ErpDbContext context,
     IAccountingPostingEngine postingEngine,
     ICurrentUserService currentUserService,
-    ICurrentBranchService currentBranchService) : IIntegratedAccountingService
+    ICurrentBranchService currentBranchService,
+    ISalesPostingProfileRepository postingProfileRepository) : IIntegratedAccountingService
 {
     private readonly List<PostingRequest> _pendingRecoveryRequests = [];
 
@@ -72,31 +73,64 @@ internal sealed class IntegratedAccountingService(
             cancellationToken);
     }
 
-    public Task PostSalesInvoiceApprovalAsync(
+    public async Task PostSalesInvoiceApprovalAsync(
         SalesInvoiceAggregate invoice,
         decimal cogsAmount,
         CancellationToken cancellationToken = default)
     {
+        var profile = await postingProfileRepository.GetForCompanyAsync(invoice.CompanyId, cancellationToken);
+        var arAccount = profile?.AccountsReceivableAccountId ?? AccountingAccountIds.AccountsReceivable;
+        var revenueAccount = profile?.SalesRevenueAccountId ?? AccountingAccountIds.SalesRevenue;
+        var discountAccount = profile?.SalesDiscountAccountId ?? AccountingAccountIds.SalesDiscounts;
+        var inventoryAccount = profile?.InventoryAccountId ?? AccountingAccountIds.InventoryAsset;
+        var cogsAccount = profile?.CogsAccountId ?? AccountingAccountIds.CostOfGoodsSold;
+        var vatAccount = profile?.VatPayableAccountId;
+
         var netReceivable = invoice.GrandTotal.Amount;
         var lineDiscount = invoice.TotalLineDiscount.Amount;
-        var grossRevenue = netReceivable + lineDiscount;
+        var taxTotal = invoice.IsLegacyUntaxed ? 0m : invoice.TaxTotal.Amount;
+
+        if (taxTotal > 0 && (vatAccount is null || vatAccount == Guid.Empty))
+            throw new ValidationException(
+                "VAT Payable account is not configured. Configure sales posting profile before approving taxed invoices.");
+
+        var revenueCredit = netReceivable - taxTotal + lineDiscount;
 
         var lines = new List<(Guid, decimal, decimal, string, Guid?)>
         {
-            (AccountingAccountIds.AccountsReceivable, netReceivable, 0m, "ذمم عميل — فاتورة بيع", invoice.CustomerId),
-            (AccountingAccountIds.SalesRevenue, 0m, grossRevenue, "إيراد مبيعات أقمشة", null)
+            (arAccount, netReceivable, 0m, "ذمم عميل — فاتورة بيع", invoice.CustomerId),
+            (revenueAccount, 0m, revenueCredit, "إيراد مبيعات أقمشة", null)
         };
 
         if (lineDiscount > 0)
-            lines.Add((AccountingAccountIds.SalesDiscounts, lineDiscount, 0m, "خصم مبيعات ممنوح", invoice.CustomerId));
+            lines.Add((discountAccount, lineDiscount, 0m, "خصم مبيعات ممنوح", invoice.CustomerId));
+
+        if (taxTotal > 0)
+        {
+            foreach (var group in invoice.ItemTaxSnapshots
+                         .Where(s => s.TaxAmount.Amount > 0)
+                         .GroupBy(s => s.SalesTaxAccountId ?? vatAccount!.Value))
+            {
+                var amount = group.Sum(g => g.TaxAmount.Amount);
+                lines.Add((group.Key, 0m, amount, "ضريبة مبيعات مستحقة", null));
+            }
+        }
+
+        if (Math.Abs(invoice.RoundingDifference) >= 0.01m && profile?.RoundingAccountId is Guid roundingAccount)
+        {
+            if (invoice.RoundingDifference > 0)
+                lines.Add((roundingAccount, invoice.RoundingDifference, 0m, "فرق تقريب ضريبة", null));
+            else
+                lines.Add((roundingAccount, 0m, -invoice.RoundingDifference, "فرق تقريب ضريبة", null));
+        }
 
         if (cogsAmount > 0)
         {
-            lines.Add((AccountingAccountIds.CostOfGoodsSold, cogsAmount, 0m, "تكلفة مبيعات", null));
-            lines.Add((AccountingAccountIds.InventoryAsset, 0m, cogsAmount, "صرف مخزون", null));
+            lines.Add((cogsAccount, cogsAmount, 0m, "تكلفة مبيعات", null));
+            lines.Add((inventoryAccount, 0m, cogsAmount, "صرف مخزون", null));
         }
 
-        return PostViaEngineAsync(
+        await PostViaEngineAsync(
             DocumentType.SalesInvoice,
             invoice.Id,
             PostingKind.SalesInvoicePosting,
@@ -184,19 +218,42 @@ internal sealed class IntegratedAccountingService(
     public async Task<string> PostSalesReturnAsync(
         SalesReturnAggregate salesReturn,
         decimal cogsReversalAmount,
+        decimal taxReversalAmount,
+        IReadOnlyList<(Guid AccountId, decimal Amount)> taxReversalByAccount,
         CancellationToken cancellationToken = default)
     {
-        var revenueReversal = salesReturn.TotalAmount.Amount;
+        var profile = await postingProfileRepository.GetForCompanyAsync(salesReturn.CompanyId, cancellationToken);
+        var revenueAccount = profile?.SalesRevenueAccountId ?? AccountingAccountIds.SalesRevenue;
+        var arAccount = profile?.AccountsReceivableAccountId ?? AccountingAccountIds.AccountsReceivable;
+        var inventoryAccount = profile?.InventoryAccountId ?? AccountingAccountIds.InventoryAsset;
+        var cogsAccount = profile?.CogsAccountId ?? AccountingAccountIds.CostOfGoodsSold;
+
+        var totalCredit = salesReturn.TotalAmount.Amount;
+        if (taxReversalAmount > 0)
+        {
+            var taxIncluded = salesReturn.TaxIncludedInLineTotals;
+            if (!taxIncluded)
+                totalCredit += taxReversalAmount;
+        }
+
+        var revenueReversal = totalCredit - taxReversalAmount;
+
         var lines = new List<(Guid, decimal, decimal, string, Guid?)>
         {
-            (AccountingAccountIds.SalesRevenue, revenueReversal, 0m, "عكس إيراد مبيعات — مرتجع", null),
-            (AccountingAccountIds.AccountsReceivable, 0m, revenueReversal, "خصم ذمم عميل — مرتجع بيع", salesReturn.CustomerId)
+            (revenueAccount, revenueReversal, 0m, "عكس إيراد مبيعات — مرتجع", null),
+            (arAccount, 0m, totalCredit, "خصم ذمم عميل — مرتجع بيع", salesReturn.CustomerId)
         };
+
+        if (taxReversalAmount > 0)
+        {
+            foreach (var (accountId, amount) in taxReversalByAccount.Where(t => t.Amount > 0))
+                lines.Add((accountId, amount, 0m, "عكس ضريبة مبيعات — مرتجع", null));
+        }
 
         if (cogsReversalAmount > 0)
         {
-            lines.Add((AccountingAccountIds.InventoryAsset, cogsReversalAmount, 0m, "إعادة مخزون — مرتجع بيع", null));
-            lines.Add((AccountingAccountIds.CostOfGoodsSold, 0m, cogsReversalAmount, "عكس تكلفة مبيعات — مرتجع", null));
+            lines.Add((inventoryAccount, cogsReversalAmount, 0m, "إعادة مخزون — مرتجع بيع", null));
+            lines.Add((cogsAccount, 0m, cogsReversalAmount, "عكس تكلفة مبيعات — مرتجع", null));
         }
 
         var result = await PostViaEngineAsync(

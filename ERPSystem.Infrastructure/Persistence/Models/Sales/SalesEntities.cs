@@ -17,6 +17,8 @@ public class SalesInvoiceEntity : CancellablePersistenceEntity
     public decimal DiscountTotal { get; set; }
     public decimal TaxTotal { get; set; }
     public decimal GrandTotal { get; set; }
+    public decimal RoundingDifference { get; set; }
+    public bool IsLegacyUntaxed { get; set; }
     public Guid? ApprovedByUserId { get; set; }
     public DateTime? SentToWarehouseAt { get; set; }
     public DateTime? DetailedAt { get; set; }
@@ -44,6 +46,8 @@ public class SalesReturnEntity : CancellablePersistenceEntity
     public string? Notes { get; set; }
     public int Status { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal TaxTotal { get; set; }
+    public bool IsLegacyUntaxedReturn { get; set; }
     public Guid? PostedByUserId { get; set; }
     public DateTime? PostedAt { get; set; }
     public string? JournalEntryNumber { get; set; }
@@ -83,6 +87,7 @@ public class SalesInvoiceItemEntity : PersistenceEntity
     public string Unit { get; set; } = "meter";
     public decimal LineTotal { get; set; }
     public decimal DiscountAmount { get; set; }
+    public Guid? TaxCodeId { get; set; }
     public string? DiscountReason { get; set; }
     public Guid? PriceModifiedByUserId { get; set; }
     public DateTime? PriceModifiedAt { get; set; }

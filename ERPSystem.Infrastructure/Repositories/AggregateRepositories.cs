@@ -284,6 +284,8 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         header.DiscountTotal = mapped.DiscountTotal;
         header.TaxTotal = mapped.TaxTotal;
         header.GrandTotal = mapped.GrandTotal;
+        header.RoundingDifference = mapped.RoundingDifference;
+        header.IsLegacyUntaxed = mapped.IsLegacyUntaxed;
         header.ApprovedByUserId = mapped.ApprovedByUserId;
         header.SentToWarehouseAt = mapped.SentToWarehouseAt;
         header.DetailedAt = mapped.DetailedAt;
@@ -314,9 +316,11 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             .Where(i => i.SalesInvoiceId == header.Id).OrderBy(i => i.LineNumber).ToListAsync(ct);
         var rolls = await context.SalesInvoiceRollDetails.AsNoTracking()
             .Where(r => r.SalesInvoiceId == header.Id).ToListAsync(ct);
+        var itemTaxes = await context.SalesInvoiceItemTaxes.AsNoTracking()
+            .Where(t => t.SalesInvoiceId == header.Id).ToListAsync(ct);
         var session = await context.WarehouseDetailingSessions.AsNoTracking()
             .FirstOrDefaultAsync(s => s.SalesInvoiceId == header.Id, ct);
-        return SalesInvoiceMapper.ToAggregate(header, items, rolls, session);
+        return SalesInvoiceMapper.ToAggregate(header, items, rolls, session, itemTaxes);
     }
 
     private async Task SyncChildrenAsync(SalesInvoiceAggregate aggregate, CancellationToken ct)
@@ -340,7 +344,26 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             DiscountReason = i.DiscountReason,
             PriceModifiedByUserId = i.PriceModifiedByUserId,
             PriceModifiedAt = i.PriceModifiedAt,
-            Notes = i.Notes
+            Notes = i.Notes,
+            TaxCodeId = i.TaxCodeId
+        }), ct);
+
+        var existingTaxes = await context.SalesInvoiceItemTaxes.Where(t => t.SalesInvoiceId == aggregate.Id).ToListAsync(ct);
+        context.SalesInvoiceItemTaxes.RemoveRange(existingTaxes);
+        await context.SalesInvoiceItemTaxes.AddRangeAsync(aggregate.ItemTaxSnapshots.Select(t => new SalesInvoiceItemTaxEntity
+        {
+            Id = t.Id,
+            SalesInvoiceId = aggregate.Id,
+            SalesInvoiceItemId = t.SalesInvoiceItemId,
+            TaxCodeId = t.TaxCodeId,
+            TaxCode = t.TaxCode,
+            TaxName = t.TaxName,
+            TaxRate = t.TaxRate,
+            TaxableAmount = t.TaxableAmount.Amount,
+            TaxAmount = t.TaxAmount.Amount,
+            IsInclusive = t.IsInclusive,
+            SalesTaxAccountId = t.SalesTaxAccountId,
+            IsFrozen = t.IsFrozen
         }), ct);
 
         var existingRolls = await context.SalesInvoiceRollDetails.Where(r => r.SalesInvoiceId == aggregate.Id).ToListAsync(ct);
@@ -446,6 +469,8 @@ internal sealed class SalesReturnRepository(ErpDbContext context) : ISalesReturn
         var mapped = SalesReturnMapper.ToHeaderEntity(aggregate);
         header.Status = mapped.Status;
         header.TotalAmount = mapped.TotalAmount;
+        header.TaxTotal = mapped.TaxTotal;
+        header.IsLegacyUntaxedReturn = mapped.IsLegacyUntaxedReturn;
         header.Reason = mapped.Reason;
         header.ReasonNotes = mapped.ReasonNotes;
         header.Notes = mapped.Notes;

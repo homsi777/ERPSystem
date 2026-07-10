@@ -27,6 +27,8 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     public Money DiscountTotal { get; private set; } = Money.Zero();
     public Money TaxTotal { get; private set; } = Money.Zero();
     public Money GrandTotal { get; private set; } = Money.Zero();
+    public decimal RoundingDifference { get; private set; }
+    public bool IsLegacyUntaxed { get; private set; }
     public Guid CreatedByUserId { get; private set; }
     public Guid? ApprovedByUserId { get; private set; }
     public DateTime? SentToWarehouseAt { get; private set; }
@@ -44,10 +46,12 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
 
     private readonly List<SalesInvoiceItem> _items = [];
     private readonly List<SalesInvoiceRollDetail> _rollDetails = [];
+    private readonly List<SalesInvoiceItemTaxSnapshot> _itemTaxSnapshots = [];
     private WarehouseDetailingSession? _detailingSession;
 
     public IReadOnlyList<SalesInvoiceItem> Items => _items.AsReadOnly();
     public IReadOnlyList<SalesInvoiceRollDetail> RollDetails => _rollDetails.AsReadOnly();
+    public IReadOnlyList<SalesInvoiceItemTaxSnapshot> ItemTaxSnapshots => _itemTaxSnapshots.AsReadOnly();
     public WarehouseDetailingSession? DetailingSession => _detailingSession;
 
     /// <summary>Total contra-revenue sales discount across all lines (gross price − applied price).</summary>
@@ -231,12 +235,39 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         Status = SalesInvoiceStatus.ReadyForApproval;
     }
 
+    public void ApplyTaxTotals(
+        Money taxTotal,
+        Money grandTotal,
+        decimal roundingDifference,
+        IReadOnlyList<SalesInvoiceItemTaxSnapshot> snapshots,
+        bool freezeSnapshots)
+    {
+        EnsureTaxEditable();
+        TaxTotal = taxTotal;
+        GrandTotal = grandTotal;
+        RoundingDifference = roundingDifference;
+        _itemTaxSnapshots.Clear();
+        _itemTaxSnapshots.AddRange(snapshots);
+        if (freezeSnapshots)
+            FreezeTaxSnapshots();
+    }
+
+    public void FreezeTaxSnapshots()
+    {
+        foreach (var snapshot in _itemTaxSnapshots)
+            snapshot.Freeze();
+    }
+
+    public void MarkLegacyUntaxed() => IsLegacyUntaxed = true;
+
     public void Approve(Guid approvedByUserId)
     {
         if (Status is not (SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval))
             throw new InvalidInvoiceWorkflowException("Invoice cannot be approved before detailing is complete.");
         if (_rollDetails.Any(d => !d.HasValidLength))
             throw new InvalidInvoiceWorkflowException("All roll lengths must be valid before approval.");
+        if (_itemTaxSnapshots.Any(s => s.IsFrozen is false && TaxTotal.Amount > 0))
+            FreezeTaxSnapshots();
 
         Status = SalesInvoiceStatus.Approved;
         ApprovedByUserId = approvedByUserId;
@@ -306,6 +337,12 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         GrandTotal = SubTotal.Add(TaxTotal).Subtract(DiscountTotal);
         if (GrandTotal.Amount < 0)
             throw new ValidationException("Discount amount exceeds invoice subtotal.");
+    }
+
+    private void EnsureTaxEditable()
+    {
+        if (_itemTaxSnapshots.Any(s => s.IsFrozen))
+            throw new InvalidInvoiceWorkflowException("Tax amounts are frozen on posted invoices.");
     }
 
     public void ApplyReturn(bool isFullyReturned)

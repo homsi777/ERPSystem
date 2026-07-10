@@ -19,4 +19,11 @@ public static class AccountingAccountIds
     public static readonly Guid RootExpense = Guid.Parse("b1000005-0005-0005-0005-000000000005");
     public static readonly Guid OpeningBalanceEquity = Guid.Parse("a1000009-0009-0009-0009-000000000009");
     public static readonly Guid PartnerCapital = Guid.Parse("a1000010-0010-0010-0010-000000000010");
+    public static readonly Guid VatPayable = Guid.Parse("a1000012-0012-0012-0012-000000001012");
+    public static readonly Guid RoundingDifference = Guid.Parse("a1000013-0013-0013-0013-000000001013");
+}
+
+public static class SalesTaxCodeIds
+{
+    public static readonly Guid DefaultVat15Exclusive = Guid.Parse("t1000001-0001-0001-0001-000000000001");
 }

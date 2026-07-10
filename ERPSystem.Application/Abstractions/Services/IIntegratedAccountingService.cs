@@ -108,5 +108,7 @@ public interface IIntegratedAccountingService
     Task<string> PostSalesReturnAsync(
         SalesReturnAggregate salesReturn,
         decimal cogsReversalAmount,
+        decimal taxReversalAmount,
+        IReadOnlyList<(Guid AccountId, decimal Amount)> taxReversalByAccount,
         CancellationToken cancellationToken = default);
 }
