@@ -43,8 +43,8 @@ public sealed class Phase2TaxE2EIntegrationTests
         {
             var baselineService = preScope.ServiceProvider.GetRequiredService<IAccountingBaselineReportService>();
             var healthService = preScope.ServiceProvider.GetRequiredService<IAccountingHealthCheckService>();
-            preBaseline = await baselineService.GenerateAsync(null);
-            preHealth = await healthService.RunAsync(null);
+            preBaseline = await baselineService.GenerateAsync(DatabaseSeeder.DefaultCompanyId);
+            preHealth = await healthService.RunAsync(DatabaseSeeder.DefaultCompanyId);
         }
         await Phase2E2ECertificationArtifacts.WriteBaselineAsync("phase2-e2e-pre", preBaseline, preHealth);
 
@@ -67,8 +67,8 @@ public sealed class Phase2TaxE2EIntegrationTests
         {
             var baselineService = postScope.ServiceProvider.GetRequiredService<IAccountingBaselineReportService>();
             var healthService = postScope.ServiceProvider.GetRequiredService<IAccountingHealthCheckService>();
-            postBaseline = await baselineService.GenerateAsync(null);
-            postHealth = await healthService.RunAsync(null);
+            postBaseline = await baselineService.GenerateAsync(DatabaseSeeder.DefaultCompanyId);
+            postHealth = await healthService.RunAsync(DatabaseSeeder.DefaultCompanyId);
         }
         await Phase2E2ECertificationArtifacts.WriteBaselineAsync("phase2-e2e-post", postBaseline, postHealth);
         await Phase2E2ECertificationArtifacts.WriteBaselineDiffAsync(preBaseline, postBaseline);

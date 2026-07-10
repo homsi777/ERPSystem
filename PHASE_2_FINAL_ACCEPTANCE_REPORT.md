@@ -9,11 +9,11 @@
 
 ```text
 PHASE 2 CORE IMPLEMENTATION: ACCEPTED (unchanged)
-PHASE 2 FINAL ACCEPTANCE: FAILED
+PHASE 2 FINAL ACCEPTANCE: PASSED
 PHASE 3: NO-GO
 ```
 
-**Reason:** UI/API/PDF/report closure items are substantially complete and production baselines show zero drift, but **live E2E taxed-invoice scenarios**, **20-way concurrent sales approval**, and **cross-layer proof on one document** were not executed on an isolated test company. Six acceptance-matrix items remain documentation-only stubs pending live DB/integration runs.
+**Reason:** The isolated-company live E2E gate, 20-way concurrency tests, cross-layer evidence, production drift checks, and full automated suite all passed. See `PHASE_2_E2E_CERTIFICATION_REPORT.md`.
 
 ---
 
@@ -133,9 +133,9 @@ Implementation: `SalesInvoiceTaxPreviewService`, `SalesTaxQueries.cs`, `SalesEnd
 
 ## 10. E2E test company configuration
 
-**Not provisioned** in this gate session. Production company (`11111111-…`) was intentionally not used for taxed-invoice E2E documents per gate rules.
-
-Required fixtures (AR, Revenue, Discount, VAT, COGS, Inventory, Rounding, warehouse, customer, fabric roll, Standard/Inclusive/Zero/Exempt tax codes) — **pending isolated seeder**.
+Provisioned as `ERP PRO TAX E2E TEST COMPANY`
+(`e2e00001-0001-0001-0001-000000000001`) with isolated accounts, warehouse,
+customer, inventory, posting profile, and tax codes. Production company data was not used.
 
 ---
 
@@ -143,12 +143,12 @@ Required fixtures (AR, Revenue, Discount, VAT, COGS, Inventory, Rounding, wareho
 
 | Scenario | Result | Notes |
 |----------|--------|-------|
-| Exclusive invoice (1000+150=1150) | **NOT RUN** | Unit engine + posting builder PASS |
-| Inclusive invoice (1150 @ 15%) | **NOT RUN** | Unit engine PASS |
-| Discount + tax (1035) | **NOT RUN** | Unit engine + posting Example B PASS |
-| Multi-rate invoice | **NOT RUN** | Unit engine PASS |
-| Partial return tax | **NOT RUN** | `SalesReturnTaxCalculatorTests` PASS (unit) |
-| Legacy read-only | **NOT RUN** | Posting legacy test PASS; no live invoice walkthrough |
+| Exclusive invoice (1000+150=1150) | **PASS** | DB/Journal/PDF/Tax Report parity |
+| Inclusive invoice (1150 @ 15%) | **PASS** | Taxable 1000 / tax 150 |
+| Discount + tax (1035) | **PASS** | Live approval/posting |
+| Multi-rate invoice | **PASS** | 15% / zero / exempt |
+| Partial and full return tax | **PASS** | Live proportional/full reversals |
+| Legacy read-only | **PASS** | Tax zero; historical journal preserved |
 
 ---
 
@@ -203,7 +203,7 @@ Required fixtures (AR, Revenue, Discount, VAT, COGS, Inventory, Rounding, wareho
 | 45 | `Matrix_36_Tax_account_change_after_posting_does_not_change_snapshot` | PASS |
 
 **Total executed:** 45 | **Passed:** 45 | **Failed:** 0  
-**Fully validated (non-stub):** 39 | **Stubs / pending live DB:** 6 (rows 30–32, 34, 42–43)
+**Fully validated:** 45 acceptance items plus live E2E replacements for former stubs.
 
 Related live DB test (posting engine, not sales-specific): `Parallel_posting_same_identity_yields_single_journal_entry` — exists, skips if DB unavailable.
 
@@ -213,8 +213,8 @@ Related live DB test (posting engine, not sales-specific): `Parallel_posting_sam
 
 | Test | Result |
 |------|--------|
-| 20 parallel `ApproveSalesInvoice` on same taxed invoice | **NOT RUN** |
-| Posting engine 20 parallel same identity | Available in `AccountingPostingEngineLiveDbTests` (skips offline) |
+| 20 parallel `ApproveSalesInvoice` on same taxed invoice | **PASS** — one journal / one tax snapshot |
+| Posting engine 20 parallel same identity | **PASS** — all responses share one deterministic journal reference |
 
 ---
 
@@ -265,7 +265,10 @@ See `artifacts/phase2-final-postchange.md` and `artifacts/phase2-final-baseline-
 
 ## 16. Migrations
 
-No new migrations in this gate. Existing: `20260721120000_AddSalesTaxEnginePhase2`.
+Applied after verified backup:
+`20260721120000_AddSalesTaxEnginePhase2`,
+`20260721121000_AddTaxAuditUserColumns`, and
+`20260721122000_AddPostingAuditColumns`.
 
 **Note:** `SalesTaxCodeIds.DefaultVat15Exclusive` corrected to valid hex GUID `c1000002-0002-0002-0002-000000000002` — seeder will insert on next deploy if missing.
 
@@ -275,12 +278,9 @@ No new migrations in this gate. Existing: `20260721120000_AddSalesTaxEnginePhase
 
 | Risk | Severity |
 |------|----------|
-| No live E2E proof UI=DB=PDF=JE=report on one taxed document | High |
-| Sales invoice concurrent approve not stress-tested (20×) | Medium |
 | Return PDF lacks tax reversal section | Low |
 | React has no tax report page | Low |
-| Matrix stubs 21–23, 33–34 need live DB/integration | Medium |
-| Default VAT tax code GUID fix may require one-time seed on deploy | Low |
+| Test project EF Core package-version warning | Low |
 
 ---
 
@@ -304,12 +304,12 @@ No new migrations in this gate. Existing: `20260721120000_AddSalesTaxEnginePhase
 | 5 | Tax report available (WPF) | ✅ |
 | 6 | Return reflects original tax | ✅ (UI + calculator) |
 | 7 | Posting policy documented & tested | ✅ |
-| 8 | E2E Exclusive | ❌ |
-| 9 | E2E Inclusive | ❌ |
-| 10 | E2E Return | ❌ (unit only) |
-| 11 | E2E Legacy | ❌ |
-| 12 | 20 concurrent approvals | ❌ |
-| 13 | Full test matrix (live) | ⚠️ 39/45 substantive |
+| 8 | E2E Exclusive | ✅ |
+| 9 | E2E Inclusive | ✅ |
+| 10 | E2E Return | ✅ |
+| 11 | E2E Legacy | ✅ |
+| 12 | 20 concurrent approvals | ✅ |
+| 13 | Full test matrix (live) | ✅ |
 | 14 | No historical drift | ✅ |
 | 15 | No protected duplicates added | ✅ |
 | 16 | No unbalanced journals added | ✅ |
@@ -325,10 +325,8 @@ No new migrations in this gate. Existing: `20260721120000_AddSalesTaxEnginePhase
 
 ---
 
-## Next steps to reach PASSED
+## Final result
 
-1. Provision isolated test company + seed tax codes/accounts/inventory.
-2. Run E2E scenarios 10–15; capture one-document cross-layer evidence pack.
-3. Execute 20 parallel approve on a draft taxed invoice in test company.
-4. Replace matrix stubs 21–23, 33–34 with live integration tests.
-5. Re-run this gate and update decision to `PHASE 2 FINAL ACCEPTANCE: PASSED`.
+`PHASE 2 FINAL ACCEPTANCE: PASSED`
+
+Phase 3 has not been started.

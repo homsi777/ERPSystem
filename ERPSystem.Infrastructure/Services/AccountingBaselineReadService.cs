@@ -278,7 +278,10 @@ internal static class AccountingBaselineReadService
             .Select(r => new { r.Amount })
             .ToListAsync(cancellationToken);
 
-        var allocations = await context.ReceiptInvoicePayments.AsNoTracking().ToListAsync(cancellationToken);
+        var allocations = await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(a => context.ReceiptVouchers.Any(r =>
+                r.Id == a.ReceiptVoucherId && r.CompanyId == companyId))
+            .ToListAsync(cancellationToken);
         var postedReceiptIds = await context.ReceiptVouchers.AsNoTracking()
             .Where(r => r.CompanyId == companyId && r.Status == PostedVoucherStatus && !r.IsArchived)
             .Select(r => r.Id)
@@ -294,12 +297,16 @@ internal static class AccountingBaselineReadService
             .ToListAsync(cancellationToken);
 
         var cashboxes = await context.Cashboxes.AsNoTracking()
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive && context.Branches.Any(b =>
+                b.Id == c.BranchId && b.CompanyId == companyId))
             .Select(c => new { c.Balance, c.AccountId })
             .ToListAsync(cancellationToken);
 
         var inventoryValue = await context.FabricRolls.AsNoTracking()
-            .Where(r => r.Status == AvailableRollStatus && r.RemainingLengthMeters > 0)
+            .Where(r => r.Status == AvailableRollStatus
+                        && r.RemainingLengthMeters > 0
+                        && context.Containers.Any(c =>
+                            c.Id == r.ContainerId && c.CompanyId == companyId))
             .SumAsync(r => r.RemainingLengthMeters * r.CostPerMeter, cancellationToken);
 
         var arBalance = await GetAssetAccountBalanceAsync(

@@ -9,20 +9,11 @@
 
 ```text
 PHASE 2 CORE IMPLEMENTATION: ACCEPTED (unchanged)
-PHASE 2 FINAL ACCEPTANCE: FAILED
+PHASE 2 FINAL ACCEPTANCE: PASSED
 PHASE 3: NO-GO
 ```
 
-**Reason:** E2E certification **implementation is complete** (isolated test company, runner, CLI tool, integration tests, stub replacement). A **full live certification run with artifact generation** could not be completed in this session because the SSH tunnel to `localhost:5433` was **intermittently unavailable** from the automation host. `dotnet test` reports **61 passed / 0 failed** (1 non-critical diagnostic skipped), but live DB tests **vacuously pass** when the tunnel is down — they do not substitute for a verified E2E artifact run.
-
-**To reach PASSED:** Start the SSH tunnel (WPF app with `appsettings.Local.json`, or manual `ssh -L 5433:localhost:5432 …`), then run:
-
-```bash
-dotnet test ERPSystem.Application.Tests --filter "FullyQualifiedName~E2E_All_scenarios"
-dotnet run --project tools/Phase2TaxE2ECertification -- --run
-```
-
-Confirm `artifacts/phase2-e2e-run-result.json` shows `"allPassed": true` and production AR remains **320.00**.
+**Reason:** The live isolated-company certification completed successfully. All E2E scenarios, posting concurrency, rollback, snapshot immutability, company isolation, artifact verification, and the full solution test suite passed. Production accounting anchors remained unchanged.
 
 ---
 
@@ -34,7 +25,8 @@ See `artifacts/phase2-e2e-pre-backup-verification.md`.
 |-------|--------|
 | Prior verified dump | ✅ `erp_pro_final_acceptance_20260710T161652Z.dump` |
 | E2E backup script | ✅ `tools/phase2-e2e-verification/backup-pre-e2e.sh` |
-| Fresh backup this session | ⚠️ SSH timeout to VPS |
+| Fresh backup this session | ✅ `/home/ubuntu/phase2-e2e-backups/erp_pro_phase2_e2e_20260710T201852Z.dump` |
+| Fresh backup size / restore list | ✅ 577,888 bytes / `pg_restore --list` PASS |
 
 ---
 
@@ -49,7 +41,7 @@ Expected production anchors (from Phase 2 final gate):
 | Operational inventory | 105,636.71 |
 | Inventory GL | 15,622.43 |
 
-Machine-readable pre/post files are written by `E2E_All_scenarios_full_certification_run` when the DB tunnel is active.
+The pre/post baselines and machine-readable diff were generated. All listed anchors have zero drift.
 
 ---
 
@@ -61,7 +53,7 @@ Machine-readable pre/post files are written by `E2E_All_scenarios_full_certifica
 | CompanyId | `e2e00001-0001-0001-0001-000000000001` |
 | Seeder | `Phase2E2ETestCompanySeeder` |
 | CostPerMeter | 6.00 |
-| Rolls | 40 × 100m |
+| Rolls | 40 × 100m initial; test-only top-up when available stock is below 2,000m |
 | Tax codes | VAT15 Exclusive/Inclusive, Zero Rated, Exempt |
 | Posting profile | SalesPostingProfile (test GL only) |
 | Guard | `GuardNotProduction()` — blocks production `CompanyId` |
@@ -92,7 +84,7 @@ Document metadata: `E2E|{RunId}|{Scenario}` in line notes; invoice prefix `E2E-T
 
 `Phase2TaxE2ECertificationRunner.BuildCrossLayerProofAsync` validates DB ↔ PDF ↔ Tax report ↔ Journal AR.
 
-Artifact: `artifacts/phase2-e2e-cross-layer-proof.md` (written on successful `E2E_All_scenarios_full_certification_run`).
+Artifact: `artifacts/phase2-e2e-cross-layer-proof.md` — **PASS** for invoice `E2E-TAX-20260710211419-A`; DB, Journal, PDF, and Tax Report totals match.
 
 ---
 
@@ -154,7 +146,7 @@ dotnet run --project tools/Phase2TaxE2ECertification -- --verify
 dotnet run --project tools/Phase2TaxE2ECertification -- --cleanup
 ```
 
-Requires `localhost:5433` (SSH tunnel). Skips EF migrate on startup; uses same handlers as production.
+Requires `localhost:5433` (SSH tunnel) and uses the same handlers as production.
 
 ---
 
@@ -176,23 +168,27 @@ Requires `localhost:5433` (SSH tunnel). Skips EF migrate on startup; uses same h
 
 ## 12. Migrations
 
-None added for E2E certification.
+Applied after verified backup:
+
+- `20260721120000_AddSalesTaxEnginePhase2`
+- `20260721121000_AddTaxAuditUserColumns`
+- `20260721122000_AddPostingAuditColumns`
 
 ---
 
 ## 13. Risks remaining
 
-1. **Tunnel dependency** — Live E2E requires SSH port-forward; automation without tunnel gives false-green vacuous passes.
-2. **Fresh VPS backup** — Not taken this session (SSH timeout).
-3. **Idempotency keys on approve API** — Concurrency covered at posting layer; HTTP-level same-key replay not on `ApproveSalesInvoiceCommand`.
+1. Live certification requires the SSH port-forward to reach PostgreSQL.
+2. The test project still reports an EF Core 9.0.1/9.0.6 package-version warning; it does not affect the passing result.
+3. Approval concurrency is protected by deterministic posting identity and the database unique constraint; HTTP replay keys are not exposed by `ApproveSalesInvoiceCommand`.
 
 ---
 
 ## 14. Rollback
 
 ```bash
-sudo -u postgres pg_restore --clean --if-exists -d erp_pro \
-  /opt/erpsystem/backups/phase2-final-verification/erp_pro_final_acceptance_20260710T161652Z.dump
+PGPASSWORD=... pg_restore --clean --if-exists -h localhost -U erp_app -d erp_pro \
+  /home/ubuntu/phase2-e2e-backups/erp_pro_phase2_e2e_20260710T201852Z.dump
 ```
 
 Test company data is isolated; production rollback uses pre-E2E production dump only.
@@ -202,8 +198,6 @@ Test company data is isolated; production rollback uses pre-E2E production dump 
 ## 15. Final confirmation
 
 ```text
-PHASE 2 FINAL ACCEPTANCE: FAILED (live artifact gate — tunnel unavailable)
+PHASE 2 FINAL ACCEPTANCE: PASSED
 PHASE 3 STARTED: NO
 ```
-
-Re-run `E2E_All_scenarios_full_certification_run` with tunnel active; if all scenarios and baselines pass, update this decision to **PASSED**.
