@@ -469,13 +469,43 @@ svg {
 }
 
 .desktop-only {
-  display: block;
+  display: none;
 }
 
 .record-list {
-  display: grid;
   gap: 10px;
   margin-block-start: 12px;
+}
+
+/* Layout classes must not override responsive visibility toggles */
+.record-list.mobile-only,
+.table-scroll.mobile-only {
+  display: none;
+}
+
+.card-list.desktop-only,
+.table-scroll.desktop-only {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .record-list.mobile-only {
+    display: grid;
+  }
+
+  .table-scroll.mobile-only {
+    display: block;
+  }
+}
+
+@media (min-width: 641px) {
+  .card-list.desktop-only {
+    display: grid;
+  }
+
+  .table-scroll.desktop-only {
+    display: block;
+  }
 }
 
 .record-card {
@@ -1367,14 +1397,6 @@ svg {
 
   .app-main {
     padding-block-start: 14px;
-  }
-
-  .mobile-only {
-    display: grid;
-  }
-
-  .desktop-only {
-    display: none;
   }
 
   .detail-card {
