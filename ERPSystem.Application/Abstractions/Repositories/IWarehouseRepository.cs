@@ -8,6 +8,9 @@ public interface IWarehouseRepository
     Task<IReadOnlyList<WarehouseAggregate>> GetListAsync(
         Guid branchId,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, string>> GetNameLookupAsync(
+        IEnumerable<Guid> warehouseIds,
+        CancellationToken cancellationToken = default);
     Task AddAsync(WarehouseAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(WarehouseAggregate aggregate, CancellationToken cancellationToken = default);
 }

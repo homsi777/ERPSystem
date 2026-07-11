@@ -10,6 +10,11 @@ public interface ICustomerRepository
         string? search = null,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyDictionary<Guid, string>> GetNameLookupAsync(
+        Guid companyId,
+        IEnumerable<Guid>? customerIds = null,
+        CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<CustomerAggregate> Items, int TotalCount)> GetPagedAsync(
         Guid companyId,
         string? search,

@@ -12,6 +12,10 @@ public interface IChinaContainerRepository
         Guid? branchId = null,
         ChinaContainerStatus? status = null,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, string>> GetNumberLookupAsync(
+        Guid companyId,
+        IEnumerable<Guid> containerIds,
+        CancellationToken cancellationToken = default);
     Task AddAsync(ContainerAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(ContainerAggregate aggregate, CancellationToken cancellationToken = default);
 }

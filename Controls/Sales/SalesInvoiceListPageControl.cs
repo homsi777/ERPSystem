@@ -3,9 +3,6 @@ using ERPSystem.Core;
 using ERPSystem.Core.Sales;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
-using ERPSystem.Application.Queries.Containers;
-using ERPSystem.Application.UseCases.Queries;
-using ERPSystem.Infrastructure.Seed;
 using ERPSystem.Services;
 using ERPSystem.Services.Sales;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,8 +34,6 @@ public sealed class SalesInvoiceListPageControl : UserControl
     private string _pendingSearch = "";
     private int _totalCount;
     private bool _isLoading;
-    private Dictionary<Guid, string> _warehouseNames = [];
-    private Dictionary<Guid, string> _containerNames = [];
     private Guid? _filterCustomerId;
     private string? _filterCustomerName;
 
@@ -129,48 +124,11 @@ public sealed class SalesInvoiceListPageControl : UserControl
     {
         var canCreate = await SalesUiService.Instance.CanCreateAsync();
         _page.SetPrimaryButtonEnabled(canCreate);
-        await LoadLookupsAsync();
         await LoadInvoicesAsync("");
     }
 
     private void OnRefreshRequested(object? sender, EventArgs e) =>
         _ = LoadInvoicesAsync(_pendingSearch);
-
-    private async Task LoadLookupsAsync()
-    {
-        if (!AppServices.IsInitialized)
-            return;
-
-        var warehouseResult = await SalesUiService.Instance.GetWarehousesAsync();
-        if (warehouseResult.IsSuccess && warehouseResult.Value is not null)
-        {
-            _warehouseNames = warehouseResult.Value.ToDictionary(w => w.Id, w => w.NameAr);
-        }
-
-        try
-        {
-            using var scope = AppServices.CreateScope();
-            var handler = scope.ServiceProvider.GetRequiredService<GetChinaContainerListHandler>();
-            var result = await handler.HandleAsync(new GetChinaContainerListQuery
-            {
-                CompanyId = DatabaseSeeder.DefaultCompanyId,
-                BranchId = DatabaseSeeder.DefaultBranchId,
-                Page = 1,
-                PageSize = 500
-            });
-
-            if (result.IsSuccess && result.Value?.Items is not null)
-            {
-                _containerNames = result.Value.Items.ToDictionary(
-                    c => c.Id,
-                    c => c.ContainerNumber);
-            }
-        }
-        catch
-        {
-            // Container labels are optional for the list.
-        }
-    }
 
     private async Task LoadInvoicesAsync(string search)
     {
@@ -191,8 +149,8 @@ public sealed class SalesInvoiceListPageControl : UserControl
             var rows = result.Value.Items
                 .Select(dto => SalesInvoiceListRow.FromDto(
                     dto,
-                    _warehouseNames.GetValueOrDefault(dto.WarehouseId, "—"),
-                    _containerNames.GetValueOrDefault(dto.ChinaContainerId, "—")))
+                    dto.WarehouseName,
+                    dto.ContainerNumber))
                 .Cast<object>()
                 .ToList();
 

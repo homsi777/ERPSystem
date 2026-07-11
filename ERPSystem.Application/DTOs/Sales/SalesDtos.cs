@@ -3,7 +3,7 @@ using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.DTOs.Sales;
 
-public sealed class SalesInvoiceDto
+public sealed record SalesInvoiceDto
 {
     public Guid Id { get; init; }
     public string InvoiceNumber { get; init; } = "";
@@ -11,7 +11,9 @@ public sealed class SalesInvoiceDto
     public Guid CustomerId { get; init; }
     public string CustomerName { get; init; } = "";
     public Guid WarehouseId { get; init; }
+    public string WarehouseName { get; init; } = "";
     public Guid ChinaContainerId { get; init; }
+    public string ContainerNumber { get; init; } = "";
     public DateTime InvoiceDate { get; init; }
     public PaymentType PaymentType { get; init; }
     public decimal PartialPaymentAmount { get; init; }

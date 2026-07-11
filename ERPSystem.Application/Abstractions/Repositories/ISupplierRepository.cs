@@ -10,6 +10,10 @@ public interface ISupplierRepository
         Guid companyId,
         string? search = null,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, string>> GetNameLookupAsync(
+        Guid companyId,
+        IEnumerable<Guid>? supplierIds = null,
+        CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<SupplierAggregate> Items, int TotalCount)> GetPagedAsync(
         Guid companyId,
         string? search,

@@ -25,8 +25,9 @@ public sealed class GetChinaContainerListHandler(
         var containers = await containerRepository.GetListAsync(
             query.CompanyId, query.BranchId, query.Status, cancellationToken);
 
-        var suppliers = await supplierRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
-        var supplierNames = suppliers.ToDictionary(s => s.Supplier.Id, s => s.Supplier.Name);
+        var supplierIds = containers.Select(c => c.SupplierId).Distinct();
+        var supplierNames = await supplierRepository.GetNameLookupAsync(
+            query.CompanyId, supplierIds, cancellationToken);
 
         var items = containers
             .Skip((query.Page - 1) * query.PageSize)
@@ -127,31 +128,63 @@ public sealed class GetWarehouseOperationsCenterHandler(
 
 public sealed class GetSalesInvoiceListHandler(
     ISalesInvoiceRepository invoiceRepository,
-    ICustomerRepository customerRepository)
+    ICustomerRepository customerRepository,
+    IWarehouseRepository warehouseRepository,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetSalesInvoiceListQuery, ApplicationResult<PagedResult<SalesInvoiceDto>>>
 {
     public async Task<ApplicationResult<PagedResult<SalesInvoiceDto>>> HandleAsync(
         GetSalesInvoiceListQuery query,
         CancellationToken cancellationToken = default)
     {
-        var invoices = await invoiceRepository.GetListAsync(
-            query.CompanyId, query.BranchId, query.Status, query.CustomerId, cancellationToken);
+        var (invoices, totalCount) = await invoiceRepository.GetPagedListAsync(
+            query.CompanyId,
+            query.BranchId,
+            query.Status,
+            query.CustomerId,
+            query.Page,
+            query.PageSize,
+            cancellationToken);
 
-        var customers = await customerRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
-        var customerNames = customers.ToDictionary(c => c.Customer.Id, c => c.Customer.NameAr);
+        if (invoices.Count == 0)
+        {
+            return ApplicationResult<PagedResult<SalesInvoiceDto>>.Success(new PagedResult<SalesInvoiceDto>
+            {
+                Items = [],
+                TotalCount = totalCount,
+                Page = query.Page,
+                PageSize = query.PageSize
+            });
+        }
+
+        var customerNames = await customerRepository.GetNameLookupAsync(
+            query.CompanyId,
+            invoices.Select(i => i.CustomerId),
+            cancellationToken);
+        var warehouseNames = await warehouseRepository.GetNameLookupAsync(
+            invoices.Select(i => i.WarehouseId),
+            cancellationToken);
+        var containerNumbers = await containerRepository.GetNumberLookupAsync(
+            query.CompanyId,
+            invoices.Select(i => i.ChinaContainerId),
+            cancellationToken);
 
         var items = invoices
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(i => SalesInvoiceMapper.ToDto(
-                i,
-                customerNames.GetValueOrDefault(i.CustomerId, "")))
+            .Select(i =>
+            {
+                var dto = SalesInvoiceMapper.ToDto(i, customerNames.GetValueOrDefault(i.CustomerId, ""));
+                return dto with
+                {
+                    WarehouseName = warehouseNames.GetValueOrDefault(i.WarehouseId, "—"),
+                    ContainerNumber = containerNumbers.GetValueOrDefault(i.ChinaContainerId, "—")
+                };
+            })
             .ToList();
 
         return ApplicationResult<PagedResult<SalesInvoiceDto>>.Success(new PagedResult<SalesInvoiceDto>
         {
             Items = items,
-            TotalCount = invoices.Count,
+            TotalCount = totalCount,
             Page = query.Page,
             PageSize = query.PageSize
         });

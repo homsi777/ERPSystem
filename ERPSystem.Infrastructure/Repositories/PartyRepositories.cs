@@ -32,6 +32,23 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         return entities.Select(CustomerMapper.ToAggregate).ToList();
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNameLookupAsync(
+        Guid companyId,
+        IEnumerable<Guid>? customerIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Customers.AsNoTracking().Where(c => c.CompanyId == companyId);
+        if (customerIds is not null)
+        {
+            var ids = customerIds.Distinct().ToList();
+            if (ids.Count == 0)
+                return new Dictionary<Guid, string>();
+            query = query.Where(c => ids.Contains(c.Id));
+        }
+
+        return await query.ToDictionaryAsync(c => c.Id, c => c.NameAr, cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<CustomerAggregate> Items, int TotalCount)> GetPagedAsync(
         Guid companyId,
         string? search,
@@ -114,6 +131,23 @@ internal sealed class SupplierRepository(ErpDbContext context) : ISupplierReposi
 
         var entities = await query.OrderBy(s => s.Code).ToListAsync(cancellationToken);
         return entities.Select(SupplierMapper.ToAggregate).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNameLookupAsync(
+        Guid companyId,
+        IEnumerable<Guid>? supplierIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Suppliers.AsNoTracking().Where(s => s.CompanyId == companyId);
+        if (supplierIds is not null)
+        {
+            var ids = supplierIds.Distinct().ToList();
+            if (ids.Count == 0)
+                return new Dictionary<Guid, string>();
+            query = query.Where(s => ids.Contains(s.Id));
+        }
+
+        return await query.ToDictionaryAsync(s => s.Id, s => s.Name, cancellationToken);
     }
 
     public async Task<(IReadOnlyList<SupplierAggregate> Items, int TotalCount)> GetPagedAsync(

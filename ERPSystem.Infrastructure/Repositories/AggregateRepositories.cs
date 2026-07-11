@@ -32,10 +32,23 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             query = query.Where(c => c.Status == (int)status.Value);
 
         var headers = await query.OrderByDescending(c => c.ShipmentDate).ToListAsync(cancellationToken);
-        var results = new List<ContainerAggregate>();
-        foreach (var header in headers)
-            results.Add(await LoadAggregateFromHeaderAsync(header, cancellationToken));
-        return results;
+        return headers
+            .Select(h => ContainerMapper.ToAggregate(h, [], null, []))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNumberLookupAsync(
+        Guid companyId,
+        IEnumerable<Guid> containerIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = containerIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await context.Containers.AsNoTracking()
+            .Where(c => c.CompanyId == companyId && ids.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.ContainerNumber, cancellationToken);
     }
 
     public async Task AddAsync(ContainerAggregate aggregate, CancellationToken cancellationToken = default)
@@ -240,10 +253,28 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         if (customerId.HasValue) query = query.Where(i => i.CustomerId == customerId.Value);
 
         var headers = await query.OrderByDescending(i => i.InvoiceDate).ToListAsync(cancellationToken);
-        var list = new List<SalesInvoiceAggregate>();
-        foreach (var header in headers)
-            list.Add(await LoadFromHeaderAsync(header, cancellationToken));
-        return list;
+        return await MapHeadersToListAggregatesAsync(headers, cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<SalesInvoiceAggregate> Items, int TotalCount)> GetPagedListAsync(
+        Guid companyId,
+        Guid? branchId,
+        SalesInvoiceStatus? status,
+        Guid? customerId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = BuildListQuery(companyId, branchId, status, customerId);
+        var total = await query.CountAsync(cancellationToken);
+        var headers = await query
+            .OrderByDescending(i => i.InvoiceDate)
+            .Skip(Math.Max(0, page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = await MapHeadersToListAggregatesAsync(headers, cancellationToken);
+        return (items, total);
     }
 
     public async Task<IReadOnlyList<SalesInvoiceAggregate>> GetDetailingQueueAsync(
@@ -255,10 +286,7 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             .OrderBy(i => i.SentToWarehouseAt)
             .ToListAsync(cancellationToken);
 
-        var list = new List<SalesInvoiceAggregate>();
-        foreach (var header in headers)
-            list.Add(await LoadFromHeaderAsync(header, cancellationToken));
-        return list;
+        return await MapHeadersToListAggregatesAsync(headers, cancellationToken);
     }
 
     public async Task AddAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default)
@@ -300,6 +328,45 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         header.UpdatedAt = DateTime.UtcNow;
 
         await SyncChildrenAsync(aggregate, cancellationToken);
+    }
+
+    private IQueryable<SalesInvoiceEntity> BuildListQuery(
+        Guid companyId,
+        Guid? branchId,
+        SalesInvoiceStatus? status,
+        Guid? customerId)
+    {
+        var query = context.SalesInvoices.AsNoTracking().Where(i => i.CompanyId == companyId);
+        if (branchId.HasValue) query = query.Where(i => i.BranchId == branchId.Value);
+        if (status.HasValue) query = query.Where(i => i.Status == (int)status.Value);
+        if (customerId.HasValue) query = query.Where(i => i.CustomerId == customerId.Value);
+        return query;
+    }
+
+    private async Task<IReadOnlyList<SalesInvoiceAggregate>> MapHeadersToListAggregatesAsync(
+        IReadOnlyList<SalesInvoiceEntity> headers,
+        CancellationToken cancellationToken)
+    {
+        if (headers.Count == 0)
+            return [];
+
+        var invoiceIds = headers.Select(h => h.Id).ToList();
+        var allItems = await context.SalesInvoiceItems.AsNoTracking()
+            .Where(i => invoiceIds.Contains(i.SalesInvoiceId))
+            .OrderBy(i => i.LineNumber)
+            .ToListAsync(cancellationToken);
+        var itemsByInvoice = allItems
+            .GroupBy(i => i.SalesInvoiceId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<SalesInvoiceItemEntity>)g.ToList());
+
+        return headers
+            .Select(h => SalesInvoiceMapper.ToAggregate(
+                h,
+                itemsByInvoice.GetValueOrDefault(h.Id) ?? [],
+                [],
+                null,
+                []))
+            .ToList();
     }
 
     private async Task<SalesInvoiceAggregate?> LoadAsync(Guid? id, string? number, CancellationToken ct)

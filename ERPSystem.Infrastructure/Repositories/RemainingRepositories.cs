@@ -41,10 +41,22 @@ internal sealed class WarehouseRepository(ErpDbContext context) : IWarehouseRepo
         var warehouses = await context.Warehouses.AsNoTracking()
             .Where(w => w.BranchId == branchId).OrderBy(w => w.Code).ToListAsync(cancellationToken);
 
-        var list = new List<WarehouseAggregate>();
-        foreach (var w in warehouses)
-            list.Add(await GetByIdAsync(w.Id, cancellationToken) ?? throw new InvalidOperationException());
-        return list;
+        return warehouses
+            .Select(w => WarehouseMapper.ToAggregate(w, [], []))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNameLookupAsync(
+        IEnumerable<Guid> warehouseIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = warehouseIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await context.Warehouses.AsNoTracking()
+            .Where(w => ids.Contains(w.Id))
+            .ToDictionaryAsync(w => w.Id, w => w.NameAr, cancellationToken);
     }
 
     public async Task AddAsync(WarehouseAggregate aggregate, CancellationToken cancellationToken = default)

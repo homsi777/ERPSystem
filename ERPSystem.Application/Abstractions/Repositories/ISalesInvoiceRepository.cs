@@ -13,6 +13,14 @@ public interface ISalesInvoiceRepository
         SalesInvoiceStatus? status = null,
         Guid? customerId = null,
         CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<SalesInvoiceAggregate> Items, int TotalCount)> GetPagedListAsync(
+        Guid companyId,
+        Guid? branchId,
+        SalesInvoiceStatus? status,
+        Guid? customerId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SalesInvoiceAggregate>> GetDetailingQueueAsync(
         Guid warehouseId,
         CancellationToken cancellationToken = default);
