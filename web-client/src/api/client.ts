@@ -47,6 +47,52 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return sendRequest<T>(path, options, true);
 }
 
+export async function apiBlobRequest(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const token = options.skipAuth ? null : authController?.getAccessToken() ?? null;
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: buildHeaders(options, token),
+      body: serializeBody(options.body)
+    });
+  } catch {
+    throw new ApiError(0, {
+      code: 'NETWORK_ERROR',
+      message: 'تعذّر الاتصال بالخادم لتنزيل المستند.',
+      validationErrors: []
+    });
+  }
+
+  if (response.status === 401 && authController && !options.skipAuth) {
+    const refreshedToken = await authController.refreshAccessToken();
+    if (refreshedToken) {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: buildHeaders(options, refreshedToken),
+        body: serializeBody(options.body)
+      });
+    } else {
+      authController.clearAuth();
+      window.dispatchEvent(new Event('erp-auth-expired'));
+    }
+  }
+
+  if (response.ok) return response.blob();
+
+  const fallback: ApiErrorResponse = {
+    code: `HTTP_${response.status}`,
+    message: 'تعذّر تنزيل المستند من الخادم.',
+    validationErrors: []
+  };
+  try {
+    throw new ApiError(response.status, (await response.json()) as ApiErrorResponse);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(response.status, fallback);
+  }
+}
+
 async function sendRequest<T>(path: string, options: RequestOptions, allowRefresh: boolean): Promise<T> {
   const token = options.skipAuth ? null : authController?.getAccessToken() ?? null;
   let response: Response;

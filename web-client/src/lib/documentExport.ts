@@ -67,7 +67,7 @@ function buildPdfBlob(payload: DocumentExportPayload): Blob {
   return doc.output('blob');
 }
 
-function triggerDownload(blob: Blob, fileName: string) {
+export function downloadPdfBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -80,7 +80,30 @@ function triggerDownload(blob: Blob, fileName: string) {
 
 export async function exportDocumentPdf(payload: DocumentExportPayload): Promise<void> {
   const blob = buildPdfBlob(payload);
-  triggerDownload(blob, payload.fileName);
+  downloadPdfBlob(blob, payload.fileName);
+}
+
+export async function sharePdfBlobWhatsApp(
+  blob: Blob,
+  fileName: string,
+  title: string,
+  shareText: string
+): Promise<'shared' | 'opened'> {
+  const safeName = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+  const file = new File([blob], safeName, { type: 'application/pdf' });
+
+  if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title });
+      return 'shared';
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return 'shared';
+    }
+  }
+
+  downloadPdfBlob(blob, safeName);
+  window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank', 'noopener,noreferrer');
+  return 'opened';
 }
 
 export async function shareDocumentWhatsApp(payload: DocumentExportPayload): Promise<'shared' | 'opened' | 'downloaded'> {
@@ -118,7 +141,7 @@ export async function shareDocumentWhatsApp(payload: DocumentExportPayload): Pro
   }
 
   // Fallback: download PDF then open WhatsApp with a text message.
-  triggerDownload(blob, safeName);
+  downloadPdfBlob(blob, safeName);
   const waUrl = `https://wa.me/?text=${encodeURIComponent(payload.shareText)}`;
   window.open(waUrl, '_blank', 'noopener,noreferrer');
   return 'opened';

@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import {
+  downloadPdfBlob,
   exportDocumentPdf,
+  sharePdfBlobWhatsApp,
   shareDocumentWhatsApp,
   type DocumentExportPayload
 } from '../lib/documentExport.ts';
 
 type DocumentActionsProps = {
   payload: DocumentExportPayload | null;
+  pdfSource?: { fileName: string; load: () => Promise<Blob> };
   onToast?: (message: string, tone?: 'success' | 'error') => void;
 };
 
-export function DocumentActions({ payload, onToast }: DocumentActionsProps) {
+export function DocumentActions({ payload, pdfSource, onToast }: DocumentActionsProps) {
   const [busy, setBusy] = useState<'pdf' | 'wa' | null>(null);
 
   if (!payload) {
@@ -23,7 +26,11 @@ export function DocumentActions({ payload, onToast }: DocumentActionsProps) {
     }
     setBusy('pdf');
     try {
-      await exportDocumentPdf(payload);
+      if (pdfSource) {
+        downloadPdfBlob(await pdfSource.load(), pdfSource.fileName);
+      } else {
+        await exportDocumentPdf(payload);
+      }
       onToast?.('تم تجهيز ملف PDF للتنزيل.', 'success');
     } catch {
       onToast?.('تعذّر تصدير PDF.', 'error');
@@ -38,7 +45,14 @@ export function DocumentActions({ payload, onToast }: DocumentActionsProps) {
     }
     setBusy('wa');
     try {
-      const result = await shareDocumentWhatsApp(payload);
+      const result = pdfSource
+        ? await sharePdfBlobWhatsApp(
+            await pdfSource.load(),
+            pdfSource.fileName,
+            payload.title,
+            payload.shareText
+          )
+        : await shareDocumentWhatsApp(payload);
       if (result === 'shared') {
         onToast?.('تم فتح المشاركة — اختر واتساب إن ظهر.', 'success');
       } else if (result === 'opened') {

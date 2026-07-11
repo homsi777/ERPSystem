@@ -7,6 +7,7 @@ import {
   cancelSalesInvoice,
   createSalesInvoice,
   getSalesInvoice,
+  getSalesInvoicePdf,
   getSalesInvoices,
   getSalesWarehouseStock,
   getTaxCodes,
@@ -283,6 +284,10 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
 
           <DocumentActions
             payload={exportPayload}
+            pdfSource={{
+              fileName: `sales-invoice-${invoice.invoiceNumber}.pdf`,
+              load: () => getSalesInvoicePdf(invoice.id)
+            }}
             onToast={(message, tone = 'success') => setToast({ tone, message })}
           />
 

@@ -14,7 +14,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.17" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.6" />
+    <PackageReference Include="QuestPDF" Version="2024.12.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Fonts\NotoSansArabic.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\66.png" Link="Assets\Brand\company-logo.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
 using ERPSystem.Api.Mapping;
+using ERPSystem.Api.Services;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Sales;
@@ -23,6 +24,7 @@ public static class SalesEndpoints
 
         group.MapGet("invoices", GetInvoiceListAsync).WithName("GetSalesInvoiceList");
         group.MapGet("invoices/{invoiceId:guid}", GetInvoiceDetailsAsync).WithName("GetSalesInvoiceDetails");
+        group.MapGet("invoices/{invoiceId:guid}/pdf", GetInvoicePdfAsync).WithName("GetSalesInvoicePdf");
         group.MapPost("invoices", CreateInvoiceAsync).WithName("CreateSalesInvoice");
         group.MapPost("invoices/{invoiceId:guid}/send-to-warehouse", SendToWarehouseAsync).WithName("SendSalesInvoiceToWarehouse");
         group.MapPost("invoices/{invoiceId:guid}/approve", ApproveInvoiceAsync).WithName("ApproveSalesInvoice");
@@ -72,6 +74,30 @@ public static class SalesEndpoints
     {
         var result = await handler.HandleAsync(new GetSalesInvoiceOperationsCenterQuery { InvoiceId = invoiceId }, cancellationToken);
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetInvoicePdfAsync(
+        Guid invoiceId,
+        GetSalesInvoiceOperationsCenterHandler handler,
+        SalesInvoicePdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(
+            new GetSalesInvoiceOperationsCenterQuery { InvoiceId = invoiceId },
+            cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result, operations =>
+        {
+            var bytes = pdfService.Generate(operations);
+            var fileName = $"sales-invoice-{SanitizeFileName(operations.Invoice.InvoiceNumber)}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Concat(value.Select(ch => invalid.Contains(ch) ? '-' : ch));
     }
 
     private static async Task<IResult> CreateInvoiceAsync(

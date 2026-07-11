@@ -16,6 +16,7 @@ builder.Services.AddApplication();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddScoped<ICurrentBranchService, HttpContextBranchService>();
+builder.Services.AddSingleton<SalesInvoicePdfService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 

@@ -1,4 +1,4 @@
-import { apiRequest } from './client.ts';
+import { apiBlobRequest, apiRequest } from './client.ts';
 import type {
   CalculateSalesInvoiceTaxRequest,
   CreateSalesInvoiceRequest,
@@ -35,6 +35,12 @@ export function getSalesInvoices(params: SalesInvoiceListParams) {
 
 export function getSalesInvoice(invoiceId: string) {
   return apiRequest<SalesInvoiceOperationsCenterDto>(`/api/v1/sales/invoices/${invoiceId}`);
+}
+
+export function getSalesInvoicePdf(invoiceId: string) {
+  return apiBlobRequest(`/api/v1/sales/invoices/${invoiceId}/pdf`, {
+    headers: { Accept: 'application/pdf' }
+  });
 }
 
 export function createSalesInvoice(request: CreateSalesInvoiceRequest) {
