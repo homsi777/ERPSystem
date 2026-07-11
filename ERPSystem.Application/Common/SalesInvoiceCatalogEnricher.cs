@@ -1,6 +1,7 @@
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Entities.Catalog;
 
 namespace ERPSystem.Application.Common;
 
@@ -16,6 +17,17 @@ public static class SalesInvoiceCatalogEnricher
 
         var fabrics = await catalog.GetItemsByIdsAsync(lines.Select(l => l.FabricItemId), cancellationToken);
         var colors = await catalog.GetColorsByIdsAsync(lines.Select(l => l.FabricColorId), cancellationToken);
+        return EnrichLines(lines, fabrics, colors);
+    }
+
+    public static IReadOnlyList<SalesInvoiceLineDto> EnrichLines(
+        IReadOnlyList<SalesInvoiceLineDto> lines,
+        IReadOnlyDictionary<Guid, FabricItem> fabrics,
+        IReadOnlyDictionary<Guid, FabricColor> colors)
+    {
+        if (lines.Count == 0)
+            return lines;
+
         var enriched = new List<SalesInvoiceLineDto>(lines.Count);
         foreach (var line in lines)
         {
@@ -55,24 +67,37 @@ public static class SalesInvoiceCatalogEnricher
         if (rolls.Count == 0)
             return rolls;
 
-        var itemsById = aggregate.Items.ToDictionary(i => i.Id);
         var fabrics = await catalog.GetItemsByIdsAsync(aggregate.Items.Select(i => i.FabricItemId), cancellationToken);
         var colors = await catalog.GetColorsByIdsAsync(aggregate.Items.Select(i => i.FabricColorId), cancellationToken);
+        var containerIds = aggregate.Items
+            .Select(i => i.ChinaContainerId)
+            .Concat(rolls.Select(r => r.ChinaContainerId))
+            .Where(id => id != Guid.Empty)
+            .Distinct();
+        var containerLookup = await containerRepository.GetNumberLookupAsync(
+            aggregate.CompanyId,
+            containerIds,
+            cancellationToken);
+        return EnrichRolls(aggregate, rolls, fabrics, colors, containerLookup);
+    }
+
+    public static IReadOnlyList<WarehouseDetailingRollDto> EnrichRolls(
+        SalesInvoiceAggregate aggregate,
+        IReadOnlyList<WarehouseDetailingRollDto> rolls,
+        IReadOnlyDictionary<Guid, FabricItem> fabrics,
+        IReadOnlyDictionary<Guid, FabricColor> colors,
+        IReadOnlyDictionary<Guid, string> containerLookup)
+    {
+        if (rolls.Count == 0)
+            return rolls;
+
+        var itemsById = aggregate.Items.ToDictionary(i => i.Id);
         var enriched = new List<WarehouseDetailingRollDto>(rolls.Count);
-        var containerDisplayCache = new Dictionary<Guid, string>();
 
-        async Task<string> ResolveContainerDisplayAsync(Guid containerId)
-        {
-            if (containerId == Guid.Empty)
-                return "—";
-            if (containerDisplayCache.TryGetValue(containerId, out var cached))
-                return cached;
-
-            var container = await containerRepository.GetByIdAsync(containerId, cancellationToken);
-            var display = container?.ContainerNumber.Value ?? "—";
-            containerDisplayCache[containerId] = display;
-            return display;
-        }
+        string ResolveContainerDisplay(Guid containerId) =>
+            containerId == Guid.Empty
+                ? "—"
+                : containerLookup.TryGetValue(containerId, out var number) ? number : "—";
 
         foreach (var roll in rolls)
         {
@@ -91,7 +116,7 @@ public static class SalesInvoiceCatalogEnricher
                     LengthMeters = roll.LengthMeters,
                     HasValidLength = roll.HasValidLength,
                     ChinaContainerId = roll.ChinaContainerId,
-                    ContainerDisplay = await ResolveContainerDisplayAsync(roll.ChinaContainerId),
+                    ContainerDisplay = ResolveContainerDisplay(roll.ChinaContainerId),
                     DraftRollNumber = roll.DraftRollNumber,
                     DraftLengthMeters = roll.DraftLengthMeters
                 });
@@ -113,7 +138,7 @@ public static class SalesInvoiceCatalogEnricher
                 LengthMeters = roll.LengthMeters,
                 HasValidLength = roll.HasValidLength,
                 ChinaContainerId = item.ChinaContainerId,
-                ContainerDisplay = await ResolveContainerDisplayAsync(item.ChinaContainerId),
+                ContainerDisplay = ResolveContainerDisplay(item.ChinaContainerId),
                 DraftRollNumber = roll.DraftRollNumber,
                 DraftLengthMeters = roll.DraftLengthMeters
             });

@@ -1,6 +1,7 @@
 ﻿using ERPSystem.Core;
 using ERPSystem.Application.DependencyInjection;
 using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Application.Diagnostics;
 using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Services;
@@ -18,6 +19,7 @@ using ERPSystem.Services.Reports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.IO;
 using System.Windows;
 
 namespace ERPSystem;
@@ -103,13 +105,39 @@ public partial class App : System.Windows.Application
             AppServices.Initialize(provider);
 
             var profiler = provider.GetRequiredService<IWpfPerformanceProfiler>();
-            using (var startupScope = profiler.BeginScreenLoad("App.Startup"))
-            {
-                using (startupScope.MeasureDataLoad())
-                    await provider.MigrateAndSeedAsync();
 
-                await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
-                await ERPSystem.Services.Settings.ReferenceDataCatalog.RefreshAsync();
+            using (var migrateScope = profiler.BeginScreenLoad("App.Startup.Migrate"))
+            {
+                using (migrateScope.MeasureDataLoad())
+                    await provider.MigrateAsync();
+            }
+
+            using (var seedScope = profiler.BeginScreenLoad("App.Startup.Seed"))
+            {
+                using (seedScope.MeasureDataLoad())
+                    await provider.SeedOnlyAsync();
+            }
+
+            using (var healthScope = profiler.BeginScreenLoad("App.Startup.AccountingHealth"))
+            {
+                using (healthScope.MeasureDataLoad())
+                {
+                    using var scope = provider.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<ERPSystem.Infrastructure.Persistence.ErpDbContext>();
+                    await ERPSystem.Infrastructure.Services.AccountingHealth.ValidateAsync(context);
+                }
+            }
+
+            using (var currencyScope = profiler.BeginScreenLoad("App.Startup.CurrencyCatalog"))
+            {
+                using (currencyScope.MeasureDataLoad())
+                    await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
+            }
+
+            using (var referenceScope = profiler.BeginScreenLoad("App.Startup.ReferenceDataCatalog"))
+            {
+                using (referenceScope.MeasureDataLoad())
+                    await ERPSystem.Services.Settings.ReferenceDataCatalog.RefreshAsync();
             }
 
             using (var windowScope = profiler.BeginScreenLoad("App.MainWindowConstruction"))
@@ -151,10 +179,42 @@ public partial class App : System.Windows.Application
 
         _sshTunnel?.Dispose();
         _sshTunnel = null;
-        base.OnExit(e);
 
         if (!string.IsNullOrWhiteSpace(sessionLog))
-            _ = Task.Run(() => WpfSessionSummaryAnalyzer.TryWriteSummary(sessionLog));
+        {
+            WpfSessionSummaryAnalyzer.TryWriteSummary(sessionLog);
+            WriteStartupPhaseBreakdown(sessionLog);
+        }
+
+        base.OnExit(e);
+    }
+
+    private static void WriteStartupPhaseBreakdown(string sessionLogPath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(sessionLogPath);
+            if (string.IsNullOrWhiteSpace(dir))
+                return;
+
+            var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            var path = Path.Combine(dir, $"startup-phase-breakdown-{stamp}.json");
+            var payload = new
+            {
+                SessionLog = sessionLogPath,
+                GeneratedUtc = DateTime.UtcNow,
+                Phases = StartupPhaseRecorder.GetTimings().Select(p => new
+                {
+                    p.Phase,
+                    TotalMs = Math.Round(p.TotalMs, 1)
+                })
+            };
+            File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(payload, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch
+        {
+            // Best-effort only.
+        }
     }
 
     private static Window CreateConnectionStatusWindow() => new()

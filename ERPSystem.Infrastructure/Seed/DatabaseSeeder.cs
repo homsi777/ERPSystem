@@ -1,5 +1,6 @@
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
+using ERPSystem.Application.Diagnostics;
 using ERPSystem.Domain.Common;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Persistence;
@@ -38,26 +39,26 @@ public static class DatabaseSeeder
         IPasswordHasher passwordHasher,
         CancellationToken cancellationToken = default)
     {
-        await EnsureSchemasAsync(context, cancellationToken);
-        await EnsureAdminPasswordAsync(context, passwordHasher, logger, cancellationToken);
-        await EnsureChinaImportReferenceDataAsync(context, cancellationToken);
-        await EnsureIntegratedAccountingAccountsAsync(context, cancellationToken);
-        await EnsureCashboxGlLinksAsync(context, cancellationToken);
-        await EnsureSalesTaxConfigurationAsync(context, cancellationToken);
-        await EnsureJournalBooksAsync(context, cancellationToken);
-        await EnsureAccountingPermissionsAsync(context, cancellationToken);
-        await EnsureSupplierPermissionsAsync(context, cancellationToken);
-        await EnsurePurchasePermissionsAsync(context, cancellationToken);
-        await EnsureCustomerPermissionsAsync(context, cancellationToken);
-        await EnsureSalesPermissionsAsync(context, cancellationToken);
-        await EnsureFinancePermissionsAsync(context, cancellationToken);
-        await EnsureOpeningBalancePermissionsAsync(context, cancellationToken);
-        await EnsureContainerPermissionsAsync(context, cancellationToken);
-        await EnsureWarehousePermissionsAsync(context, cancellationToken);
-        await EnsureHrPermissionsAsync(context, cancellationToken);
-        await EnsureDefaultCurrencyAsync(context, cancellationToken);
-        await ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken);
-        await CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken);
+        await StartupPhaseRecorder.RunAsync("Seed.Schemas", () => EnsureSchemasAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.AdminPassword", () => EnsureAdminPasswordAsync(context, passwordHasher, logger, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.ChinaImport", () => EnsureChinaImportReferenceDataAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.AccountingAccounts", () => EnsureIntegratedAccountingAccountsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.CashboxGlLinks", () => EnsureCashboxGlLinksAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.SalesTax", () => EnsureSalesTaxConfigurationAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.JournalBooks", () => EnsureJournalBooksAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.AccountingPermissions", () => EnsureAccountingPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.SupplierPermissions", () => EnsureSupplierPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.PurchasePermissions", () => EnsurePurchasePermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.CustomerPermissions", () => EnsureCustomerPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.SalesPermissions", () => EnsureSalesPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.FinancePermissions", () => EnsureFinancePermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.OpeningBalancePermissions", () => EnsureOpeningBalancePermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.ContainerPermissions", () => EnsureContainerPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.WarehousePermissions", () => EnsureWarehousePermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.HrPermissions", () => EnsureHrPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.DefaultCurrency", () => EnsureDefaultCurrencyAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.ExpenseModule", () => ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.CapitalModule", () => CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken));
 
         if (await context.Companies.AnyAsync(cancellationToken))
         {
@@ -258,23 +259,6 @@ public static class DatabaseSeeder
             (AccountingAccountIds.RootExpense, "5000", "المصروفات", "Expenses", "Expense", false)
         };
 
-        foreach (var (id, code, nameAr, nameEn, type, postable) in roots)
-        {
-            if (await context.Accounts.AnyAsync(a => a.Id == id, cancellationToken))
-                continue;
-
-            context.Accounts.Add(new AccountEntity
-            {
-                Id = id,
-                CompanyId = DefaultCompanyId,
-                Code = code,
-                NameAr = nameAr,
-                NameEn = nameEn,
-                AccountType = type,
-                IsPostable = postable
-            });
-        }
-
         var accounts = new (Guid Id, string Code, string NameAr, string NameEn, string Type, Guid? ParentId)[]
         {
             (AccountingAccountIds.CashUsd, "1010", "الصندوق — USD", "Cash USD", "Asset", AccountingAccountIds.RootAssets),
@@ -292,10 +276,31 @@ public static class DatabaseSeeder
             (AccountingAccountIds.RoundingDifference, "5290", "فروقات تقريب", "Rounding Differences", "Expense", AccountingAccountIds.RootExpense)
         };
 
+        var allIds = roots.Select(r => r.Id).Concat(accounts.Select(a => a.Id)).ToHashSet();
+        var existing = await context.Accounts
+            .Where(a => allIds.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id, cancellationToken);
+
+        foreach (var (id, code, nameAr, nameEn, type, postable) in roots)
+        {
+            if (existing.ContainsKey(id))
+                continue;
+
+            context.Accounts.Add(new AccountEntity
+            {
+                Id = id,
+                CompanyId = DefaultCompanyId,
+                Code = code,
+                NameAr = nameAr,
+                NameEn = nameEn,
+                AccountType = type,
+                IsPostable = postable
+            });
+        }
+
         foreach (var (id, code, nameAr, nameEn, type, parentId) in accounts)
         {
-            var existing = await context.Accounts.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
-            if (existing is null)
+            if (!existing.TryGetValue(id, out var row))
             {
                 context.Accounts.Add(new AccountEntity
                 {
@@ -309,9 +314,9 @@ public static class DatabaseSeeder
                     IsPostable = true
                 });
             }
-            else if (existing.ParentId != parentId)
+            else if (row.ParentId != parentId)
             {
-                existing.ParentId = parentId;
+                row.ParentId = parentId;
             }
         }
 
@@ -355,9 +360,15 @@ public static class DatabaseSeeder
             (JournalBookIds.Cash, "CSH", "يومية نقدية", "Cash Journal", JournalBookType.Cash)
         };
 
+        var bookIds = books.Select(b => b.Id).ToArray();
+        var existingIds = await context.JournalBooks
+            .Where(b => bookIds.Contains(b.Id))
+            .Select(b => b.Id)
+            .ToHashSetAsync(cancellationToken);
+
         foreach (var (id, code, nameAr, nameEn, type) in books)
         {
-            if (await context.JournalBooks.AnyAsync(b => b.Id == id, cancellationToken))
+            if (existingIds.Contains(id))
                 continue;
 
             context.JournalBooks.Add(new JournalBookEntity
@@ -439,7 +450,7 @@ public static class DatabaseSeeder
         }
     }
 
-    private static async Task EnsurePermissionsAsync(
+    internal static async Task EnsurePermissionsAsync(
         ErpDbContext context,
         IEnumerable<(string Code, string Module, string Action)> permissions,
         CancellationToken cancellationToken)

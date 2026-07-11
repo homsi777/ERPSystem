@@ -31,6 +31,9 @@ public interface IJournalEntryRepository
     Task<IReadOnlyList<JournalEntryListRow>> GetBySourceIdAsync(
         Guid sourceId,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AccountingAggregate>> GetAggregatesBySourceIdAsync(
+        Guid sourceId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class JournalEntryListRow

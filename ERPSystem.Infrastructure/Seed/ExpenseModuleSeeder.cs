@@ -32,7 +32,17 @@ internal static class ExpenseModuleSeeder
     {
         await EnsureCategoriesAsync(context, companyId, cancellationToken);
         await EnsureCostCentersAsync(context, companyId, cancellationToken);
-        await EnsurePermissionsAsync(context, adminRoleId, cancellationToken);
+        await DatabaseSeeder.EnsurePermissionsAsync(context,
+        [
+            ("expenses.view", "expenses", "view"),
+            ("expenses.create", "expenses", "create"),
+            ("expenses.edit", "expenses", "edit"),
+            ("expenses.delete", "expenses", "delete"),
+            ("expenses.approve", "expenses", "approve"),
+            ("expenses.export", "expenses", "export"),
+            ("expenses.print", "expenses", "print"),
+            ("expenses.archive", "expenses", "archive")
+        ], cancellationToken);
     }
 
     private static async Task EnsureCategoriesAsync(
@@ -106,53 +116,4 @@ internal static class ExpenseModuleSeeder
         IsActive = true,
         CreatedAt = DateTime.UtcNow
     };
-
-    private static async Task EnsurePermissionsAsync(
-        ErpDbContext context,
-        Guid adminRoleId,
-        CancellationToken cancellationToken)
-    {
-        var codes = new[]
-        {
-            ("expenses.view", "expenses", "view"),
-            ("expenses.create", "expenses", "create"),
-            ("expenses.edit", "expenses", "edit"),
-            ("expenses.delete", "expenses", "delete"),
-            ("expenses.approve", "expenses", "approve"),
-            ("expenses.export", "expenses", "export"),
-            ("expenses.print", "expenses", "print"),
-            ("expenses.archive", "expenses", "archive")
-        };
-
-        foreach (var (code, module, action) in codes)
-        {
-            var permission = await context.Permissions
-                .FirstOrDefaultAsync(p => p.Code == code, cancellationToken);
-
-            if (permission is null)
-            {
-                permission = new PermissionEntity
-                {
-                    Id = Guid.NewGuid(),
-                    Code = code,
-                    Module = module,
-                    Action = action
-                };
-                context.Permissions.Add(permission);
-            }
-
-            if (!await context.RolePermissions.AnyAsync(
-                    rp => rp.RoleId == adminRoleId && rp.PermissionId == permission.Id,
-                    cancellationToken))
-            {
-                context.RolePermissions.Add(new RolePermissionEntity
-                {
-                    RoleId = adminRoleId,
-                    PermissionId = permission.Id
-                });
-            }
-        }
-
-        await context.SaveChangesAsync(cancellationToken);
-    }
 }

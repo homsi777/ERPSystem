@@ -1,5 +1,6 @@
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.DependencyInjection;
+using ERPSystem.Application.Diagnostics;
 using ERPSystem.Application.Results;
 using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Infrastructure.DependencyInjection;
@@ -40,57 +41,44 @@ EfQueryTelemetry.EnsureStarted();
 
 var profiler = provider.GetRequiredService<IWpfPerformanceProfiler>();
 var sales = provider.GetRequiredService<SalesUiService>();
-var customers = provider.GetRequiredService<CustomerUiService>();
-var purchases = provider.GetRequiredService<PurchaseUiService>();
 
-Console.WriteLine("WPF Session Summary E2E — cloud-connected perf capture");
+Console.WriteLine("WPF Perf Capture — startup + OperationsCenter (cloud)");
 
-async Task BenchmarkSalesListAsync()
+using (var migrateScope = ScreenLoadProfiler.Begin("App.Startup.MigrateAndSeed"))
 {
-    using var scope = ScreenLoadProfiler.Begin("Sales.InvoiceList");
-    var result = await ScreenLoadProfiler.MeasureLoadAsync(scope, () => sales.GetListAsync(null, null, 1, 100));
-    scope?.IncrementServiceCalls();
-    scope?.SetRowsReturned(result.Value?.Items.Count ?? 0);
+    using (migrateScope?.MeasureDataLoad())
+        await provider.MigrateAndSeedAsync();
 }
 
-async Task BenchmarkCustomersAsync()
+using (var currencyScope = ScreenLoadProfiler.Begin("App.Startup.CurrencyCatalog"))
 {
-    using var scope = ScreenLoadProfiler.Begin("Customers.List");
-    var result = await ScreenLoadProfiler.MeasureLoadAsync(scope, () => customers.GetListAsync("", 1, 100));
-    scope?.IncrementServiceCalls();
-    scope?.SetRowsReturned(result.Value?.Items.Count ?? 0);
+    using (currencyScope?.MeasureDataLoad())
+        await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
 }
 
-async Task BenchmarkPurchasesAsync()
+using (var referenceScope = ScreenLoadProfiler.Begin("App.Startup.ReferenceDataCatalog"))
 {
-    using var scope = ScreenLoadProfiler.Begin("Purchases.Invoices");
-    var result = await ScreenLoadProfiler.MeasureLoadAsync(scope, () => purchases.GetInvoiceListAsync("", null));
-    scope?.IncrementServiceCalls();
-    scope?.SetRowsReturned(result.Value?.Count ?? 0);
+    using (referenceScope?.MeasureDataLoad())
+        await ERPSystem.Services.Settings.ReferenceDataCatalog.RefreshAsync();
 }
-
-async Task BenchmarkOperationsCenterAsync(Guid invoiceId)
-{
-    using var scope = ScreenLoadProfiler.Begin("Sales.OperationsCenter");
-    var result = await ScreenLoadProfiler.MeasureLoadAsync(scope, () => sales.GetOperationsCenterAsync(invoiceId));
-    scope?.IncrementServiceCalls();
-    scope?.SetRowsReturned(result.IsSuccess ? 1 : 0);
-}
-
-await BenchmarkSalesListAsync();
-await BenchmarkCustomersAsync();
-await BenchmarkPurchasesAsync();
 
 var listResult = await sales.GetListAsync(null, null, 1, 100);
 if (listResult.IsSuccess && listResult.Value?.Items.Count > 0)
-    await BenchmarkOperationsCenterAsync(listResult.Value.Items[0].Id);
+{
+    var invoiceId = listResult.Value.Items[0].Id;
+    using var scope = ScreenLoadProfiler.Begin("Sales.OperationsCenter");
+    var ocResult = await ScreenLoadProfiler.MeasureLoadAsync(scope, () => sales.GetOperationsCenterAsync(invoiceId));
+    scope?.IncrementServiceCalls();
+    scope?.SetRowsReturned(ocResult.IsSuccess ? 1 : 0);
+}
 
-var sessionLog = profiler.SessionLogFilePath;
+var sessionLog = profiler.SessionLogFilePath!;
+var summaryPath = WpfSessionSummaryAnalyzer.TryWriteSummary(sessionLog);
+
 Console.WriteLine($"Session log: {sessionLog}");
-
-var summaryPath = WpfSessionSummaryAnalyzer.TryWriteSummary(sessionLog!);
-Console.WriteLine(summaryPath is null
-    ? "FAILED: no summary written"
-    : $"Summary written: {summaryPath}");
+Console.WriteLine($"Summary: {summaryPath ?? "FAILED"}");
+Console.WriteLine("Startup phase timings (ms):");
+foreach (var phase in StartupPhaseRecorder.GetTimings())
+    Console.WriteLine($"  {phase.Phase}: {phase.TotalMs:F1}");
 
 return summaryPath is null ? 1 : 0;

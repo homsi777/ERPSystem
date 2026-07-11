@@ -1043,6 +1043,28 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
         }).ToList();
     }
 
+    public async Task<IReadOnlyList<AccountingAggregate>> GetAggregatesBySourceIdAsync(
+        Guid sourceId,
+        CancellationToken cancellationToken = default)
+    {
+        var headers = await context.JournalEntries.AsNoTracking()
+            .Where(j => j.SourceId == sourceId)
+            .OrderByDescending(j => j.EntryDate)
+            .ToListAsync(cancellationToken);
+        if (headers.Count == 0)
+            return [];
+
+        var ids = headers.Select(h => h.Id).ToList();
+        var lines = await context.JournalEntryLines.AsNoTracking()
+            .Where(l => ids.Contains(l.JournalEntryId))
+            .ToListAsync(cancellationToken);
+        var linesByEntry = lines.ToLookup(l => l.JournalEntryId);
+
+        return headers
+            .Select(h => AccountingMapper.ToAggregate(h, linesByEntry[h.Id].ToList()))
+            .ToList();
+    }
+
     public async Task UpdateAsync(AccountingAggregate entry, CancellationToken cancellationToken = default)
     {
         var header = await context.JournalEntries.FirstOrDefaultAsync(j => j.Id == entry.Id, cancellationToken)

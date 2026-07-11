@@ -1,5 +1,6 @@
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Diagnostics;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Infrastructure.Audit;
 using ERPSystem.Infrastructure.Notifications;
@@ -137,17 +138,42 @@ public static class InfrastructureServiceCollectionExtensions
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<ErpDbContext>>();
         var configuration = scope.ServiceProvider.GetService<IConfiguration>();
 
-        await context.Database.MigrateAsync(cancellationToken);
+        await StartupPhaseRecorder.RunAsync("Startup.Migrate",
+            () => context.Database.MigrateAsync(cancellationToken));
 
         if (configuration?.GetValue<bool>("Development:CleanupImportCatalogOnStartup") == true)
-            await Seed.ImportCatalogDevelopmentCleanup.RunAsync(context, logger, cancellationToken);
+        {
+            await StartupPhaseRecorder.RunAsync("Startup.ImportCatalogCleanup",
+                () => Seed.ImportCatalogDevelopmentCleanup.RunAsync(context, logger, cancellationToken));
+        }
 
+        await StartupPhaseRecorder.RunAsync("Startup.Seed",
+            () => Seed.DatabaseSeeder.SeedAsync(
+                context,
+                logger,
+                scope.ServiceProvider.GetRequiredService<IPasswordHasher>(),
+                cancellationToken));
+
+        await StartupPhaseRecorder.RunAsync("Startup.AccountingHealth",
+            () => Services.AccountingHealth.ValidateAsync(context, cancellationToken));
+    }
+
+    public static async Task MigrateAsync(this IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
+        await context.Database.MigrateAsync(cancellationToken);
+    }
+
+    public static async Task SeedOnlyAsync(this IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<ErpDbContext>>();
         await Seed.DatabaseSeeder.SeedAsync(
             context,
             logger,
             scope.ServiceProvider.GetRequiredService<IPasswordHasher>(),
             cancellationToken);
-
-        await Services.AccountingHealth.ValidateAsync(context, cancellationToken);
     }
 }

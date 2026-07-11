@@ -209,51 +209,58 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
         var customerPhone = customer?.Customer.Phone?.ToString();
 
         var baseDto = SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName);
-        var enrichedLines = await SalesInvoiceCatalogEnricher.EnrichLinesAsync(
-            baseDto.Invoice.Lines,
-            fabricCatalogRepository,
-            cancellationToken);
+
+        var fabricIds = baseDto.Invoice.Lines.Select(l => l.FabricItemId)
+            .Concat(aggregate.Items.Select(i => i.FabricItemId))
+            .Distinct();
+        var colorIds = baseDto.Invoice.Lines.Select(l => l.FabricColorId)
+            .Concat(aggregate.Items.Select(i => i.FabricColorId))
+            .Distinct();
+        var fabrics = await fabricCatalogRepository.GetItemsByIdsAsync(fabricIds, cancellationToken);
+        var colors = await fabricCatalogRepository.GetColorsByIdsAsync(colorIds, cancellationToken);
+
+        var enrichedLines = SalesInvoiceCatalogEnricher.EnrichLines(baseDto.Invoice.Lines, fabrics, colors);
 
         WarehouseDetailingDto? enrichedDetailing = null;
         if (baseDto.Detailing is not null)
         {
-            var enrichedRolls = await SalesInvoiceCatalogEnricher.EnrichRollsAsync(
+            var containerIds = aggregate.Items
+                .Select(i => i.ChinaContainerId)
+                .Concat(baseDto.Detailing.Rolls.Select(r => r.ChinaContainerId))
+                .Where(id => id != Guid.Empty)
+                .Distinct();
+            var containerLookup = await containerRepository.GetNumberLookupAsync(
+                aggregate.CompanyId,
+                containerIds,
+                cancellationToken);
+            var enrichedRolls = SalesInvoiceCatalogEnricher.EnrichRolls(
                 aggregate,
                 baseDto.Detailing.Rolls,
-                fabricCatalogRepository,
-                containerRepository,
-                cancellationToken);
+                fabrics,
+                colors,
+                containerLookup);
             enrichedDetailing = SalesInvoiceCatalogEnricher.WithEnrichedRolls(baseDto.Detailing, enrichedRolls);
         }
 
-        // Journal entries linked to this invoice (approval, delivery/COGS, returns)
-        var journalRows = await journalEntryRepository.GetBySourceIdAsync(aggregate.Id, cancellationToken);
-        var journalEntries = await journalEntryRepository.GetByIdsAsync(
-            journalRows.Select(row => row.Id), cancellationToken);
-        var journalRowsById = journalRows.ToDictionary(row => row.Id);
-        var journalDtos = new List<Application.DTOs.Finance.JournalEntryDto>();
-        foreach (var entry in journalEntries)
+        var journalEntries = await journalEntryRepository.GetAggregatesBySourceIdAsync(aggregate.Id, cancellationToken);
+        var journalDtos = journalEntries.Select(entry => new Application.DTOs.Finance.JournalEntryDto
         {
-            journalRowsById.TryGetValue(entry.Id, out var row);
-            journalDtos.Add(new Application.DTOs.Finance.JournalEntryDto
+            Id = entry.Id,
+            EntryNumber = entry.EntryNumber,
+            EntryDate = entry.EntryDate,
+            Description = entry.Description ?? "",
+            Status = entry.Status,
+            DebitTotal = entry.Lines.Sum(l => l.Debit.Amount),
+            CreditTotal = entry.Lines.Sum(l => l.Credit.Amount),
+            Lines = entry.Lines.Select(l => new Application.DTOs.Finance.JournalEntryLineDto
             {
-                Id = entry.Id,
-                EntryNumber = entry.EntryNumber,
-                EntryDate = entry.EntryDate,
-                Description = entry.Description ?? row?.Description ?? "",
-                Status = entry.Status,
-                DebitTotal = entry.Lines.Sum(l => l.Debit.Amount),
-                CreditTotal = entry.Lines.Sum(l => l.Credit.Amount),
-                Lines = entry.Lines.Select(l => new Application.DTOs.Finance.JournalEntryLineDto
-                {
-                    AccountId = l.AccountId,
-                    AccountCode = l.AccountId.ToString(),
-                    Debit = l.Debit.Amount,
-                    Credit = l.Credit.Amount,
-                    Narrative = l.Narrative ?? ""
-                }).ToList()
-            });
-        }
+                AccountId = l.AccountId,
+                AccountCode = l.AccountId.ToString(),
+                Debit = l.Debit.Amount,
+                Credit = l.Credit.Amount,
+                Narrative = l.Narrative ?? ""
+            }).ToList()
+        }).ToList();
 
         // Payments (receipts) applied to this invoice
         var payments = await paymentRepository.GetByInvoiceWithVoucherAsync(aggregate.Id, cancellationToken);
