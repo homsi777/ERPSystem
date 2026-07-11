@@ -293,6 +293,9 @@ public static class SalesDocumentService
                 : invoice.CustomerName;
             col.Item().Text(string.IsNullOrWhiteSpace(displayName) ? "عميل غير محدد" : displayName)
                 .FontSize(12).SemiBold();
+            col.Item().PaddingTop(3)
+                .Text($"المستودع: {(string.IsNullOrWhiteSpace(invoice.WarehouseName) ? "غير محدد" : invoice.WarehouseName)}")
+                .FontSize(10);
         });
 
     private static void LinesTable(IContainer c, SalesInvoiceDto invoice, IReadOnlyList<SalesInvoiceLineDto> lines) =>
@@ -352,16 +355,16 @@ public static class SalesDocumentService
 
             var lineDiscount = invoice.Lines.Sum(l => l.DiscountAmount);
             AddRow(col, "المجموع الفرعي", invoice.SubTotal);
-            if (lineDiscount > 0) AddRow(col, "خصم الأسطر", -lineDiscount);
-            if (invoice.DiscountTotal != 0m) AddRow(col, "خصم الفاتورة", -invoice.DiscountTotal);
+            AddRow(col, "خصم الأسطر", lineDiscount);
+            AddRow(col, "خصم الفاتورة", invoice.DiscountTotal);
             if (!invoice.IsLegacyUntaxed)
             {
                 var taxable = invoice.Lines.Sum(l => l.TaxableAmount);
                 if (taxable > 0) AddRow(col, "المبلغ الخاضع", taxable);
             }
+            AddRow(col, "الضريبة", invoice.TaxTotal);
             if (invoice.TaxTotal != 0m)
             {
-                AddRow(col, "الضريبة", invoice.TaxTotal);
                 foreach (var group in invoice.Lines.Where(l => l.TaxAmount > 0).GroupBy(l => l.TaxCode))
                 {
                     AddRow(col, $"  {group.Key} ({group.First().TaxRate:P0})", group.Sum(x => x.TaxAmount));

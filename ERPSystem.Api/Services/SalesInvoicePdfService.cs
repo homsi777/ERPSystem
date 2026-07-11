@@ -227,7 +227,9 @@ public sealed class SalesInvoicePdfService
     {
         container.AlignLeft().Width(255).Border(1).BorderColor(Border).Column(column =>
         {
+            var lineDiscount = invoice.Lines.Sum(line => line.DiscountAmount);
             TotalRow(column, "المجموع الفرعي", invoice.SubTotal);
+            TotalRow(column, "خصم الأسطر", lineDiscount);
             TotalRow(column, "إجمالي الخصم", invoice.DiscountTotal);
             TotalRow(column, "إجمالي الضريبة", invoice.TaxTotal);
             if (Math.Abs(invoice.RoundingDifference) >= 0.01m)

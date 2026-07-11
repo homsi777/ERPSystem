@@ -155,7 +155,10 @@ public static class SalesInvoiceCatalogEnricher
         return enriched;
     }
 
-    public static SalesInvoiceDto WithEnrichedLines(SalesInvoiceDto invoice, IReadOnlyList<SalesInvoiceLineDto> lines) =>
+    public static SalesInvoiceDto WithEnrichedLines(
+        SalesInvoiceDto invoice,
+        IReadOnlyList<SalesInvoiceLineDto> lines,
+        string? warehouseName = null) =>
         new()
         {
             Id = invoice.Id,
@@ -164,7 +167,7 @@ public static class SalesInvoiceCatalogEnricher
             CustomerId = invoice.CustomerId,
             CustomerName = invoice.CustomerName,
             WarehouseId = invoice.WarehouseId,
-            WarehouseName = invoice.WarehouseName,
+            WarehouseName = string.IsNullOrWhiteSpace(warehouseName) ? invoice.WarehouseName : warehouseName,
             ChinaContainerId = invoice.ChinaContainerId,
             ContainerNumber = invoice.ContainerNumber,
             InvoiceDate = invoice.InvoiceDate,

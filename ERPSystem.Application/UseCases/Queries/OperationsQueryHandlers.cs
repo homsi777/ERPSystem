@@ -312,7 +312,7 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
 
         return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(new SalesInvoiceOperationsCenterDto
         {
-            Invoice = SalesInvoiceCatalogEnricher.WithEnrichedLines(baseDto.Invoice, enrichedLines),
+            Invoice = SalesInvoiceCatalogEnricher.WithEnrichedLines(baseDto.Invoice, enrichedLines, warehouseName),
             Detailing = enrichedDetailing,
             CanSendToWarehouse = baseDto.CanSendToWarehouse,
             CanCompleteDetailing = baseDto.CanCompleteDetailing,
