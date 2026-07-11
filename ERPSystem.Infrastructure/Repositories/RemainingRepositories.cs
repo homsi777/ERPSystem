@@ -1047,21 +1047,16 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
         Guid sourceId,
         CancellationToken cancellationToken = default)
     {
-        var headers = await context.JournalEntries.AsNoTracking()
-            .Where(j => j.SourceId == sourceId)
-            .OrderByDescending(j => j.EntryDate)
-            .ToListAsync(cancellationToken);
-        if (headers.Count == 0)
-            return [];
+        var rows = await (
+            from j in context.JournalEntries.AsNoTracking()
+            where j.SourceId == sourceId
+            join l in context.JournalEntryLines.AsNoTracking() on j.Id equals l.JournalEntryId into lineGroup
+            orderby j.EntryDate descending
+            select new { Header = j, Lines = lineGroup.ToList() }
+        ).ToListAsync(cancellationToken);
 
-        var ids = headers.Select(h => h.Id).ToList();
-        var lines = await context.JournalEntryLines.AsNoTracking()
-            .Where(l => ids.Contains(l.JournalEntryId))
-            .ToListAsync(cancellationToken);
-        var linesByEntry = lines.ToLookup(l => l.JournalEntryId);
-
-        return headers
-            .Select(h => AccountingMapper.ToAggregate(h, linesByEntry[h.Id].ToList()))
+        return rows
+            .Select(r => AccountingMapper.ToAggregate(r.Header, r.Lines))
             .ToList();
     }
 

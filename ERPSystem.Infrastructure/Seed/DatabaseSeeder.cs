@@ -46,19 +46,10 @@ public static class DatabaseSeeder
         await StartupPhaseRecorder.RunAsync("Seed.CashboxGlLinks", () => EnsureCashboxGlLinksAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.SalesTax", () => EnsureSalesTaxConfigurationAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.JournalBooks", () => EnsureJournalBooksAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.AccountingPermissions", () => EnsureAccountingPermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.SupplierPermissions", () => EnsureSupplierPermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.PurchasePermissions", () => EnsurePurchasePermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.CustomerPermissions", () => EnsureCustomerPermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.SalesPermissions", () => EnsureSalesPermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.FinancePermissions", () => EnsureFinancePermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.OpeningBalancePermissions", () => EnsureOpeningBalancePermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.ContainerPermissions", () => EnsureContainerPermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.WarehousePermissions", () => EnsureWarehousePermissionsAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.HrPermissions", () => EnsureHrPermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.AllPermissions", () => EnsureAllModulePermissionsAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.DefaultCurrency", () => EnsureDefaultCurrencyAsync(context, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.ExpenseModule", () => ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, AdminRoleId, cancellationToken));
-        await StartupPhaseRecorder.RunAsync("Seed.CapitalModule", () => CapitalModuleSeeder.EnsureAsync(context, AdminRoleId, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.ExpenseModule", () => ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.CapitalModule", () => CapitalModuleSeeder.EnsureAsync(context, cancellationToken));
 
         if (await context.Companies.AnyAsync(cancellationToken))
         {
@@ -456,162 +447,183 @@ public static class DatabaseSeeder
         CancellationToken cancellationToken)
     {
         var requested = permissions.ToArray();
-        var requestedCodes = requested.Select(p => p.Code).ToArray();
-        var existingPermissions = await context.Permissions
-            .Where(p => requestedCodes.Contains(p.Code))
-            .Select(p => new { p.Code, p.Id })
-            .ToDictionaryAsync(p => p.Code, p => p.Id, cancellationToken);
-
-        var adminRoleExists = await context.Roles
-            .AnyAsync(r => r.Id == AdminRoleId, cancellationToken);
-        var linkedPermissionIds = adminRoleExists
-            ? await context.RolePermissions
-                .Where(rp => rp.RoleId == AdminRoleId)
-                .Select(rp => rp.PermissionId)
-                .ToHashSetAsync(cancellationToken)
-            : [];
-
-        foreach (var (code, module, action) in requested)
-        {
-            if (!existingPermissions.TryGetValue(code, out var permissionId))
-            {
-                permissionId = Guid.NewGuid();
-                context.Permissions.Add(new PermissionEntity
-                {
-                    Id = permissionId,
-                    Code = code,
-                    Module = module,
-                    Action = action
-                });
-                existingPermissions[code] = permissionId;
-            }
-
-            if (adminRoleExists && linkedPermissionIds.Add(permissionId))
-            {
-                context.RolePermissions.Add(new RolePermissionEntity
-                {
-                    RoleId = AdminRoleId,
-                    PermissionId = permissionId
-                });
-            }
-        }
-
+        var ctx = await PermissionSeedContext.LoadAsync(
+            context,
+            requested.Select(p => p.Code).ToArray(),
+            AdminRoleId,
+            cancellationToken);
+        ctx.ApplyPermissions(context, requested);
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static async Task EnsureAccountingPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
+    private static async Task EnsureAllModulePermissionsAsync(
+        ErpDbContext context,
+        CancellationToken cancellationToken)
     {
-        await EnsurePermissionsAsync(context,
-        [
-            ("accounting.account.create", "accounting", "account-create"),
-            ("accounting.account.edit", "accounting", "account-edit"),
-            ("accounting.account.deactivate", "accounting", "account-deactivate"),
-            ("accounting.account.view", "accounting", "account-view"),
-            ("accounting.journal.create", "accounting", "journal-create"),
-            ("accounting.journal.post", "accounting", "journal-post"),
-            ("accounting.journal.reverse", "accounting", "journal-reverse")
-        ], cancellationToken);
+        var allPermissions = GetAllModulePermissionDefinitions();
+        var ctx = await PermissionSeedContext.LoadAsync(
+            context,
+            allPermissions.Select(p => p.Code).ToArray(),
+            AdminRoleId,
+            cancellationToken);
+
+        ctx.ApplyPermissions(context, allPermissions);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
-    private static async Task EnsureSupplierPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("suppliers.create", "suppliers", "create"),
-            ("suppliers.deactivate", "suppliers", "deactivate"),
-            ("suppliers.opening-balance", "suppliers", "opening-balance")
-        ], cancellationToken);
-    }
+    private static IReadOnlyList<(string Code, string Module, string Action)> GetAllModulePermissionDefinitions() =>
+    [
+        ..GetAccountingPermissionDefinitions(),
+        ..GetSupplierPermissionDefinitions(),
+        ..GetPurchasePermissionDefinitions(),
+        ..GetCustomerPermissionDefinitions(),
+        ..GetSalesPermissionDefinitions(),
+        ..GetFinancePermissionDefinitions(),
+        ..GetOpeningBalancePermissionDefinitions(),
+        ..GetContainerPermissionDefinitions(),
+        ..GetWarehousePermissionDefinitions(),
+        ..GetHrPermissionDefinitions(),
+        ..GetExpensePermissionDefinitions(),
+        ..GetCapitalPermissionDefinitions()
+    ];
 
-    private static async Task EnsureCustomerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("customers.create", "customers", "create"),
-            ("customers.deactivate", "customers", "deactivate"),
-            ("customers.opening-balance", "customers", "opening-balance")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetAccountingPermissionDefinitions() =>
+    [
+        ("accounting.account.create", "accounting", "account-create"),
+        ("accounting.account.edit", "accounting", "account-edit"),
+        ("accounting.account.deactivate", "accounting", "account-deactivate"),
+        ("accounting.account.view", "accounting", "account-view"),
+        ("accounting.journal.create", "accounting", "journal-create"),
+        ("accounting.journal.post", "accounting", "journal-post"),
+        ("accounting.journal.reverse", "accounting", "journal-reverse")
+    ];
 
-    private static async Task EnsureSalesPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("sales.create", "sales", "create"),
-            ("sales.approve", "sales", "approve"),
-            ("sales.send-to-warehouse", "sales", "send-to-warehouse"),
-            ("sales.cancel", "sales", "cancel"),
-            ("sales.deliver", "sales", "deliver"),
-            ("sales.return", "sales", "return")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetSupplierPermissionDefinitions() =>
+    [
+        ("suppliers.create", "suppliers", "create"),
+        ("suppliers.deactivate", "suppliers", "deactivate"),
+        ("suppliers.opening-balance", "suppliers", "opening-balance")
+    ];
 
-    private static async Task EnsureFinancePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("finance.receipt.create", "finance", "receipt-create"),
-            ("finance.receipt.post", "finance", "receipt-post"),
-            ("finance.payment.create", "finance", "payment-create"),
-            ("finance.payment.post", "finance", "payment-post"),
-            ("finance.cashbox.create", "finance", "cashbox-create"),
-            ("finance.cashbox.edit", "finance", "cashbox-edit"),
-            ("finance.cashbox.transfer", "finance", "cashbox-transfer")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetCustomerPermissionDefinitions() =>
+    [
+        ("customers.create", "customers", "create"),
+        ("customers.deactivate", "customers", "deactivate"),
+        ("customers.opening-balance", "customers", "opening-balance")
+    ];
 
-    private static async Task EnsureOpeningBalancePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("openingbalances.view", "openingbalances", "view"),
-            ("openingbalances.create", "openingbalances", "create"),
-            ("openingbalances.edit", "openingbalances", "edit"),
-            ("openingbalances.import", "openingbalances", "import"),
-            ("openingbalances.approve", "openingbalances", "approve"),
-            ("openingbalances.post", "openingbalances", "post"),
-            ("openingbalances.archive", "openingbalances", "archive"),
-            ("openingbalances.export", "openingbalances", "export"),
-            ("openingbalances.print", "openingbalances", "print")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetSalesPermissionDefinitions() =>
+    [
+        ("sales.create", "sales", "create"),
+        ("sales.approve", "sales", "approve"),
+        ("sales.send-to-warehouse", "sales", "send-to-warehouse"),
+        ("sales.cancel", "sales", "cancel"),
+        ("sales.deliver", "sales", "deliver"),
+        ("sales.return", "sales", "return")
+    ];
 
-    private static async Task EnsureContainerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("containers.create", "containers", "create"),
-            ("containers.approve", "containers", "approve"),
-            ("containers.landing-cost", "containers", "landing-cost"),
-            ("containers.move-to-warehouse", "containers", "move-to-warehouse")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetFinancePermissionDefinitions() =>
+    [
+        ("finance.receipt.create", "finance", "receipt-create"),
+        ("finance.receipt.post", "finance", "receipt-post"),
+        ("finance.payment.create", "finance", "payment-create"),
+        ("finance.payment.post", "finance", "payment-post"),
+        ("finance.cashbox.create", "finance", "cashbox-create"),
+        ("finance.cashbox.edit", "finance", "cashbox-edit"),
+        ("finance.cashbox.transfer", "finance", "cashbox-transfer")
+    ];
 
-    private static async Task EnsureWarehousePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("warehouse.detailing", "warehouse", "detailing")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetOpeningBalancePermissionDefinitions() =>
+    [
+        ("openingbalances.view", "openingbalances", "view"),
+        ("openingbalances.create", "openingbalances", "create"),
+        ("openingbalances.edit", "openingbalances", "edit"),
+        ("openingbalances.import", "openingbalances", "import"),
+        ("openingbalances.approve", "openingbalances", "approve"),
+        ("openingbalances.post", "openingbalances", "post"),
+        ("openingbalances.archive", "openingbalances", "archive"),
+        ("openingbalances.export", "openingbalances", "export"),
+        ("openingbalances.print", "openingbalances", "print")
+    ];
 
-    private static async Task EnsurePurchasePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("purchases.create", "purchases", "create"),
-            ("purchases.post", "purchases", "post")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetContainerPermissionDefinitions() =>
+    [
+        ("containers.create", "containers", "create"),
+        ("containers.approve", "containers", "approve"),
+        ("containers.landing-cost", "containers", "landing-cost"),
+        ("containers.move-to-warehouse", "containers", "move-to-warehouse")
+    ];
 
-    private static async Task EnsureHrPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken)
-    {
-        await EnsurePermissionsAsync(context,
-        [
-            ("hr.employee.manage", "hr", "employee.manage"),
-            ("hr.department.manage", "hr", "department.manage")
-        ], cancellationToken);
-    }
+    private static IEnumerable<(string Code, string Module, string Action)> GetWarehousePermissionDefinitions() =>
+    [
+        ("warehouse.detailing", "warehouse", "detailing")
+    ];
+
+    private static IEnumerable<(string Code, string Module, string Action)> GetPurchasePermissionDefinitions() =>
+    [
+        ("purchases.create", "purchases", "create"),
+        ("purchases.post", "purchases", "post")
+    ];
+
+    private static IEnumerable<(string Code, string Module, string Action)> GetHrPermissionDefinitions() =>
+    [
+        ("hr.employee.manage", "hr", "employee.manage"),
+        ("hr.department.manage", "hr", "department.manage")
+    ];
+
+    private static IEnumerable<(string Code, string Module, string Action)> GetExpensePermissionDefinitions() =>
+    [
+        ("expenses.view", "expenses", "view"),
+        ("expenses.create", "expenses", "create"),
+        ("expenses.edit", "expenses", "edit"),
+        ("expenses.delete", "expenses", "delete"),
+        ("expenses.approve", "expenses", "approve"),
+        ("expenses.export", "expenses", "export"),
+        ("expenses.print", "expenses", "print"),
+        ("expenses.archive", "expenses", "archive")
+    ];
+
+    private static IEnumerable<(string Code, string Module, string Action)> GetCapitalPermissionDefinitions() =>
+    [
+        ("capital.view", "capital", "view"),
+        ("capital.create", "capital", "create"),
+        ("capital.edit", "capital", "edit"),
+        ("capital.delete", "capital", "delete"),
+        ("capital.approve", "capital", "approve"),
+        ("capital.export", "capital", "export"),
+        ("capital.print", "capital", "print"),
+        ("capital.archive", "capital", "archive")
+    ];
+
+    private static async Task EnsureAccountingPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetAccountingPermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureSupplierPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetSupplierPermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureCustomerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetCustomerPermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureSalesPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetSalesPermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureFinancePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetFinancePermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureOpeningBalancePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetOpeningBalancePermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureContainerPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetContainerPermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureWarehousePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetWarehousePermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsurePurchasePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetPurchasePermissionDefinitions(), cancellationToken);
+
+    private static async Task EnsureHrPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
+        await EnsurePermissionsAsync(context, GetHrPermissionDefinitions(), cancellationToken);
 
     /// <summary>
     /// Ensures the seeded admin account has a valid BCrypt hash (idempotent).

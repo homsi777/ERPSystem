@@ -237,6 +237,36 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
     public async Task<SalesInvoiceAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await LoadAsync(id, null, cancellationToken);
 
+    public async Task<SalesInvoiceAggregate?> GetByIdForOperationsCenterAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var header = await context.SalesInvoices.AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+        if (header is null)
+            return null;
+
+        var items = await context.SalesInvoiceItems.AsNoTracking()
+            .Where(i => i.SalesInvoiceId == id)
+            .OrderBy(i => i.LineNumber)
+            .ToListAsync(cancellationToken);
+        var itemTaxes = await context.SalesInvoiceItemTaxes.AsNoTracking()
+            .Where(t => t.SalesInvoiceId == id)
+            .ToListAsync(cancellationToken);
+
+        var status = (SalesInvoiceStatus)header.Status;
+        var needsDetailing = status is SalesInvoiceStatus.AwaitingDetailing or SalesInvoiceStatus.Detailed;
+        if (!needsDetailing)
+            return SalesInvoiceMapper.ToAggregate(header, items, [], null, itemTaxes);
+
+        var rolls = await context.SalesInvoiceRollDetails.AsNoTracking()
+            .Where(r => r.SalesInvoiceId == id)
+            .ToListAsync(cancellationToken);
+        var session = await context.WarehouseDetailingSessions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SalesInvoiceId == id, cancellationToken);
+        return SalesInvoiceMapper.ToAggregate(header, items, rolls, session, itemTaxes);
+    }
+
     public async Task<SalesInvoiceAggregate?> GetByNumberAsync(string invoiceNumber, CancellationToken cancellationToken = default) =>
         await LoadAsync(null, invoiceNumber, cancellationToken);
 
@@ -534,16 +564,19 @@ internal sealed class SalesReturnRepository(ErpDbContext context) : ISalesReturn
         if (originalInvoiceId.HasValue) query = query.Where(r => r.OriginalInvoiceId == originalInvoiceId.Value);
 
         var headers = await query.OrderByDescending(r => r.ReturnDate).ToListAsync(cancellationToken);
-        var result = new List<SalesReturnAggregate>();
-        foreach (var header in headers)
-        {
-            var lines = await context.SalesReturnLines.AsNoTracking()
-                .Where(l => l.SalesReturnId == header.Id)
-                .OrderBy(l => l.LineNumber)
-                .ToListAsync(cancellationToken);
-            result.Add(SalesReturnMapper.ToAggregate(header, lines));
-        }
-        return result;
+        if (headers.Count == 0)
+            return [];
+
+        var returnIds = headers.Select(h => h.Id).ToList();
+        var allLines = await context.SalesReturnLines.AsNoTracking()
+            .Where(l => returnIds.Contains(l.SalesReturnId))
+            .OrderBy(l => l.LineNumber)
+            .ToListAsync(cancellationToken);
+        var linesByReturn = allLines.ToLookup(l => l.SalesReturnId);
+
+        return headers
+            .Select(h => SalesReturnMapper.ToAggregate(h, linesByReturn[h.Id].ToList()))
+            .ToList();
     }
 
     public async Task AddAsync(SalesReturnAggregate aggregate, CancellationToken cancellationToken = default)

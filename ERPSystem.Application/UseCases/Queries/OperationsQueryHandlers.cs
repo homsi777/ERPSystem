@@ -192,7 +192,6 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
     IJournalEntryRepository journalEntryRepository,
     IReceiptInvoicePaymentRepository paymentRepository,
     ISalesReturnRepository salesReturnRepository,
-    IWarehouseRepository warehouseRepository,
     IChinaContainerRepository containerRepository)
     : IQueryHandler<GetSalesInvoiceOperationsCenterQuery, ApplicationResult<SalesInvoiceOperationsCenterDto>>
 {
@@ -200,13 +199,17 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
         GetSalesInvoiceOperationsCenterQuery query,
         CancellationToken cancellationToken = default)
     {
-        var aggregate = await invoiceRepository.GetByIdAsync(query.InvoiceId, cancellationToken);
+        var aggregate = await invoiceRepository.GetByIdForOperationsCenterAsync(query.InvoiceId, cancellationToken);
         if (aggregate is null)
             return ApplicationResult<SalesInvoiceOperationsCenterDto>.NotFound("Invoice not found.");
 
-        var customer = await customerRepository.GetByIdAsync(aggregate.CustomerId, cancellationToken);
-        var customerName = customer?.Customer.NameAr ?? "";
-        var customerPhone = customer?.Customer.Phone?.ToString();
+        var party = await customerRepository.GetInvoicePartyDisplayAsync(
+            aggregate.CustomerId,
+            aggregate.WarehouseId,
+            cancellationToken);
+        var customerName = party?.CustomerName ?? "";
+        var customerPhone = party?.CustomerPhone;
+        var warehouseName = party?.WarehouseName;
 
         var baseDto = SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName);
 
@@ -306,14 +309,6 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
                 LineTotal = l.LineTotal.Amount
             }).ToList()
         }).ToList();
-
-        // Warehouse name (for header display)
-        string? warehouseName = null;
-        if (aggregate.WarehouseId != Guid.Empty)
-        {
-            var wh = await warehouseRepository.GetByIdAsync(aggregate.WarehouseId, cancellationToken);
-            warehouseName = wh?.Warehouse.NameAr;
-        }
 
         return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(new SalesInvoiceOperationsCenterDto
         {

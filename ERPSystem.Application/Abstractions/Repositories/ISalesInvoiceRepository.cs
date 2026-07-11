@@ -6,6 +6,7 @@ namespace ERPSystem.Application.Abstractions.Repositories;
 public interface ISalesInvoiceRepository
 {
     Task<SalesInvoiceAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<SalesInvoiceAggregate?> GetByIdForOperationsCenterAsync(Guid id, CancellationToken cancellationToken = default);
     Task<SalesInvoiceAggregate?> GetByNumberAsync(string invoiceNumber, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SalesInvoiceAggregate>> GetListAsync(
         Guid companyId,

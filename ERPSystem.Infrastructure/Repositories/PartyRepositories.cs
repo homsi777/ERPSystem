@@ -90,6 +90,31 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         return entities.Select(CustomerMapper.ToAggregate).ToList();
     }
 
+    public async Task<(string CustomerName, string? CustomerPhone, string? WarehouseName)?> GetInvoicePartyDisplayAsync(
+        Guid customerId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await context.Customers.AsNoTracking()
+            .Where(c => c.Id == customerId)
+            .Select(c => new
+            {
+                c.NameAr,
+                c.Phone,
+                WarehouseName = warehouseId != Guid.Empty
+                    ? context.Warehouses.AsNoTracking()
+                        .Where(w => w.Id == warehouseId)
+                        .Select(w => w.NameAr)
+                        .FirstOrDefault()
+                    : null
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return row is null
+            ? null
+            : (row.NameAr, row.Phone?.ToString(), row.WarehouseName);
+    }
+
     public async Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default)
     {
         await context.Customers.AddAsync(CustomerMapper.ToEntity(aggregate), cancellationToken);

@@ -27,22 +27,10 @@ internal static class ExpenseModuleSeeder
   public static async Task EnsureAsync(
         ErpDbContext context,
         Guid companyId,
-        Guid adminRoleId,
         CancellationToken cancellationToken = default)
     {
         await EnsureCategoriesAsync(context, companyId, cancellationToken);
         await EnsureCostCentersAsync(context, companyId, cancellationToken);
-        await DatabaseSeeder.EnsurePermissionsAsync(context,
-        [
-            ("expenses.view", "expenses", "view"),
-            ("expenses.create", "expenses", "create"),
-            ("expenses.edit", "expenses", "edit"),
-            ("expenses.delete", "expenses", "delete"),
-            ("expenses.approve", "expenses", "approve"),
-            ("expenses.export", "expenses", "export"),
-            ("expenses.print", "expenses", "print"),
-            ("expenses.archive", "expenses", "archive")
-        ], cancellationToken);
     }
 
     private static async Task EnsureCategoriesAsync(
