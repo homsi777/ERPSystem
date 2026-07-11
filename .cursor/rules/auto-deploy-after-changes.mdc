@@ -1,23 +1,31 @@
 ---
-description: Deploy to VPS immediately after project changes for live testing
+description: بعد أي تعديل في الكود — بناء محلي ثم نشر على السحابة (VPS) — اتفاق إلزامي
 alwaysApply: true
 ---
 
-# Auto-deploy after changes
+# Auto-deploy after changes (اتفاق إلزامي)
 
-After completing any meaningful code change in this repo (backend, WPF, web-client, migrations, deploy scripts):
+**بعد أي تعديل في كود المشروع** (backend، WPF، web-client، migrations، deploy scripts) — يجب نشر التحديث على السحابة ما لم يطلب المستخدم صراحةً عدم النشر.
 
-1. **Build locally** — `dotnet build ERPSystem.Api/ERPSystem.Api.csproj` and `npm run build` in `web-client/` when web files changed.
-2. **Commit & push** — stage only project files (never `ssh.txt`, `appsettings.Local.json`, `.vs/`, `bin/`, `obj/`). Push to `main` unless the user specifies another branch.
-3. **Deploy to VPS** — SSH and run:
+## الخطوات (بالترتيب)
+
+1. **Build محلي**
+   - `dotnet build ERPSystem.Api/ERPSystem.Api.csproj` عند تغيير API/backend
+   - `dotnet build ERPSystem.csproj` عند تغيير WPF desktop
+   - `npm run build` في `web-client/` عند تغيير ملفات الويب
+2. **Commit & push** — stage ملفات المشروع فقط (لا `ssh.txt`، `appsettings.Local.json`، `.vs/`، `bin/`، `obj/`). Push إلى `main` ما لم يحدد المستخدم فرعًا آخر.
+3. **Deploy على VPS** — SSH ثم:
    ```bash
    sudo bash /opt/erpsystem/src/deploy/deploy-app.sh
    ```
    - Host: `ubuntu@65.21.136.217` port `2727`
    - Key: `C:/Users/Homsi/.ssh/alamal_ab_tunnel`
-4. **Verify** — `curl https://alamal-ab.org/health` and report the deployed commit hash.
-5. **Tell the user** — site URL, what to hard-refresh on mobile/PWA, and any manual step (e.g. run migration) if needed.
+4. **Verify** — `curl https://alamal-ab.org/health` وأبلغ المستخدم بـ commit hash المنشور.
+5. **أخبر المستخدم** — رابط الموقع، ما يحتاج hard-refresh على mobile/PWA، وأي خطوة يدوية (مثل migration) إن وُجدت.
 
-Skip deploy only when the user explicitly says not to deploy, or when changes are docs-only with zero runtime impact and the user asked for docs only.
+## استثناءات (لا تنشر)
 
-Production site: **https://alamal-ab.org**
+- المستخدم قال صراحةً **لا تنشر**
+- تغييرات docs فقط بدون أي أثر runtime **و** طلب المستخدم docs فقط
+
+Production: **https://alamal-ab.org**
