@@ -88,6 +88,7 @@ public sealed class JournalEntryListPageControl : UserControl
         g.IsReadOnly = true;
         g.CanUserAddRows = false;
         g.SelectionMode = DataGridSelectionMode.Single;
+        g.Columns.Clear();
 
         foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
@@ -141,7 +142,6 @@ public sealed class JournalEntryListPageControl : UserControl
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
-        ConfigureGridColumns();
 
         var statusOptions = new List<StatusFilterOption> { new(null, "— كل الحالات —") };
         foreach (JournalEntryStatus status in Enum.GetValues(typeof(JournalEntryStatus)))

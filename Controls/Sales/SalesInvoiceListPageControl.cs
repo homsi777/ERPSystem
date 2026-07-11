@@ -1,6 +1,10 @@
+using ERPSystem.Application.Common;
+using ERPSystem.Application.DTOs.Sales;
+using ERPSystem.Application.Results;
 using ERPSystem.Controls;
 using ERPSystem.Core;
 using ERPSystem.Core.Sales;
+using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -138,24 +142,44 @@ public sealed class SalesInvoiceListPageControl : UserControl
         _isLoading = true;
         _page.SetLoadingState(true);
 
+        using var perfScope = AppServices.IsInitialized
+            ? AppServices.GetRequiredService<IWpfPerformanceProfiler>().BeginScreenLoad("Sales.InvoiceList")
+            : null;
+
         try
         {
             var status = MapStatusFilter((_statusFilter.SelectedItem as ComboBoxItem)?.Content?.ToString());
-            var result = await SalesUiService.Instance.GetListAsync(search, status, 1, 100, _filterCustomerId);
+
+            ApplicationResult<PagedResult<SalesInvoiceDto>> result;
+            using (perfScope?.MeasureDataLoad())
+            {
+                result = await SalesUiService.Instance.GetListAsync(search, status, 1, 100, _filterCustomerId);
+            }
+            perfScope?.IncrementServiceCalls();
+
             if (!ApplicationResultPresenter.Present(result))
                 return;
 
             _totalCount = result.Value!.TotalCount;
-            var rows = result.Value.Items
-                .Select(dto => SalesInvoiceListRow.FromDto(
-                    dto,
-                    dto.WarehouseName,
-                    dto.ContainerNumber))
-                .Cast<object>()
-                .ToList();
+            List<object> rows;
+            using (perfScope?.MeasureMapping())
+            {
+                rows = result.Value.Items
+                    .Select(dto => SalesInvoiceListRow.FromDto(
+                        dto,
+                        dto.WarehouseName,
+                        dto.ContainerNumber))
+                    .Cast<object>()
+                    .ToList();
+            }
 
-            _page.BindData(rows);
-            _page.UpdateRecordCount(rows.Count, _totalCount);
+            using (perfScope?.MeasureItemsSourceAssignment())
+            {
+                _page.BindData(rows);
+                _page.UpdateRecordCount(rows.Count, _totalCount);
+            }
+
+            perfScope?.SetRowsReturned(rows.Count);
         }
         finally
         {

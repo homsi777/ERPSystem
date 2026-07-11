@@ -1,14 +1,17 @@
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Sales;
+using ERPSystem.Application.Results;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Controls.Workspace;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.Sales;
+using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Sales;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -52,8 +55,20 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         if (!AppServices.IsInitialized) return;
 
         Content = _loading;
-        var result = await SalesUiService.Instance.GetOperationsCenterAsync(_invoiceId);
-        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+
+        using var perfScope = AppServices.GetRequiredService<IWpfPerformanceProfiler>()
+            .BeginScreenLoad("Sales.OperationsCenter");
+
+        SalesInvoiceOperationsCenterDto? value;
+        ApplicationResult<SalesInvoiceOperationsCenterDto> result;
+        using (perfScope.MeasureDataLoad())
+        {
+            result = await SalesUiService.Instance.GetOperationsCenterAsync(_invoiceId);
+        }
+        perfScope.IncrementServiceCalls();
+        value = result.Value;
+
+        if (!ApplicationResultPresenter.Present(result) || value is null)
         {
             Content = new TextBlock
             {
@@ -64,7 +79,11 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             return;
         }
 
-        Content = BuildShell(result.Value);
+        using (perfScope.MeasureRendering())
+        {
+            Content = BuildShell(value);
+        }
+        perfScope.SetRowsReturned(1);
     }
 
     private UserControl BuildShell(SalesInvoiceOperationsCenterDto data)

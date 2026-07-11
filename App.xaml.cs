@@ -1,6 +1,7 @@
 ﻿using ERPSystem.Core;
 using ERPSystem.Application.DependencyInjection;
 using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
@@ -50,8 +51,13 @@ public partial class App : System.Windows.Application
             // Bring up the optional SSH tunnel (cloud DB) before any DB access.
             _sshTunnel = SshTunnelService.StartIfConfigured(configuration);
 
+            // WPF Performance Rescue — Phase A instrumentation. Purely observational (counts EF Core
+            // round-trips via the standard DiagnosticListener feed); never changes query behavior or results.
+            EfQueryTelemetry.EnsureStarted();
+
             services.AddSingleton<IConfiguration>(configuration);
             services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
+            services.AddSingleton<IWpfPerformanceProfiler, WpfPerformanceProfiler>();
 
             services.AddSingleton<ICurrentUserService, WpfCurrentUserService>();
             services.AddSingleton<ICurrentBranchService, WpfCurrentBranchService>();
@@ -86,11 +92,23 @@ public partial class App : System.Windows.Application
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);
 
-            await provider.MigrateAndSeedAsync();
+            var profiler = provider.GetRequiredService<IWpfPerformanceProfiler>();
+            using (var startupScope = profiler.BeginScreenLoad("App.Startup"))
+            {
+                using (startupScope.MeasureDataLoad())
+                    await provider.MigrateAndSeedAsync();
 
-            await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
+                await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
+            }
 
-            new MainWindow().Show();
+            using (var windowScope = profiler.BeginScreenLoad("App.MainWindowConstruction"))
+            {
+                MainWindow window;
+                using (windowScope.MeasureMapping())
+                    window = new MainWindow();
+                using (windowScope.MeasureRendering())
+                    window.Show();
+            }
         }
         catch (Exception ex)
         {
