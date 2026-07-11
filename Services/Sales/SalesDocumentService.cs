@@ -52,7 +52,10 @@ public static class SalesDocumentService
     public static void ShowInvoicePreview(SalesInvoiceDto invoice, string customerName, bool exportPdf)
     {
         EnsureLicense();
-        var document = BuildInvoiceDocument(invoice, customerName);
+        var resolvedCustomerName = string.IsNullOrWhiteSpace(invoice.CustomerName)
+            ? customerName
+            : invoice.CustomerName;
+        var document = BuildInvoiceDocument(invoice, resolvedCustomerName);
         if (exportPdf)
         {
             SavePdf(document, $"Invoice-{invoice.InvoiceNumber}.pdf");
@@ -285,7 +288,11 @@ public static class SalesDocumentService
         c.Background(QColors.Grey.Lighten4).Padding(10).Column(col =>
         {
             col.Item().Text("بيانات العميل").FontSize(11).Bold();
-            col.Item().Text(customerName).FontSize(12).SemiBold();
+            var displayName = string.IsNullOrWhiteSpace(invoice.CustomerName)
+                ? customerName
+                : invoice.CustomerName;
+            col.Item().Text(string.IsNullOrWhiteSpace(displayName) ? "عميل غير محدد" : displayName)
+                .FontSize(12).SemiBold();
         });
 
     private static void LinesTable(IContainer c, SalesInvoiceDto invoice, IReadOnlyList<SalesInvoiceLineDto> lines) =>
@@ -293,10 +300,10 @@ public static class SalesDocumentService
         {
             t.ColumnsDefinition(cd =>
             {
-                cd.ConstantColumn(28);
                 cd.RelativeColumn(3);
                 cd.RelativeColumn(2);
                 cd.ConstantColumn(50);
+                cd.RelativeColumn(2);
                 cd.RelativeColumn(2);
                 cd.RelativeColumn(2);
                 cd.RelativeColumn(2);
@@ -305,28 +312,26 @@ public static class SalesDocumentService
 
             t.Header(h =>
             {
-                h.Cell().Element(HeaderCell).Text("#");
                 h.Cell().Element(HeaderCell).Text("الصنف");
                 h.Cell().Element(HeaderCell).Text("اللون");
-                h.Cell().Element(HeaderCell).AlignCenter().Text("الأطباق");
-                h.Cell().Element(HeaderCell).AlignRight().Text("السعر");
-                h.Cell().Element(HeaderCell).AlignRight().Text("الإجمالي");
+                h.Cell().Element(HeaderCell).AlignCenter().Text("عدد الأثواب");
+                h.Cell().Element(HeaderCell).AlignRight().Text("الطول");
+                h.Cell().Element(HeaderCell).AlignRight().Text("سعر الوحدة");
+                h.Cell().Element(HeaderCell).AlignRight().Text("الخصم");
                 h.Cell().Element(HeaderCell).AlignRight().Text("الضريبة");
-                h.Cell().Element(HeaderCell).AlignRight().Text("كود");
+                h.Cell().Element(HeaderCell).AlignRight().Text("الإجمالي");
             });
 
-            var i = 1;
             foreach (var line in lines)
             {
-                t.Cell().Element(BodyCell).Text(i.ToString());
                 t.Cell().Element(BodyCell).Text($"{line.FabricDisplayName} ({line.FabricCode})");
                 t.Cell().Element(BodyCell).Text(line.ColorDisplayName);
                 t.Cell().Element(BodyCell).AlignCenter().Text(line.RollCount.ToString());
+                t.Cell().Element(BodyCell).AlignRight().Text($"{line.TotalLengthMeters:N2}");
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.UnitPrice:N2}");
-                t.Cell().Element(BodyCell).AlignRight().Text($"{line.LineTotal:N2}");
+                t.Cell().Element(BodyCell).AlignRight().Text($"{line.DiscountAmount:N2}");
                 t.Cell().Element(BodyCell).AlignRight().Text(line.TaxAmount > 0 ? $"{line.TaxAmount:N2}" : "—");
-                t.Cell().Element(BodyCell).AlignRight().Text(line.TaxCode ?? "—");
-                i++;
+                t.Cell().Element(BodyCell).AlignRight().Text($"{line.LineTotal:N2}");
             }
 
             static IContainer HeaderCell(IContainer x) =>

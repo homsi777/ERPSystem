@@ -254,16 +254,16 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
             .Where(t => t.SalesInvoiceId == id)
             .ToListAsync(cancellationToken);
 
-        var status = (SalesInvoiceStatus)header.Status;
-        var needsDetailing = status is SalesInvoiceStatus.AwaitingDetailing or SalesInvoiceStatus.Detailed;
-        if (!needsDetailing)
-            return SalesInvoiceMapper.ToAggregate(header, items, [], null, itemTaxes);
-
         var rolls = await context.SalesInvoiceRollDetails.AsNoTracking()
             .Where(r => r.SalesInvoiceId == id)
             .ToListAsync(cancellationToken);
-        var session = await context.WarehouseDetailingSessions.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.SalesInvoiceId == id, cancellationToken);
+
+        var status = (SalesInvoiceStatus)header.Status;
+        var needsDetailingSession = status is SalesInvoiceStatus.AwaitingDetailing or SalesInvoiceStatus.Detailed;
+        var session = needsDetailingSession
+            ? await context.WarehouseDetailingSessions.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SalesInvoiceId == id, cancellationToken)
+            : null;
         return SalesInvoiceMapper.ToAggregate(header, items, rolls, session, itemTaxes);
     }
 

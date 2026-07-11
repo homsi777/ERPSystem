@@ -141,7 +141,9 @@ public sealed class SalesInvoicePdfService
             row.RelativeItem().Column(customer =>
             {
                 customer.Item().Text("بيانات العميل").FontSize(10).Bold().FontColor(Gold);
-                customer.Item().PaddingTop(3).Text(invoice.CustomerName).FontSize(12).SemiBold();
+                customer.Item().PaddingTop(3)
+                    .Text(string.IsNullOrWhiteSpace(invoice.CustomerName) ? "عميل غير محدد" : invoice.CustomerName)
+                    .FontSize(12).SemiBold();
                 if (!string.IsNullOrWhiteSpace(operations.CustomerPhone))
                 {
                     customer.Item().PaddingTop(2).ContentFromLeftToRight()
@@ -152,7 +154,11 @@ public sealed class SalesInvoicePdfService
             row.RelativeItem().AlignLeft().Column(details =>
             {
                 details.Item().Text($"نوع الدفع: {PaymentTypeLabel(invoice.PaymentType)}").SemiBold();
-                details.Item().PaddingTop(2).Text($"المستودع: {invoice.WarehouseName}");
+                var warehouseName = string.IsNullOrWhiteSpace(operations.WarehouseName)
+                    ? invoice.WarehouseName
+                    : operations.WarehouseName;
+                details.Item().PaddingTop(2)
+                    .Text($"المستودع: {(string.IsNullOrWhiteSpace(warehouseName) ? "غير محدد" : warehouseName)}");
                 details.Item().PaddingTop(2).Row(line =>
                 {
                     line.AutoItem().Text("الحالة:");
