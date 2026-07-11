@@ -103,6 +103,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IReceiptPostingService, ReceiptPostingService>();
         services.AddScoped<ICashboxBalanceService, CashboxBalanceService>();
         services.AddScoped<ICashboxReconciliationService, CashboxReconciliationService>();
+        services.AddScoped<IAccountingBaselineReportService, AccountingBaselineReportService>();
         services.AddScoped<IAccountingHealthCheckService, AccountingHealthCheckService>();
         services.AddScoped<IContainerWarehouseImportService, ContainerWarehouseImportService>();
         services.AddScoped<IGlobalSearchService, GlobalSearchService>();

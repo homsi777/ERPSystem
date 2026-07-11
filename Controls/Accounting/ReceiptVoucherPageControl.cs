@@ -419,7 +419,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
                     return false;
                 }
                 cashboxId = box;
-                if (_cashbox.SelectedItem is CashboxListDto { AccountId: null } or CashboxListDto { AccountId: Guid.Empty })
+                if (_cashbox.SelectedItem is CashboxListDto selectedCashbox
+                    && (selectedCashbox.AccountId is null || selectedCashbox.AccountId == Guid.Empty))
                 {
                     MessageBox.Show("الصندوق لا يملك حساب GL — لا يمكن الترحيل.", "سند قبض", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return false;

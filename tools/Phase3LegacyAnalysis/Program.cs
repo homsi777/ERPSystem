@@ -7,6 +7,7 @@ using ERPSystem.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 var mode = args.FirstOrDefault(a => a.StartsWith("--")) ?? "--all";
@@ -21,6 +22,7 @@ var configuration = new ConfigurationBuilder()
 using var tunnel = ERPSystem.Services.SshTunnelService.StartIfConfigured(configuration);
 
 var services = new ServiceCollection();
+services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Warning));
 services.AddInfrastructure(configuration);
 await using var provider = services.BuildServiceProvider();
 
