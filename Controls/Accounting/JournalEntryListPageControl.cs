@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Accounting;
 
@@ -159,6 +160,7 @@ public sealed class JournalEntryListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Accounting.Journal");
         if (_isLoading || !AppServices.IsInitialized)
         {
             _page.BindData([]);
@@ -178,7 +180,8 @@ public sealed class JournalEntryListPageControl : UserControl
                 ToDate = _toDate.SelectedDate
             };
 
-            var result = await AccountingUiService.Instance.GetJournalEntriesAsync(filter, 1, 500);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => AccountingUiService.Instance.GetJournalEntriesAsync(filter, 1, 500));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result))
             {
                 _page.BindData([]);

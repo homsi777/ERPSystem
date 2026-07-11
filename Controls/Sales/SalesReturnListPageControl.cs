@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Sales;
 
@@ -92,6 +93,7 @@ public sealed class SalesReturnListPageControl : UserControl
 
     private async Task ReloadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Sales.Returns");
         if (!AppServices.IsInitialized) return;
         _page.SetLoadingState(true);
         try
@@ -105,9 +107,8 @@ public sealed class SalesReturnListPageControl : UserControl
                 _ => null
             };
 
-            var result = await SalesReturnUiService.Instance.GetListAsync(
-                status,
-                originalInvoiceId: _filterOriginalInvoiceId);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => SalesReturnUiService.Instance.GetListAsync( status, originalInvoiceId: _filterOriginalInvoiceId));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result) || result.Value is null) return;
 
             var rows = result.Value

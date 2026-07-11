@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Expenses;
 
@@ -194,6 +195,7 @@ public sealed class ExpenseEntryListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Expenses.Entries");
         if (_isLoading || !AppServices.IsInitialized) return;
         _isLoading = true;
         try
@@ -210,7 +212,8 @@ public sealed class ExpenseEntryListPageControl : UserControl
                 ToDate = _toDate.SelectedDate
             };
 
-            var result = await ExpenseUiService.Instance.GetEntriesAsync(filter, 1, 500);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => ExpenseUiService.Instance.GetEntriesAsync(filter, 1, 500));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result)) return;
 
             var list = result.Value?.Items ?? [];

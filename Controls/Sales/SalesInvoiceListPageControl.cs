@@ -143,7 +143,7 @@ public sealed class SalesInvoiceListPageControl : UserControl
         _page.SetLoadingState(true);
 
         using var perfScope = AppServices.IsInitialized
-            ? AppServices.GetRequiredService<IWpfPerformanceProfiler>().BeginScreenLoad("Sales.InvoiceList")
+            ? ScreenLoadProfiler.Begin("Sales.InvoiceList")
             : null;
 
         try

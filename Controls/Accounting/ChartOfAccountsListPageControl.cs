@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Accounting;
 
@@ -337,13 +338,14 @@ public sealed class ChartOfAccountsListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Accounting.Chart");
         if (_isLoading || !AppServices.IsInitialized) return;
         _isLoading = true;
         try
         {
             var term = _search.Text.Trim();
-            var result = await AccountingUiService.Instance.GetAccountsAsync(
-                string.IsNullOrWhiteSpace(term) ? null : term);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => AccountingUiService.Instance.GetAccountsAsync( string.IsNullOrWhiteSpace(term) ? null : term));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result)) return;
             _allItems = result.Value ?? [];
             RenderTree();

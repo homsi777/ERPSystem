@@ -3,6 +3,7 @@ using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Inventory;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -65,7 +66,9 @@ public sealed class InventoryOperationsCenterControl : UserControl
         }
 
         Content = BuildLoadingSkeleton();
-        var result = await InventoryUiService.Instance.GetOperationsCenterAsync(warehouseId);
+        using var perfScope = ScreenLoadProfiler.Begin("Inventory.OperationsCenter");
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => InventoryUiService.Instance.GetOperationsCenterAsync(warehouseId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null)
         {
             Content = EmptyState("تعذر التحميل", "لم يتم العثور على بيانات المستودع في PostgreSQL.");

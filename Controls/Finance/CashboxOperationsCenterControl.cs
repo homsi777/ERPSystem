@@ -3,6 +3,7 @@ using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -50,7 +51,9 @@ public sealed class CashboxOperationsCenterControl : UserControl
         }
 
         Content = Loading();
-        var result = await FinanceUiService.Instance.GetCashboxOperationsCenterAsync(cashboxId);
+        using var perfScope = ScreenLoadProfiler.Begin("Finance.CashboxOperationsCenter");
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => FinanceUiService.Instance.GetCashboxOperationsCenterAsync(cashboxId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null)
         {
             Content = Empty("تعذر التحميل", "لم يتم العثور على بيانات الصندوق.");

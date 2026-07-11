@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Sales;
 
@@ -91,6 +92,7 @@ public sealed class SalesTaxReportPageControl : UserControl
 
     private async Task RunAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Sales.TaxReport");
         if (!AppServices.IsInitialized || _running) return;
         try
         {
@@ -98,7 +100,8 @@ public sealed class SalesTaxReportPageControl : UserControl
             _meta.Text = "جار تحميل التقرير...";
             var from = _from.SelectedDate ?? DateTime.Today.AddMonths(-1);
             var to = _to.SelectedDate ?? DateTime.Today;
-            var result = await SalesUiService.Instance.GetTaxReportAsync(from, to, _includeLegacy.IsChecked == true);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => SalesUiService.Instance.GetTaxReportAsync(from, to, _includeLegacy.IsChecked == true));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result) || result.Value is null) return;
             Render(result.Value, from, to);
         }

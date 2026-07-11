@@ -7,6 +7,7 @@ using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Documents;
 using ERPSystem.Services.Finance;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -45,7 +46,9 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
     private async Task LoadAsync(Guid documentId)
     {
         if (!AppServices.IsInitialized) return;
-        var result = await OpeningBalanceUiService.Instance.GetDetailsAsync(documentId);
+        using var perfScope = ScreenLoadProfiler.Begin("Finance.OpeningBalanceOperationsCenter");
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => OpeningBalanceUiService.Instance.GetDetailsAsync(documentId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null) return;
         _loaded = result.Value;
         var shell = BuildShell(_loaded);

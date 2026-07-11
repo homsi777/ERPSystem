@@ -136,9 +136,25 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        string? sessionLog = null;
+        if (AppServices.IsInitialized)
+        {
+            try
+            {
+                sessionLog = AppServices.GetRequiredService<IWpfPerformanceProfiler>().SessionLogFilePath;
+            }
+            catch
+            {
+                // Best-effort — never block shutdown.
+            }
+        }
+
         _sshTunnel?.Dispose();
         _sshTunnel = null;
         base.OnExit(e);
+
+        if (!string.IsNullOrWhiteSpace(sessionLog))
+            _ = Task.Run(() => WpfSessionSummaryAnalyzer.TryWriteSummary(sessionLog));
     }
 
     private static Window CreateConnectionStatusWindow() => new()

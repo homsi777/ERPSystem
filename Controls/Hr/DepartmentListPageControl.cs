@@ -8,6 +8,7 @@ using ERPSystem.Services.Hr;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Hr;
 
@@ -71,12 +72,14 @@ public sealed class DepartmentListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("HR.Departments");
         if (_isLoading || !AppServices.IsInitialized) { _page.BindData([]); return; }
         _isLoading = true;
         _page.SetLoadingState(true);
         try
         {
-            var result = await HrUiService.Instance.GetDepartmentsAsync();
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => HrUiService.Instance.GetDepartmentsAsync());
+        perfScope?.IncrementServiceCalls();
             _page.BindData(result.IsSuccess && result.Value is not null
                 ? result.Value.Cast<object>().ToList()
                 : []);

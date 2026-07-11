@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Purchases;
 
@@ -88,6 +89,7 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
 
     private async Task LoadAsync(string search)
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Purchases.Invoices");
         if (!AppServices.IsInitialized) return;
         _page.SetLoadingState(true);
         try
@@ -101,7 +103,8 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
                 "ملغاة" => PurchaseInvoiceStatus.Cancelled,
                 _ => null
             };
-            var result = await PurchaseUiService.Instance.GetInvoiceListAsync(search, status);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => PurchaseUiService.Instance.GetInvoiceListAsync(search, status));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result)) return;
             var rows = result.Value!.Select(PurchaseListRow.FromDto).Cast<object>().ToList();
             _page.BindData(rows);

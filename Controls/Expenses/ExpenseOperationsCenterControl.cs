@@ -4,6 +4,7 @@ using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Expenses;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -34,7 +35,9 @@ public sealed class ExpenseOperationsCenterControl : UserControl
         if (!AppServices.IsInitialized)
             return;
 
-        var result = await ExpenseUiService.Instance.GetOperationsCenterAsync(expenseId);
+        using var perfScope = ScreenLoadProfiler.Begin("Expenses.OperationsCenter");
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => ExpenseUiService.Instance.GetOperationsCenterAsync(expenseId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null)
             return;
 

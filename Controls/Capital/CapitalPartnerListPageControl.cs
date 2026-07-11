@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Capital;
 
@@ -207,12 +208,14 @@ public sealed class CapitalPartnerListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Capital.Partners");
         if (_isLoading || !AppServices.IsInitialized) return;
         _isLoading = true;
         try
         {
             var filter = BuildFilter();
-            var result = await CapitalPartnerUiService.Instance.GetListAsync(filter, 1, 500);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => CapitalPartnerUiService.Instance.GetListAsync(filter, 1, 500));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result)) return;
             _allPartners = result.Value?.Items ?? [];
             RenderCards(_allPartners);

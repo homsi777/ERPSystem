@@ -5,6 +5,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Capital;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -32,7 +33,9 @@ public sealed class CapitalOperationsCenterControl : UserControl
     private async Task LoadAsync(Guid partnerId)
     {
         if (!AppServices.IsInitialized) return;
-        var result = await CapitalPartnerUiService.Instance.GetOperationsCenterAsync(partnerId);
+        using var perfScope = ScreenLoadProfiler.Begin("Capital.OperationsCenter");
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => CapitalPartnerUiService.Instance.GetOperationsCenterAsync(partnerId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null) return;
 
         var shell = BuildShell(result.Value);

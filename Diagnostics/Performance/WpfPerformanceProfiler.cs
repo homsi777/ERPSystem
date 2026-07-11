@@ -21,13 +21,19 @@ public sealed class WpfPerformanceProfiler : IWpfPerformanceProfiler
     private readonly ConcurrentQueue<UiThreadMetric> _uiThreadOps = new();
     private readonly ILogger<WpfPerformanceProfiler> _logger;
     private readonly string? _logFilePath;
+    private readonly string? _sessionLogFilePath;
     private readonly object _fileLock = new();
+
+    public string SessionId { get; } = Guid.NewGuid().ToString("N")[..12];
+
+    public string? SessionLogFilePath => _sessionLogFilePath;
 
     public WpfPerformanceProfiler(ILogger<WpfPerformanceProfiler> logger)
     {
         _logger = logger;
         EfQueryTelemetry.EnsureStarted();
-        _logFilePath = TryResolveLogFilePath();
+        _logFilePath = TryResolveDailyLogFilePath();
+        _sessionLogFilePath = TryResolveSessionLogFilePath(SessionId);
     }
 
     public event EventHandler<ScreenLoadMetric>? ScreenLoadRecorded;
@@ -82,6 +88,7 @@ public sealed class WpfPerformanceProfiler : IWpfPerformanceProfiler
 
     private void Complete(ScreenLoadMetric metric)
     {
+        metric.SessionId = SessionId;
         Enqueue(_screenLoads, metric);
 
         var severity = metric.Severity;
@@ -109,7 +116,20 @@ public sealed class WpfPerformanceProfiler : IWpfPerformanceProfiler
         while (queue.Count > MaxRingSize && queue.TryDequeue(out _)) { }
     }
 
-    private static string? TryResolveLogFilePath()
+    private static string? TryResolveDailyLogFilePath() => TryResolveLogDirectory() is { } dir
+        ? Path.Combine(dir, $"wpf-performance-{DateTime.UtcNow:yyyyMMdd}.jsonl")
+        : null;
+
+    private static string? TryResolveSessionLogFilePath(string sessionId)
+    {
+        if (TryResolveLogDirectory() is not { } dir)
+            return null;
+
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        return Path.Combine(dir, $"wpf-performance-session-{stamp}-{sessionId}.jsonl");
+    }
+
+    private static string? TryResolveLogDirectory()
     {
         try
         {
@@ -117,7 +137,7 @@ public sealed class WpfPerformanceProfiler : IWpfPerformanceProfiler
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ERPSystem", "perf-logs");
             Directory.CreateDirectory(dir);
-            return Path.Combine(dir, $"wpf-performance-{DateTime.UtcNow:yyyyMMdd}.jsonl");
+            return dir;
         }
         catch
         {
@@ -127,14 +147,17 @@ public sealed class WpfPerformanceProfiler : IWpfPerformanceProfiler
 
     private void AppendToLogFile(ScreenLoadMetric metric)
     {
-        if (_logFilePath is null) return;
+        metric.SessionId ??= SessionId;
 
         try
         {
             var line = JsonSerializer.Serialize(metric);
             lock (_fileLock)
             {
-                File.AppendAllText(_logFilePath, line + Environment.NewLine);
+                if (_logFilePath is not null)
+                    File.AppendAllText(_logFilePath, line + Environment.NewLine);
+                if (_sessionLogFilePath is not null)
+                    File.AppendAllText(_sessionLogFilePath, line + Environment.NewLine);
             }
         }
         catch

@@ -7,6 +7,7 @@ namespace ERPSystem.Diagnostics.Performance;
 /// </summary>
 public sealed class ScreenLoadMetric
 {
+    public string? SessionId { get; set; }
     public required string Screen { get; init; }
     public string? ViewModelName { get; init; }
     public required string CorrelationId { get; init; }

@@ -12,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Customers;
 
@@ -95,6 +96,7 @@ public sealed class CustomerListPageControl : UserControl
 
     private async Task LoadCustomersAsync(string search)
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Customers.List");
         if (_isLoading || !AppServices.IsInitialized)
             return;
 
@@ -103,7 +105,8 @@ public sealed class CustomerListPageControl : UserControl
 
         try
         {
-            var result = await CustomerUiService.Instance.GetListAsync(search, _pageNumber, 100);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => CustomerUiService.Instance.GetListAsync(search, _pageNumber, 100));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result))
                 return;
 

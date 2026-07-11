@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.China;
 
@@ -141,6 +142,7 @@ public sealed class ContainerListPageControl : UserControl
 
     private async Task LoadContainersAsync(string search)
     {
+        using var perfScope = ScreenLoadProfiler.Begin("China.Containers");
         if (_isLoading || !AppServices.IsInitialized)
             return;
 
@@ -151,7 +153,8 @@ public sealed class ContainerListPageControl : UserControl
         {
             var status = ChinaContainerStatusDisplay.FromArabicFilter(
                 (_statusFilter.SelectedItem as ComboBoxItem)?.Content?.ToString());
-            var result = await ContainerUiService.Instance.GetListAsync(search, status, 1, 100);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => ContainerUiService.Instance.GetListAsync(search, status, 1, 100));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result))
                 return;
 

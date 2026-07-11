@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Inventory;
 
@@ -122,12 +123,14 @@ public sealed class InventoryWarehouseListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Inventory.Warehouses");
         if (_isLoading || !AppServices.IsInitialized) { _page.BindData([]); return; }
         _isLoading = true;
         _page.SetLoadingState(true);
         try
         {
-            var result = await InventoryUiService.Instance.GetWarehousesAsync();
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => InventoryUiService.Instance.GetWarehousesAsync());
+        perfScope?.IncrementServiceCalls();
             if (!result.IsSuccess || result.Value is null)
             {
                 _page.BindData([]);

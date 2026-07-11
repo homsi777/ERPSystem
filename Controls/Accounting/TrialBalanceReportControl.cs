@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Accounting;
 
@@ -62,11 +63,13 @@ public sealed class TrialBalanceReportControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Accounting.TrialBalance");
         if (!AppServices.IsInitialized)
             return;
 
         var asOf = _asOf.SelectedDate ?? DateTime.Today;
-        var result = await AccountingUiService.Instance.GetTrialBalanceAsync(asOf);
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => AccountingUiService.Instance.GetTrialBalanceAsync(asOf));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null)
             return;
 

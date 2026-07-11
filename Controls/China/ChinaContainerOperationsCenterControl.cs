@@ -8,6 +8,7 @@ using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.China;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -74,7 +75,9 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         if (!AppServices.IsInitialized)
             return;
 
-        var opsResult = await ContainerUiService.Instance.GetOperationsCenterAsync(_containerId);
+        using var perfScope = ScreenLoadProfiler.Begin("China.OperationsCenter");
+        var opsResult = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => ContainerUiService.Instance.GetOperationsCenterAsync(_containerId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(opsResult) || opsResult.Value is null)
         {
             Content = new TextBlock { Text = "تعذّر تحميل بيانات الحاوية.", Margin = new Thickness(24) };

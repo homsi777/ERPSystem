@@ -7,6 +7,12 @@ namespace ERPSystem.Diagnostics.Performance;
 /// </summary>
 public interface IWpfPerformanceProfiler
 {
+    /// <summary>Unique id for this desktop session — stamped on every JSONL line.</summary>
+    string SessionId { get; }
+
+    /// <summary>Per-session JSONL log written alongside the daily aggregate log.</summary>
+    string? SessionLogFilePath { get; }
+
     /// <summary>
     /// Begins timing a screen/page load. Dispose the returned scope when the first page of data has
     /// been rendered to the user (not when a background prefetch finishes).

@@ -7,6 +7,7 @@ using ERPSystem.Services.Finance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Finance;
 
@@ -57,12 +58,14 @@ public sealed class CashboxTransferListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Finance.Transfers");
         if (_isLoading || !AppServices.IsInitialized) { _page.BindData([]); return; }
         _isLoading = true;
         _page.SetLoadingState(true);
         try
         {
-            var result = await FinanceUiService.Instance.GetCashboxTransfersAsync();
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => FinanceUiService.Instance.GetCashboxTransfersAsync());
+        perfScope?.IncrementServiceCalls();
             if (!result.IsSuccess || result.Value is null)
             {
                 _page.BindData([]);

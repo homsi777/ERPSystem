@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Finance;
 
@@ -127,13 +128,15 @@ public sealed class OpeningBalanceListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Finance.OpeningBalances");
         if (_isLoading || !AppServices.IsInitialized) { _page.BindData([]); return; }
         _isLoading = true;
         _page.SetLoadingState(true);
         try
         {
             var filter = new OpeningBalanceListFilter { Type = MapTypeFilter() };
-            var result = await OpeningBalanceUiService.Instance.GetListAsync(filter, 1, 500);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => OpeningBalanceUiService.Instance.GetListAsync(filter, 1, 500));
+        perfScope?.IncrementServiceCalls();
             _page.BindData(result.IsSuccess && result.Value is not null
                 ? result.Value.Items.Cast<object>().ToList()
                 : []);

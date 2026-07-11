@@ -2,6 +2,7 @@ using ERPSystem.Controls.Purchases;
 using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Services.Purchases;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,7 +24,9 @@ public sealed class PurchaseOrderListPageControl : UserControl
         };
         Loaded += async (_, _) =>
         {
-            var result = await PurchaseUiService.Instance.GetOrderListAsync();
+            using var perfScope = ScreenLoadProfiler.Begin("Purchases.Orders");
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => PurchaseUiService.Instance.GetOrderListAsync());
+            perfScope?.IncrementServiceCalls();
             if (ApplicationResultPresenter.Present(result))
                 page.BindData(result.Value!.Cast<object>().ToList());
         };
@@ -46,7 +49,9 @@ public sealed class PurchaseReturnListPageControl : UserControl
         };
         Loaded += async (_, _) =>
         {
-            var result = await PurchaseUiService.Instance.GetReturnListAsync();
+            using var perfScope = ScreenLoadProfiler.Begin("Purchases.Returns");
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => PurchaseUiService.Instance.GetReturnListAsync());
+            perfScope?.IncrementServiceCalls();
             if (ApplicationResultPresenter.Present(result))
                 page.BindData(result.Value!.Cast<object>().ToList());
         };

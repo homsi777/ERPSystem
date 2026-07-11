@@ -9,6 +9,7 @@ using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
+using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -47,7 +48,9 @@ public sealed class CustomerOperationsCenterControl : UserControl
         if (!AppServices.IsInitialized)
             return;
 
-        var result = await CustomerUiService.Instance.GetOperationsCenterAsync(_customerId);
+        using var perfScope = ScreenLoadProfiler.Begin("Customers.OperationsCenter");
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => CustomerUiService.Instance.GetOperationsCenterAsync(_customerId));
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result))
         {
             Content = new TextBlock { Text = "تعذّر تحميل بيانات العميل.", Margin = new Thickness(24) };

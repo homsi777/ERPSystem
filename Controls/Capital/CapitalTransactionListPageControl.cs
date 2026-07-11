@@ -9,6 +9,7 @@ using ERPSystem.Services.Capital;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Capital;
 
@@ -114,6 +115,7 @@ public sealed class CapitalTransactionListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Capital.Transactions");
         if (_isLoading || !AppServices.IsInitialized) return;
         _isLoading = true;
         try
@@ -130,7 +132,8 @@ public sealed class CapitalTransactionListPageControl : UserControl
                 ToDate = _toDate.SelectedDate
             };
 
-            var result = await CapitalPartnerUiService.Instance.GetTransactionsAsync(filter, 1, 500);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => CapitalPartnerUiService.Instance.GetTransactionsAsync(filter, 1, 500));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result)) return;
             _page.BindData(result.Value?.Items ?? Array.Empty<CapitalTransactionListDto>());
         }

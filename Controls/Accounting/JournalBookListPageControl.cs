@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Accounting;
 
@@ -138,10 +139,12 @@ public sealed class JournalBookListPageControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Accounting.JournalBooks");
         if (!AppServices.IsInitialized)
             return;
 
-        var result = await AccountingUiService.Instance.GetJournalBooksAsync();
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => AccountingUiService.Instance.GetJournalBooksAsync());
+        perfScope?.IncrementServiceCalls();
         if (!ApplicationResultPresenter.Present(result) || result.Value is null)
             return;
 

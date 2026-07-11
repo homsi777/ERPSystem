@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Suppliers;
 
@@ -95,6 +96,7 @@ public sealed class SupplierListPageControl : UserControl
 
     private async Task LoadAsync(string search)
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Suppliers.List");
         if (_isLoading || !AppServices.IsInitialized)
             return;
 
@@ -122,8 +124,8 @@ public sealed class SupplierListPageControl : UserControl
                 _ => null
             };
 
-            var result = await SupplierUiService.Instance.GetListAsync(
-                search, country, terms, hasBalance, 1, 200);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => SupplierUiService.Instance.GetListAsync( search, country, terms, hasBalance, 1, 200));
+        perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result))
                 return;
 

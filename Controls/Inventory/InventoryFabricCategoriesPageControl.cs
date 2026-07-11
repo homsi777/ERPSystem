@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Inventory;
 
@@ -149,6 +150,7 @@ internal sealed class ImportedFabricClassificationPanel : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Inventory.Categories");
         if (_isLoading || !AppServices.IsInitialized) return;
 
         _isLoading = true;
@@ -156,7 +158,8 @@ internal sealed class ImportedFabricClassificationPanel : UserControl
         try
         {
             Guid? containerId = (_containerFilter.SelectedItem as ContainerFilterOption)?.Id;
-            var result = await InventoryCatalogUiService.Instance.GetImportedClassificationsAsync(containerId);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => InventoryCatalogUiService.Instance.GetImportedClassificationsAsync(containerId));
+        perfScope?.IncrementServiceCalls();
             _page.BindData(result.IsSuccess && result.Value is not null
                 ? result.Value.Cast<object>().ToList()
                 : []);

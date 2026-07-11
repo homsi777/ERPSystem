@@ -56,16 +56,15 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
 
         Content = _loading;
 
-        using var perfScope = AppServices.GetRequiredService<IWpfPerformanceProfiler>()
-            .BeginScreenLoad("Sales.OperationsCenter");
+        using var perfScope = ScreenLoadProfiler.Begin("Sales.OperationsCenter");
 
         SalesInvoiceOperationsCenterDto? value;
         ApplicationResult<SalesInvoiceOperationsCenterDto> result;
-        using (perfScope.MeasureDataLoad())
+        using (perfScope?.MeasureDataLoad())
         {
             result = await SalesUiService.Instance.GetOperationsCenterAsync(_invoiceId);
         }
-        perfScope.IncrementServiceCalls();
+        perfScope?.IncrementServiceCalls();
         value = result.Value;
 
         if (!ApplicationResultPresenter.Present(result) || value is null)
@@ -79,11 +78,11 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             return;
         }
 
-        using (perfScope.MeasureRendering())
+        using (perfScope?.MeasureRendering())
         {
             Content = BuildShell(value);
         }
-        perfScope.SetRowsReturned(1);
+        perfScope?.SetRowsReturned(1);
     }
 
     private UserControl BuildShell(SalesInvoiceOperationsCenterDto data)

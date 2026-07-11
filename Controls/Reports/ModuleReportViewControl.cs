@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using WpfApplication = System.Windows.Application;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Reports;
 
@@ -107,6 +108,7 @@ public sealed class ModuleReportViewControl : UserControl
 
     private async Task RunAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Reports.ModuleReport");
         if (!AppServices.IsInitialized)
             return;
 
@@ -118,8 +120,8 @@ public sealed class ModuleReportViewControl : UserControl
             _isRunning = true;
             _meta.Text = "جار تحميل التقرير...";
 
-            var result = await ModuleReportUiService.Instance.GetReportAsync(
-                _reportKey, _from.SelectedDate, _to.SelectedDate);
+            var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => ModuleReportUiService.Instance.GetReportAsync( _reportKey, _from.SelectedDate, _to.SelectedDate));
+        perfScope?.IncrementServiceCalls();
 
             if (!ApplicationResultPresenter.Present(result) || result.Value is null)
                 return;

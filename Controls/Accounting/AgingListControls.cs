@@ -7,6 +7,7 @@ using ERPSystem.Services.Suppliers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using ERPSystem.Diagnostics.Performance;
 
 namespace ERPSystem.Controls.Accounting;
 
@@ -64,9 +65,11 @@ public sealed class ReceivablesAgingControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Accounting.ReceivablesAging");
         if (!AppServices.IsInitialized) return;
 
-        var result = await AccountingUiService.Instance.GetReceivablesAgingAsync();
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => AccountingUiService.Instance.GetReceivablesAgingAsync());
+        perfScope?.IncrementServiceCalls();
         if (!result.IsSuccess || result.Value is null) return;
 
         var rows = result.Value.Select(dto => new ArAgingRow
@@ -158,9 +161,11 @@ public sealed class PayablesAgingControl : UserControl
 
     private async Task LoadAsync()
     {
+        using var perfScope = ScreenLoadProfiler.Begin("Accounting.PayablesAging");
         if (!AppServices.IsInitialized) return;
 
-        var result = await AccountingUiService.Instance.GetPayablesAgingAsync();
+        var result = await ScreenLoadProfiler.MeasureLoadAsync(perfScope, () => AccountingUiService.Instance.GetPayablesAgingAsync());
+        perfScope?.IncrementServiceCalls();
         if (!result.IsSuccess || result.Value is null) return;
 
         _grid.ItemsSource = result.Value.Select(dto => new ApAgingRow
