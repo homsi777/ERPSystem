@@ -138,7 +138,7 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
     {
         if (oc.Lines.Count == 0)
             return ErpUxFactory.InfoBanner("لا توجد سطور.", "neutral");
-        return ErpUiFactory.Card(ErpUiFactory.BuildGrid(oc.Lines.Select(l => new
+        return ErpUiFactory.Card(ErpAccountingColorHelper.BuildAccountingGrid(oc.Lines.Select(l => new
         {
             السطر = l.LineNumber,
             الطرف = l.PartyName ?? "—",
@@ -147,14 +147,14 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
             صنف = l.ItemName ?? "—",
             مدين = l.Debit,
             دائن = l.Credit
-        }).ToList(), false));
+        }).ToList()));
     }
 
     private static UIElement JournalTab(OpeningBalanceDetailsDto oc)
     {
         if (oc.JournalLines.Count == 0)
             return ErpUxFactory.InfoBanner("لم يُرحّل بعد أو لا توجد قيود.", "neutral");
-        return ErpUiFactory.Card(ErpUiFactory.BuildGrid(oc.JournalLines.Select(j => new
+        return ErpUiFactory.Card(ErpAccountingColorHelper.BuildAccountingGrid(oc.JournalLines.Select(j => new
         {
             القيد = j.EntryNumber,
             التاريخ = j.EntryDate.ToString("yyyy/MM/dd"),
@@ -162,7 +162,7 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
             مدين = j.Debit,
             دائن = j.Credit,
             البيان = j.Narrative ?? "—"
-        }).ToList(), false));
+        }).ToList()));
     }
 
     private static UIElement AuditTab(IReadOnlyList<OpeningBalanceEventDto> events) =>

@@ -305,15 +305,21 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
                 ItemsSource = e.Lines,
                 MaxHeight = 200
             };
+            ErpDataGridHelper.ApplyEnterpriseStyle(g);
             g.Columns.Add(new DataGridTextColumn { Header = "الحساب", Binding = new Binding(nameof(JournalEntryLineDto.AccountCode)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
             g.Columns.Add(new DataGridTextColumn { Header = "بيان", Binding = new Binding(nameof(JournalEntryLineDto.Narrative)), Width = 240 });
-            g.Columns.Add(new DataGridTextColumn { Header = "مدين", Binding = new Binding(nameof(JournalEntryLineDto.Debit)) { StringFormat = "N2" }, Width = 110 });
-            g.Columns.Add(new DataGridTextColumn { Header = "دائن", Binding = new Binding(nameof(JournalEntryLineDto.Credit)) { StringFormat = "N2" }, Width = 110 });
+            var debitCol = new DataGridTextColumn { Header = "مدين", Binding = new Binding(nameof(JournalEntryLineDto.Debit)) { StringFormat = "N2" }, Width = 110 };
+            ErpAccountingColorHelper.ApplyDebitStyle(debitCol, nameof(JournalEntryLineDto.Debit));
+            g.Columns.Add(debitCol);
+            var creditCol = new DataGridTextColumn { Header = "دائن", Binding = new Binding(nameof(JournalEntryLineDto.Credit)) { StringFormat = "N2" }, Width = 110 };
+            ErpAccountingColorHelper.ApplyCreditStyle(creditCol, nameof(JournalEntryLineDto.Credit));
+            g.Columns.Add(creditCol);
             card.Children.Add(g);
 
             var totals = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-            totals.Children.Add(new TextBlock { Text = $"إجمالي المدين: {e.DebitTotal:N2}", FontSize = 11, Margin = new Thickness(0, 0, 20, 0) });
-            totals.Children.Add(new TextBlock { Text = $"إجمالي الدائن: {e.CreditTotal:N2}", FontSize = 11 });
+            totals.Children.Add(ErpAccountingColorHelper.TintedAmountBadge($"إجمالي المدين: {e.DebitTotal:N2}", isDebit: true));
+            totals.Children.Add(new Border { Width = 12 });
+            totals.Children.Add(ErpAccountingColorHelper.TintedAmountBadge($"إجمالي الدائن: {e.CreditTotal:N2}", isDebit: false));
             card.Children.Add(totals);
 
             stack.Children.Add(ErpUiFactory.Card(card));

@@ -1,5 +1,6 @@
 using ERPSystem.Application.DTOs.Accounting;
 using ERPSystem.Domain.Enums;
+using ERPSystem.Helpers;
 using ERPSystem.Services.Accounting;
 using System.Windows;
 using System.Windows.Controls;
@@ -81,20 +82,33 @@ public sealed class JournalEntryCardControl : Border
                     Margin = new Thickness(0, 10, 0, 8),
                     Foreground = Br("TextPrimaryBrush")
                 },
-                new TextBlock
+                new Border
                 {
-                    Text = $"مدين: {entry.DebitTotal:N2}",
-                    FontSize = 14,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Br("DangerBrush")
+                    Background = Br(ErpAccountingColorHelper.DebitTintBrushKey),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(8, 4, 8, 4),
+                    Margin = new Thickness(0, 10, 0, 0),
+                    Child = new TextBlock
+                    {
+                        Text = $"مدين: {entry.DebitTotal:N2}",
+                        FontSize = 14,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = Br("TextPrimaryBrush")
+                    }
                 },
-                new TextBlock
+                new Border
                 {
-                    Text = $"دائن: {entry.CreditTotal:N2}",
-                    FontSize = 14,
-                    FontWeight = FontWeights.SemiBold,
+                    Background = Br(ErpAccountingColorHelper.CreditTintBrushKey),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(8, 4, 8, 4),
                     Margin = new Thickness(0, 4, 0, 0),
-                    Foreground = Br("SuccessBrush")
+                    Child = new TextBlock
+                    {
+                        Text = $"دائن: {entry.CreditTotal:N2}",
+                        FontSize = 14,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = Br("TextPrimaryBrush")
+                    }
                 },
                 new TextBlock
                 {

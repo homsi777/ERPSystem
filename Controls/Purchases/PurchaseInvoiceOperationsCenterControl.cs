@@ -72,14 +72,14 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             الإجمالي = l.LineTotal
         }).ToArray(), false));
 
-        UIElement BuildJournalTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(data.JournalEntries.Select(j => new
+        UIElement BuildJournalTab() => ErpUiFactory.Card(ErpAccountingColorHelper.BuildAccountingGrid(data.JournalEntries.Select(j => new
         {
             رقم_القيد = j.EntryNumber,
             التاريخ = j.EntryDate.ToString("yyyy/MM/dd"),
             البيان = j.Description,
             مدين = j.Debit,
             دائن = j.Credit
-        }).ToArray(), false));
+        }).ToArray()));
 
         UIElement BuildPaymentsTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(data.Payments.Select(p => new
         {
@@ -87,7 +87,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             التاريخ = p.VoucherDate.ToString("yyyy/MM/dd"),
             المبلغ = p.Amount,
             الحالة = p.StatusDisplay
-        }).ToArray(), false));
+        }).ToArray()));
 
         UIElement BuildNotesTab() => new TextBox { Text = inv.Notes ?? "", AcceptsReturn = true, Height = 100, IsReadOnly = inv.IsReadOnly };
 

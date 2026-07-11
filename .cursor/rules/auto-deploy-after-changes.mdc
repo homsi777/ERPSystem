@@ -21,7 +21,8 @@ alwaysApply: true
    - Host: `ubuntu@65.21.136.217` port `2727`
    - Key: `C:/Users/Homsi/.ssh/alamal_ab_tunnel`
 4. **Verify** — `curl https://alamal-ab.org/health` وأبلغ المستخدم بـ commit hash المنشور.
-5. **أخبر المستخدم** — رابط الموقع، ما يحتاج hard-refresh على mobile/PWA، وأي خطوة يدوية (مثل migration) إن وُجدت.
+5. **شغّل تطبيق WPF** — `dotnet run --project ERPSystem.csproj` (أوقف أي نسخة قديمة أولاً إن لزم).
+6. **أخبر المستخدم** — رابط الموقع، ما يحتاج hard-refresh على mobile/PWA، وأي خطوة يدوية (مثل migration) إن وُجدت.
 
 ## استثناءات (لا تنشر)
 

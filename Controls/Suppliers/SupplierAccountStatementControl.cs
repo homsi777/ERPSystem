@@ -31,9 +31,9 @@ public sealed class SupplierAccountStatementControl : UserControl
         ErpUiFactory.AddGridColumn(_grid, "التاريخ", nameof(SupplierStatementLineVm.DateDisplay), 100, null);
         ErpUiFactory.AddGridColumn(_grid, "المرجع", nameof(SupplierStatementLineVm.DocumentNumber), 120, null);
         ErpUiFactory.AddGridColumn(_grid, "البيان", nameof(SupplierStatementLineVm.Description), "*", null);
-        ErpUiFactory.AddGridColumn(_grid, "مدين", nameof(SupplierStatementLineVm.DebitDisplay), 90, null);
-        ErpUiFactory.AddGridColumn(_grid, "دائن", nameof(SupplierStatementLineVm.CreditDisplay), 90, null);
-        ErpUiFactory.AddGridColumn(_grid, "الرصيد", nameof(SupplierStatementLineVm.BalanceDisplay), 100, null);
+        ErpAccountingColorHelper.AddDebitColumn(_grid, "مدين", nameof(SupplierStatementLineVm.Debit), 90, "N2");
+        ErpAccountingColorHelper.AddCreditColumn(_grid, "دائن", nameof(SupplierStatementLineVm.Credit), 90, "N2");
+        ErpAccountingColorHelper.AddSignedBalanceColumn(_grid, "الرصيد", nameof(SupplierStatementLineVm.RunningBalance), 100, "N2");
 
         _empty.Child = PlaceholderUi.EmptyMessage(
             "اختر مورداً لعرض كشف حسابه",
@@ -117,18 +117,18 @@ public sealed class SupplierAccountStatementControl : UserControl
         public string DateDisplay { get; init; } = "";
         public string DocumentNumber { get; init; } = "";
         public string Description { get; init; } = "";
-        public string DebitDisplay { get; init; } = "";
-        public string CreditDisplay { get; init; } = "";
-        public string BalanceDisplay { get; init; } = "";
+        public decimal Debit { get; init; }
+        public decimal Credit { get; init; }
+        public decimal RunningBalance { get; init; }
 
         public static SupplierStatementLineVm FromDto(SupplierStatementLineDto dto) => new()
         {
             DateDisplay = AppFormats.Date(dto.EntryDate),
             DocumentNumber = dto.DocumentNumber,
             Description = dto.Description,
-            DebitDisplay = AppFormats.AmountOrDash(dto.Debit),
-            CreditDisplay = AppFormats.AmountOrDash(dto.Credit),
-            BalanceDisplay = AppFormats.Amount(dto.RunningBalance)
+            Debit = dto.Debit,
+            Credit = dto.Credit,
+            RunningBalance = dto.RunningBalance
         };
     }
 }

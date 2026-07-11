@@ -38,10 +38,10 @@ public sealed class JournalEntryDetailsPopupControl : UserControl
         _actions.Children.Clear();
 
         _root.Children.Add(BuildKpiRow(
-            ("الحالة", data.StatusDisplay, "InfoBrush"),
-            ("مدين", data.DebitTotal.ToString("N2", CultureInfo.InvariantCulture), "DangerBrush"),
-            ("دائن", data.CreditTotal.ToString("N2", CultureInfo.InvariantCulture), "SuccessBrush"),
-            ("المصدر", data.SourceTypeDisplay ?? "—", "PrimaryBrush")));
+            ("الحالة", data.StatusDisplay, "SurfaceAltBrush", false),
+            ("مدين", data.DebitTotal.ToString("N2", CultureInfo.InvariantCulture), ErpAccountingColorHelper.DebitTintBrushKey, true),
+            ("دائن", data.CreditTotal.ToString("N2", CultureInfo.InvariantCulture), ErpAccountingColorHelper.CreditTintBrushKey, true),
+            ("المصدر", data.SourceTypeDisplay ?? "—", "PrimaryBrush", false)));
 
         _root.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("رقم القيد", ReadOnly(data.EntryNumber)),
@@ -51,10 +51,11 @@ public sealed class JournalEntryDetailsPopupControl : UserControl
 
         _root.Children.Add(ErpUiFactory.SectionTitle("بنود القيد"));
         var grid = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, MaxHeight = 260 };
+        ErpDataGridHelper.ApplyEnterpriseStyle(grid);
         ErpUiFactory.AddGridColumn(grid, "الحساب", nameof(JournalEntryLineDetailsDto.AccountCode), 90);
         ErpUiFactory.AddGridColumn(grid, "الاسم", nameof(JournalEntryLineDetailsDto.AccountName), "*");
-        ErpUiFactory.AddGridColumn(grid, "مدين", nameof(JournalEntryLineDetailsDto.Debit), 90, "N2");
-        ErpUiFactory.AddGridColumn(grid, "دائن", nameof(JournalEntryLineDetailsDto.Credit), 90, "N2");
+        ErpAccountingColorHelper.AddDebitColumn(grid, "مدين", nameof(JournalEntryLineDetailsDto.Debit), 90, "N2");
+        ErpAccountingColorHelper.AddCreditColumn(grid, "دائن", nameof(JournalEntryLineDetailsDto.Credit), 90, "N2");
         ErpUiFactory.AddGridColumn(grid, "البيان", nameof(JournalEntryLineDetailsDto.Narrative), "*");
         grid.ItemsSource = data.Lines.ToList();
         _root.Children.Add(ErpUiFactory.Card(grid));
@@ -145,14 +146,14 @@ public sealed class JournalEntryDetailsPopupControl : UserControl
         _actions.Children.Add(btn);
     }
 
-    private static UIElement BuildKpiRow(params (string title, string value, string brush)[] items)
+    private static UIElement BuildKpiRow(params (string title, string value, string brush, bool tintedBackground)[] items)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 12) };
-        foreach (var (title, value, brush) in items)
+        foreach (var (title, value, brush, tintedBackground) in items)
         {
             row.Children.Add(new Border
             {
-                Background = (Brush)WpfApplication.Current.Resources["SurfaceAltBrush"]!,
+                Background = (Brush)WpfApplication.Current.Resources[tintedBackground ? brush : "SurfaceAltBrush"]!,
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(12, 10, 12, 10),
                 Margin = new Thickness(0, 0, 8, 0),
@@ -173,7 +174,7 @@ public sealed class JournalEntryDetailsPopupControl : UserControl
                             FontSize = 14,
                             FontWeight = FontWeights.SemiBold,
                             Margin = new Thickness(0, 4, 0, 0),
-                            Foreground = (Brush)WpfApplication.Current.Resources[brush]!
+                            Foreground = (Brush)WpfApplication.Current.Resources[tintedBackground ? "TextPrimaryBrush" : brush]!
                         }
                     }
                 }

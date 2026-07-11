@@ -141,6 +141,8 @@ public sealed class CustomerOpeningBalanceImportControl : UserControl
         _issuesGrid.ItemsSource = issues;
 
         _previewGrid.ItemsSource = BuildPreviewRows(v.TotalRows);
+        _previewGrid.AutoGenerateColumns = true;
+        ErpAccountingColorHelper.ApplyDebitCreditColumnsByHeader(_previewGrid);
         _btnImport.IsEnabled = v.ValidRows > 0;
     }
 

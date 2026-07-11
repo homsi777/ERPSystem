@@ -43,9 +43,9 @@ public sealed class TrialBalanceReportControl : UserControl
         ErpUiFactory.AddGridColumn(_grid, "الكود", nameof(TrialBalanceRow.AccountCode), 90);
         ErpUiFactory.AddGridColumn(_grid, "الحساب", nameof(TrialBalanceRow.AccountName), "*");
         ErpUiFactory.AddGridColumn(_grid, "النوع", nameof(TrialBalanceRow.AccountTypeDisplay), 100);
-        ErpUiFactory.AddGridColumn(_grid, "مدين", nameof(TrialBalanceRow.DebitDisplay), 110);
-        ErpUiFactory.AddGridColumn(_grid, "دائن", nameof(TrialBalanceRow.CreditDisplay), 110);
-        ErpUiFactory.AddGridColumn(_grid, "الرصيد", nameof(TrialBalanceRow.BalanceDisplay), 110);
+        ErpAccountingColorHelper.AddDebitColumn(_grid, "مدين", nameof(TrialBalanceRow.DebitTotal), 110, "N2");
+        ErpAccountingColorHelper.AddCreditColumn(_grid, "دائن", nameof(TrialBalanceRow.CreditTotal), 110, "N2");
+        ErpAccountingColorHelper.AddSignedBalanceColumn(_grid, "الرصيد", nameof(TrialBalanceRow.Balance), 110, "N2");
 
         var stack = new StackPanel { Margin = new Thickness(16) };
         stack.Children.Add(ErpUiFactory.SectionTitle("ميزان المراجعة"));

@@ -102,7 +102,14 @@ public sealed class JournalEntryListPageControl : UserControl
             ("المصدر", nameof(JournalEntryListDto.SourceTypeDisplay), 120, null),
             ("سطور", nameof(JournalEntryListDto.LineCount), 60, null)
         })
-            ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
+        {
+            if (p == nameof(JournalEntryListDto.DebitTotal))
+                ErpAccountingColorHelper.AddDebitColumn(g, h, p, w, fmt);
+            else if (p == nameof(JournalEntryListDto.CreditTotal))
+                ErpAccountingColorHelper.AddCreditColumn(g, h, p, w, fmt);
+            else
+                ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
+        }
     }
 
     private static UIElement WrapFilter(string label, UIElement control)

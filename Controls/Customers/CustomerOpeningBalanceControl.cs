@@ -723,11 +723,11 @@ public sealed class CustomerOpeningBalanceControl : UserControl
 
         AddTextColumn("العملة", nameof(OpeningBalanceListDto.CurrencyCode), 72);
 
-        AddNumericColumn("مدين", nameof(OpeningBalanceListDto.TotalDebit), 100, "N2");
+        AddNumericColumn("مدين", nameof(OpeningBalanceListDto.TotalDebit), 100, "N2", ErpAccountingColorHelper.ApplyDebitStyle);
 
-        AddNumericColumn("دائن", nameof(OpeningBalanceListDto.TotalCredit), 100, "N2");
+        AddNumericColumn("دائن", nameof(OpeningBalanceListDto.TotalCredit), 100, "N2", ErpAccountingColorHelper.ApplyCreditStyle);
 
-        AddNumericColumn("الرصيد", nameof(OpeningBalanceListDto.NetBalance), 100, "N2");
+        AddNumericColumn("الرصيد", nameof(OpeningBalanceListDto.NetBalance), 100, "N2", ErpAccountingColorHelper.ApplySignedBalanceStyle);
 
         AddTextColumn("الحالة", nameof(OpeningBalanceListDto.StatusDisplay), 120);
 
@@ -809,11 +809,11 @@ public sealed class CustomerOpeningBalanceControl : UserControl
         _ => Convert.ToDouble(width)
     };
 
-    private void AddNumericColumn(string header, string path, double width, string format)
+    private void AddNumericColumn(string header, string path, double width, string format, Action<DataGridTextColumn, string>? applyStyle = null)
 
     {
 
-        _grid.Columns.Add(new DataGridTextColumn
+        var col = new DataGridTextColumn
 
         {
 
@@ -843,8 +843,10 @@ public sealed class CustomerOpeningBalanceControl : UserControl
 
             }
 
-        });
+        };
 
+        applyStyle?.Invoke(col, path);
+        _grid.Columns.Add(col);
     }
 
 

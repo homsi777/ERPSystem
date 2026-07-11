@@ -13,6 +13,7 @@ public sealed class SalesInvoiceListRow
     public int RollCount { get; init; }
     public decimal Amount { get; init; }
     public SalesInvoiceStatus Status { get; init; }
+    public PaymentType PaymentType { get; init; }
     public DateTime Date { get; init; }
 
     public string StatusDisplay => Status switch
@@ -43,6 +44,7 @@ public sealed class SalesInvoiceListRow
         RollCount = dto.Lines.Sum(l => l.RollCount),
         Amount = dto.GrandTotal,
         Status = dto.Status,
+        PaymentType = dto.PaymentType,
         Date = dto.InvoiceDate
     };
 }

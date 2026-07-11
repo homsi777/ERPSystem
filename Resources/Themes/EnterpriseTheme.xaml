@@ -128,6 +128,9 @@
 
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
     <SolidColorBrush x:Key="SuccessBgBrush" Color="{StaticResource SuccessBgColor}"/>
+    <!-- Accounting Debit (مدين) / Credit (دائن) row & cell tints — reused app-wide -->
+    <SolidColorBrush x:Key="AccountingDebitTintBrush" Color="{StaticResource SuccessBgColor}"/>
+    <SolidColorBrush x:Key="AccountingCreditTintBrush" Color="{StaticResource DangerBgColor}"/>
     <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
     <SolidColorBrush x:Key="WarningBgBrush" Color="{StaticResource WarningBgColor}"/>
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>

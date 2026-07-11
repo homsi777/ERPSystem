@@ -178,6 +178,7 @@ public sealed class OpeningBalanceFormControl : UserControl
 
     private void RefreshGrid()
     {
+        _linesGrid.AutoGenerateColumns = true;
         _linesGrid.ItemsSource = null;
         _linesGrid.ItemsSource = _lines.Select((l, i) => new
         {
@@ -187,6 +188,7 @@ public sealed class OpeningBalanceFormControl : UserControl
             دائن = l.Credit,
             الوصف = l.Description ?? "—"
         }).ToList();
+        ErpAccountingColorHelper.ApplyDebitCreditColumnsByHeader(_linesGrid);
     }
 
     private async Task SaveAsync()

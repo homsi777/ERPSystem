@@ -100,6 +100,7 @@ public sealed class SalesInvoiceListPageControl : UserControl
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
         g.CanUserAddRows = false;
+        g.RowStyle = ErpAccountingColorHelper.CreatePaymentTypeRowStyle();
         foreach (var (h, p, w) in new (string, string, object)[]
         {
             ("رقم الفاتورة", "InvoiceNumber", 120),

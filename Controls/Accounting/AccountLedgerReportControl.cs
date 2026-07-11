@@ -18,9 +18,9 @@ public sealed class AccountLedgerReportControl : UserControl
         public string EntryNumber { get; init; } = "";
         public string Description { get; init; } = "";
         public string LineNarrative { get; init; } = "";
-        public string DebitDisplay { get; init; } = "";
-        public string CreditDisplay { get; init; } = "";
-        public string BalanceDisplay { get; init; } = "";
+        public decimal Debit { get; init; }
+        public decimal Credit { get; init; }
+        public decimal RunningBalance { get; init; }
     }
 
     private readonly Guid? _preselectedAccountId;
@@ -50,9 +50,9 @@ public sealed class AccountLedgerReportControl : UserControl
         ErpUiFactory.AddGridColumn(_grid, "رقم القيد", nameof(LedgerRow.EntryNumber), 110);
         ErpUiFactory.AddGridColumn(_grid, "البيان", nameof(LedgerRow.Description), "*");
         ErpUiFactory.AddGridColumn(_grid, "سطر القيد", nameof(LedgerRow.LineNarrative), 140);
-        ErpUiFactory.AddGridColumn(_grid, "مدين", nameof(LedgerRow.DebitDisplay), 100);
-        ErpUiFactory.AddGridColumn(_grid, "دائن", nameof(LedgerRow.CreditDisplay), 100);
-        ErpUiFactory.AddGridColumn(_grid, "الرصيد", nameof(LedgerRow.BalanceDisplay), 110);
+        ErpAccountingColorHelper.AddDebitColumn(_grid, "مدين", nameof(LedgerRow.Debit), 100, "N2");
+        ErpAccountingColorHelper.AddCreditColumn(_grid, "دائن", nameof(LedgerRow.Credit), 100, "N2");
+        ErpAccountingColorHelper.AddSignedBalanceColumn(_grid, "الرصيد", nameof(LedgerRow.RunningBalance), 110, "N2");
 
         var stack = new StackPanel { Margin = new Thickness(16) };
         stack.Children.Add(ErpUiFactory.SectionTitle("كشف حساب"));
@@ -112,9 +112,9 @@ public sealed class AccountLedgerReportControl : UserControl
             EntryNumber = r.EntryNumber,
             Description = r.Description,
             LineNarrative = string.IsNullOrWhiteSpace(r.LineNarrative) ? "—" : r.LineNarrative,
-            DebitDisplay = AppFormats.AmountOrDash(r.Debit),
-            CreditDisplay = AppFormats.AmountOrDash(r.Credit),
-            BalanceDisplay = AppFormats.Amount(r.RunningBalance)
+            Debit = r.Debit,
+            Credit = r.Credit,
+            RunningBalance = r.RunningBalance
         }).ToList();
 
         _grid.ItemsSource = rows;
