@@ -37,7 +37,10 @@
       "Bash(mkdir -p \"C:\\\\Users\\\\Homsi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Homsi-Desktop-POS-ERP-C--ERPSystem\\\\621a51fb-bc4a-4c55-bb00-1ddec6c98791\\\\scratchpad\")",
       "Bash(grep -iE \"\\\\.cs$|\\\\.xaml$\")",
       "Bash(find / -iname \"QuestPDF.dll\" 2>/dev/null | head -5)",
-      "Read(//c//**)"
+      "Read(//c//**)",
+      "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\\\"Name='dotnet.exe'\\\\\" | Select-Object ProcessId,CommandLine | Format-List\")",
+      "PowerShell(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -ge 3000 -and $_.LocalPort -le 9000 } | Select-Object LocalPort, OwningProcess | Sort-Object LocalPort)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\")"
     ],
     "additionalDirectories": [
       "\\tmp"
