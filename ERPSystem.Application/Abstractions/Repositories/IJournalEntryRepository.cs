@@ -7,6 +7,9 @@ namespace ERPSystem.Application.Abstractions.Repositories;
 public interface IJournalEntryRepository
 {
     Task<AccountingAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AccountingAggregate>> GetByIdsAsync(
+        IEnumerable<Guid> ids,
+        CancellationToken cancellationToken = default);
     Task<AccountingAggregate?> GetByNumberAsync(string entryNumber, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AccountingAggregate>> GetListAsync(
         Guid companyId,

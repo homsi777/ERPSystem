@@ -9,41 +9,41 @@ namespace ERPSystem.Application.UseCases.Containers;
 public sealed class ParseChinaInvoiceExcelHandler
     : IQueryHandler<ParseChinaInvoiceExcelQuery, ApplicationResult<ChinaInvoiceParseResultDto>>
 {
-    public Task<ApplicationResult<ChinaInvoiceParseResultDto>> HandleAsync(
+    public async Task<ApplicationResult<ChinaInvoiceParseResultDto>> HandleAsync(
         ParseChinaInvoiceExcelQuery query,
         CancellationToken cancellationToken = default)
     {
         if (query.FileContent.Length == 0)
-            return Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.ValidationFailed(
+            return await Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.ValidationFailed(
                 nameof(query.FileContent), "ملف الفاتورة فارغ."));
 
         var format = ExcelFileFormatDetector.Detect(query.FileContent, query.FileName);
         if (format == ExcelFileFormat.Unsupported)
         {
-            return Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.ValidationFailed(
+            return await Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.ValidationFailed(
                 "File", ExcelFileFormatDetector.UnsupportedFormatMessage));
         }
 
         try
         {
-            var dto = Task.Run(() =>
+            var dto = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var sheet = ExcelWorksheetReaderFactory.Open(query.FileContent, query.FileName);
                 return ChinaInvoiceExcelParser.Parse(sheet, query.FileName);
-            }, cancellationToken).GetAwaiter().GetResult();
+            }, cancellationToken);
 
             if (dto.Lines.Count == 0)
             {
-                return Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.ValidationFailed(
+                return await Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.ValidationFailed(
                     "File", "لم يتم العثور على بنود أقمشة في ملف الفاتورة."));
             }
 
-            return Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.Success(dto));
+            return await Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.Success(dto));
         }
         catch (Exception ex)
         {
-            return Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.Failure(ex.Message));
+            return await Task.FromResult(ApplicationResult<ChinaInvoiceParseResultDto>.Failure(ex.Message));
         }
     }
 }
@@ -51,41 +51,41 @@ public sealed class ParseChinaInvoiceExcelHandler
 public sealed class ParseChinaPackingSummaryExcelHandler
     : IQueryHandler<ParseChinaPackingSummaryExcelQuery, ApplicationResult<ChinaPackingSummaryParseResultDto>>
 {
-    public Task<ApplicationResult<ChinaPackingSummaryParseResultDto>> HandleAsync(
+    public async Task<ApplicationResult<ChinaPackingSummaryParseResultDto>> HandleAsync(
         ParseChinaPackingSummaryExcelQuery query,
         CancellationToken cancellationToken = default)
     {
         if (query.FileContent.Length == 0)
-            return Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.ValidationFailed(
+            return await Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.ValidationFailed(
                 nameof(query.FileContent), "ملف PL فارغ."));
 
         var format = ExcelFileFormatDetector.Detect(query.FileContent, query.FileName);
         if (format == ExcelFileFormat.Unsupported)
         {
-            return Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.ValidationFailed(
+            return await Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.ValidationFailed(
                 "File", ExcelFileFormatDetector.UnsupportedFormatMessage));
         }
 
         try
         {
-            var dto = Task.Run(() =>
+            var dto = await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var sheet = ExcelWorksheetReaderFactory.Open(query.FileContent, query.FileName);
                 return ChinaPackingListSummaryParser.Parse(sheet, query.FileName);
-            }, cancellationToken).GetAwaiter().GetResult();
+            }, cancellationToken);
 
             if (dto.Lines.Count == 0)
             {
-                return Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.ValidationFailed(
+                return await Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.ValidationFailed(
                     "File", "لم يتم العثور على بنود أقمشة في ملف PL."));
             }
 
-            return Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.Success(dto));
+            return await Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.Success(dto));
         }
         catch (Exception ex)
         {
-            return Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.Failure(ex.Message));
+            return await Task.FromResult(ApplicationResult<ChinaPackingSummaryParseResultDto>.Failure(ex.Message));
         }
     }
 }

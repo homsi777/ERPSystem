@@ -14,11 +14,13 @@ public static class SalesInvoiceCatalogEnricher
         if (lines.Count == 0)
             return lines;
 
+        var fabrics = await catalog.GetItemsByIdsAsync(lines.Select(l => l.FabricItemId), cancellationToken);
+        var colors = await catalog.GetColorsByIdsAsync(lines.Select(l => l.FabricColorId), cancellationToken);
         var enriched = new List<SalesInvoiceLineDto>(lines.Count);
         foreach (var line in lines)
         {
-            var fabric = await catalog.GetItemByIdAsync(line.FabricItemId, cancellationToken);
-            var color = await catalog.GetColorByIdAsync(line.FabricColorId, cancellationToken);
+            fabrics.TryGetValue(line.FabricItemId, out var fabric);
+            colors.TryGetValue(line.FabricColorId, out var color);
             enriched.Add(new SalesInvoiceLineDto
             {
                 Id = line.Id,
@@ -54,6 +56,8 @@ public static class SalesInvoiceCatalogEnricher
             return rolls;
 
         var itemsById = aggregate.Items.ToDictionary(i => i.Id);
+        var fabrics = await catalog.GetItemsByIdsAsync(aggregate.Items.Select(i => i.FabricItemId), cancellationToken);
+        var colors = await catalog.GetColorsByIdsAsync(aggregate.Items.Select(i => i.FabricColorId), cancellationToken);
         var enriched = new List<WarehouseDetailingRollDto>(rolls.Count);
         var containerDisplayCache = new Dictionary<Guid, string>();
 
@@ -94,8 +98,8 @@ public static class SalesInvoiceCatalogEnricher
                 continue;
             }
 
-            var fabric = await catalog.GetItemByIdAsync(item.FabricItemId, cancellationToken);
-            var color = await catalog.GetColorByIdAsync(item.FabricColorId, cancellationToken);
+            fabrics.TryGetValue(item.FabricItemId, out var fabric);
+            colors.TryGetValue(item.FabricColorId, out var color);
             enriched.Add(new WarehouseDetailingRollDto
             {
                 RollDetailId = roll.RollDetailId,

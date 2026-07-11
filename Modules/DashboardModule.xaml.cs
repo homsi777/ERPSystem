@@ -32,6 +32,7 @@ namespace ERPSystem.Modules
 
         private bool _cardsWired;
         private bool _languageSubscribed;
+        private CancellationTokenSource? _refreshDebounce;
 
         public DashboardModule()
         {
@@ -52,8 +53,7 @@ namespace ERPSystem.Modules
             if (!IsLoaded)
                 return;
 
-            LoadOperationalTables();
-            _ = LoadKpiCardsAsync();
+            ScheduleRefresh();
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -63,12 +63,12 @@ namespace ERPSystem.Modules
                 LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
                 _languageSubscribed = true;
             }
-            ApplyOperationalDashboard();
+            ApplyOperationalDashboard(refreshData: true);
         }
 
-        private void OnLanguageChanged(object? sender, EventArgs e) => ApplyOperationalDashboard();
+        private void OnLanguageChanged(object? sender, EventArgs e) => ApplyOperationalDashboard(refreshData: false);
 
-        private void ApplyOperationalDashboard()
+        private void ApplyOperationalDashboard(bool refreshData)
         {
             TxtPageTitle.Text = "لوحة التحكم";
             TxtPageSubtitle.Text = "نظرة عامة على أداء أعمالك لهذا اليوم";
@@ -124,9 +124,33 @@ namespace ERPSystem.Modules
             ChartHeader.Subtitle = "حاويات قادمة — انقر لفتح مركز الحاوية";
             ProductsHeader.Title = "عملاء يحتاجون تحصيل";
 
+            if (!refreshData)
+                return;
+
             LoadOperationalTables();
             WireCardClicks();
             _ = LoadKpiCardsAsync();
+        }
+
+        private void ScheduleRefresh()
+        {
+            _refreshDebounce?.Cancel();
+            _refreshDebounce?.Dispose();
+            _refreshDebounce = new CancellationTokenSource();
+            _ = RefreshAfterDelayAsync(_refreshDebounce.Token);
+        }
+
+        private async Task RefreshAfterDelayAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Task.Delay(250, cancellationToken);
+                LoadOperationalTables();
+                await LoadKpiCardsAsync();
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
 
         private void WireCardClicks()

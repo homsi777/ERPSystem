@@ -48,8 +48,17 @@ public partial class App : System.Windows.Application
                 .AddEnvironmentVariables()
                 .Build();
 
-            // Bring up the optional SSH tunnel (cloud DB) before any DB access.
-            _sshTunnel = SshTunnelService.StartIfConfigured(configuration);
+            // Bring up the optional SSH tunnel without blocking the dispatcher thread.
+            var connectionStatus = CreateConnectionStatusWindow();
+            connectionStatus.Show();
+            try
+            {
+                _sshTunnel = await SshTunnelService.StartIfConfiguredAsync(configuration);
+            }
+            finally
+            {
+                connectionStatus.Close();
+            }
 
             // WPF Performance Rescue — Phase A instrumentation. Purely observational (counts EF Core
             // round-trips via the standard DiagnosticListener feed); never changes query behavior or results.
@@ -127,4 +136,22 @@ public partial class App : System.Windows.Application
         _sshTunnel = null;
         base.OnExit(e);
     }
+
+    private static Window CreateConnectionStatusWindow() => new()
+    {
+        Title = "الأمل.AB",
+        Width = 360,
+        Height = 110,
+        WindowStartupLocation = WindowStartupLocation.CenterScreen,
+        ResizeMode = ResizeMode.NoResize,
+        WindowStyle = WindowStyle.ToolWindow,
+        ShowInTaskbar = false,
+        Content = new System.Windows.Controls.TextBlock
+        {
+            Text = "جاري الاتصال...",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 16
+        }
+    };
 }

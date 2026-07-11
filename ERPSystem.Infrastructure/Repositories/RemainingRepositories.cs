@@ -93,6 +93,26 @@ internal sealed class FabricCatalogRepository(ErpDbContext context, ICacheServic
         return entity is null ? null : ToFabricColor(entity);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, FabricItem>> GetItemsByIdsAsync(
+        IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var requestedIds = ids.Distinct().ToArray();
+        if (requestedIds.Length == 0) return new Dictionary<Guid, FabricItem>();
+        return await context.FabricItems.AsNoTracking()
+            .Where(i => requestedIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id, i => ToFabricItem(i), cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, FabricColor>> GetColorsByIdsAsync(
+        IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var requestedIds = ids.Distinct().ToArray();
+        if (requestedIds.Length == 0) return new Dictionary<Guid, FabricColor>();
+        return await context.FabricColors.AsNoTracking()
+            .Where(c => requestedIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => ToFabricColor(c), cancellationToken);
+    }
+
     public async Task<IReadOnlyList<FabricItem>> GetItemsAsync(
         Guid companyId,
         string? search = null,
@@ -828,6 +848,29 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
 {
     public async Task<AccountingAggregate?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         await LoadAsync(id, null, cancellationToken);
+
+    public async Task<IReadOnlyList<AccountingAggregate>> GetByIdsAsync(
+        IEnumerable<Guid> ids,
+        CancellationToken cancellationToken = default)
+    {
+        var requestedIds = ids.Distinct().ToArray();
+        if (requestedIds.Length == 0)
+            return [];
+
+        var headers = await context.JournalEntries.AsNoTracking()
+            .Where(j => requestedIds.Contains(j.Id))
+            .ToListAsync(cancellationToken);
+        var lines = await context.JournalEntryLines.AsNoTracking()
+            .Where(l => requestedIds.Contains(l.JournalEntryId))
+            .ToListAsync(cancellationToken);
+        var linesByEntry = lines.ToLookup(l => l.JournalEntryId);
+        var headersById = headers.ToDictionary(h => h.Id);
+
+        return requestedIds
+            .Where(headersById.ContainsKey)
+            .Select(id => AccountingMapper.ToAggregate(headersById[id], linesByEntry[id].ToList()))
+            .ToList();
+    }
 
     public async Task<AccountingAggregate?> GetByNumberAsync(string entryNumber, CancellationToken cancellationToken = default) =>
         await LoadAsync(null, entryNumber, cancellationToken);

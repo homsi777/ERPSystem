@@ -442,7 +442,6 @@ namespace ERPSystem.Controls.Sales
             InitializeComponent();
             DataContext = this;
             Loaded += OnLoaded;
-            IsVisibleChanged += OnIsVisibleChanged;
             CustomerListRefreshHub.RefreshRequested += OnCustomersRefreshRequested;
             SalesListRefreshHub.RefreshRequested += OnSalesListRefreshRequested;
             Unloaded += (_, _) =>
@@ -972,8 +971,25 @@ namespace ERPSystem.Controls.Sales
 
         private async Task ReloadAllLineStockOptionsAsync()
         {
-            foreach (var row in _lines)
-                await ReloadStockOptionsForRowAsync(row);
+            var groups = _lines
+                .Where(row => row.SelectedContainer is ContainerPickItem)
+                .GroupBy(row => (
+                    Container: ((ContainerPickItem)row.SelectedContainer!).Id,
+                    Warehouse: (CmbWarehouse.SelectedItem as WarehousePickItem)?.Id ?? Guid.Empty));
+
+            foreach (var group in groups)
+            {
+                if (group.Key.Warehouse == Guid.Empty) continue;
+                var result = await SalesUiService.Instance.GetWarehouseStockAsync(
+                    group.Key.Container, group.Key.Warehouse);
+                foreach (var row in group)
+                {
+                    row.StockOptions.Clear();
+                    if (!result.IsSuccess || result.Value is null) continue;
+                    foreach (var option in result.Value)
+                        row.StockOptions.Add(option);
+                }
+            }
         }
 
         private async Task ReloadStockOptionsForRowAsync(SalesInvoiceLineRow row)

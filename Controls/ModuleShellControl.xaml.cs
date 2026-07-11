@@ -13,6 +13,9 @@ namespace ERPSystem.Controls
                 new PropertyMetadata(AppModule.Dashboard, OnModuleChanged));
 
         private string _activeKey = "";
+        private readonly Dictionary<string, (UserControl View, DateTime CachedAt)> _pageCache = [];
+        private readonly LinkedList<string> _cacheOrder = [];
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(45);
 
         public AppModule Module
         {
@@ -53,7 +56,35 @@ namespace ERPSystem.Controls
 
             _activeKey = resolved;
             UpdatePageHeader(resolved);
-            ContentHost.Content = SubmoduleViewFactory.Create(Module, _activeKey);
+            ContentHost.Content = GetOrCreatePage(_activeKey);
+        }
+
+        private UserControl GetOrCreatePage(string key)
+        {
+            // Financial, accounting, inventory and party screens must always show live balances.
+            var cacheAllowed = Module is AppModule.HR or AppModule.Settings;
+            if (!cacheAllowed)
+                return SubmoduleViewFactory.Create(Module, key);
+
+            if (_pageCache.TryGetValue(key, out var cached) && DateTime.UtcNow - cached.CachedAt <= CacheTtl)
+            {
+                _cacheOrder.Remove(key);
+                _cacheOrder.AddLast(key);
+                return cached.View;
+            }
+
+            _pageCache.Remove(key);
+            _cacheOrder.Remove(key);
+            var view = SubmoduleViewFactory.Create(Module, key);
+            _pageCache[key] = (view, DateTime.UtcNow);
+            _cacheOrder.AddLast(key);
+            while (_cacheOrder.Count > 5)
+            {
+                var oldest = _cacheOrder.First!.Value;
+                _cacheOrder.RemoveFirst();
+                _pageCache.Remove(oldest);
+            }
+            return view;
         }
 
         public void NavigateSubpage(string? subPage) => SelectSubpage(subPage);

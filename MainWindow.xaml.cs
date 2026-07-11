@@ -8,18 +8,7 @@ namespace ERPSystem
     public partial class MainWindow : Window
     {
         private readonly DashboardModule _dashboard;
-        private readonly ChinaImportModule _chinaImport;
-        private readonly SalesModule _sales;
-        private readonly InventoryModule _inventory;
-        private readonly CustomersModule _customers;
-        private readonly SuppliersModule _suppliers;
-        private readonly AccountingModule _accounting;
-        private readonly ExpensesModule _expenses;
-        private readonly CapitalPartnersModule _capitalPartners;
-        private readonly ReportsModule _reports;
-        private readonly PurchasesModule _purchases;
-        private readonly HRModule _hr;
-        private readonly SettingsModule _settings;
+        private readonly Dictionary<AppModule, FrameworkElement> _moduleCache = [];
         private bool _languageSubscribed;
         private bool _navigationSubscribed;
 
@@ -28,18 +17,7 @@ namespace ERPSystem
             InitializeComponent();
 
             _dashboard = new DashboardModule();
-            _chinaImport = new ChinaImportModule();
-            _sales = new SalesModule();
-            _inventory = new InventoryModule();
-            _customers = new CustomersModule();
-            _suppliers = new SuppliersModule();
-            _accounting = new AccountingModule();
-            _expenses = new ExpensesModule();
-            _capitalPartners = new CapitalPartnersModule();
-            _reports = new ReportsModule();
-            _purchases = new PurchasesModule();
-            _hr = new HRModule();
-            _settings = new SettingsModule();
+            _moduleCache[AppModule.Dashboard] = _dashboard;
 
             _dashboard.NavigationRequested += (_, m) => NavigateTo(new NavigationRequest(m));
             _dashboard.ActionRequested += (_, req) => NavigateTo(new NavigationRequest(req.Module, req.SubPage));
@@ -88,23 +66,7 @@ namespace ERPSystem
                 && !UnsavedWorkGuard.TryConfirmLeave())
                 return;
 
-            WorkspaceHost.Content = req.Module switch
-            {
-                AppModule.Dashboard   => _dashboard,
-                AppModule.ChinaImport => _chinaImport,
-                AppModule.Sales       => _sales,
-                AppModule.Inventory   => _inventory,
-                AppModule.Customers   => _customers,
-                AppModule.Suppliers   => _suppliers,
-                AppModule.Accounting  => _accounting,
-                AppModule.Expenses    => _expenses,
-                AppModule.CapitalPartners => _capitalPartners,
-                AppModule.Reports     => _reports,
-                AppModule.Purchases   => _purchases,
-                AppModule.HR          => _hr,
-                AppModule.Settings    => _settings,
-                _                     => _dashboard
-            };
+            WorkspaceHost.Content = GetOrCreateModule(req.Module);
 
             if (WorkspaceHost.Content is ISubpageNavigator nav && !string.IsNullOrEmpty(req.SubPage))
                 nav.NavigateSubpage(req.SubPage);
@@ -112,6 +74,32 @@ namespace ERPSystem
             NavBar.SetActiveModule(req.Module);
             Title = $"{GetModuleTitle(req.Module)} — الأمل.AB";
             UpdateStatusBar(req);
+        }
+
+        private FrameworkElement GetOrCreateModule(AppModule module)
+        {
+            if (_moduleCache.TryGetValue(module, out var existing))
+                return existing;
+
+            FrameworkElement created = module switch
+            {
+                AppModule.Dashboard   => _dashboard,
+                AppModule.ChinaImport => new ChinaImportModule(),
+                AppModule.Sales       => new SalesModule(),
+                AppModule.Inventory   => new InventoryModule(),
+                AppModule.Customers   => new CustomersModule(),
+                AppModule.Suppliers   => new SuppliersModule(),
+                AppModule.Accounting  => new AccountingModule(),
+                AppModule.Expenses    => new ExpensesModule(),
+                AppModule.CapitalPartners => new CapitalPartnersModule(),
+                AppModule.Reports     => new ReportsModule(),
+                AppModule.Purchases   => new PurchasesModule(),
+                AppModule.HR          => new HRModule(),
+                AppModule.Settings    => new SettingsModule(),
+                _                     => _dashboard
+            };
+            _moduleCache[module] = created;
+            return created;
         }
 
         private static string GetModuleTitle(AppModule module) => module switch

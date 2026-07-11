@@ -23,6 +23,10 @@ public sealed class GetSalesReturnListHandler(
 
         var customers = await customerRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
         var customerNames = customers.ToDictionary(c => c.Customer.Id, c => c.Customer.NameAr);
+        var fabrics = await fabricCatalogRepository.GetItemsByIdsAsync(
+            list.SelectMany(r => r.Lines).Select(l => l.FabricItemId), cancellationToken);
+        var colors = await fabricCatalogRepository.GetColorsByIdsAsync(
+            list.SelectMany(r => r.Lines).Select(l => l.FabricColorId), cancellationToken);
 
         var dtos = new List<SalesReturnDto>();
         foreach (var r in list)
@@ -30,8 +34,8 @@ public sealed class GetSalesReturnListHandler(
             var lineDtos = new List<SalesReturnLineDto>();
             foreach (var l in r.Lines)
             {
-                var fabric = await fabricCatalogRepository.GetItemByIdAsync(l.FabricItemId, cancellationToken);
-                var color = await fabricCatalogRepository.GetColorByIdAsync(l.FabricColorId, cancellationToken);
+                fabrics.TryGetValue(l.FabricItemId, out var fabric);
+                colors.TryGetValue(l.FabricColorId, out var color);
                 lineDtos.Add(new SalesReturnLineDto
                 {
                     Id = l.Id,
@@ -87,12 +91,16 @@ public sealed class GetSalesReturnDetailsHandler(
 
         var customer = await customerRepository.GetByIdAsync(aggregate.CustomerId, cancellationToken);
         var customerName = customer?.Customer.NameAr ?? "";
+        var fabrics = await fabricCatalogRepository.GetItemsByIdsAsync(
+            aggregate.Lines.Select(l => l.FabricItemId), cancellationToken);
+        var colors = await fabricCatalogRepository.GetColorsByIdsAsync(
+            aggregate.Lines.Select(l => l.FabricColorId), cancellationToken);
 
         var lineDtos = new List<SalesReturnLineDto>();
         foreach (var l in aggregate.Lines)
         {
-            var fabric = await fabricCatalogRepository.GetItemByIdAsync(l.FabricItemId, cancellationToken);
-            var color = await fabricCatalogRepository.GetColorByIdAsync(l.FabricColorId, cancellationToken);
+            fabrics.TryGetValue(l.FabricItemId, out var fabric);
+            colors.TryGetValue(l.FabricColorId, out var color);
             lineDtos.Add(new SalesReturnLineDto
             {
                 Id = l.Id,

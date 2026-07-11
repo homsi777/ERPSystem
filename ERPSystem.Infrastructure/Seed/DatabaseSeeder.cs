@@ -419,8 +419,46 @@ public static class DatabaseSeeder
         IEnumerable<(string Code, string Module, string Action)> permissions,
         CancellationToken cancellationToken)
     {
-        foreach (var (code, module, action) in permissions)
-            await EnsurePermissionAsync(context, code, module, action, cancellationToken);
+        var requested = permissions.ToArray();
+        var requestedCodes = requested.Select(p => p.Code).ToArray();
+        var existingPermissions = await context.Permissions
+            .Where(p => requestedCodes.Contains(p.Code))
+            .Select(p => new { p.Code, p.Id })
+            .ToDictionaryAsync(p => p.Code, p => p.Id, cancellationToken);
+
+        var adminRoleExists = await context.Roles
+            .AnyAsync(r => r.Id == AdminRoleId, cancellationToken);
+        var linkedPermissionIds = adminRoleExists
+            ? await context.RolePermissions
+                .Where(rp => rp.RoleId == AdminRoleId)
+                .Select(rp => rp.PermissionId)
+                .ToHashSetAsync(cancellationToken)
+            : [];
+
+        foreach (var (code, module, action) in requested)
+        {
+            if (!existingPermissions.TryGetValue(code, out var permissionId))
+            {
+                permissionId = Guid.NewGuid();
+                context.Permissions.Add(new PermissionEntity
+                {
+                    Id = permissionId,
+                    Code = code,
+                    Module = module,
+                    Action = action
+                });
+                existingPermissions[code] = permissionId;
+            }
+
+            if (adminRoleExists && linkedPermissionIds.Add(permissionId))
+            {
+                context.RolePermissions.Add(new RolePermissionEntity
+                {
+                    RoleId = AdminRoleId,
+                    PermissionId = permissionId
+                });
+            }
+        }
 
         await context.SaveChangesAsync(cancellationToken);
     }

@@ -7,6 +7,10 @@ public interface IFabricCatalogRepository
 {
     Task<FabricItem?> GetItemByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<FabricColor?> GetColorByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, FabricItem>> GetItemsByIdsAsync(
+        IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, FabricColor>> GetColorsByIdsAsync(
+        IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
     Task<FabricCategory?> GetCategoryByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FabricItem>> GetItemsAsync(
         Guid companyId,

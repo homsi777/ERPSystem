@@ -426,17 +426,19 @@ public sealed class FinanceUiService
         var paymentRepo = scope.ServiceProvider.GetRequiredService<IReceiptInvoicePaymentRepository>();
 
         var invoices = await invoiceRepo.GetListAsync(CompanyId, BranchId, null, customerId, cancellationToken);
-        var rows = new List<OpenInvoiceOption>();
-        foreach (var inv in invoices)
-        {
-            if (inv.Status is not (Domain.Enums.SalesInvoiceStatus.Approved
+        var eligibleInvoices = invoices
+            .Where(inv => inv.Status is Domain.Enums.SalesInvoiceStatus.Approved
                 or Domain.Enums.SalesInvoiceStatus.Printed
-                or Domain.Enums.SalesInvoiceStatus.Delivered))
-                continue;
-
+                or Domain.Enums.SalesInvoiceStatus.Delivered)
+            .Where(inv => inv.GrandTotal.Amount > 0)
+            .ToList();
+        var collectedTotals = await paymentRepo.GetCollectedTotalsAsync(
+            eligibleInvoices.Select(inv => inv.Id), cancellationToken);
+        var rows = new List<OpenInvoiceOption>();
+        foreach (var inv in eligibleInvoices)
+        {
             var total = inv.GrandTotal.Amount;
-            if (total <= 0) continue;
-            var collected = await paymentRepo.GetCollectedTotalAsync(inv.Id, cancellationToken);
+            var collected = collectedTotals.GetValueOrDefault(inv.Id);
             var remaining = total - collected;
             if (remaining <= 0.005m) continue;
 

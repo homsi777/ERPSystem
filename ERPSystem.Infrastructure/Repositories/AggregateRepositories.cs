@@ -603,6 +603,17 @@ internal sealed class ReceiptInvoicePaymentRepository(ErpDbContext context) : IR
             .SumAsync(p => (decimal?)p.Amount, cancellationToken) ?? 0m;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetCollectedTotalsAsync(
+        IEnumerable<Guid> invoiceIds, CancellationToken cancellationToken = default)
+    {
+        var ids = invoiceIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<Guid, decimal>();
+        return await context.ReceiptInvoicePayments.AsNoTracking()
+            .Where(p => ids.Contains(p.SalesInvoiceId))
+            .GroupBy(p => p.SalesInvoiceId)
+            .ToDictionaryAsync(g => g.Key, g => g.Sum(p => p.Amount), cancellationToken);
+    }
+
     public async Task<IReadOnlyList<(ReceiptInvoicePayment Payment, string VoucherNumber)>> GetByInvoiceWithVoucherAsync(
         Guid invoiceId, CancellationToken cancellationToken = default)
     {

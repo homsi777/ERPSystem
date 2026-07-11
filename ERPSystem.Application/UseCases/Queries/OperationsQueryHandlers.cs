@@ -234,17 +234,19 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
 
         // Journal entries linked to this invoice (approval, delivery/COGS, returns)
         var journalRows = await journalEntryRepository.GetBySourceIdAsync(aggregate.Id, cancellationToken);
+        var journalEntries = await journalEntryRepository.GetByIdsAsync(
+            journalRows.Select(row => row.Id), cancellationToken);
+        var journalRowsById = journalRows.ToDictionary(row => row.Id);
         var journalDtos = new List<Application.DTOs.Finance.JournalEntryDto>();
-        foreach (var row in journalRows)
+        foreach (var entry in journalEntries)
         {
-            var entry = await journalEntryRepository.GetByIdAsync(row.Id, cancellationToken);
-            if (entry is null) continue;
+            journalRowsById.TryGetValue(entry.Id, out var row);
             journalDtos.Add(new Application.DTOs.Finance.JournalEntryDto
             {
                 Id = entry.Id,
                 EntryNumber = entry.EntryNumber,
                 EntryDate = entry.EntryDate,
-                Description = entry.Description ?? row.Description,
+                Description = entry.Description ?? row?.Description ?? "",
                 Status = entry.Status,
                 DebitTotal = entry.Lines.Sum(l => l.Debit.Amount),
                 CreditTotal = entry.Lines.Sum(l => l.Credit.Amount),

@@ -24,7 +24,12 @@ public sealed class SshTunnelService : IDisposable
         string? IdentityFile);
 
     /// <summary>Starts the tunnel if configured and enabled; returns null otherwise.</summary>
-    public static SshTunnelService? StartIfConfigured(IConfiguration configuration)
+    public static SshTunnelService? StartIfConfigured(IConfiguration configuration) =>
+        StartIfConfiguredAsync(configuration).GetAwaiter().GetResult();
+
+    public static async Task<SshTunnelService?> StartIfConfiguredAsync(
+        IConfiguration configuration,
+        CancellationToken cancellationToken = default)
     {
         var section = configuration.GetSection("SshTunnel");
         if (!section.Exists() || !section.GetValue<bool>("Enabled"))
@@ -43,14 +48,14 @@ public sealed class SshTunnelService : IDisposable
             return null;
 
         var service = new SshTunnelService();
-        service.Start(options);
+        await service.StartAsync(options, cancellationToken);
         return service;
     }
 
-    private void Start(TunnelOptions options)
+    private async Task StartAsync(TunnelOptions options, CancellationToken cancellationToken)
     {
         // A tunnel (or another forwarder) is already listening — reuse it.
-        if (IsPortOpen(options.LocalPort))
+        if (await IsPortOpenAsync(options.LocalPort, cancellationToken))
             return;
 
         var identityArg = string.IsNullOrWhiteSpace(options.IdentityFile)
@@ -80,20 +85,26 @@ public sealed class SshTunnelService : IDisposable
         _process.Start();
 
         // Wait up to ~20s for the forwarded port to accept connections.
-        for (var attempt = 0; attempt < 40 && !IsPortOpen(options.LocalPort); attempt++)
-            Thread.Sleep(500);
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await IsPortOpenAsync(options.LocalPort, cancellationToken))
+                return;
+            await Task.Delay(500, cancellationToken);
+        }
+
+        throw new TimeoutException($"SSH tunnel did not become ready on local port {options.LocalPort}.");
     }
 
-    private static bool IsPortOpen(int port)
+    private static async Task<bool> IsPortOpenAsync(int port, CancellationToken cancellationToken)
     {
         try
         {
             using var client = new TcpClient();
-            var result = client.BeginConnect("127.0.0.1", port, null, null);
-            var connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(600));
-            if (connected)
-                client.EndConnect(result);
-            return connected && client.Connected;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(600));
+            await client.ConnectAsync("127.0.0.1", port, timeout.Token);
+            return client.Connected;
         }
         catch
         {
