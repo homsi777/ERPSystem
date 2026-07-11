@@ -1,5 +1,6 @@
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Application.DTOs.Sales;
@@ -128,9 +129,7 @@ public sealed class GetWarehouseOperationsCenterHandler(
 
 public sealed class GetSalesInvoiceListHandler(
     ISalesInvoiceRepository invoiceRepository,
-    ICustomerRepository customerRepository,
-    IWarehouseRepository warehouseRepository,
-    IChinaContainerRepository containerRepository)
+    ISalesInvoiceListLookupLoader lookupLoader)
     : IQueryHandler<GetSalesInvoiceListQuery, ApplicationResult<PagedResult<SalesInvoiceDto>>>
 {
     public async Task<ApplicationResult<PagedResult<SalesInvoiceDto>>> HandleAsync(
@@ -157,15 +156,10 @@ public sealed class GetSalesInvoiceListHandler(
             });
         }
 
-        var customerNames = await customerRepository.GetNameLookupAsync(
+        var (customerNames, warehouseNames, containerNumbers) = await lookupLoader.LoadAsync(
             query.CompanyId,
             invoices.Select(i => i.CustomerId),
-            cancellationToken);
-        var warehouseNames = await warehouseRepository.GetNameLookupAsync(
             invoices.Select(i => i.WarehouseId),
-            cancellationToken);
-        var containerNumbers = await containerRepository.GetNumberLookupAsync(
-            query.CompanyId,
             invoices.Select(i => i.ChinaContainerId),
             cancellationToken);
 

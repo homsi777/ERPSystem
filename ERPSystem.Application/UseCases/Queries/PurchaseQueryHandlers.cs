@@ -20,14 +20,9 @@ public sealed class GetPurchaseInvoiceListHandler(
         var (invoices, _) = await invoiceRepository.GetPagedAsync(
             query.CompanyId, query.Search, query.Status, cancellationToken: cancellationToken);
 
-        var supplierIds = invoices.Select(i => i.SupplierId).Distinct().ToList();
-        var suppliers = new Dictionary<Guid, string>();
-        foreach (var id in supplierIds)
-        {
-            var s = await supplierRepository.GetByIdAsync(id, cancellationToken);
-            if (s is not null)
-                suppliers[id] = s.Supplier.NameAr;
-        }
+        var supplierIds = invoices.Select(i => i.SupplierId).Distinct();
+        var supplierNames = await supplierRepository.GetNameLookupAsync(
+            query.CompanyId, supplierIds, cancellationToken);
 
         var rows = invoices.Select(i => new PurchaseInvoiceListDto
         {
@@ -36,7 +31,7 @@ public sealed class GetPurchaseInvoiceListHandler(
             InvoiceDate = i.InvoiceDate,
             DueDate = i.DueDate,
             SupplierId = i.SupplierId,
-            SupplierName = suppliers.GetValueOrDefault(i.SupplierId, "—"),
+            SupplierName = supplierNames.GetValueOrDefault(i.SupplierId, "—"),
             TotalAmount = i.TotalAmount.Amount,
             PaidAmount = i.PaidAmount.Amount,
             RemainingAmount = i.Remaining.Amount,
@@ -196,22 +191,22 @@ public sealed class GetPurchaseOrderListHandler(
         CancellationToken cancellationToken = default)
     {
         var orders = await orderRepository.GetListAsync(query.CompanyId, query.Status, cancellationToken);
-        var rows = new List<PurchaseOrderListDto>();
-        foreach (var o in orders)
+        var supplierIds = orders.Select(o => o.SupplierId).Distinct();
+        var supplierNames = await supplierRepository.GetNameLookupAsync(
+            query.CompanyId, supplierIds, cancellationToken);
+
+        var rows = orders.Select(o => new PurchaseOrderListDto
         {
-            var s = await supplierRepository.GetByIdAsync(o.SupplierId, cancellationToken);
-            rows.Add(new PurchaseOrderListDto
-            {
-                Id = o.Id,
-                OrderNumber = o.OrderNumber,
-                SupplierName = s?.Supplier.NameAr ?? "—",
-                OrderDate = o.OrderDate,
-                ExpectedDeliveryDate = o.ExpectedDeliveryDate,
-                TotalAmount = o.TotalAmount.Amount,
-                Status = o.Status,
-                StatusDisplay = o.Status.ToStatusDisplay()
-            });
-        }
+            Id = o.Id,
+            OrderNumber = o.OrderNumber,
+            SupplierName = supplierNames.GetValueOrDefault(o.SupplierId, "—"),
+            OrderDate = o.OrderDate,
+            ExpectedDeliveryDate = o.ExpectedDeliveryDate,
+            TotalAmount = o.TotalAmount.Amount,
+            Status = o.Status,
+            StatusDisplay = o.Status.ToStatusDisplay()
+        }).ToList();
+
         return ApplicationResult<IReadOnlyList<PurchaseOrderListDto>>.Success(rows);
     }
 }
@@ -226,21 +221,20 @@ public sealed class GetPurchaseReturnListHandler(
         CancellationToken cancellationToken = default)
     {
         var returns = await returnRepository.GetListAsync(query.CompanyId, cancellationToken);
-        var rows = new List<PurchaseReturnListDto>();
-        foreach (var r in returns)
+        var invoiceIds = returns.Select(r => r.OriginalInvoiceId).Distinct();
+        var invoiceNumbers = await invoiceRepository.GetInvoiceNumberLookupAsync(invoiceIds, cancellationToken);
+
+        var rows = returns.Select(r => new PurchaseReturnListDto
         {
-            var inv = await invoiceRepository.GetByIdAsync(r.OriginalInvoiceId, cancellationToken);
-            rows.Add(new PurchaseReturnListDto
-            {
-                Id = r.Id,
-                ReturnNumber = r.ReturnNumber,
-                OriginalInvoiceNumber = inv?.InvoiceNumber ?? "—",
-                ReturnDate = r.ReturnDate,
-                TotalAmount = r.TotalAmount.Amount,
-                Status = r.Status,
-                StatusDisplay = r.Status.ToStatusDisplay()
-            });
-        }
+            Id = r.Id,
+            ReturnNumber = r.ReturnNumber,
+            OriginalInvoiceNumber = invoiceNumbers.GetValueOrDefault(r.OriginalInvoiceId, "—"),
+            ReturnDate = r.ReturnDate,
+            TotalAmount = r.TotalAmount.Amount,
+            Status = r.Status,
+            StatusDisplay = r.Status.ToStatusDisplay()
+        }).ToList();
+
         return ApplicationResult<IReadOnlyList<PurchaseReturnListDto>>.Success(rows);
     }
 }

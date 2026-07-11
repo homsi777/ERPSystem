@@ -20,7 +20,23 @@ public interface IPurchaseInvoiceRepository
         CancellationToken cancellationToken = default);
     Task AddAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default);
     Task UpdateAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, string>> GetInvoiceNumberLookupAsync(
+        IEnumerable<Guid> invoiceIds,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PurchasePayablesAgingAggregate>> GetPayablesAgingAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record PurchasePayablesAgingAggregate(
+    Guid SupplierId,
+    string SupplierName,
+    decimal TotalInvoiced,
+    decimal Paid,
+    decimal Outstanding,
+    DateTime? OldestInvoiceDate);
 
 public interface IPurchaseOrderRepository
 {

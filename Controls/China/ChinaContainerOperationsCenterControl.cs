@@ -140,11 +140,11 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
                 .ToList(),
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", OverviewTab(c, cost)),
-                Tab("Items", "أصناف الحاوية", ItemsTab(c)),
-                Tab("LandingCost", "Landing Cost", LandingCostTab(cost, data)),
-                Tab("Documentation", "التوثيق", new ContainerDocumentationControl(c.Id, c.ContainerNumber)),
-                Tab("Timeline", "الخط الزمني", TimelineTab(audit)),
+                Tab("Overview", "نظرة عامة", () => OverviewTab(c, cost)),
+                Tab("Items", "أصناف الحاوية", () => ItemsTab(c)),
+                Tab("LandingCost", "Landing Cost", () => LandingCostTab(cost, data)),
+                Tab("Documentation", "التوثيق", () => new ContainerDocumentationControl(c.Id, c.ContainerNumber)),
+                Tab("Timeline", "الخط الزمني", () => TimelineTab(audit)),
             ],
             QuickActions = BuildQuickActions(data, row),
             InitialTabIndex = ResolveTabIndex(initialTab, "Overview", "Items", "LandingCost", "Documentation", "Timeline"),
@@ -281,8 +281,8 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         return 0;
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(
         string label, bool primary, string? tab,

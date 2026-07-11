@@ -78,19 +78,19 @@ public sealed class ExpenseOperationsCenterControl : UserControl
             Workflow = oc.LifecycleSteps.Select(s => (s.Label, s.Current, s.Completed)).ToList(),
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", OverviewTab(d, oc.Statistics)),
-                Tab("Financial", "الملخص المالي", FinancialTab(f, d)),
-                Tab("Lifecycle", "دورة الحياة", LifecycleTab(d)),
-                Tab("Payments", "سجل الدفعات", PaymentsTab(d)),
-                Tab("Installments", "الأقساط", InstallmentsTab(d)),
-                Tab("Attachments", "المرفقات", AttachmentsTab(d)),
-                Tab("Audit", "سجل التدقيق", AuditTab(oc.RecentAudit)),
-                Tab("Timeline", "الخط الزمني", TimelineTab(oc.Timeline)),
-                Tab("Notes", "ملاحظات", NotesTab(d)),
-                Tab("Related", "ارتباطات", RelatedTab(d)),
-                Tab("FutureAccounting", "المحاسبة المستقبلية", FutureIntegrationTab("المحاسبة", "سيتم ربط قيود المصروف تلقائياً عند تفعيل وحدة المحاسبة.")),
-                Tab("FutureTreasury", "الخزينة المستقبلية", FutureIntegrationTab("الخزينة", "سيتم ربط مصادر التمويل والمدفوعات بوحدة الخزينة.")),
-                Tab("Statistics", "إحصائيات", StatisticsTab(oc.Statistics)),
+                Tab("Overview", "نظرة عامة", () => OverviewTab(d, oc.Statistics)),
+                Tab("Financial", "الملخص المالي", () => FinancialTab(f, d)),
+                Tab("Lifecycle", "دورة الحياة", () => LifecycleTab(d)),
+                Tab("Payments", "سجل الدفعات", () => PaymentsTab(d)),
+                Tab("Installments", "الأقساط", () => InstallmentsTab(d)),
+                Tab("Attachments", "المرفقات", () => AttachmentsTab(d)),
+                Tab("Audit", "سجل التدقيق", () => AuditTab(oc.RecentAudit)),
+                Tab("Timeline", "الخط الزمني", () => TimelineTab(oc.Timeline)),
+                Tab("Notes", "ملاحظات", () => NotesTab(d)),
+                Tab("Related", "ارتباطات", () => RelatedTab(d)),
+                Tab("FutureAccounting", "المحاسبة المستقبلية", () => FutureIntegrationTab("المحاسبة", "سيتم ربط قيود المصروف تلقائياً عند تفعيل وحدة المحاسبة.")),
+                Tab("FutureTreasury", "الخزينة المستقبلية", () => FutureIntegrationTab("الخزينة", "سيتم ربط مصادر التمويل والمدفوعات بوحدة الخزينة.")),
+                Tab("Statistics", "إحصائيات", () => StatisticsTab(oc.Statistics)),
             ],
             QuickActions =
             [
@@ -308,8 +308,8 @@ public sealed class ExpenseOperationsCenterControl : UserControl
         return null;
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(string label, bool primary, string? tab,
         bool destructive = false, bool confirm = false, string? actionKey = null) =>

@@ -222,8 +222,14 @@ public sealed class InventoryTransferListPageControl : UserControl
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
-        InventoryListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        InventoryListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        InventoryListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private async Task LoadAsync()
     {
@@ -269,8 +275,14 @@ public sealed class InventoryStocktakeListPageControl : UserControl
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
-        InventoryListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        InventoryListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        InventoryListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private async Task LoadAsync()
     {
@@ -312,8 +324,14 @@ public sealed class InventoryOpeningStockPageControl : UserControl
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
-        InventoryListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        InventoryListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        InventoryListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private async Task LoadAsync()
     {

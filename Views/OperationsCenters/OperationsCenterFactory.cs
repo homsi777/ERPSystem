@@ -242,14 +242,14 @@ namespace ERPSystem.Views.OperationsCenters
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة الصنف")),
-                    Tab("Movements", "حركة المخزون", PlaceholderUi.DevelopmentPhase("حركة المخزون")),
-                    Tab("SalesHistory", "سجل المبيعات", PlaceholderUi.DevelopmentPhase("سجل المبيعات")),
-                    Tab("Reservations", "الحجوزات", PlaceholderUi.DevelopmentPhase("الحجوزات")),
-                    Tab("Transfers", "المناقلات", PlaceholderUi.DevelopmentPhase("المناقلات")),
-                    Tab("Adjustments", "التسويات", PlaceholderUi.DevelopmentPhase("التسويات")),
-                    Tab("Purchases", "سجل الشراء", PlaceholderUi.DevelopmentPhase("سجل الشراء")),
-                    Tab("Notes", "ملاحظات", NotesEditor("")),
+                    Tab("Overview", "نظرة عامة", () => PlaceholderUi.DevelopmentPhase("نظرة عامة الصنف")),
+                    Tab("Movements", "حركة المخزون", () => PlaceholderUi.DevelopmentPhase("حركة المخزون")),
+                    Tab("SalesHistory", "سجل المبيعات", () => PlaceholderUi.DevelopmentPhase("سجل المبيعات")),
+                    Tab("Reservations", "الحجوزات", () => PlaceholderUi.DevelopmentPhase("الحجوزات")),
+                    Tab("Transfers", "المناقلات", () => PlaceholderUi.DevelopmentPhase("المناقلات")),
+                    Tab("Adjustments", "التسويات", () => PlaceholderUi.DevelopmentPhase("التسويات")),
+                    Tab("Purchases", "سجل الشراء", () => PlaceholderUi.DevelopmentPhase("سجل الشراء")),
+                    Tab("Notes", "ملاحظات", () => NotesEditor("")),
                 ],
                 QuickActions =
                 [
@@ -299,13 +299,13 @@ namespace ERPSystem.Views.OperationsCenters
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة المستودع")),
-                    Tab("Inventory", "المخزون", PlaceholderUi.DevelopmentPhase("أرصدة المستودع")),
-                    Tab("Transfers", "المناقلات", PlaceholderUi.DevelopmentPhase("المناقلات")),
-                    Tab("Stocktake", "الجرد", PlaceholderUi.DevelopmentPhase("الجرد")),
-                    Tab("Reservations", "الحجوزات", PlaceholderUi.DevelopmentPhase("الحجوزات")),
-                    Tab("Detailing", "تفصيل معلق", PlaceholderUi.DevelopmentPhase("فواتير بانتظار التفصيل")),
-                    Tab("Movements", "الحركات", PlaceholderUi.DevelopmentPhase("حركات المستودع")),
+                    Tab("Overview", "نظرة عامة", () => PlaceholderUi.DevelopmentPhase("نظرة عامة المستودع")),
+                    Tab("Inventory", "المخزون", () => PlaceholderUi.DevelopmentPhase("أرصدة المستودع")),
+                    Tab("Transfers", "المناقلات", () => PlaceholderUi.DevelopmentPhase("المناقلات")),
+                    Tab("Stocktake", "الجرد", () => PlaceholderUi.DevelopmentPhase("الجرد")),
+                    Tab("Reservations", "الحجوزات", () => PlaceholderUi.DevelopmentPhase("الحجوزات")),
+                    Tab("Detailing", "تفصيل معلق", () => PlaceholderUi.DevelopmentPhase("فواتير بانتظار التفصيل")),
+                    Tab("Movements", "الحركات", () => PlaceholderUi.DevelopmentPhase("حركات المستودع")),
                 ],
                 QuickActions =
                 [
@@ -343,7 +343,7 @@ namespace ERPSystem.Views.OperationsCenters
                 StatusBadge = "—",
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", new TextBlock
+                    Tab("Overview", "نظرة عامة", () => new TextBlock
                     {
                         Text = "يرجى اختيار سجل من القائمة لفتح مركز العمليات",
                         Margin = new Thickness(24),
@@ -396,11 +396,11 @@ namespace ERPSystem.Views.OperationsCenters
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "نظرة عامة", PlaceholderUi.DevelopmentPhase("نظرة عامة الموظف")),
-                    Tab("Attendance", "الحضور", PlaceholderUi.DevelopmentPhase("الحضور")),
-                    Tab("Leaves", "الإجازات", PlaceholderUi.DevelopmentPhase("الإجازات")),
-                    Tab("Contracts", "العقود", PlaceholderUi.DevelopmentPhase("العقود")),
-                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
+                    Tab("Overview", "نظرة عامة", () => PlaceholderUi.DevelopmentPhase("نظرة عامة الموظف")),
+                    Tab("Attendance", "الحضور", () => PlaceholderUi.DevelopmentPhase("الحضور")),
+                    Tab("Leaves", "الإجازات", () => PlaceholderUi.DevelopmentPhase("الإجازات")),
+                    Tab("Contracts", "العقود", () => PlaceholderUi.DevelopmentPhase("العقود")),
+                    Tab("Timeline", "الخط الزمني", () => EmptyTimeline()),
                 ],
                 QuickActions =
                 [
@@ -442,8 +442,8 @@ namespace ERPSystem.Views.OperationsCenters
                 ],
                 Tabs =
                 [
-                    Tab("Overview", "سطور القيد", PlaceholderUi.DevelopmentPhase("سطور القيد")),
-                    Tab("Timeline", "الخط الزمني", EmptyTimeline()),
+                    Tab("Overview", "سطور القيد", () => PlaceholderUi.DevelopmentPhase("سطور القيد")),
+                    Tab("Timeline", "الخط الزمني", () => EmptyTimeline()),
                 ],
                 QuickActions =
                 [
@@ -576,8 +576,8 @@ namespace ERPSystem.Views.OperationsCenters
         private static UIElement WrapDetailing(UIElement ctrl) =>
             new ScrollViewer { Content = ctrl, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
 
-        private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-            new() { Key = key, Label = label, Content = content };
+        private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+            new() { Key = key, Label = label, ContentFactory = contentFactory };
 
         private static OperationsCenterQuickAction Q(string label, bool primary, string? tab,
             bool destructive = false, bool confirm = false, string? actionKey = null) =>

@@ -40,8 +40,14 @@ public sealed class CashboxTransferListPageControl : UserControl
 
         Content = _page;
         Loaded += OnLoaded;
-        CashboxListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        CashboxListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        CashboxListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {

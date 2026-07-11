@@ -26,4 +26,10 @@ public interface ISalesInvoiceRepository
         CancellationToken cancellationToken = default);
     Task AddAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, SalesInvoiceCustomerAgingAggregate>> GetReceivablesAgingAggregatesAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record SalesInvoiceCustomerAgingAggregate(decimal TotalInvoiced, DateTime? OldestInvoiceDate);

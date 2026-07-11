@@ -42,6 +42,19 @@ public static class InfrastructureServiceCollectionExtensions
                 sp.GetRequiredService<AuditSaveChangesInterceptor>());
         });
 
+        services.AddDbContextFactory<ErpDbContext>((sp, options) =>
+        {
+            options.UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.MigrationsAssembly(typeof(ErpDbContext).Assembly.FullName);
+                npgsql.MigrationsHistoryTable("__ef_migrations_history", Schemas.Settings);
+            });
+            options.ConfigureWarnings(w =>
+                w.Ignore(RelationalEventId.PendingModelChangesWarning));
+        });
+
+        services.AddScoped<ISalesInvoiceListLookupLoader, SalesInvoiceListLookupLoader>();
+
         services.AddSingleton<UtcDateTimeSaveChangesInterceptor>();
         services.AddSingleton<AuditSaveChangesInterceptor>();
         services.AddMemoryCache();

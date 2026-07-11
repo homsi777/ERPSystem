@@ -21,6 +21,10 @@ public interface ICustomerRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<CustomerAggregate>> GetWithPositiveBalanceAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default);
     Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
 }

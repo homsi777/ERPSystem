@@ -27,7 +27,7 @@ namespace ERPSystem.Controls.OperationsCenter
     {
         public string Key { get; init; } = "";
         public string Label { get; init; } = "";
-        public UIElement Content { get; init; } = new UIElement();
+        public Func<UIElement> ContentFactory { get; init; } = () => new UIElement();
     }
 
     public sealed class OperationsCenterQuickAction

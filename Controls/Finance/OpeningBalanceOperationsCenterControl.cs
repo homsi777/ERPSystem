@@ -91,12 +91,12 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
             ],
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", OverviewTab(oc)),
-                Tab("Accounting", "المحاسبة", AccountingTab(oc)),
-                Tab("Audit", "التدقيق", AuditTab(oc.Events)),
-                Tab("Timeline", "الخط الزمني", TimelineTab(oc.Events)),
-                Tab("Journal", "قيود اليومية", JournalTab(oc)),
-                Tab("Reports", "التقارير", ReportsTab(oc))
+                Tab("Overview", "نظرة عامة", () => OverviewTab(oc)),
+                Tab("Accounting", "المحاسبة", () => AccountingTab(oc)),
+                Tab("Audit", "التدقيق", () => AuditTab(oc.Events)),
+                Tab("Timeline", "الخط الزمني", () => TimelineTab(oc.Events)),
+                Tab("Journal", "قيود اليومية", () => JournalTab(oc)),
+                Tab("Reports", "التقارير", () => ReportsTab(oc))
             ],
             QuickActions = BuildQuickActions(h),
             Context = new OperationsCenterContext
@@ -226,8 +226,8 @@ public sealed class OpeningBalanceOperationsCenterControl : UserControl
         return null;
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(string label, bool primary, string? tab = null,
         bool destructive = false, string? actionKey = null, bool requiresConfirmation = false) =>

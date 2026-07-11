@@ -99,26 +99,25 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             ? "مُحصّلة كاملاً"
             : data.CollectedAmount > 0 ? "محصّلة جزئياً" : "غير مُحصّلة";
 
-        UIElement detailingContent;
-        if (data.Detailing is not null && invoice.Status == SalesInvoiceStatus.AwaitingDetailing)
+        UIElement BuildDetailingTab()
         {
-            var detailing = new WarehouseDetailingWorkspaceControl();
-            detailing.LoadFromDatabase(
-                invoice.Id,
-                invoice.InvoiceNumber,
-                invoice.CustomerName,
-                data.WarehouseName ?? "—",
-                data.Detailing.Rolls,
-                invoice.Lines.FirstOrDefault()?.UnitPrice ?? 0m);
-            detailingContent = WrapDetailing(detailing);
-        }
-        else if (data.Detailing is not null)
-        {
-            detailingContent = BuildDetailingReadOnlySummary(data.Detailing, invoice);
-        }
-        else
-        {
-            detailingContent = BuildDetailingSummary(invoice, data);
+            if (data.Detailing is not null && invoice.Status == SalesInvoiceStatus.AwaitingDetailing)
+            {
+                var detailing = new WarehouseDetailingWorkspaceControl();
+                detailing.LoadFromDatabase(
+                    invoice.Id,
+                    invoice.InvoiceNumber,
+                    invoice.CustomerName,
+                    data.WarehouseName ?? "—",
+                    data.Detailing.Rolls,
+                    invoice.Lines.FirstOrDefault()?.UnitPrice ?? 0m);
+                return WrapDetailing(detailing);
+            }
+
+            if (data.Detailing is not null)
+                return BuildDetailingReadOnlySummary(data.Detailing, invoice);
+
+            return BuildDetailingSummary(invoice, data);
         }
 
         return OperationsCenterShell.Build(new OperationsCenterSpec
@@ -158,13 +157,13 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             ],
             Tabs =
             [
-                Tab("Overview", "الملخص", BuildOverview(data)),
-                Tab("Lines", "السطور", BuildLinesTab(invoice.Lines)),
-                Tab("Detailing", "التفصيل", detailingContent),
-                Tab("Journal", "قيود GL", BuildJournalTab(data.JournalEntries)),
-                Tab("Receipts", "التحصيلات", BuildPaymentsTab(data)),
-                Tab("Returns", "المرتجعات", BuildReturnsTab(data.Returns)),
-                Tab("Timeline", "الخط الزمني", BuildTimelineTab(invoice)),
+                Tab("Overview", "الملخص", () => BuildOverview(data)),
+                Tab("Lines", "السطور", () => BuildLinesTab(invoice.Lines)),
+                Tab("Detailing", "التفصيل", BuildDetailingTab),
+                Tab("Journal", "قيود GL", () => BuildJournalTab(data.JournalEntries)),
+                Tab("Receipts", "التحصيلات", () => BuildPaymentsTab(data)),
+                Tab("Returns", "المرتجعات", () => BuildReturnsTab(data.Returns)),
+                Tab("Timeline", "الخط الزمني", () => BuildTimelineTab(invoice)),
             ],
             QuickActions = BuildQuickActions(data),
             InitialTabIndex = ResolveTabIndex(_initialTab, "Overview", "Lines", "Detailing", "Journal", "Receipts", "Returns", "Timeline"),
@@ -607,8 +606,8 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         return 0;
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(
         string label, bool primary, string? tab,

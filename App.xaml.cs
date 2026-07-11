@@ -109,6 +109,7 @@ public partial class App : System.Windows.Application
                     await provider.MigrateAndSeedAsync();
 
                 await ERPSystem.Services.Settings.CurrencyCatalog.RefreshAsync();
+                await ERPSystem.Services.Settings.ReferenceDataCatalog.RefreshAsync();
             }
 
             using (var windowScope = profiler.BeginScreenLoad("App.MainWindowConstruction"))

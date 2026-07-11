@@ -184,7 +184,10 @@ public sealed class InventoryUiService
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<CreateWarehouseCommand, ApplicationResult<Guid>>>();
-        return await handler.HandleAsync(command with { BranchId = BranchId }, cancellationToken);
+        var result = await handler.HandleAsync(command with { BranchId = BranchId }, cancellationToken);
+        if (result.IsSuccess)
+            ERPSystem.Services.Settings.ReferenceDataCatalog.InvalidateWarehouses();
+        return result;
     }
 
     public async Task<ApplicationResult> UpdateWarehouseAsync(
@@ -192,7 +195,10 @@ public sealed class InventoryUiService
     {
         using var scope = _scopeFactory.CreateScope();
         var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<UpdateWarehouseCommand, ApplicationResult>>();
-        return await handler.HandleAsync(command, cancellationToken);
+        var result = await handler.HandleAsync(command, cancellationToken);
+        if (result.IsSuccess)
+            ERPSystem.Services.Settings.ReferenceDataCatalog.InvalidateWarehouses();
+        return result;
     }
 
     public async Task<ApplicationResult> DeactivateWarehouseAsync(

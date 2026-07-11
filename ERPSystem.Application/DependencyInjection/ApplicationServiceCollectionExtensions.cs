@@ -191,6 +191,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetJournalBooksHandler>();
         services.AddScoped<GetTrialBalanceHandler>();
         services.AddScoped<GetAccountLedgerHandler>();
+        services.AddScoped<GetReceivablesAgingHandler>();
+        services.AddScoped<GetPayablesAgingHandler>();
     }
 
     private static void RegisterFinanceHandlers(IServiceCollection services)

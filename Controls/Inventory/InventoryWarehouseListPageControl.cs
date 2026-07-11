@@ -55,8 +55,14 @@ public sealed class InventoryWarehouseListPageControl : UserControl
 
         Content = _page;
         Loaded += OnLoaded;
-        InventoryListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        InventoryListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        InventoryListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private void OnGridTasksClick(object sender, MouseButtonEventArgs e)
     {

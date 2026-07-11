@@ -7,6 +7,7 @@ using ERPSystem.Application.DTOs.Accounting;
 using ERPSystem.Application.Queries.Accounting;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Accounting;
+using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -250,5 +251,21 @@ public sealed class AccountingUiService
             FromDate = from,
             ToDate = to
         }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<IReadOnlyList<ReceivablesAgingRowDto>>> GetReceivablesAgingAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetReceivablesAgingHandler>();
+        return await handler.HandleAsync(new GetReceivablesAgingQuery { CompanyId = CompanyId }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<IReadOnlyList<PayablesAgingRowDto>>> GetPayablesAgingAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetPayablesAgingHandler>();
+        return await handler.HandleAsync(new GetPayablesAgingQuery { CompanyId = CompanyId }, cancellationToken);
     }
 }

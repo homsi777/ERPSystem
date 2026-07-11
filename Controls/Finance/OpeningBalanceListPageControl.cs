@@ -40,8 +40,14 @@ public sealed class OpeningBalanceListPageControl : UserControl
         Content = _page;
         Loaded += OnLoaded;
         _typeFilter.SelectionChanged += async (_, _) => await LoadAsync();
-        OpeningBalanceListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        OpeningBalanceListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        OpeningBalanceListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private void ConfigureGrid()
     {

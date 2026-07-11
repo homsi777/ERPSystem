@@ -289,6 +289,29 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         return await MapHeadersToListAggregatesAsync(headers, cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, SalesInvoiceCustomerAgingAggregate>> GetReceivablesAgingAggregatesAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default)
+    {
+        var minStatus = (int)SalesInvoiceStatus.AwaitingDetailing;
+        var cancelled = (int)SalesInvoiceStatus.Cancelled;
+
+        var rows = await context.SalesInvoices.AsNoTracking()
+            .Where(i => i.CompanyId == companyId && i.Status >= minStatus && i.Status != cancelled)
+            .GroupBy(i => i.CustomerId)
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                TotalInvoiced = g.Sum(i => i.GrandTotal),
+                OldestInvoiceDate = g.Min(i => i.InvoiceDate)
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(
+            r => r.CustomerId,
+            r => new SalesInvoiceCustomerAgingAggregate(r.TotalInvoiced, r.OldestInvoiceDate));
+    }
+
     public async Task AddAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default)
     {
         await context.SalesInvoices.AddAsync(SalesInvoiceMapper.ToHeaderEntity(aggregate), cancellationToken);

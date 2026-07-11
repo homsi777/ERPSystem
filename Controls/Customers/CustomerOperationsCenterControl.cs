@@ -65,8 +65,12 @@ public sealed class CustomerOperationsCenterControl : UserControl
         var accent = Br("AccentCustomersBrush");
         var isActive = c.IsActive && c.Status == DomainCustomerStatus.Active;
 
-        var statement = new CustomerAccountStatementControl();
-        statement.Initialize(c.Id, c.NameAr);
+        UIElement BuildStatementTab()
+        {
+            var statement = new CustomerAccountStatementControl();
+            statement.Initialize(c.Id, c.NameAr);
+            return statement;
+        }
 
         return OperationsCenterShell.Build(new OperationsCenterSpec
         {
@@ -99,10 +103,10 @@ public sealed class CustomerOperationsCenterControl : UserControl
             ],
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", OverviewTab(data)),
-                Tab("Statement", "كشف الحساب", statement),
-                Tab("Invoices", "الفواتير", BuildInvoicesTab(row)),
-                Tab("Receipts", "سندات القبض", BuildReceiptsTab(c.Id)),
+                Tab("Overview", "نظرة عامة", () => OverviewTab(data)),
+                Tab("Statement", "كشف الحساب", BuildStatementTab),
+                Tab("Invoices", "الفواتير", () => BuildInvoicesTab(row)),
+                Tab("Receipts", "سندات القبض", () => BuildReceiptsTab(c.Id)),
             ],
             QuickActions =
             [
@@ -186,8 +190,8 @@ public sealed class CustomerOperationsCenterControl : UserControl
         return 0;
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(
         string label, bool primary, string? tab,

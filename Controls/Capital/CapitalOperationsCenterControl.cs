@@ -73,14 +73,14 @@ public sealed class CapitalOperationsCenterControl : UserControl
             ],
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", OverviewTab(d, oc)),
-                Tab("Financial", "الملخص المالي", FinancialTab(f)),
-                Tab("Participations", "المشاركات", ParticipationsTab(d)),
-                Tab("Ledger", "دفتر الاستثمار", LedgerTab(d)),
-                Tab("Audit", "سجل التدقيق", AuditTab(oc.RecentAudit)),
-                Tab("Timeline", "الخط الزمني", TimelineTab(oc.Timeline)),
-                Tab("Notes", "ملاحظات", NotesTab(d)),
-                Tab("FutureAccounting", "المحاسبة المستقبلية", FutureTab()),
+                Tab("Overview", "نظرة عامة", () => OverviewTab(d, oc)),
+                Tab("Financial", "الملخص المالي", () => FinancialTab(f)),
+                Tab("Participations", "المشاركات", () => ParticipationsTab(d)),
+                Tab("Ledger", "دفتر الاستثمار", () => LedgerTab(d)),
+                Tab("Audit", "سجل التدقيق", () => AuditTab(oc.RecentAudit)),
+                Tab("Timeline", "الخط الزمني", () => TimelineTab(oc.Timeline)),
+                Tab("Notes", "ملاحظات", () => NotesTab(d)),
+                Tab("FutureAccounting", "المحاسبة المستقبلية", () => FutureTab()),
             ],
             QuickActions =
             [
@@ -186,8 +186,8 @@ public sealed class CapitalOperationsCenterControl : UserControl
 
     private static TextBlock ReadOnly(string text) => new() { Text = text, Margin = new Thickness(0, 4, 0, 4) };
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(string label, bool primary, string? tab,
         bool destructive = false, bool confirm = false, string? actionKey = null) =>

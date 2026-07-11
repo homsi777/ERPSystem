@@ -52,12 +52,21 @@ public sealed class SupplierOperationsCenterControl : UserControl
     private static UserControl BuildShell(SupplierOperationsCenterDto data, SupplierListRow row, string initialTab)
     {
         var s = data.Supplier;
-        var statement = new SupplierAccountStatementControl();
-        statement.Initialize(s.Id, s.NameAr);
-        var invoices = new SupplierInvoiceListControl();
-        invoices.Initialize(s.Id);
+        UIElement BuildStatementTab()
+        {
+            var statement = new SupplierAccountStatementControl();
+            statement.Initialize(s.Id, s.NameAr);
+            return statement;
+        }
 
-        var paymentsGrid = ErpUiFactory.Card(ErpUiFactory.BuildGrid(
+        UIElement BuildInvoicesTab()
+        {
+            var invoices = new SupplierInvoiceListControl();
+            invoices.Initialize(s.Id);
+            return invoices;
+        }
+
+        UIElement BuildPaymentsTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(
             data.RecentPayments.Select(p => new
             {
                 رقم_السند = p.VoucherNumber,
@@ -66,45 +75,49 @@ public sealed class SupplierOperationsCenterControl : UserControl
                 الحالة = p.StatusDisplay
             }).ToArray(), false));
 
-        var notesBox = new TextBox
+        UIElement BuildNotesTab()
         {
-            Text = s.Notes ?? "",
-            AcceptsReturn = true,
-            Height = 120,
-            TextWrapping = TextWrapping.Wrap
-        };
-        var notesPanel = new StackPanel();
-        notesPanel.Children.Add(notesBox);
-        var saveNotesBtn = new Button
-        {
-            Content = "حفظ الملاحظات",
-            Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!,
-            Margin = new Thickness(0, 8, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        saveNotesBtn.Click += async (_, _) =>
-        {
-            var result = await SupplierUiService.Instance.UpdateAsync(new Application.Commands.Suppliers.UpdateSupplierCommand
+            var notesBox = new TextBox
             {
-                SupplierId = s.Id,
-                NameAr = s.NameAr,
-                NameEn = s.NameEn,
-                Phone = s.Phone,
-                Email = s.Email,
-                Address = s.Address,
-                Country = s.Country,
-                City = s.City,
-                CurrencyCode = s.CurrencyCode,
-                PaymentTermsDays = s.PaymentTermsDays,
-                CreditLimit = s.CreditLimit,
-                TaxNumber = s.TaxNumber,
-                PayablesAccountId = s.PayablesAccountId,
-                Notes = notesBox.Text.Trim()
-            });
-            if (ApplicationResultPresenter.Present(result))
-                MockInteractionService.ShowSuccess("تم حفظ الملاحظات.");
-        };
-        notesPanel.Children.Add(saveNotesBtn);
+                Text = s.Notes ?? "",
+                AcceptsReturn = true,
+                Height = 120,
+                TextWrapping = TextWrapping.Wrap
+            };
+            var notesPanel = new StackPanel();
+            notesPanel.Children.Add(notesBox);
+            var saveNotesBtn = new Button
+            {
+                Content = "حفظ الملاحظات",
+                Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!,
+                Margin = new Thickness(0, 8, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            saveNotesBtn.Click += async (_, _) =>
+            {
+                var result = await SupplierUiService.Instance.UpdateAsync(new Application.Commands.Suppliers.UpdateSupplierCommand
+                {
+                    SupplierId = s.Id,
+                    NameAr = s.NameAr,
+                    NameEn = s.NameEn,
+                    Phone = s.Phone,
+                    Email = s.Email,
+                    Address = s.Address,
+                    Country = s.Country,
+                    City = s.City,
+                    CurrencyCode = s.CurrencyCode,
+                    PaymentTermsDays = s.PaymentTermsDays,
+                    CreditLimit = s.CreditLimit,
+                    TaxNumber = s.TaxNumber,
+                    PayablesAccountId = s.PayablesAccountId,
+                    Notes = notesBox.Text.Trim()
+                });
+                if (ApplicationResultPresenter.Present(result))
+                    MockInteractionService.ShowSuccess("تم حفظ الملاحظات.");
+            };
+            notesPanel.Children.Add(saveNotesBtn);
+            return notesPanel;
+        }
 
         return OperationsCenterShell.Build(new OperationsCenterSpec
         {
@@ -137,11 +150,11 @@ public sealed class SupplierOperationsCenterControl : UserControl
             ],
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", OverviewTab(data)),
-                Tab("Statement", "كشف الحساب", statement),
-                Tab("Invoices", "الفواتير", invoices),
-                Tab("Payments", "المدفوعات", paymentsGrid),
-                Tab("Notes", "ملاحظات", notesPanel),
+                Tab("Overview", "نظرة عامة", () => OverviewTab(data)),
+                Tab("Statement", "كشف الحساب", BuildStatementTab),
+                Tab("Invoices", "الفواتير", BuildInvoicesTab),
+                Tab("Payments", "المدفوعات", BuildPaymentsTab),
+                Tab("Notes", "ملاحظات", BuildNotesTab),
             ],
             QuickActions =
             [
@@ -178,8 +191,8 @@ public sealed class SupplierOperationsCenterControl : UserControl
         return 0;
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(
         string label, bool primary, string? tab,

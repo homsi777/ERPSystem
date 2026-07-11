@@ -80,6 +80,56 @@ internal sealed class PurchaseInvoiceRepository(ErpDbContext context) : IPurchas
             await context.PurchaseInvoiceItems.AddAsync(PurchaseMapper.ToItemEntity(invoice.Id, item), cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetInvoiceNumberLookupAsync(
+        IEnumerable<Guid> invoiceIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = invoiceIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await context.PurchaseInvoices.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p.InvoiceNumber, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PurchasePayablesAgingAggregate>> GetPayablesAgingAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default)
+    {
+        var cancelled = (int)PurchaseInvoiceStatus.Cancelled;
+
+        var rows = await context.PurchaseInvoices.AsNoTracking()
+            .Where(p => p.CompanyId == companyId && !p.IsArchived && p.Status != cancelled)
+            .Join(
+                context.Suppliers.AsNoTracking(),
+                invoice => invoice.SupplierId,
+                supplier => supplier.Id,
+                (invoice, supplier) => new { invoice, supplier.NameAr })
+            .GroupBy(x => new { x.invoice.SupplierId, x.NameAr })
+            .Select(g => new
+            {
+                g.Key.SupplierId,
+                g.Key.NameAr,
+                TotalInvoiced = g.Sum(x => x.invoice.TotalAmount),
+                Paid = g.Sum(x => x.invoice.PaidAmount),
+                Outstanding = g.Sum(x => x.invoice.TotalAmount - x.invoice.PaidAmount),
+                OldestInvoiceDate = g.Where(x => x.invoice.TotalAmount - x.invoice.PaidAmount > 0)
+                    .Min(x => (DateTime?)x.invoice.InvoiceDate)
+            })
+            .Where(x => x.Outstanding > 0)
+            .OrderByDescending(x => x.Outstanding)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(r => new PurchasePayablesAgingAggregate(
+            r.SupplierId,
+            r.NameAr,
+            r.TotalInvoiced,
+            r.Paid,
+            r.Outstanding,
+            r.OldestInvoiceDate)).ToList();
+    }
+
     public async Task UpdateAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default)
     {
         var entity = await context.PurchaseInvoices.FirstOrDefaultAsync(p => p.Id == invoice.Id, cancellationToken)

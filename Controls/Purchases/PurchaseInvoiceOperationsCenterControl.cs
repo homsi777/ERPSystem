@@ -60,7 +60,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             IsOverdue = data.IsOverdue
         });
 
-        var linesGrid = ErpUiFactory.Card(ErpUiFactory.BuildGrid(inv.Lines.Select(l => new
+        UIElement BuildLinesTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(inv.Lines.Select(l => new
         {
             النوع = l.LineType.ToString(),
             الصنف = l.FabricItemName ?? l.Description,
@@ -69,7 +69,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             الإجمالي = l.LineTotal
         }).ToArray(), false));
 
-        var journalGrid = ErpUiFactory.Card(ErpUiFactory.BuildGrid(data.JournalEntries.Select(j => new
+        UIElement BuildJournalTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(data.JournalEntries.Select(j => new
         {
             رقم_القيد = j.EntryNumber,
             التاريخ = j.EntryDate.ToString("yyyy/MM/dd"),
@@ -78,7 +78,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             دائن = j.Credit
         }).ToArray(), false));
 
-        var paymentsGrid = ErpUiFactory.Card(ErpUiFactory.BuildGrid(data.Payments.Select(p => new
+        UIElement BuildPaymentsTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(data.Payments.Select(p => new
         {
             رقم_السند = p.VoucherNumber,
             التاريخ = p.VoucherDate.ToString("yyyy/MM/dd"),
@@ -86,7 +86,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             الحالة = p.StatusDisplay
         }).ToArray(), false));
 
-        var notesBox = new TextBox { Text = inv.Notes ?? "", AcceptsReturn = true, Height = 100, IsReadOnly = inv.IsReadOnly };
+        UIElement BuildNotesTab() => new TextBox { Text = inv.Notes ?? "", AcceptsReturn = true, Height = 100, IsReadOnly = inv.IsReadOnly };
 
         return OperationsCenterShell.Build(new OperationsCenterSpec
         {
@@ -114,11 +114,11 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             ],
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", Overview(inv, data)),
-                Tab("Lines", "البنود", linesGrid),
-                Tab("Journal", "قيود اليومية", journalGrid),
-                Tab("Payments", "المدفوعات", paymentsGrid),
-                Tab("Notes", "ملاحظات", notesBox),
+                Tab("Overview", "نظرة عامة", () => Overview(inv, data)),
+                Tab("Lines", "البنود", BuildLinesTab),
+                Tab("Journal", "قيود اليومية", BuildJournalTab),
+                Tab("Payments", "المدفوعات", BuildPaymentsTab),
+                Tab("Notes", "ملاحظات", BuildNotesTab),
             ],
             QuickActions =
             [
@@ -151,8 +151,8 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
         return ErpUiFactory.Card(sp);
     }
 
-    private static OperationsCenterTab Tab(string key, string label, UIElement content) =>
-        new() { Key = key, Label = label, Content = content };
+    private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>
+        new() { Key = key, Label = label, ContentFactory = contentFactory };
 
     private static OperationsCenterQuickAction Q(
         string label, bool primary, string? tab,

@@ -78,6 +78,18 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         return (entities.Select(CustomerMapper.ToAggregate).ToList(), totalCount);
     }
 
+    public async Task<IReadOnlyList<CustomerAggregate>> GetWithPositiveBalanceAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default)
+    {
+        var entities = await context.Customers.AsNoTracking()
+            .Where(c => c.CompanyId == companyId && c.Balance > 0)
+            .OrderByDescending(c => c.Balance)
+            .ToListAsync(cancellationToken);
+
+        return entities.Select(CustomerMapper.ToAggregate).ToList();
+    }
+
     public async Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default)
     {
         await context.Customers.AddAsync(CustomerMapper.ToEntity(aggregate), cancellationToken);

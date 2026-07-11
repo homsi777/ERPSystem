@@ -48,8 +48,14 @@ public sealed class CashboxListPageControl : UserControl
         AddActionsColumn(g);
         Content = _page;
         Loaded += OnLoaded;
-        CashboxListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        CashboxListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        CashboxListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private void OnGridTasksClick(object sender, MouseButtonEventArgs e)
     {

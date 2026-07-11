@@ -107,11 +107,17 @@ internal sealed class ImportedFabricClassificationPanel : UserControl
             await LoadContainerFilterAsync();
             await LoadAsync();
         };
-        InventoryCatalogListRefreshHub.RefreshRequested += async (_, _) =>
-        {
-            await LoadContainerFilterAsync();
-            await LoadAsync();
-        };
+        Unloaded += OnUnloaded;
+        InventoryCatalogListRefreshHub.RefreshRequested += OnRefreshRequested;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        InventoryCatalogListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private async void OnRefreshRequested(object? sender, EventArgs e)
+    {
+        await LoadContainerFilterAsync();
+        await LoadAsync();
     }
 
     private async Task LoadContainerFilterAsync()

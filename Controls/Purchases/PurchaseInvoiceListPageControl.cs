@@ -77,8 +77,14 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
         };
 
         Loaded += async (_, _) => await LoadAsync("");
-        PurchaseListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync(_pendingSearch);
+        Unloaded += OnUnloaded;
+        PurchaseListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        PurchaseListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync(_pendingSearch);
 
     private async Task LoadAsync(string search)
     {

@@ -202,17 +202,37 @@ namespace ERPSystem.Controls.OperationsCenter
                 Margin = new Thickness(0)
             };
 
-            foreach (var tab in spec.Tabs)
+            for (var i = 0; i < spec.Tabs.Count; i++)
             {
+                var tab = spec.Tabs[i];
                 tabs.Items.Add(new TabItem
                 {
                     Header = tab.Label,
-                    Tag = tab.Key,
-                    Content = tab.Content
+                    Tag = tab.Key
                 });
             }
 
-            tabs.SelectedIndex = Math.Clamp(spec.InitialTabIndex, 0, Math.Max(0, spec.Tabs.Count - 1));
+            void EnsureTabContent(int index)
+            {
+                if (index < 0 || index >= spec.Tabs.Count)
+                    return;
+                if (tabs.Items[index] is not TabItem tabItem || tabItem.Content is UIElement)
+                    return;
+
+                tabItem.Content = spec.Tabs[index].ContentFactory();
+            }
+
+            var initialIndex = Math.Clamp(spec.InitialTabIndex, 0, Math.Max(0, spec.Tabs.Count - 1));
+            EnsureTabContent(initialIndex);
+            tabs.SelectedIndex = initialIndex;
+
+            tabs.SelectionChanged += (_, e) =>
+            {
+                if (e.Source != tabs || tabs.SelectedIndex < 0)
+                    return;
+                EnsureTabContent(tabs.SelectedIndex);
+            };
+
             return tabs;
         }
 

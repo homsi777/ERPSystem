@@ -47,8 +47,14 @@ public sealed class EmployeeListPageControl : UserControl
 
         Content = _page;
         Loaded += OnLoaded;
-        HrListRefreshHub.RefreshRequested += (_, _) => _ = LoadAsync();
+        Unloaded += OnUnloaded;
+        HrListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        HrListRefreshHub.RefreshRequested -= OnRefreshRequested;
+
+    private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private static void ShowForm(Guid? employeeId)
     {

@@ -1,11 +1,8 @@
 using ERPSystem.Core;
 using ERPSystem.Core.Customers;
-using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
-using ERPSystem.Services.Customers;
-using ERPSystem.Services.Purchases;
-using ERPSystem.Services.Sales;
+using ERPSystem.Services.Accounting;
 using ERPSystem.Services.Suppliers;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,10 +20,19 @@ public sealed class ReceivablesAgingControl : UserControl
 
     public ReceivablesAgingControl()
     {
-        var root = new ScrollViewer { Padding = new Thickness(16), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        var stack = new StackPanel();
-        stack.Children.Add(ErpUiFactory.SectionTitle("الذمم المدينة — أعمار الديون"));
-        stack.Children.Add(ErpUxFactory.InfoBanner("العملاء ذوو الأرصدة المستحقة — بيانات حية. انقر مزدوجاً لفتح مركز العميل."));
+        var root = new Grid { Margin = new Thickness(16) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var title = ErpUiFactory.SectionTitle("الذمم المدينة — أعمار الديون");
+        Grid.SetRow(title, 0);
+        root.Children.Add(title);
+
+        var banner = ErpUxFactory.InfoBanner("العملاء ذوو الأرصدة المستحقة — بيانات حية. انقر مزدوجاً لفتح مركز العميل.");
+        banner.Margin = new Thickness(0, 8, 0, 0);
+        Grid.SetRow(banner, 1);
+        root.Children.Add(banner);
 
         _grid = new DataGrid
         {
@@ -35,7 +41,8 @@ public sealed class ReceivablesAgingControl : UserControl
             CanUserAddRows = false,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             Margin = new Thickness(0, 12, 0, 0),
-            MaxHeight = 620
+            EnableRowVirtualization = true,
+            VerticalAlignment = VerticalAlignment.Stretch
         };
         ErpUiFactory.AddGridColumn(_grid, "العميل", nameof(ArAgingRow.CustomerName), "*", null);
         ErpUiFactory.AddGridColumn(_grid, "إجمالي الفواتير", nameof(ArAgingRow.TotalInvoiced), 130, "N2");
@@ -48,9 +55,9 @@ public sealed class ReceivablesAgingControl : UserControl
             if (_grid.SelectedItem is ArAgingRow row)
                 MockInteractionService.OpenCustomerOperationsCenter(row.Customer);
         };
-        stack.Children.Add(_grid);
+        Grid.SetRow(_grid, 2);
+        root.Children.Add(_grid);
 
-        root.Content = stack;
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
     }
@@ -59,34 +66,25 @@ public sealed class ReceivablesAgingControl : UserControl
     {
         if (!AppServices.IsInitialized) return;
 
-        var customersResult = await CustomerUiService.Instance.GetListAsync(null, 1, 1000);
-        var invoicesResult = await SalesUiService.Instance.GetListAsync(null, null, 1, 5000);
-        if (!customersResult.IsSuccess || customersResult.Value is null) return;
+        var result = await AccountingUiService.Instance.GetReceivablesAgingAsync();
+        if (!result.IsSuccess || result.Value is null) return;
 
-        var invoices = invoicesResult.Value?.Items ?? [];
-        var byCustomer = invoices
-            .Where(i => i.Status >= SalesInvoiceStatus.AwaitingDetailing && i.Status != SalesInvoiceStatus.Cancelled)
-            .GroupBy(i => i.CustomerId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var rows = new List<ArAgingRow>();
-        foreach (var dto in customersResult.Value.Items.Where(c => c.Balance > 0).OrderByDescending(c => c.Balance))
+        var rows = result.Value.Select(dto => new ArAgingRow
         {
-            byCustomer.TryGetValue(dto.Id, out var custInvoices);
-            var totalInvoiced = custInvoices?.Sum(i => i.GrandTotal) ?? 0m;
-            var oldest = custInvoices is { Count: > 0 } ? custInvoices.Min(i => i.InvoiceDate) : (DateTime?)null;
-            var collected = Math.Max(0m, totalInvoiced - dto.Balance);
-            rows.Add(new ArAgingRow
+            Customer = CustomerListRow.FromDto(new Application.DTOs.Customers.CustomerListDto
             {
-                Customer = CustomerListRow.FromDto(dto),
-                CustomerName = dto.NameAr,
-                TotalInvoiced = totalInvoiced,
-                Collected = collected,
-                Outstanding = dto.Balance,
-                OldestInvoice = oldest?.ToString("yyyy/MM/dd") ?? "—",
-                DaysOverdue = oldest.HasValue ? Math.Max(0, (int)(DateTime.UtcNow - oldest.Value).TotalDays) : 0
-            });
-        }
+                Id = dto.CustomerId,
+                Code = dto.CustomerCode,
+                NameAr = dto.CustomerName,
+                Balance = dto.Outstanding
+            }),
+            CustomerName = dto.CustomerName,
+            TotalInvoiced = dto.TotalInvoiced,
+            Collected = dto.Collected,
+            Outstanding = dto.Outstanding,
+            OldestInvoice = dto.OldestInvoiceDate?.ToString("yyyy/MM/dd") ?? "—",
+            DaysOverdue = dto.DaysOverdue
+        }).ToList();
 
         _grid.ItemsSource = rows;
     }
@@ -113,10 +111,19 @@ public sealed class PayablesAgingControl : UserControl
 
     public PayablesAgingControl()
     {
-        var root = new ScrollViewer { Padding = new Thickness(16), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        var stack = new StackPanel();
-        stack.Children.Add(ErpUiFactory.SectionTitle("الذمم الدائنة — أعمار الديون"));
-        stack.Children.Add(ErpUxFactory.InfoBanner("الموردون ذوو الأرصدة المستحقة — بيانات حية. انقر مزدوجاً لفتح كشف المورد."));
+        var root = new Grid { Margin = new Thickness(16) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var title = ErpUiFactory.SectionTitle("الذمم الدائنة — أعمار الديون");
+        Grid.SetRow(title, 0);
+        root.Children.Add(title);
+
+        var banner = ErpUxFactory.InfoBanner("الموردون ذوو الأرصدة المستحقة — بيانات حية. انقر مزدوجاً لفتح كشف المورد.");
+        banner.Margin = new Thickness(0, 8, 0, 0);
+        Grid.SetRow(banner, 1);
+        root.Children.Add(banner);
 
         _grid = new DataGrid
         {
@@ -125,7 +132,8 @@ public sealed class PayablesAgingControl : UserControl
             CanUserAddRows = false,
             HeadersVisibility = DataGridHeadersVisibility.Column,
             Margin = new Thickness(0, 12, 0, 0),
-            MaxHeight = 620
+            EnableRowVirtualization = true,
+            VerticalAlignment = VerticalAlignment.Stretch
         };
         ErpUiFactory.AddGridColumn(_grid, "المورد", nameof(ApAgingRow.SupplierName), "*", null);
         ErpUiFactory.AddGridColumn(_grid, "إجمالي الفواتير", nameof(ApAgingRow.TotalInvoiced), 130, "N2");
@@ -141,9 +149,9 @@ public sealed class PayablesAgingControl : UserControl
                 MockInteractionService.Navigate(AppModule.Suppliers, "Statement");
             }
         };
-        stack.Children.Add(_grid);
+        Grid.SetRow(_grid, 2);
+        root.Children.Add(_grid);
 
-        root.Content = stack;
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
     }
@@ -152,33 +160,19 @@ public sealed class PayablesAgingControl : UserControl
     {
         if (!AppServices.IsInitialized) return;
 
-        var result = await PurchaseUiService.Instance.GetInvoiceListAsync(null);
+        var result = await AccountingUiService.Instance.GetPayablesAgingAsync();
         if (!result.IsSuccess || result.Value is null) return;
 
-        var rows = result.Value
-            .Where(i => i.Status != PurchaseInvoiceStatus.Cancelled)
-            .GroupBy(i => i.SupplierId)
-            .Select(g =>
-            {
-                var outstanding = g.Sum(i => i.RemainingAmount);
-                var unpaid = g.Where(i => i.RemainingAmount > 0).ToList();
-                var oldest = unpaid.Count > 0 ? unpaid.Min(i => i.InvoiceDate) : (DateTime?)null;
-                return new ApAgingRow
-                {
-                    SupplierId = g.Key,
-                    SupplierName = g.First().SupplierName,
-                    TotalInvoiced = g.Sum(i => i.TotalAmount),
-                    Paid = g.Sum(i => i.PaidAmount),
-                    Outstanding = outstanding,
-                    OldestInvoice = oldest?.ToString("yyyy/MM/dd") ?? "—",
-                    DaysOverdue = oldest.HasValue ? Math.Max(0, (int)(DateTime.UtcNow - oldest.Value).TotalDays) : 0
-                };
-            })
-            .Where(r => r.Outstanding > 0)
-            .OrderByDescending(r => r.Outstanding)
-            .ToList();
-
-        _grid.ItemsSource = rows;
+        _grid.ItemsSource = result.Value.Select(dto => new ApAgingRow
+        {
+            SupplierId = dto.SupplierId,
+            SupplierName = dto.SupplierName,
+            TotalInvoiced = dto.TotalInvoiced,
+            Paid = dto.Paid,
+            Outstanding = dto.Outstanding,
+            OldestInvoice = dto.OldestInvoiceDate?.ToString("yyyy/MM/dd") ?? "—",
+            DaysOverdue = dto.DaysOverdue
+        }).ToList();
     }
 
     private sealed class ApAgingRow
