@@ -89,7 +89,10 @@ public static class SalesEndpoints
         return ApplicationResultHttpMapper.ToHttpResult(result, operations =>
         {
             var bytes = pdfService.Generate(operations);
-            var fileName = $"sales-invoice-{SanitizeFileName(operations.Invoice.InvoiceNumber)}.pdf";
+            var customerNamePart = string.IsNullOrWhiteSpace(operations.Invoice.CustomerName)
+                ? "عميل"
+                : operations.Invoice.CustomerName.Trim();
+            var fileName = $"فاتورة - {SanitizeFileName(customerNamePart)} - {operations.Invoice.InvoiceDate:yyyy-MM-dd}.pdf";
             return Results.File(bytes, "application/pdf", fileName);
         });
     }

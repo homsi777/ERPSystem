@@ -62,10 +62,28 @@ public static class SalesDocumentService
         var document = BuildInvoiceDocument(invoice, resolvedCustomerName, customerBalance);
         if (exportPdf)
         {
-            SavePdf(document, $"Invoice-{invoice.InvoiceNumber}.pdf");
+            SavePdf(document, BuildInvoiceFileName(resolvedCustomerName, invoice.InvoiceDate));
             return;
         }
         ShowPreview(document, $"فاتورة بيع — {invoice.InvoiceNumber}");
+    }
+
+    private static string BuildInvoiceFileName(string customerName, DateTime invoiceDate)
+    {
+        var name = string.IsNullOrWhiteSpace(customerName) ? "عميل" : customerName.Trim();
+        return $"فاتورة - {SanitizeForFileName(name)} - {invoiceDate:yyyy-MM-dd}.pdf";
+    }
+
+    private static string SanitizeForFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var chars = value.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            if (Array.IndexOf(invalid, chars[i]) >= 0)
+                chars[i] = '-';
+        }
+        return new string(chars);
     }
 
     public static void ShowDeliveryNotePreview(SalesInvoiceDto invoice, string customerName)
