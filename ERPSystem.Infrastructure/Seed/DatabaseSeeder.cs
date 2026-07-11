@@ -42,6 +42,7 @@ public static class DatabaseSeeder
         await EnsureAdminPasswordAsync(context, passwordHasher, logger, cancellationToken);
         await EnsureChinaImportReferenceDataAsync(context, cancellationToken);
         await EnsureIntegratedAccountingAccountsAsync(context, cancellationToken);
+        await EnsureCashboxGlLinksAsync(context, cancellationToken);
         await EnsureSalesTaxConfigurationAsync(context, cancellationToken);
         await EnsureJournalBooksAsync(context, cancellationToken);
         await EnsureAccountingPermissionsAsync(context, cancellationToken);
@@ -161,7 +162,8 @@ public static class DatabaseSeeder
             Code = "CASH-MAIN",
             Name = "Main Cashbox",
             Balance = 0,
-            Currency = "USD"
+            Currency = "USD",
+            AccountId = AccountingAccountIds.CashUsd
         });
 
         context.Suppliers.Add(new SupplierEntity
@@ -312,6 +314,29 @@ public static class DatabaseSeeder
                 existing.ParentId = parentId;
             }
         }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureCashboxGlLinksAsync(ErpDbContext context, CancellationToken cancellationToken)
+    {
+        if (!await context.Companies.AnyAsync(cancellationToken))
+            return;
+
+        var cashAccountExists = await context.Accounts
+            .AnyAsync(a => a.Id == AccountingAccountIds.CashUsd, cancellationToken);
+        if (!cashAccountExists)
+            return;
+
+        var unlinked = await context.Cashboxes
+            .Where(c => c.AccountId == null || c.AccountId == Guid.Empty)
+            .ToListAsync(cancellationToken);
+
+        if (unlinked.Count == 0)
+            return;
+
+        foreach (var cashbox in unlinked)
+            cashbox.AccountId = AccountingAccountIds.CashUsd;
 
         await context.SaveChangesAsync(cancellationToken);
     }

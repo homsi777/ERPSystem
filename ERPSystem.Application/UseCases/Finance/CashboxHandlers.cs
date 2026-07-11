@@ -37,6 +37,7 @@ public sealed class CreateCashboxHandler(
             return ApplicationResult<Guid>.ValidationFailed(nameof(command.Code), "Cashbox code already exists.");
 
         var cashbox = Cashbox.Create(command.CompanyId, command.BranchId, code, command.Name.Trim(), command.Currency);
+        cashbox.LinkAccount(AccountingAccountIds.CashUsd);
         await cashboxRepository.AddAsync(cashbox, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return ApplicationResult<Guid>.Success(cashbox.Id);
