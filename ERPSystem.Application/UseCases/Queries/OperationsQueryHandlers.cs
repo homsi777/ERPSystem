@@ -210,6 +210,7 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
         var customerName = party?.CustomerName ?? "";
         var customerPhone = party?.CustomerPhone;
         var warehouseName = party?.WarehouseName;
+        var customerBalance = party?.CustomerBalance ?? 0m;
 
         var baseDto = SalesInvoiceMapper.ToOperationsCenterDto(aggregate, customerName);
 
@@ -322,6 +323,7 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
             Payments = paymentDtos,
             CollectedAmount = collected,
             RemainingBalance = Math.Max(0, aggregate.GrandTotal.Amount - collected),
+            CustomerBalance = customerBalance,
             Returns = returnDtos,
             WarehouseName = warehouseName,
             CustomerPhone = customerPhone

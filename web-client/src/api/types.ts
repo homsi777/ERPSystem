@@ -909,6 +909,7 @@ export type SalesInvoiceOperationsCenterDto = {
   payments: ReceiptInvoicePaymentDto[];
   collectedAmount: number;
   remainingBalance: number;
+  customerBalance: number;
   warehouseName: string | null;
   customerPhone: string | null;
 };

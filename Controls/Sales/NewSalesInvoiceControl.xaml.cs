@@ -1724,7 +1724,8 @@ namespace ERPSystem.Controls.Sales
             SalesDocumentService.ShowInvoicePreview(
                 oc.Value.Invoice,
                 oc.Value.Invoice.CustomerName,
-                exportPdf);
+                exportPdf,
+                oc.Value.CustomerBalance);
         }
 
         private void UpdateStatusBadge()

@@ -302,7 +302,11 @@ public static class SalesPopupService
         if (!AppServices.IsInitialized) return;
         var oc = await SalesUiService.Instance.GetOperationsCenterAsync(row.Id);
         if (!ApplicationResultPresenter.Present(oc) || oc.Value?.Invoice is null) return;
-        SalesDocumentService.ShowInvoicePreview(oc.Value.Invoice, oc.Value.Invoice.CustomerName, exportPdf);
+        SalesDocumentService.ShowInvoicePreview(
+            oc.Value.Invoice,
+            oc.Value.Invoice.CustomerName,
+            exportPdf,
+            oc.Value.CustomerBalance);
     }
 
     public static async Task CallCustomerAsync(SalesInvoiceListRow row)

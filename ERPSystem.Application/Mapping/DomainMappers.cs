@@ -252,7 +252,16 @@ public static class SalesInvoiceMapper
                 IsTaxInclusive = snap?.IsInclusive ?? false,
                 TaxableAmount = snap?.TaxableAmount.Amount ?? 0m,
                 TaxAmount = snap?.TaxAmount.Amount ?? 0m,
-                Notes = i.Notes
+                Notes = i.Notes,
+                RollLengths = lineRolls
+                    .Where(r => r.HasValidLength)
+                    .OrderBy(r => r.RollSequence.Value)
+                    .Select(r => new SalesInvoiceRollLengthDto
+                    {
+                        RollSequence = r.RollSequence.Value,
+                        LengthMeters = r.LengthMeters.Value
+                    })
+                    .ToList()
             };
         }).ToList()
     };

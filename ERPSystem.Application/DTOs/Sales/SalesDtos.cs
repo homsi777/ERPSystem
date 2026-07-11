@@ -63,6 +63,14 @@ public sealed class SalesInvoiceLineDto
     public decimal TaxableAmount { get; init; }
     public decimal TaxAmount { get; init; }
     public string? Notes { get; init; }
+    public IReadOnlyList<SalesInvoiceRollLengthDto> RollLengths { get; init; } = [];
+}
+
+/// <summary>Individual roll length for the "تفصيل أطوال التوب" print breakdown — one entry per physical roll on the line.</summary>
+public sealed class SalesInvoiceRollLengthDto
+{
+    public int RollSequence { get; init; }
+    public decimal LengthMeters { get; init; }
 }
 
 public sealed class SalesInvoiceBelowCostLineDto
@@ -143,6 +151,7 @@ public sealed class SalesInvoiceOperationsCenterDto
     public IReadOnlyList<ReceiptInvoicePaymentDto> Payments { get; init; } = [];
     public decimal CollectedAmount { get; init; }
     public decimal RemainingBalance { get; init; }
+    public decimal CustomerBalance { get; init; }
     public IReadOnlyList<SalesReturnDto> Returns { get; init; } = [];
     public string? WarehouseName { get; init; }
     public string? CustomerPhone { get; init; }

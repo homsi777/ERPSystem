@@ -49,13 +49,17 @@ public static class SalesDocumentService
         _licenseInitialized = true;
     }
 
-    public static void ShowInvoicePreview(SalesInvoiceDto invoice, string customerName, bool exportPdf)
+    public static void ShowInvoicePreview(
+        SalesInvoiceDto invoice,
+        string customerName,
+        bool exportPdf,
+        decimal customerBalance = 0m)
     {
         EnsureLicense();
         var resolvedCustomerName = string.IsNullOrWhiteSpace(invoice.CustomerName)
             ? customerName
             : invoice.CustomerName;
-        var document = BuildInvoiceDocument(invoice, resolvedCustomerName);
+        var document = BuildInvoiceDocument(invoice, resolvedCustomerName, customerBalance);
         if (exportPdf)
         {
             SavePdf(document, $"Invoice-{invoice.InvoiceNumber}.pdf");
@@ -188,7 +192,10 @@ public static class SalesDocumentService
         }
     }
 
-    private static IDocument BuildInvoiceDocument(SalesInvoiceDto invoice, string customerName) =>
+    private static IDocument BuildInvoiceDocument(
+        SalesInvoiceDto invoice,
+        string customerName,
+        decimal customerBalance) =>
         Document.Create(container =>
         {
             container.Page(page =>
@@ -202,7 +209,7 @@ public static class SalesDocumentService
                 page.Content().Column(col =>
                 {
                     col.Spacing(12);
-                    col.Item().Element(e => CustomerBox(e, invoice, customerName));
+                    col.Item().Element(e => CustomerBox(e, invoice, customerName, customerBalance));
                     col.Item().Element(e => LinesTable(e, invoice, invoice.Lines));
                     col.Item().AlignRight().Element(e => TotalsBox(e, invoice));
                     col.Item().PaddingTop(20).Text("شكراً لتعاملكم معنا").FontSize(11).Bold().AlignCenter();
@@ -284,7 +291,11 @@ public static class SalesDocumentService
         });
     }
 
-    private static void CustomerBox(IContainer c, SalesInvoiceDto invoice, string customerName) =>
+    private static void CustomerBox(
+        IContainer c,
+        SalesInvoiceDto invoice,
+        string customerName,
+        decimal customerBalance = 0m) =>
         c.Background(QColors.Grey.Lighten4).Padding(10).Column(col =>
         {
             col.Item().Text("بيانات العميل").FontSize(11).Bold();
@@ -296,6 +307,12 @@ public static class SalesDocumentService
             col.Item().PaddingTop(3)
                 .Text($"المستودع: {(string.IsNullOrWhiteSpace(invoice.WarehouseName) ? "غير محدد" : invoice.WarehouseName)}")
                 .FontSize(10);
+            col.Item().PaddingTop(3).Row(row =>
+            {
+                row.AutoItem().Text("آخر رصيد للعميل:").FontSize(10).SemiBold();
+                row.AutoItem().PaddingRight(5).ContentFromLeftToRight()
+                    .Text($"{customerBalance:N2}").FontSize(10).SemiBold();
+            });
         });
 
     private static void LinesTable(IContainer c, SalesInvoiceDto invoice, IReadOnlyList<SalesInvoiceLineDto> lines) =>
@@ -335,6 +352,13 @@ public static class SalesDocumentService
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.DiscountAmount:N2}");
                 t.Cell().Element(BodyCell).AlignRight().Text(line.TaxAmount > 0 ? $"{line.TaxAmount:N2}" : "—");
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.LineTotal:N2}");
+
+                if (line.RollLengths.Count > 0)
+                {
+                    var breakdown = string.Join("     ", line.RollLengths.Select(r => $"({r.RollSequence}) {r.LengthMeters:N2}"));
+                    t.Cell().ColumnSpan(8).Element(BreakdownCell)
+                        .Text($"تفصيل أطوال الأثواب (م): {breakdown}").FontSize(8.5f).Italic().FontColor(QColors.Grey.Darken2);
+                }
             }
 
             static IContainer HeaderCell(IContainer x) =>
@@ -342,6 +366,9 @@ public static class SalesDocumentService
 
             static IContainer BodyCell(IContainer x) =>
                 x.Padding(6).BorderBottom(1).BorderColor(QColors.Grey.Lighten3);
+
+            static IContainer BreakdownCell(IContainer x) =>
+                x.Background(QColors.Grey.Lighten5).PaddingVertical(3).PaddingHorizontal(8).BorderBottom(1).BorderColor(QColors.Grey.Lighten3).AlignRight();
         });
 
     private static void TotalsBox(IContainer c, SalesInvoiceDto invoice) =>

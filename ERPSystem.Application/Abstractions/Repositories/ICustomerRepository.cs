@@ -28,8 +28,8 @@ public interface ICustomerRepository
     Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
 
-    /// <summary>Customer name/phone + warehouse name for sales invoice operations center (single query).</summary>
-    Task<(string CustomerName, string? CustomerPhone, string? WarehouseName)?> GetInvoicePartyDisplayAsync(
+    /// <summary>Customer display/current balance + warehouse name for sales invoice operations center (single query).</summary>
+    Task<(string CustomerName, string? CustomerPhone, string? WarehouseName, decimal CustomerBalance)?> GetInvoicePartyDisplayAsync(
         Guid customerId,
         Guid warehouseId,
         CancellationToken cancellationToken = default);

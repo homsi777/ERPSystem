@@ -149,6 +149,12 @@ public sealed class SalesInvoicePdfService
                     customer.Item().PaddingTop(2).ContentFromLeftToRight()
                         .Text(operations.CustomerPhone).FontSize(8).FontColor(Muted);
                 }
+                customer.Item().PaddingTop(3).Row(balance =>
+                {
+                    balance.AutoItem().Text("آخر رصيد للعميل:").FontSize(9).SemiBold();
+                    balance.AutoItem().PaddingRight(5).ContentFromLeftToRight()
+                        .Text(Money(operations.CustomerBalance)).FontSize(9).FontColor(Gold).SemiBold();
+                });
             });
 
             row.RelativeItem().AlignLeft().Column(details =>
@@ -206,6 +212,14 @@ public sealed class SalesInvoicePdfService
                 BodyCell(table, Money(line.DiscountAmount));
                 BodyCell(table, Money(line.TaxAmount));
                 BodyCell(table, Money(line.LineTotal));
+
+                if (line.RollLengths.Count > 0)
+                {
+                    var breakdown = string.Join("     ", line.RollLengths.Select(r => $"({r.RollSequence}) {Number(r.LengthMeters)}"));
+                    table.Cell().ColumnSpan(8).Background(Paper).BorderBottom(0.7f).BorderColor(Border)
+                        .PaddingVertical(4).PaddingHorizontal(8).AlignRight()
+                        .Text($"تفصيل أطوال الأثواب (م): {breakdown}").FontSize(7.5f).FontColor(Muted).Italic();
+                }
             }
         });
     }

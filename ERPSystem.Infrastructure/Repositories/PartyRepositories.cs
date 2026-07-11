@@ -90,7 +90,7 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         return entities.Select(CustomerMapper.ToAggregate).ToList();
     }
 
-    public async Task<(string CustomerName, string? CustomerPhone, string? WarehouseName)?> GetInvoicePartyDisplayAsync(
+    public async Task<(string CustomerName, string? CustomerPhone, string? WarehouseName, decimal CustomerBalance)?> GetInvoicePartyDisplayAsync(
         Guid customerId,
         Guid warehouseId,
         CancellationToken cancellationToken = default)
@@ -101,6 +101,7 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
             {
                 c.NameAr,
                 c.Phone,
+                c.Balance,
                 WarehouseName = warehouseId != Guid.Empty
                     ? context.Warehouses.AsNoTracking()
                         .Where(w => w.Id == warehouseId)
@@ -112,7 +113,7 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
 
         return row is null
             ? null
-            : (row.NameAr, row.Phone?.ToString(), row.WarehouseName);
+            : (row.NameAr, row.Phone?.ToString(), row.WarehouseName, row.Balance);
     }
 
     public async Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default)

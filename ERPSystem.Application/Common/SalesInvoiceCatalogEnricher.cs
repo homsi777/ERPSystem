@@ -58,7 +58,8 @@ public static class SalesInvoiceCatalogEnricher
                 IsTaxInclusive = line.IsTaxInclusive,
                 TaxableAmount = line.TaxableAmount,
                 TaxAmount = line.TaxAmount,
-                Notes = line.Notes
+                Notes = line.Notes,
+                RollLengths = line.RollLengths
             });
         }
 

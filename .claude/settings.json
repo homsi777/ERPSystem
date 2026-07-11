@@ -34,7 +34,10 @@
       "Bash(xargs grep -l \"ReceiptVoucher\\\\|PurchaseInvoicePayment\\\\|ReceiptInvoicePayment\\\\|PaymentVoucher\")",
       "Skill(artifact-design)",
       "Skill(artifact-design:*)",
-      "Bash(mkdir -p \"C:\\\\Users\\\\Homsi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Homsi-Desktop-POS-ERP-C--ERPSystem\\\\621a51fb-bc4a-4c55-bb00-1ddec6c98791\\\\scratchpad\")"
+      "Bash(mkdir -p \"C:\\\\Users\\\\Homsi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Homsi-Desktop-POS-ERP-C--ERPSystem\\\\621a51fb-bc4a-4c55-bb00-1ddec6c98791\\\\scratchpad\")",
+      "Bash(grep -iE \"\\\\.cs$|\\\\.xaml$\")",
+      "Bash(find / -iname \"QuestPDF.dll\" 2>/dev/null | head -5)",
+      "Read(//c//**)"
     ],
     "additionalDirectories": [
       "\\tmp"
