@@ -34,6 +34,7 @@ public partial class App : System.Windows.Application
             AppCulture.ApplyForLanguage(LocalizationManager.Instance.CurrentLanguage);
 
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         try
         {
@@ -117,6 +118,8 @@ public partial class App : System.Windows.Application
                     window = new MainWindow();
                 using (windowScope.MeasureRendering())
                     window.Show();
+                MainWindow = window;
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
             }
         }
         catch (Exception ex)

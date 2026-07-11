@@ -36,10 +36,10 @@ public static class SalesPopupService
 
     public static void ShowEdit(SalesInvoiceListRow row)
     {
-        if (row.Status != SalesInvoiceStatus.Draft)
+        if (!SalesInvoiceEditPolicy.CanOpenEditor(row.Status))
         {
             MockInteractionService.ShowWarning(
-                "لا يمكن تعديل الفاتورة إلا في حالة المسودة.",
+                "لا يمكن فتح محرر الفاتورة بعد التسليم أو الإلغاء.",
                 "تعديل الفاتورة");
             return;
         }
@@ -47,9 +47,12 @@ public static class SalesPopupService
         SalesNavigationContext.BeginEdit(row.Id);
         var form = new NewSalesInvoiceControl();
         var host = new ErpModalWindow();
+        var isDraft = SalesInvoiceEditPolicy.CanEditContent(row.Status);
         host.Configure(
-            "تعديل فاتورة بيع",
-            $"{row.InvoiceNumber} — {row.CustomerName}",
+            isDraft ? "تعديل فاتورة بيع" : "عرض فاتورة بيع",
+            isDraft
+                ? $"{row.InvoiceNumber} — {row.CustomerName}"
+                : $"{row.InvoiceNumber} — {row.CustomerName} ({row.StatusDisplay})",
             "\uE70F",
             width: 1120,
             maxHeight: 820);

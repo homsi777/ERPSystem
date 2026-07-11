@@ -183,9 +183,11 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         var actions = new List<OperationsCenterQuickAction>();
         var s = data.Invoice.Status;
 
+        if (SalesInvoiceEditPolicy.CanOpenEditor(s))
+            actions.Add(Q("تعديل الفاتورة", false, null, actionKey: "sales:edit"));
+
         if (s == SalesInvoiceStatus.Draft)
         {
-            actions.Add(Q("تعديل الفاتورة", false, null, actionKey: "sales:edit"));
             actions.Add(Q("إرسال للمستودع", data.CanSendToWarehouse, null, actionKey: "sales:send-to-warehouse"));
         }
 

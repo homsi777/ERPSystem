@@ -76,12 +76,14 @@ public static class SalesContextMenuService
         ],
         SalesInvoiceStatus.AwaitingDetailing =>
         [
+            new("العرض والتحرير", "\uE70F", "تعديل", EntityActionId.InvoiceEdit, false),
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
             new("سير العمل", "\uE9F5", "تفصيل الأطوال", EntityActionId.InvoiceDetailLengths, false),
             new("خطر", "\uE711", "إلغاء الفاتورة", EntityActionId.InvoiceCancel, true)
         ],
         SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval =>
         [
+            new("العرض والتحرير", "\uE70F", "تعديل", EntityActionId.InvoiceEdit, false),
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
             new("سير العمل", "\uE73E", "اعتماد", EntityActionId.InvoiceApprove, false),
             new("سير العمل", "\uE7C1", "اعتماد وتسليم", EntityActionId.InvoiceApproveAndDeliver, false),
@@ -91,6 +93,7 @@ public static class SalesContextMenuService
         ],
         SalesInvoiceStatus.Approved or SalesInvoiceStatus.Printed =>
         [
+            new("العرض والتحرير", "\uE70F", "تعديل", EntityActionId.InvoiceEdit, false),
             new("العرض والتحرير", "\uE8A7", "مركز العمليات", EntityActionId.OpenOperationsCenter, false),
             new("سير العمل", "\uE7C1", "تسليم", EntityActionId.InvoiceDeliver, false),
             new("سير العمل", "\uE72C", "مرتجع", EntityActionId.InvoiceReturn, false),
