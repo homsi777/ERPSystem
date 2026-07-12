@@ -1,43 +1,36 @@
+using ERPSystem.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace ERPSystem.Infrastructure.Migrations
+namespace ERPSystem.Infrastructure.Migrations;
+
+/// <summary>
+/// Links purchase invoices to China import containers (China ↔ Purchases bridge).
+/// </summary>
+[DbContext(typeof(ErpDbContext))]
+[Migration("20260723130000_AddPurchaseInvoiceSourceContainerId")]
+public partial class AddPurchaseInvoiceSourceContainerId : Migration
 {
-    /// <inheritdoc />
-    public partial class AddPurchaseInvoiceSourceContainerId : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<Guid>(
-                name: "SourceContainerId",
-                schema: "purchasing",
-                table: "purchase_invoices",
-                type: "uuid",
-                nullable: true);
+        migrationBuilder.Sql("""
+            ALTER TABLE purchasing.purchase_invoices
+                ADD COLUMN IF NOT EXISTS "SourceContainerId" uuid NULL;
 
-            migrationBuilder.CreateIndex(
-                name: "IX_purchase_invoices_SourceContainerId",
-                schema: "purchasing",
-                table: "purchase_invoices",
-                column: "SourceContainerId",
-                unique: true,
-                filter: "\"SourceContainerId\" IS NOT NULL");
-        }
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_purchase_invoices_SourceContainerId"
+                ON purchasing.purchase_invoices ("SourceContainerId")
+                WHERE "SourceContainerId" IS NOT NULL;
+            """);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_purchase_invoices_SourceContainerId",
-                schema: "purchasing",
-                table: "purchase_invoices");
-
-            migrationBuilder.DropColumn(
-                name: "SourceContainerId",
-                schema: "purchasing",
-                table: "purchase_invoices");
-        }
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.Sql("""
+            DROP INDEX IF EXISTS purchasing."IX_purchase_invoices_SourceContainerId";
+            ALTER TABLE purchasing.purchase_invoices
+                DROP COLUMN IF EXISTS "SourceContainerId";
+            """);
     }
 }
