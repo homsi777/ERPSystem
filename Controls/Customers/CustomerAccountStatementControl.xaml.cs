@@ -68,6 +68,7 @@ public partial class CustomerAccountStatementControl : UserControl
     private DateTime? _lastReconciliationDate;
     private decimal? _lastReconciliationBalance;
     private Guid? _lastReconciliationDocumentId;
+    private CustomerAccountLedgerDto? _ledger;
     private readonly List<CustomerLedgerRow> _allLines = new();
 
     public CustomerAccountStatementControl()
@@ -126,6 +127,7 @@ public partial class CustomerAccountStatementControl : UserControl
             return;
 
         var dto = result.Value!;
+        _ledger = dto;
         SetCustomerName(dto.CustomerName);
         _openingBalance = dto.OpeningBalance;
         _closingBalance = dto.ClosingBalance;
@@ -228,11 +230,57 @@ public partial class CustomerAccountStatementControl : UserControl
         await ReloadAsync();
     }
 
-    private void BtnPrint_Click(object sender, RoutedEventArgs e) =>
-        MockInteractionService.ShowInfo("الطباعة من كشف الحساب التفصيلي قيد التطوير.", "طباعة");
+    private void BtnPrint_Click(object sender, RoutedEventArgs e) => ShowDocument(exportPdf: false);
 
-    private void BtnPdf_Click(object sender, RoutedEventArgs e) =>
-        MockInteractionService.ShowInfo("تصدير PDF من كشف الحساب التفصيلي قيد التطوير.", "PDF");
+    private void BtnPdf_Click(object sender, RoutedEventArgs e) => ShowDocument(exportPdf: true);
+
+    private void ShowDocument(bool exportPdf)
+    {
+        if (_customerId is null || _ledger is null)
+        {
+            MockInteractionService.ShowWarning("لا توجد بيانات للتصدير.", "كشف حساب");
+            return;
+        }
+
+        var visibleRows = (LinesGrid.ItemsSource as IEnumerable<CustomerLedgerRow>)?.ToList();
+        var lines = visibleRows is { Count: > 0 } && !string.IsNullOrWhiteSpace(TxtSearch?.Text)
+            ? visibleRows.Select(ToLineDto).ToList()
+            : _ledger.Lines;
+
+        var ledgerForExport = new CustomerAccountLedgerDto
+        {
+            CustomerId = _ledger.CustomerId,
+            CustomerName = _ledger.CustomerName,
+            OpeningBalance = _ledger.OpeningBalance,
+            ClosingBalance = _ledger.ClosingBalance,
+            LastReconciliationDate = _ledger.LastReconciliationDate,
+            LastReconciliationBalance = _ledger.LastReconciliationBalance,
+            LastReconciliationDocumentId = _ledger.LastReconciliationDocumentId,
+            Lines = lines
+        };
+
+        CustomerStatementDocumentService.ShowLedgerPreview(
+            ledgerForExport,
+            DpFrom.SelectedDate,
+            DpTo.SelectedDate,
+            exportPdf);
+    }
+
+    private static CustomerAccountLedgerLineDto ToLineDto(CustomerLedgerRow row) => new()
+    {
+        MovementType = row.MovementType,
+        DocumentId = row.DocumentId,
+        EntryId = row.EntryId,
+        DocumentNumber = row.DocumentNumber,
+        TransactionDate = row.TransactionDate,
+        FabricDescription = row.FabricDescription == "—" ? "" : row.FabricDescription,
+        RollCount = row.RollCount,
+        TotalMeters = row.TotalMeters,
+        UnitPrice = row.UnitPrice,
+        LineAmount = row.LineAmount,
+        Notes = row.Notes,
+        RunningBalance = row.RunningBalance
+    };
 
     private void BtnExcel_Click(object sender, RoutedEventArgs e) =>
         ERPSystem.Services.Documents.ListExportService.ExportGrid(LinesGrid, $"كشف حساب - {_customerName}");

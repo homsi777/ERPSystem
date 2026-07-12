@@ -158,6 +158,7 @@
                           SelectionMode="Single" MinHeight="320"
                           LoadingRow="LinesGrid_LoadingRow">
                     <DataGrid.Columns>
+                        <DataGridTextColumn Header="نوع الحركة" Binding="{Binding MovementTypeDisplay}" Width="100"/>
                         <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding FabricDescription}" Width="*" MinWidth="160"/>
                         <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCountDisplay}" Width="90"/>
                         <DataGridTextColumn Header="مجموع الأطوال" Binding="{Binding TotalMetersDisplay}" Width="110"/>
