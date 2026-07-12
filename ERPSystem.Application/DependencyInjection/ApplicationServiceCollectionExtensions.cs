@@ -12,6 +12,7 @@ using ERPSystem.Application.Commands.Suppliers;
 using ERPSystem.Application.Commands.Inventory;
 using ERPSystem.Application.Commands.HR;
 using ERPSystem.Application.Queries.HR;
+using ERPSystem.Application.Commands.Identity;
 using ERPSystem.Application.Queries.Identity;
 using ERPSystem.Application.UseCases.HR;
 using ERPSystem.Application.UseCases.Identity;
@@ -70,8 +71,20 @@ public static class ApplicationServiceCollectionExtensions
         RegisterInventoryHandlers(services);
         RegisterFabricCatalogHandlers(services);
         RegisterHrHandlers(services);
+        RegisterIdentityAdminHandlers(services);
         RegisterQueryHandlers(services);
         return services;
+    }
+
+    private static void RegisterIdentityAdminHandlers(IServiceCollection services)
+    {
+        services.AddScoped<GetIdentityUsersHandler>();
+        services.AddScoped<GetIdentityRolesHandler>();
+        services.AddScoped<GetPermissionTreeHandler>();
+        services.AddScoped<GetRolePermissionsHandler>();
+        services.AddScoped<ICommandHandler<UpdateRolePermissionsCommand, ApplicationResult>, UpdateRolePermissionsHandler>();
+        services.AddScoped<ICommandHandler<CreateIdentityRoleCommand, ApplicationResult<Guid>>, CreateIdentityRoleHandler>();
+        services.AddScoped<ICommandHandler<CreateIdentityUserCommand, ApplicationResult<Guid>>, CreateIdentityUserHandler>();
     }
 
     private static void RegisterHrHandlers(IServiceCollection services)

@@ -1,5 +1,6 @@
 using ERPSystem.Application.Common;
 using ERPSystem.Controls;
+using ERPSystem.Controls.Settings;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Settings;
@@ -216,6 +217,9 @@ namespace ERPSystem.Views.Settings
                     break;
                 case "Branches":
                     BuildBranchesSection(stack);
+                    break;
+                case "Users":
+                    stack.Children.Add(new SettingsUsersRolesPageControl());
                     break;
                 default:
                     BuildUnsupportedSection(stack);

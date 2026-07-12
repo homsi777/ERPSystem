@@ -100,6 +100,7 @@ public partial class App : System.Windows.Application
             services.AddSingleton<ERPSystem.Services.Settings.SettingsUiService>();
             services.AddSingleton<ERPSystem.Services.Search.GlobalSearchUiService>();
             services.AddSingleton<ERPSystem.Services.Hr.HrUiService>();
+            services.AddSingleton<ERPSystem.Services.Identity.IdentityUiService>();
 
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);
