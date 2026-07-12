@@ -1,10 +1,13 @@
 <UserControl x:Class="ERPSystem.Shell.TopContextBar"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ClipToBounds="False"
+             MinHeight="80">
 
     <Border Background="{StaticResource TopBarBgBrush}"
             BorderBrush="{StaticResource TopBarBorderBrush}"
-            BorderThickness="0,0,0,1">
+            BorderThickness="0,0,0,1"
+            Padding="0,10,0,10">
         <Grid Margin="16,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -15,29 +18,36 @@
 
             <!-- Right (RTL start): Logo + company + date -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <Image x:Name="ImgCompanyLogo" Width="40" Height="40" Margin="0,0,12,0"
+                <Image x:Name="ImgCompanyLogo" Width="44" Height="44" Margin="0,0,12,0"
                        Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
-                <Border x:Name="LogoFallback" Width="40" Height="40" CornerRadius="8"
+                <Border x:Name="LogoFallback" Width="44" Height="44" CornerRadius="10"
                         Background="{StaticResource PrimaryBrush}" Margin="0,0,12,0"
                         Visibility="Collapsed">
-                    <TextBlock Text="AB" FontSize="13" FontWeight="Bold" Foreground="White"
+                    <TextBlock Text="AB" FontSize="14" FontWeight="Bold" Foreground="White"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                FontFamily="Segoe UI, Tahoma, Arial"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock x:Name="TxtCompanyName" Text="الأمل.AB"
-                               FontSize="14" FontWeight="SemiBold"
+                               FontSize="15" FontWeight="SemiBold" LineHeight="20"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                FontFamily="Segoe UI, Tahoma, Arial"/>
-                    <TextBlock x:Name="TxtCompanyTagline" Text="تجارة أقمشة الجينز — جملة"
-                               FontSize="10" Foreground="{StaticResource TextMutedBrush}"
-                               FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,0,2"/>
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBlock x:Name="TxtCompanyTagline" Text="تجارة أقمشة الجينز — جملة"
+                                   FontSize="11" LineHeight="16"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontFamily="Segoe UI, Tahoma, Arial"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Text=" · " FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center" Margin="2,0"/>
                         <TextBlock x:Name="TxtBranchLabel" Text="الفرع:"
-                                   FontSize="11" Foreground="{StaticResource TextMutedBrush}"
-                                   FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,4,0"/>
-                        <ComboBox x:Name="CmbBranch" Width="120" Height="22"
-                                  FontSize="11" BorderThickness="0"
+                                   FontSize="11" LineHeight="16"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontFamily="Segoe UI, Tahoma, Arial"
+                                   VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="CmbBranch" MinWidth="110" MinHeight="24" MaxHeight="24"
+                                  FontSize="11" Padding="4,2"
+                                  BorderThickness="0"
                                   Background="Transparent"
                                   Foreground="{StaticResource TextSecondaryBrush}"
                                   FontFamily="Segoe UI, Tahoma, Arial"
