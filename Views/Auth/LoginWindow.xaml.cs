@@ -77,8 +77,7 @@ public partial class LoginWindow : Window
             var currentUser = AppServices.GetRequiredService<ICurrentUserService>() as WpfCurrentUserService;
             currentUser?.SetSession(user.UserId, user.Username, user.FullNameAr);
 
-            DialogResult = true;
-            Close();
+            ShowSecuritySplash();
         }
         catch (Exception ex)
         {
@@ -89,6 +88,21 @@ public partial class LoginWindow : Window
             _isSubmitting = false;
             BtnLogin.IsEnabled = true;
         }
+    }
+
+    private void ShowSecuritySplash()
+    {
+        LoginContent.Visibility = Visibility.Collapsed;
+        SplashOverlay.Visibility = Visibility.Visible;
+        SplashOverlay.Completed += OnSplashCompleted;
+        SplashOverlay.BeginSequence();
+    }
+
+    private void OnSplashCompleted(object? sender, EventArgs e)
+    {
+        SplashOverlay.Completed -= OnSplashCompleted;
+        DialogResult = true;
+        Close();
     }
 
     private void ShowError(string message)

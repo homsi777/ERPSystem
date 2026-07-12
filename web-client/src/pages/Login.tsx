@@ -1,11 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
+import { LoginSecuritySplash } from '../components/LoginSecuritySplash.tsx';
 
 type LocationState = {
   from?: string;
 };
+
+type LoginPhase = 'form' | 'splash';
 
 const FEATURES = [
   { icon: '⚡', tone: 'violet', title: 'مبيعات ومشتريات', desc: 'فواتير، اعتماد، وتتبع كامل' },
@@ -23,9 +26,19 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<LoginPhase>('form');
+  const [redirectTo, setRedirectTo] = useState('/home');
 
-  if (isAuthenticated) {
+  const finishSplash = useCallback(() => {
+    navigate(redirectTo, { replace: true });
+  }, [navigate, redirectTo]);
+
+  if (isAuthenticated && phase === 'form') {
     return <Navigate to="/home" replace />;
+  }
+
+  if (phase === 'splash') {
+    return <LoginSecuritySplash onComplete={finishSplash} />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,7 +49,8 @@ export function LoginPage() {
     try {
       await login({ username, password });
       const state = location.state as LocationState | null;
-      navigate(state?.from ?? '/home', { replace: true });
+      setRedirectTo(state?.from ?? '/home');
+      setPhase('splash');
     } catch (caught) {
       const message = caught instanceof ApiError ? caught.message : 'تعذر تسجيل الدخول.';
       setError(message);
