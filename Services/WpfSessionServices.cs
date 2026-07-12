@@ -5,9 +5,28 @@ namespace ERPSystem.Services;
 
 public sealed class WpfCurrentUserService : ICurrentUserService
 {
-    public Guid? UserId => DatabaseSeeder.AdminUserId;
-    public string? Username => "admin";
-    public bool IsAuthenticated => true;
+    private Guid? _userId;
+    private string? _username;
+    private string? _fullNameAr;
+
+    public Guid? UserId => _userId;
+    public string? Username => _username;
+    public string? FullNameAr => _fullNameAr;
+    public bool IsAuthenticated => _userId.HasValue;
+
+    public void SetSession(Guid userId, string username, string fullNameAr)
+    {
+        _userId = userId;
+        _username = username;
+        _fullNameAr = fullNameAr;
+    }
+
+    public void ClearSession()
+    {
+        _userId = null;
+        _username = null;
+        _fullNameAr = null;
+    }
 }
 
 public sealed class WpfCurrentBranchService : ICurrentBranchService

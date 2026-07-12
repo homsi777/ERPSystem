@@ -2,18 +2,25 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
-import { BrandMark } from '../components/BrandMark.tsx';
 
 type LocationState = {
   from?: string;
 };
 
+const FEATURES = [
+  { icon: '⚡', tone: 'violet', title: 'مبيعات ومشتريات', desc: 'فواتير، اعتماد، وتتبع كامل' },
+  { icon: '📊', tone: 'emerald', title: 'محاسبة وتقارير', desc: 'قيود، صناديق، وأرصدة فورية' },
+  { icon: '📦', tone: 'rose', title: 'استيراد الصين والمخزون', desc: 'حاويات، تفصيل، ومستودعات' },
+  { icon: '☁️', tone: 'cyan', title: 'سحابي متكامل', desc: 'متصفح وسطح مكتب على قاعدة واحدة' },
+] as const;
+
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('Admin@123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,40 +46,96 @@ export function LoginPage() {
   }
 
   return (
-    <main className="login-page">
-      <section className="login-panel" aria-labelledby="login-title">
-        <BrandMark showTagline />
-        <h1 id="login-title" className="login-panel__title">تسجيل الدخول</h1>
+    <main className="login-shell">
+      <div className="login-shell__backdrop" aria-hidden="true">
+        <span className="login-orb login-orb--one" />
+        <span className="login-orb login-orb--two" />
+        <span className="login-orb login-orb--three" />
+      </div>
 
-        <form className="login-form" onSubmit={(event) => void handleSubmit(event)}>
-          <label>
-            <span>اسم المستخدم</span>
-            <input
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              required
-            />
-          </label>
+      <div className="login-shell__grid">
+        <section className="login-hero" aria-label="عن النظام">
+          <div className="login-hero__content">
+            <h1 className="login-hero__title">
+              أدر عملك بذكاء
+              <span aria-hidden="true"> ⚡</span>
+            </h1>
+            <p className="login-hero__subtitle">نظام ERP متكامل — تجارة أقمشة الجينز</p>
 
-          <label>
-            <span>كلمة المرور</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </label>
+            <ul className="login-feature-list">
+              {FEATURES.map((feature) => (
+                <li key={feature.title} className="login-feature-list__item">
+                  <span className={`login-feature-list__icon login-feature-list__icon--${feature.tone}`} aria-hidden="true">
+                    {feature.icon}
+                  </span>
+                  <div>
+                    <strong>{feature.title}</strong>
+                    <span>{feature.desc}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
-          {error ? <p className="form-error">{error}</p> : null}
+        <section className="login-card" aria-labelledby="login-title">
+          <div className="login-card__brand">
+            <img src="/company-logo.png" alt="" className="login-card__logo" width={56} height={56} />
+            <div>
+              <p className="login-card__brand-label">الأمل.AB</p>
+              <p className="login-card__brand-tag">تجارة أقمشة الجينز — جملة</p>
+            </div>
+          </div>
 
-          <button className="primary-button primary-button--wide" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'جاري الدخول...' : 'دخول'}
-          </button>
-        </form>
-      </section>
+          <h2 id="login-title" className="login-card__title">
+            مرحباً بعودتك
+            <span aria-hidden="true"> 👋</span>
+          </h2>
+          <p className="login-card__hint">سجّل الدخول للمتابعة إلى لوحة التحكم</p>
+
+          <form className="login-form login-form--dark" onSubmit={(event) => void handleSubmit(event)}>
+            <label className="login-field">
+              <span>اسم المستخدم</span>
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                placeholder="admin"
+                required
+              />
+            </label>
+
+            <label className="login-field">
+              <span>كلمة المرور</span>
+              <div className="login-field__password">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-field__toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                >
+                  {showPassword ? '🙈' : '👁'}
+                </button>
+              </div>
+            </label>
+
+            {error ? <p className="login-form__error">{error}</p> : null}
+
+            <button className="login-submit" type="submit" disabled={isSubmitting}>
+              <span>{isSubmitting ? 'جاري الدخول...' : 'تسجيل الدخول'}</span>
+              <span className="login-submit__icon" aria-hidden="true">→</span>
+            </button>
+          </form>
+        </section>
+      </div>
     </main>
   );
 }

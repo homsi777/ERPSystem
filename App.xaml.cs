@@ -16,6 +16,7 @@ using ERPSystem.Services.Capital;
 using ERPSystem.Services.Accounting;
 using ERPSystem.Services.Finance;
 using ERPSystem.Services.Reports;
+using ERPSystem.Views.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -101,6 +102,7 @@ public partial class App : System.Windows.Application
             services.AddSingleton<ERPSystem.Services.Search.GlobalSearchUiService>();
             services.AddSingleton<ERPSystem.Services.Hr.HrUiService>();
             services.AddSingleton<ERPSystem.Services.Identity.IdentityUiService>();
+            services.AddSingleton<ERPSystem.Services.Identity.AuthUiService>();
 
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);
@@ -139,6 +141,21 @@ public partial class App : System.Windows.Application
             {
                 using (referenceScope.MeasureDataLoad())
                     await ERPSystem.Services.Settings.ReferenceDataCatalog.RefreshAsync();
+            }
+
+            using (var windowScope = profiler.BeginScreenLoad("App.LoginWindow"))
+            {
+                LoginWindow loginWindow;
+                using (windowScope.MeasureMapping())
+                    loginWindow = new LoginWindow();
+                using (windowScope.MeasureRendering())
+                {
+                    if (loginWindow.ShowDialog() != true)
+                    {
+                        Shutdown();
+                        return;
+                    }
+                }
             }
 
             using (var windowScope = profiler.BeginScreenLoad("App.MainWindowConstruction"))
