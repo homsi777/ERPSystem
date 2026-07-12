@@ -9,6 +9,7 @@ using ERPSystem.Services.China;
 using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Capital;
 using ERPSystem.Services.Expenses;
+using ERPSystem.Services.Purchases;
 using ERPSystem.Services.Sales;
 using ERPSystem.Services.Finance;
 using ERPSystem.Application.DTOs.Finance;
@@ -287,6 +288,10 @@ namespace ERPSystem.Controls.OperationsCenter
 
                         if (spec.Context is not null &&
                             SalesActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
+                            return;
+
+                        if (spec.Context is not null &&
+                            PurchaseActionRouter.TryHandleQuickAction(action.ActionKey, spec.Context))
                             return;
 
                         if (spec.Context?.EntityType == EntityType.OpeningBalance &&

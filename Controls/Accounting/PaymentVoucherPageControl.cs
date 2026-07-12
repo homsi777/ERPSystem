@@ -29,6 +29,7 @@ public sealed class PaymentVoucherPageControl : UserControl
     private readonly Button _createDraft = new() { Content = "حفظ مسودة", Style = S("SecondaryButtonStyle"), MinWidth = 120, Height = 38 };
     private readonly Button _post = new() { Content = "ترحيل", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
     private readonly Button _print = new() { Content = "طباعة", Style = S("GhostButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+    private readonly Button _pdf = new() { Content = "PDF", Style = S("GhostButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
 
     private Guid? _draftId;
     private Guid? _lastVoucherId;
@@ -52,6 +53,7 @@ public sealed class PaymentVoucherPageControl : UserControl
         actions.Children.Add(_createDraft);
         actions.Children.Add(_post);
         actions.Children.Add(_print);
+        actions.Children.Add(_pdf);
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = stack, MaxWidth = 640 };
@@ -59,7 +61,8 @@ public sealed class PaymentVoucherPageControl : UserControl
         Loaded += OnLoaded;
         _createDraft.Click += async (_, _) => await CreateDraftAsync();
         _post.Click += async (_, _) => await PostAsync();
-        _print.Click += async (_, _) => await PrintAsync();
+        _print.Click += async (_, _) => await PrintAsync(exportPdf: false);
+        _pdf.Click += async (_, _) => await PrintAsync(exportPdf: true);
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -116,6 +119,7 @@ public sealed class PaymentVoucherPageControl : UserControl
             _lastVoucherId = result.Value;
             _post.IsEnabled = true;
             _print.IsEnabled = true;
+            _pdf.IsEnabled = true;
             _status.Text = "تم حفظ المسودة — جاهز للترحيل.";
             _status.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
             MockInteractionService.ShowSuccess("تم حفظ سند الصرف كمسودة.");
@@ -147,6 +151,7 @@ public sealed class PaymentVoucherPageControl : UserControl
                 voucherId = create.Value;
                 _lastVoucherId = voucherId;
                 _print.IsEnabled = true;
+                _pdf.IsEnabled = true;
             }
             finally
             {
@@ -183,24 +188,26 @@ public sealed class PaymentVoucherPageControl : UserControl
         }
     }
 
-    private async Task PrintAsync()
+    private async Task PrintAsync(bool exportPdf)
     {
         if (_lastVoucherId is not Guid voucherId || _busy) return;
 
         _busy = true;
         _print.IsEnabled = false;
+        _pdf.IsEnabled = false;
         try
         {
             var result = await FinanceUiService.Instance.GetPaymentVoucherPrintAsync(voucherId);
             if (!ApplicationResultPresenter.Present(result) || result.Value is null)
                 return;
 
-            ERPSystem.Services.Finance.PaymentVoucherDocumentService.ShowVoucherPreview(result.Value, exportPdf: false);
+            PaymentVoucherDocumentService.ShowVoucherPreview(result.Value, exportPdf);
         }
         finally
         {
             _busy = false;
             _print.IsEnabled = true;
+            _pdf.IsEnabled = true;
         }
     }
 

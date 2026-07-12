@@ -215,6 +215,13 @@ namespace ERPSystem.Views.OperationsCenters
 
             var title = f?.FabricName ?? w?.GoodsType ?? "—";
             var code = f?.Code ?? w?.BoltCode ?? "—";
+            var ctx = new OperationsCenterContext
+            {
+                EntityType = EntityType.FabricItem,
+                EntityRow = f ?? (object?)w,
+                SourceModule = AppModule.Inventory,
+                Title = title
+            };
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = title,
@@ -250,13 +257,15 @@ namespace ERPSystem.Views.OperationsCenters
                     Tab("Adjustments", "التسويات", () => PlaceholderUi.DevelopmentPhase("التسويات")),
                     Tab("Purchases", "سجل الشراء", () => PlaceholderUi.DevelopmentPhase("سجل الشراء")),
                     Tab("Notes", "ملاحظات", () => NotesEditor("")),
+                    Tab("Print", "معاينة الطباعة", () => PrintPreview(ctx)),
                 ],
                 QuickActions =
                 [
                     Q("حركة الصنف", false, "Movements"),
                     Q("مناقلة", false, "Transfers", actionKey: "form:NewTransfer"),
                 ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Movements", "SalesHistory", "Reservations", "Transfers", "Adjustments", "Purchases", "Notes")
+                InitialTabIndex = Idx(initialTab, "Overview", "Movements", "SalesHistory", "Reservations", "Transfers", "Adjustments", "Purchases", "Notes", "Print"),
+                Context = ctx
             });
         }
 
@@ -270,6 +279,14 @@ namespace ERPSystem.Views.OperationsCenters
 
             if (req.EntityRow is not WarehouseEntity w)
                 return NoEntityContextControl();
+
+            var whCtx = new OperationsCenterContext
+            {
+                EntityType = EntityType.Warehouse,
+                EntityRow = w,
+                SourceModule = AppModule.Inventory,
+                Title = w.Name
+            };
 
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
@@ -306,13 +323,15 @@ namespace ERPSystem.Views.OperationsCenters
                     Tab("Reservations", "الحجوزات", () => PlaceholderUi.DevelopmentPhase("الحجوزات")),
                     Tab("Detailing", "تفصيل معلق", () => PlaceholderUi.DevelopmentPhase("فواتير بانتظار التفصيل")),
                     Tab("Movements", "الحركات", () => PlaceholderUi.DevelopmentPhase("حركات المستودع")),
+                    Tab("Print", "معاينة الطباعة", () => PrintPreview(whCtx)),
                 ],
                 QuickActions =
                 [
                     Q("مناقلة جديدة", true, "Transfers", actionKey: "form:NewTransfer"),
                     Q("جرد", false, "Stocktake", actionKey: "form:Stocktake"),
                 ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Inventory", "Transfers", "Stocktake", "Reservations", "Detailing", "Movements")
+                InitialTabIndex = Idx(initialTab, "Overview", "Inventory", "Transfers", "Stocktake", "Reservations", "Detailing", "Movements", "Print"),
+                Context = whCtx
             });
         }
 
@@ -373,6 +392,14 @@ namespace ERPSystem.Views.OperationsCenters
             if (req.EntityRow is not EmployeeModel e)
                 return NoEntityContextControl();
 
+            var empCtx = new OperationsCenterContext
+            {
+                EntityType = EntityType.Employee,
+                EntityRow = e,
+                SourceModule = AppModule.HR,
+                Title = e.FullName
+            };
+
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
                 Title = e.FullName,
@@ -401,6 +428,7 @@ namespace ERPSystem.Views.OperationsCenters
                     Tab("Leaves", "الإجازات", () => PlaceholderUi.DevelopmentPhase("الإجازات")),
                     Tab("Contracts", "العقود", () => PlaceholderUi.DevelopmentPhase("العقود")),
                     Tab("Timeline", "الخط الزمني", () => EmptyTimeline()),
+                    Tab("Print", "معاينة الطباعة", () => PrintPreview(empCtx)),
                 ],
                 QuickActions =
                 [
@@ -408,14 +436,8 @@ namespace ERPSystem.Views.OperationsCenters
                     Q("إجازة", false, "Leaves"),
                     Q("تعديل", false, null, actionKey: "form:EditEmployee"),
                 ],
-                InitialTabIndex = Idx(initialTab, "Overview", "Attendance", "Leaves", "Contracts", "Timeline"),
-                Context = new OperationsCenterContext
-                {
-                    EntityType = EntityType.Employee,
-                    EntityRow = e,
-                    SourceModule = AppModule.HR,
-                    Title = e.FullName
-                }
+                InitialTabIndex = Idx(initialTab, "Overview", "Attendance", "Leaves", "Contracts", "Timeline", "Print"),
+                Context = empCtx
             });
         }
 
@@ -423,6 +445,14 @@ namespace ERPSystem.Views.OperationsCenters
         {
             if (req.EntityRow is not JournalEntryModel j)
                 return NoEntityContextControl();
+
+            var ctx = new OperationsCenterContext
+            {
+                EntityType = EntityType.JournalEntry,
+                EntityRow = j,
+                SourceModule = AppModule.Accounting,
+                Title = j.EntryNumber
+            };
 
             return OperationsCenterShell.Build(new OperationsCenterSpec
             {
@@ -444,19 +474,14 @@ namespace ERPSystem.Views.OperationsCenters
                 [
                     Tab("Overview", "سطور القيد", () => PlaceholderUi.DevelopmentPhase("سطور القيد")),
                     Tab("Timeline", "الخط الزمني", () => EmptyTimeline()),
+                    Tab("Print", "معاينة الطباعة", () => PrintPreview(ctx)),
                 ],
                 QuickActions =
                 [
                     Q("طباعة", false, null, actionKey: "preview:قيد يومية"),
                 ],
                 InitialTabIndex = 0,
-                Context = new OperationsCenterContext
-                {
-                    EntityType = EntityType.JournalEntry,
-                    EntityRow = j,
-                    SourceModule = AppModule.Accounting,
-                    Title = j.EntryNumber
-                }
+                Context = ctx
             });
         }
 
@@ -565,13 +590,8 @@ namespace ERPSystem.Views.OperationsCenters
         private static UIElement EmptyTimeline() =>
             PlaceholderUi.EmptyMessage("لا يوجد سجل نشاط");
 
-        private static UIElement PrintPreview()
-        {
-            var s = new StackPanel();
-            s.Children.Add(ErpUxFactory.ExportBar());
-            s.Children.Add(PlaceholderUi.DatabasePhase("معاينة الطباعة A4"));
-            return s;
-        }
+        private static UIElement PrintPreview(OperationsCenterContext? context) =>
+            OperationsCenterPrintPreviewFactory.Build(context);
 
         private static UIElement WrapDetailing(UIElement ctrl) =>
             new ScrollViewer { Content = ctrl, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };

@@ -11,7 +11,7 @@ using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Sales;
-using Microsoft.Extensions.DependencyInjection;
+using ERPSystem.Views.OperationsCenters;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -89,6 +89,13 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
     {
         var invoice = data.Invoice;
         var row = SalesInvoiceListRow.FromDto(invoice, data.WarehouseName ?? "—", "—");
+        var ocContext = new OperationsCenterContext
+        {
+            EntityType = EntityType.SalesInvoice,
+            EntityRow = row,
+            SourceModule = AppModule.Sales,
+            Title = invoice.InvoiceNumber
+        };
 
         var status = StatusDisplay(invoice.Status);
         var (statusBg, statusFg) = StatusColors(invoice.Status);
@@ -163,16 +170,11 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
                 Tab("Receipts", "التحصيلات", () => BuildPaymentsTab(data)),
                 Tab("Returns", "المرتجعات", () => BuildReturnsTab(data.Returns)),
                 Tab("Timeline", "الخط الزمني", () => BuildTimelineTab(invoice)),
+                Tab("Print", "معاينة الطباعة", () => OperationsCenterPrintPreviewFactory.Build(ocContext)),
             ],
             QuickActions = BuildQuickActions(data),
-            InitialTabIndex = ResolveTabIndex(_initialTab, "Overview", "Lines", "Detailing", "Journal", "Receipts", "Returns", "Timeline"),
-            Context = new OperationsCenterContext
-            {
-                EntityType = EntityType.SalesInvoice,
-                EntityRow = row,
-                SourceModule = AppModule.Sales,
-                Title = invoice.InvoiceNumber
-            }
+            InitialTabIndex = ResolveTabIndex(_initialTab, "Overview", "Lines", "Detailing", "Journal", "Receipts", "Returns", "Timeline", "Print"),
+            Context = ocContext
         });
     }
 

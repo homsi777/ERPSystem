@@ -331,6 +331,49 @@ public sealed class PurchaseUiService
 
 public static class PurchaseActionRouter
 {
+    public static bool TryHandle(EntityActionId actionId, PurchaseListRow row)
+    {
+        switch (actionId)
+        {
+            case EntityActionId.PurchasePrint:
+            case EntityActionId.PurchaseExportPdf:
+                _ = PrintAsync(row, actionId == EntityActionId.PurchaseExportPdf);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static async Task PrintAsync(PurchaseListRow row, bool exportPdf)
+    {
+        if (!AppServices.IsInitialized)
+            return;
+
+        var result = await PurchaseUiService.Instance.GetInvoiceDetailsAsync(row.Id);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        PurchaseDocumentService.ShowInvoicePreview(result.Value, exportPdf);
+    }
+
+    public static bool TryHandleQuickAction(string? actionKey, OperationsCenterContext ctx)
+    {
+        if (ctx.EntityRow is not PurchaseListRow row || string.IsNullOrEmpty(actionKey))
+            return false;
+
+        switch (actionKey)
+        {
+            case "preview:PurchaseInvoice":
+                _ = PrintAsync(row, exportPdf: false);
+                return true;
+            case "purchase:pdf":
+                _ = PrintAsync(row, exportPdf: true);
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public static void OpenOperationsCenter(PurchaseListRow row) =>
         WorkspaceWindowManager.Instance.OpenAction(
             EntityActionId.OpenOperationsCenter, EntityType.PurchaseInvoice, row, AppModule.Purchases);

@@ -62,15 +62,17 @@ namespace ERPSystem.Services
                 if (kind.Equals("PurchaseInvoice", StringComparison.OrdinalIgnoreCase) &&
                     ctx.EntityRow is PurchaseListRow prow)
                 {
-                    _ = PurchaseUiService.Instance.GetInvoiceDetailsAsync(prow.Id).ContinueWith(t =>
-                    {
-                        if (t.Result.IsSuccess && t.Result.Value is not null)
-                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                                PurchaseDocumentService.ShowInvoicePreview(t.Result.Value, false));
-                    });
+                    _ = PurchaseActionRouter.PrintAsync(prow, exportPdf: false);
                     return;
                 }
                 MockInteractionService.ShowDocumentPreview(kind, "PDF");
+                return;
+            }
+
+            if (actionKey.Equals("purchase:pdf", StringComparison.OrdinalIgnoreCase) &&
+                ctx.EntityRow is PurchaseListRow pdfRow)
+            {
+                _ = PurchaseActionRouter.PrintAsync(pdfRow, exportPdf: true);
                 return;
             }
 

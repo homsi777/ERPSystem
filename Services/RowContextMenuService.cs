@@ -11,6 +11,8 @@ using ERPSystem.Services.Expenses;
 using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Finance;
 using ERPSystem.Services.Sales;
+using ERPSystem.Services.Purchases;
+using ERPSystem.Core.Purchases;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -194,6 +196,10 @@ namespace ERPSystem.Services
                 SalesActionRouter.Handle(captured.Id, salesRow);
                 return;
             }
+
+            if (entityType == EntityType.PurchaseInvoice && entity is PurchaseListRow purchaseRow &&
+                PurchaseActionRouter.TryHandle(captured.Id, purchaseRow))
+                return;
 
             if (CustomerActionRouter.TryHandle(captured.Id, entityType, entity, sourceModule))
                 return;

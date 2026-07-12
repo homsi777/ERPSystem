@@ -8,6 +8,7 @@ using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Purchases;
 using ERPSystem.Diagnostics.Performance;
+using ERPSystem.Views.OperationsCenters;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -91,6 +92,14 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
 
         UIElement BuildNotesTab() => new TextBox { Text = inv.Notes ?? "", AcceptsReturn = true, Height = 100, IsReadOnly = inv.IsReadOnly };
 
+        var ocContext = new OperationsCenterContext
+        {
+            EntityType = EntityType.PurchaseInvoice,
+            EntityRow = row,
+            SourceModule = AppModule.Purchases,
+            Title = inv.InvoiceNumber
+        };
+
         return OperationsCenterShell.Build(new OperationsCenterSpec
         {
             Title = inv.InvoiceNumber,
@@ -122,20 +131,16 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
                 Tab("Journal", "قيود اليومية", BuildJournalTab),
                 Tab("Payments", "المدفوعات", BuildPaymentsTab),
                 Tab("Notes", "ملاحظات", BuildNotesTab),
+                Tab("Print", "معاينة الطباعة", () => OperationsCenterPrintPreviewFactory.Build(ocContext)),
             ],
             QuickActions =
             [
                 Q("تسجيل دفعة", inv.RemainingAmount > 0, null, actionKey: "ws:PurchasePayment"),
                 Q("طباعة", false, null, actionKey: "preview:PurchaseInvoice"),
+                Q("تصدير PDF", false, null, actionKey: "purchase:pdf"),
                 Q("تعديل", !inv.IsReadOnly, null, actionKey: "form:EditPurchaseInvoice"),
             ],
-            Context = new OperationsCenterContext
-            {
-                EntityType = EntityType.PurchaseInvoice,
-                EntityRow = row,
-                SourceModule = AppModule.Purchases,
-                Title = inv.InvoiceNumber
-            }
+            Context = ocContext
         });
     }
 

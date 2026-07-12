@@ -4,6 +4,7 @@ using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Expenses;
+using ERPSystem.Views.OperationsCenters;
 using ERPSystem.Diagnostics.Performance;
 using System.Windows;
 using System.Windows.Controls;
@@ -51,6 +52,14 @@ public sealed class ExpenseOperationsCenterControl : UserControl
     {
         var d = oc.Details;
         var f = oc.Financial;
+        var expenseContext = new OperationsCenterContext
+        {
+            EntityType = Core.Actions.EntityType.Expense,
+            EntityRow = d,
+            SourceModule = AppModule.Expenses,
+            Title = d.Name
+        };
+
         return OperationsCenterShell.Build(new OperationsCenterSpec
         {
             Title = d.Name,
@@ -94,6 +103,7 @@ public sealed class ExpenseOperationsCenterControl : UserControl
                 Tab("FutureAccounting", "المحاسبة المستقبلية", () => FutureIntegrationTab("المحاسبة", "سيتم ربط قيود المصروف تلقائياً عند تفعيل وحدة المحاسبة.")),
                 Tab("FutureTreasury", "الخزينة المستقبلية", () => FutureIntegrationTab("الخزينة", "سيتم ربط مصادر التمويل والمدفوعات بوحدة الخزينة.")),
                 Tab("Statistics", "إحصائيات", () => StatisticsTab(oc.Statistics)),
+                Tab("Print", "معاينة الطباعة", () => OperationsCenterPrintPreviewFactory.Build(expenseContext)),
             ],
             QuickActions =
             [
@@ -106,13 +116,7 @@ public sealed class ExpenseOperationsCenterControl : UserControl
                 Q("PDF", false, null, actionKey: "preview:تقرير مصروف"),
             ],
             InitialTabIndex = 0,
-            Context = new OperationsCenterContext
-            {
-                EntityType = Core.Actions.EntityType.Expense,
-                EntityRow = d,
-                SourceModule = AppModule.Expenses,
-                Title = d.Name
-            }
+            Context = expenseContext
         });
     }
 

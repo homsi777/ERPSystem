@@ -18,9 +18,11 @@ public sealed record StatementLine(
     decimal Balance);
 
 /// <summary>
-/// Account statement PDF (customer + supplier). Professional Arabic RTL layout:
-/// header, opening balance, transaction table, closing balance and totals.
+/// DEPRECATED — Legacy account statement PDF (Arial, pre-theme). No live callers remain;
+/// use <see cref="CustomerStatementDocumentService"/> or <see cref="SupplierStatementDocumentService"/>.
+/// Scheduled for removal in Phase B after final caller audit.
 /// </summary>
+[Obsolete("Use CustomerStatementDocumentService or SupplierStatementDocumentService instead.")]
 public static class StatementDocumentService
 {
     private static bool _license;
