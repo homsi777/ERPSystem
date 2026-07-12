@@ -50,6 +50,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
     };
     private readonly Button _createDraft = new() { Content = "حفظ مسودة", Style = S("SecondaryButtonStyle"), MinWidth = 120, Height = 38 };
     private readonly Button _post = new() { Content = "ترحيل", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+    private readonly Button _print = new() { Content = "طباعة", Style = S("GhostButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
 
     private readonly DataGrid _allocationsGrid = new()
     {
@@ -65,6 +66,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
     private List<OpenInvoiceOption> _openInvoices = new();
 
     private Guid? _draftId;
+    private Guid? _lastVoucherId;
     private bool _busy;
 
     public ReceiptVoucherPageControl()
@@ -92,6 +94,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
         actions.Children.Add(_createDraft);
         actions.Children.Add(_post);
+        actions.Children.Add(_print);
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = stack, MaxWidth = 720 };
@@ -99,6 +102,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
         Loaded += OnLoaded;
         _createDraft.Click += async (_, _) => await CreateDraftAsync();
         _post.Click += async (_, _) => await PostAsync();
+        _print.Click += async (_, _) => await PrintAsync();
         _customer.SelectionChanged += async (_, _) => await LoadOpenInvoicesAsync();
         _paymentMethod.SelectionChanged += (_, _) => UpdatePaymentMethodUi();
         _cashbox.SelectionChanged += (_, _) => UpdateGlAccountDisplay();
@@ -328,7 +332,9 @@ public sealed class ReceiptVoucherPageControl : UserControl
                 return;
 
             _draftId = result.Value;
+            _lastVoucherId = result.Value;
             _post.IsEnabled = true;
+            _print.IsEnabled = true;
             _status.Text = $"تم حفظ المسودة — جاهز للترحيل.";
             _status.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
             MockInteractionService.ShowSuccess("تم حفظ سند القبض كمسودة.");
@@ -365,6 +371,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
                 if (!ApplicationResultPresenter.Present(create))
                     return;
                 voucherId = create.Value;
+                _lastVoucherId = voucherId;
+                _print.IsEnabled = true;
             }
             finally
             {
@@ -394,6 +402,27 @@ public sealed class ReceiptVoucherPageControl : UserControl
         {
             _busy = false;
             _post.IsEnabled = _draftId.HasValue;
+        }
+    }
+
+    private async Task PrintAsync()
+    {
+        if (_lastVoucherId is not Guid voucherId || _busy) return;
+
+        _busy = true;
+        _print.IsEnabled = false;
+        try
+        {
+            var result = await FinanceUiService.Instance.GetReceiptVoucherPrintAsync(voucherId);
+            if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+                return;
+
+            ERPSystem.Services.Finance.ReceiptVoucherDocumentService.ShowVoucherPreview(result.Value, exportPdf: false);
+        }
+        finally
+        {
+            _busy = false;
+            _print.IsEnabled = true;
         }
     }
 

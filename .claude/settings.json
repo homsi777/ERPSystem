@@ -40,7 +40,9 @@
       "Read(//c//**)",
       "Bash(powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\\\"Name='dotnet.exe'\\\\\" | Select-Object ProcessId,CommandLine | Format-List\")",
       "PowerShell(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -ge 3000 -and $_.LocalPort -le 9000 } | Select-Object LocalPort, OwningProcess | Sort-Object LocalPort)",
-      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\")"
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\")",
+      "Bash(grep -rl \"ERPSystem.DocumentEngine\" --include=*.csproj .)",
+      "Bash(grep -i \"DocumentEngine\" *.sln)"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -23,6 +23,7 @@ public static class ExpenseEndpoints
         group.MapGet("entries", GetExpenseEntriesAsync).WithName("GetExpenseEntries");
         group.MapGet("dashboard/summary", GetExpenseDashboardAsync).WithName("GetExpenseDashboard");
         group.MapGet("reports", GetExpenseReportAsync).WithName("GetExpenseReport");
+        group.MapGet("reports/pdf", GetExpenseReportPdfAsync).WithName("GetExpenseReportPdf");
         group.MapGet("categories", GetExpenseCategoriesAsync).WithName("GetExpenseCategories");
         group.MapGet("cost-centers", GetCostCentersAsync).WithName("GetExpenseCostCenters");
         group.MapGet("{expenseId:guid}/operations-center", GetExpenseOperationsCenterAsync).WithName("GetExpenseOperationsCenter");
@@ -147,6 +148,42 @@ public static class ExpenseEndpoints
         }, cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetExpenseReportPdfAsync(
+        [FromQuery] string reportType,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] ExpenseCategoryKind? categoryKind,
+        [FromQuery] Guid? costCenterId,
+        ICurrentBranchService branchService,
+        GetExpenseReportHandler handler,
+        ERPSystem.Api.Services.ExpenseReportPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+        {
+            return Results.Json(
+                new ApiErrorResponse("Unauthorized", "Authentication required.", []),
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var result = await handler.HandleAsync(new GetExpenseReportQuery
+        {
+            CompanyId = companyId,
+            ReportType = string.IsNullOrWhiteSpace(reportType) ? "Detailed" : reportType,
+            FromDate = from,
+            ToDate = to,
+            CategoryKind = categoryKind,
+            CostCenterId = costCenterId
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result, report =>
+        {
+            var bytes = pdfService.Generate(report);
+            var fileName = $"تقرير مصاريف - {DateTime.Now:yyyy-MM-dd}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
     }
 
     private static async Task<IResult> GetExpenseDashboardAsync(

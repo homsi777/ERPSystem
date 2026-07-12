@@ -31,3 +31,13 @@ public sealed class GetCashboxOperationsCenterQuery
 {
     public Guid CashboxId { get; init; }
 }
+
+public sealed class GetReceiptVoucherPrintQuery
+{
+    public Guid VoucherId { get; init; }
+}
+
+public sealed class GetPaymentVoucherPrintQuery
+{
+    public Guid VoucherId { get; init; }
+}

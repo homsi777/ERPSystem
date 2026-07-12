@@ -26,6 +26,41 @@ public sealed class PaymentVoucherDto
     public VoucherStatus Status { get; init; }
 }
 
+/// <summary>Enriched read model for printing a receipt voucher — every field traces to a real stored record (voucher, cashbox, payment method, allocated invoices). No free-text fields are fabricated.</summary>
+public sealed class ReceiptVoucherPrintDto
+{
+    public Guid Id { get; init; }
+    public string VoucherNumber { get; init; } = "";
+    public DateTime VoucherDate { get; init; }
+    public VoucherStatus Status { get; init; }
+    public string CustomerName { get; init; } = "";
+    public string? CustomerPhone { get; init; }
+    public string CashboxName { get; init; } = "";
+    public string Currency { get; init; } = "USD";
+    public decimal Amount { get; init; }
+    public string PaymentMethodName { get; init; } = "";
+    public IReadOnlyList<ReceiptVoucherAllocationDto> Allocations { get; init; } = [];
+}
+
+public sealed class ReceiptVoucherAllocationDto
+{
+    public string InvoiceNumber { get; init; } = "";
+    public decimal Amount { get; init; }
+}
+
+/// <summary>Enriched read model for printing a payment voucher — every field traces to a real stored record (voucher, cashbox, supplier).</summary>
+public sealed class PaymentVoucherPrintDto
+{
+    public Guid Id { get; init; }
+    public string VoucherNumber { get; init; } = "";
+    public DateTime VoucherDate { get; init; }
+    public VoucherStatus Status { get; init; }
+    public string SupplierName { get; init; } = "";
+    public string CashboxName { get; init; } = "";
+    public string Currency { get; init; } = "USD";
+    public decimal Amount { get; init; }
+}
+
 public sealed class JournalEntryDto
 {
     public Guid Id { get; init; }

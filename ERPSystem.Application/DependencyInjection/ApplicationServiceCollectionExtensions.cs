@@ -215,6 +215,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCashboxMovementsHandler>();
         services.AddScoped<GetCashboxTransferListHandler>();
         services.AddScoped<GetCashboxOperationsCenterHandler>();
+        services.AddScoped<GetReceiptVoucherPrintHandler>();
+        services.AddScoped<GetPaymentVoucherPrintHandler>();
     }
 
     private static void RegisterOpeningBalanceHandlers(IServiceCollection services)

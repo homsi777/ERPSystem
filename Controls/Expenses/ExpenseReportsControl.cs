@@ -223,9 +223,15 @@ public sealed class ExpenseReportsControl : UserControl
         if (!ApplicationResultPresenter.Present(result) || result.Value is null)
             return;
 
-        if (mode is "PDF" or "Excel" or "طباعة")
+        if (mode is "PDF" or "طباعة")
         {
-            MockInteractionService.ShowDocumentPreview(result.Value.Title, mode == "Excel" ? "Excel" : "PDF");
+            ExpenseReportDocumentService.ShowReportPreview(result.Value, exportPdf: mode == "PDF");
+            return;
+        }
+
+        if (mode == "Excel")
+        {
+            MockInteractionService.ShowDocumentPreview(result.Value.Title, "Excel");
             return;
         }
 

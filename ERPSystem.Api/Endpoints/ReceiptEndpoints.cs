@@ -1,8 +1,11 @@
 using ERPSystem.Api.Mapping;
+using ERPSystem.Api.Services;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Finance;
+using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Application.Results;
+using ERPSystem.Application.UseCases.Finance;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERPSystem.Api.Endpoints;
@@ -20,6 +23,9 @@ public static class ReceiptEndpoints
 
         group.MapPost("{id:guid}/post", PostReceiptAsync)
             .WithName("PostReceiptVoucher");
+
+        group.MapGet("{id:guid}/pdf", GetReceiptPdfAsync)
+            .WithName("GetReceiptVoucherPdf");
 
         return app;
     }
@@ -63,6 +69,21 @@ public static class ReceiptEndpoints
     {
         var result = await handler.HandleAsync(new PostReceiptVoucherCommand { VoucherId = id }, cancellationToken);
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetReceiptPdfAsync(
+        Guid id,
+        GetReceiptVoucherPrintHandler handler,
+        ReceiptVoucherPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetReceiptVoucherPrintQuery { VoucherId = id }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result, voucher =>
+        {
+            var bytes = pdfService.Generate(voucher);
+            var fileName = $"سند قبض - {voucher.VoucherNumber} - {voucher.VoucherDate:yyyy-MM-dd}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
     }
 
     private sealed record CreateReceiptVoucherRequest(

@@ -17,6 +17,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddScoped<ICurrentBranchService, HttpContextBranchService>();
 builder.Services.AddSingleton<SalesInvoicePdfService>();
+builder.Services.AddSingleton<ExpenseReportPdfService>();
+builder.Services.AddSingleton<ReceiptVoucherPdfService>();
+builder.Services.AddSingleton<PaymentVoucherPdfService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
@@ -131,6 +134,7 @@ app.MapContainerEndpoints();
 app.MapDetailingEndpoints();
 app.MapDashboardEndpoints();
 app.MapReceiptEndpoints();
+app.MapPaymentVoucherEndpoints();
 app.MapFinanceEndpoints();
 app.MapSalesEndpoints();
 app.MapExpenseEndpoints();

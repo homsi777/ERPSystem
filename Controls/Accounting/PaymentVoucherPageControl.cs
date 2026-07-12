@@ -28,8 +28,10 @@ public sealed class PaymentVoucherPageControl : UserControl
     };
     private readonly Button _createDraft = new() { Content = "حفظ مسودة", Style = S("SecondaryButtonStyle"), MinWidth = 120, Height = 38 };
     private readonly Button _post = new() { Content = "ترحيل", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+    private readonly Button _print = new() { Content = "طباعة", Style = S("GhostButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
 
     private Guid? _draftId;
+    private Guid? _lastVoucherId;
     private Guid? _purchaseInvoiceId;
     private bool _busy;
 
@@ -49,6 +51,7 @@ public sealed class PaymentVoucherPageControl : UserControl
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
         actions.Children.Add(_createDraft);
         actions.Children.Add(_post);
+        actions.Children.Add(_print);
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = stack, MaxWidth = 640 };
@@ -56,6 +59,7 @@ public sealed class PaymentVoucherPageControl : UserControl
         Loaded += OnLoaded;
         _createDraft.Click += async (_, _) => await CreateDraftAsync();
         _post.Click += async (_, _) => await PostAsync();
+        _print.Click += async (_, _) => await PrintAsync();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -109,7 +113,9 @@ public sealed class PaymentVoucherPageControl : UserControl
                 return;
 
             _draftId = result.Value;
+            _lastVoucherId = result.Value;
             _post.IsEnabled = true;
+            _print.IsEnabled = true;
             _status.Text = "تم حفظ المسودة — جاهز للترحيل.";
             _status.Foreground = (Brush)WpfApplication.Current.Resources["SuccessBrush"]!;
             MockInteractionService.ShowSuccess("تم حفظ سند الصرف كمسودة.");
@@ -139,6 +145,8 @@ public sealed class PaymentVoucherPageControl : UserControl
                 if (!ApplicationResultPresenter.Present(create))
                     return;
                 voucherId = create.Value;
+                _lastVoucherId = voucherId;
+                _print.IsEnabled = true;
             }
             finally
             {
@@ -172,6 +180,27 @@ public sealed class PaymentVoucherPageControl : UserControl
         {
             _busy = false;
             _post.IsEnabled = _draftId.HasValue;
+        }
+    }
+
+    private async Task PrintAsync()
+    {
+        if (_lastVoucherId is not Guid voucherId || _busy) return;
+
+        _busy = true;
+        _print.IsEnabled = false;
+        try
+        {
+            var result = await FinanceUiService.Instance.GetPaymentVoucherPrintAsync(voucherId);
+            if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+                return;
+
+            ERPSystem.Services.Finance.PaymentVoucherDocumentService.ShowVoucherPreview(result.Value, exportPdf: false);
+        }
+        finally
+        {
+            _busy = false;
+            _print.IsEnabled = true;
         }
     }
 

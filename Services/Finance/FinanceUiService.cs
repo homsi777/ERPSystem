@@ -495,4 +495,22 @@ public sealed class FinanceUiService
             PurchaseInvoiceId = purchaseInvoiceId
         }, cancellationToken);
     }
+
+    public async Task<ApplicationResult<ReceiptVoucherPrintDto>> GetReceiptVoucherPrintAsync(
+        Guid voucherId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetReceiptVoucherPrintHandler>();
+        return await handler.HandleAsync(new GetReceiptVoucherPrintQuery { VoucherId = voucherId }, cancellationToken);
+    }
+
+    public async Task<ApplicationResult<PaymentVoucherPrintDto>> GetPaymentVoucherPrintAsync(
+        Guid voucherId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<GetPaymentVoucherPrintHandler>();
+        return await handler.HandleAsync(new GetPaymentVoucherPrintQuery { VoucherId = voucherId }, cancellationToken);
+    }
 }
