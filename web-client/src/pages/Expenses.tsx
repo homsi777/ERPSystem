@@ -12,6 +12,7 @@ import {
   getExpenseDashboard,
   getExpenseEntries,
   getExpenseOperationsCenter,
+  getExpensePdf,
   getExpenseReport,
   getExpenseReportPdf,
   getExpenses,
@@ -962,6 +963,10 @@ function OperationsCenterPage({ expenseId }: { expenseId: string }) {
 
           <DocumentActions
             payload={exportPayload}
+            pdfSource={{
+              fileName: `مصروف - ${expense.code} - ${new Date().toISOString().slice(0, 10)}.pdf`,
+              load: () => getExpensePdf(expenseId)
+            }}
             onToast={(message, tone = 'success') => setToast({ tone, message })}
           />
 

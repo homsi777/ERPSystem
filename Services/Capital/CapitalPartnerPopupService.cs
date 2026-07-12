@@ -44,11 +44,12 @@ public static class CapitalPartnerPopupService
                 return ShowOperationsCenter(partner, "Timeline");
 
             case EntityActionId.CapitalPartnerExportPdf:
-            case EntityActionId.CapitalPartnerExportExcel:
             case EntityActionId.CapitalPartnerPrint:
-                MockInteractionService.ShowDocumentPreview(
-                    $"تقرير شريك — {partner.FullName}",
-                    actionId == EntityActionId.CapitalPartnerExportExcel ? "Excel" : "PDF");
+                _ = ExportPartnerAsync(partner, actionId == EntityActionId.CapitalPartnerExportPdf);
+                return true;
+
+            case EntityActionId.CapitalPartnerExportExcel:
+                _ = ExportPartnerExcelAsync(partner);
                 return true;
 
             case EntityActionId.CapitalPartnerArchive:
@@ -157,6 +158,24 @@ public static class CapitalPartnerPopupService
         _active = null;
         CapitalNavigationContext.ClearTransactionContext();
         return result;
+    }
+
+    private static async Task ExportPartnerAsync(CapitalPartnerListDto partner, bool exportPdf)
+    {
+        var result = await CapitalPartnerUiService.Instance.GetOperationsCenterAsync(partner.Id);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        CapitalPartnerDocumentService.ShowPreview(result.Value, exportPdf);
+    }
+
+    private static async Task ExportPartnerExcelAsync(CapitalPartnerListDto partner)
+    {
+        var result = await CapitalPartnerUiService.Instance.GetOperationsCenterAsync(partner.Id);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        CapitalPartnerDocumentService.ExportExcel(result.Value);
     }
 
     private static async Task ArchiveAsync(CapitalPartnerListDto partner)

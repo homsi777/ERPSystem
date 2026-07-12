@@ -4,6 +4,7 @@ using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Accounting;
+using ERPSystem.Services.Documents;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -127,7 +128,16 @@ public sealed class ChartOfAccountsListPageControl : UserControl
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal };
         actions.Children.Add(CreateHeaderIconButton("\uE896", "تصدير", (_, _) =>
-            MockInteractionService.ShowDocumentPreview("شجرة الحسابات", "Excel")));
+            ListExportService.ExportRecords(
+                _allItems,
+                "شجرة الحسابات",
+                ("الكود", a => a.Code),
+                ("الاسم", a => a.NameAr),
+                ("النوع", a => a.AccountTypeDisplay),
+                ("المستوى", a => a.Level),
+                ("الأب", a => a.ParentName ?? ""),
+                ("قابل للترحيل", a => a.IsPostable ? "نعم" : "لا"),
+                ("نشط", a => a.IsActive ? "نعم" : "لا"))));
         actions.Children.Add(CreateHeaderIconButton("\uE72C", "تحديث", (_, _) => _ = LoadAsync()));
         actions.Children.Add(CreateHeaderPrimaryButton("حساب جديد", (_, _) => AccountingPopupService.ShowCreateAccount()));
         Grid.SetColumn(actions, 1);

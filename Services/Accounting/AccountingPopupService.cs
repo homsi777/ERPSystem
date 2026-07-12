@@ -69,9 +69,7 @@ public static class AccountingPopupService
 
             case EntityActionId.VoucherPrint:
             case EntityActionId.VoucherExportPdf:
-                MockInteractionService.ShowDocumentPreview(
-                    $"قيد يومية — {entry.EntryNumber}",
-                    actionId == EntityActionId.VoucherExportPdf ? "PDF" : "PDF");
+                _ = ExportJournalAsync(entry, actionId == EntityActionId.VoucherExportPdf);
                 return true;
 
             default:
@@ -157,6 +155,15 @@ public static class AccountingPopupService
         _active = null;
         AccountingNavigationContext.Clear();
         return result;
+    }
+
+    private static async Task ExportJournalAsync(JournalEntryListDto entry, bool exportPdf)
+    {
+        var result = await AccountingUiService.Instance.GetJournalDetailsAsync(entry.Id);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        AccountingJournalDocumentService.ShowPreview(result.Value, exportPdf);
     }
 
     private static async Task DeactivateAccountAsync(AccountListDto account)

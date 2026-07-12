@@ -142,11 +142,8 @@ public static class InventoryPopupService
         ErpModalWindow.Show("خصائص المستودع", d.NameAr, sp, "\uE946", 520, 680);
     }
 
-    public static void ShowWarehousePrintPreview(WarehouseListExtendedDto warehouse)
-    {
-        var body = new WarehousePanelPopupControl(warehouse.Id, WarehousePopupPanel.Stock);
-        ErpModalWindow.Show("معاينة الطباعة", warehouse.NameAr, body, "\uE749", 720, 640);
-    }
+    public static void ShowWarehousePrintPreview(WarehouseListExtendedDto warehouse) =>
+        _ = WarehouseDocumentService.ShowStockPreviewAsync(warehouse.Id, exportPdf: false);
 
     private static TextBlock T(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap };
 

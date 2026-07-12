@@ -2,6 +2,7 @@ using ERPSystem.Application.Documents;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Services;
+using ERPSystem.Services.Documents;
 using Microsoft.Win32;
 using QuestPDF;
 using QuestPDF.Elements.Table;
@@ -55,11 +56,11 @@ public static class SalesDocumentService
 
         if (exportPdf)
         {
-            SavePdfBytes(pdfBytes, fileName);
+            PdfPreviewWindow.SaveAndOpenFromBytes(pdfBytes, fileName);
             return;
         }
 
-        ShowPreviewFromBytes(pdfBytes, $"فاتورة بيع — {invoice.InvoiceNumber}");
+        PdfPreviewWindow.ShowFromBytes(pdfBytes, $"فاتورة بيع — {invoice.InvoiceNumber}");
     }
 
     private static string BuildInvoiceFileName(string customerName, DateTime invoiceDate)

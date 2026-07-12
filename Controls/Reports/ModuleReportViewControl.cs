@@ -34,6 +34,7 @@ public sealed class ModuleReportViewControl : UserControl
     private readonly DataGrid _grid = new() { AutoGenerateColumns = false, IsReadOnly = true, MinHeight = 280 };
     private readonly StackPanel _body = new();
     private bool _isRunning;
+    private ModuleReportResultDto? _lastReport;
 
     public event EventHandler? BackRequested;
 
@@ -87,10 +88,10 @@ public sealed class ModuleReportViewControl : UserControl
         runBtn.Click += async (_, _) => await RunAsync();
         actions.Children.Add(runBtn);
 
-        foreach (var label in new[] { "طباعة", "PDF", "Excel" })
+        foreach (var (label, mode) in new[] { ("طباعة", "print"), ("PDF", "pdf"), ("Excel", "excel") })
         {
             var btn = new Button { Content = label, Style = S("SecondaryButtonStyle"), Margin = new Thickness(0, 0, 8, 0) };
-            btn.Click += (_, _) => MockInteractionService.ShowDocumentPreview(_definition.TitleAr, label == "Excel" ? "Excel" : "PDF");
+            btn.Click += (_, _) => ExportLastReport(mode);
             actions.Children.Add(btn);
         }
 
@@ -141,6 +142,7 @@ public sealed class ModuleReportViewControl : UserControl
 
     private void Render(ModuleReportResultDto report)
     {
+        _lastReport = report;
         _body.Children.Clear();
         _kpiRow.Children.Clear();
         _grid.Columns.Clear();
@@ -187,6 +189,28 @@ public sealed class ModuleReportViewControl : UserControl
         ErpUiFactory.DetachFromVisualTree(_grid);
         _body.Children.Add(ErpUiFactory.SectionTitle("النتائج"));
         _body.Children.Add(ErpUiFactory.Card(_grid));
+    }
+
+    private void ExportLastReport(string mode)
+    {
+        if (_lastReport is null)
+        {
+            MockInteractionService.ShowWarning("شغّل التقرير أولاً.", "تصدير");
+            return;
+        }
+
+        switch (mode)
+        {
+            case "excel":
+                ModuleReportDocumentService.ExportExcel(_lastReport);
+                break;
+            case "pdf":
+                ModuleReportDocumentService.ShowPreview(_lastReport, exportPdf: true);
+                break;
+            default:
+                ModuleReportDocumentService.ShowPreview(_lastReport, exportPdf: false);
+                break;
+        }
     }
 
     private sealed class ModuleReportRowBinder

@@ -4,6 +4,7 @@ using ERPSystem.Controls;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Services.Documents;
 using ERPSystem.Services.Expenses;
 using System.Windows;
 using System.Windows.Controls;
@@ -231,7 +232,18 @@ public sealed class ExpenseReportsControl : UserControl
 
         if (mode == "Excel")
         {
-            MockInteractionService.ShowDocumentPreview(result.Value.Title, "Excel");
+            ListExportService.ExportRecords(
+                result.Value.Rows,
+                result.Value.Title,
+                ("المصروف", r => $"{r.Name} ({r.Code})"),
+                ("الفئة", r => r.Category),
+                ("الحالة", r => r.Status),
+                ("التاريخ", r => r.StartDate),
+                ("بالأساس", r => r.BaseAmount),
+                ("مدفوع", r => r.PaidAmountBase),
+                ("متبقي", r => r.RemainingBalanceBase),
+                ("المستفيد", r => r.PayeeName ?? ""),
+                ("البيان", r => r.Description));
             return;
         }
 

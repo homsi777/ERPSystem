@@ -1,4 +1,4 @@
-import { apiRequest } from './client.ts';
+import { apiBlobRequest, apiRequest } from './client.ts';
 import type {
   AccountLedgerLineDto,
   AccountListDto,
@@ -41,6 +41,12 @@ export function getJournalEntries(params: JournalEntryListParams) {
 
 export function getJournalEntry(entryId: string) {
   return apiRequest<JournalEntryDetailsDto>(`/api/v1/accounting/journal-entries/${entryId}`);
+}
+
+export function getJournalEntryPdf(entryId: string) {
+  return apiBlobRequest(`/api/v1/accounting/journal-entries/${entryId}/pdf`, {
+    headers: { Accept: 'application/pdf' }
+  });
 }
 
 export type AccountListParams = {

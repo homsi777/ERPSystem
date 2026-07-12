@@ -103,6 +103,12 @@ export function getExpenseOperationsCenter(expenseId: string) {
   return apiRequest<ExpenseOperationsCenterDto>(`/api/v1/expenses/${expenseId}/operations-center`);
 }
 
+export function getExpensePdf(expenseId: string) {
+  return apiBlobRequest(`/api/v1/expenses/${expenseId}/pdf`, {
+    headers: { Accept: 'application/pdf' }
+  });
+}
+
 export function getExpenseAuditTrail(expenseId: string) {
   return apiRequest<ExpenseAuditEntryDto[]>(`/api/v1/expenses/${expenseId}/audit`);
 }

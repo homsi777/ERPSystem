@@ -20,6 +20,8 @@ builder.Services.AddSingleton<SalesInvoicePdfService>();
 builder.Services.AddSingleton<ExpenseReportPdfService>();
 builder.Services.AddSingleton<ReceiptVoucherPdfService>();
 builder.Services.AddSingleton<PaymentVoucherPdfService>();
+builder.Services.AddSingleton<CustomerAccountLedgerPdfService>();
+builder.Services.AddSingleton<JournalEntryPdfService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 

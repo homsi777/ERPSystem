@@ -5,6 +5,7 @@ import {
   createCustomer,
   deactivateCustomer,
   getCustomerAccountLedger,
+  getCustomerAccountLedgerPdf,
   getCustomerDetails,
   getCustomerSalesDetails,
   getCustomers,
@@ -853,6 +854,30 @@ function CustomerLedgerPanel({
           value={ledger.lastReconciliationDate ? formatDateOnly(ledger.lastReconciliationDate) : 'لا يوجد'}
         />
       </dl>
+
+      <DocumentActions
+        payload={{
+          title: `كشف حساب ${ledger.customerName}`,
+          subtitle: `${from || '—'} → ${to || '—'}`,
+          fileName: `customer-ledger-${ledger.customerName}.pdf`,
+          shareText: `كشف حساب: ${ledger.customerName}\nافتتاحي: ${ledger.openingBalance}\nختامي: ${ledger.closingBalance}`,
+          sections: [
+            {
+              heading: 'ملخص الكشف',
+              rows: [
+                { label: 'الرصيد الافتتاحي', value: String(ledger.openingBalance) },
+                { label: 'الرصيد الختامي', value: String(ledger.closingBalance) },
+                { label: 'عدد الحركات', value: String(ledger.lines.length) }
+              ]
+            }
+          ]
+        }}
+        pdfSource={{
+          fileName: `كشف حساب - ${ledger.customerName} - ${new Date().toISOString().slice(0, 10)}.pdf`,
+          load: () => getCustomerAccountLedgerPdf(customerId, { from: from || undefined, to: to || undefined })
+        }}
+        onToast={(message, tone = 'success') => onToast({ tone, message })}
+      />
 
       <div className="form-section-head">
         <button

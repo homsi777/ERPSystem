@@ -7,6 +7,7 @@ using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Queries;
 using ERPSystem.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
 
 namespace ERPSystem.Api.Endpoints;
 
@@ -44,6 +45,9 @@ public static class CustomerEndpoints
 
         group.MapGet("{id:guid}/ledger", GetCustomerAccountLedgerAsync)
             .WithName("GetCustomerAccountLedger");
+
+        group.MapGet("{id:guid}/ledger/pdf", GetCustomerAccountLedgerPdfAsync)
+            .WithName("GetCustomerAccountLedgerPdf");
 
         group.MapPost("{id:guid}/reconcile", ReconcileCustomerAccountAsync)
             .WithName("ReconcileCustomerAccount");
@@ -138,6 +142,30 @@ public static class CustomerEndpoints
         }, cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetCustomerAccountLedgerPdfAsync(
+        Guid id,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        GetCustomerAccountLedgerHandler handler,
+        ERPSystem.Api.Services.CustomerAccountLedgerPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetCustomerAccountLedgerQuery
+        {
+            CustomerId = id,
+            FromDate = from,
+            ToDate = to
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result, ledger =>
+        {
+            var bytes = pdfService.Generate(ledger, from, to);
+            var safeName = string.Join('_', ledger.CustomerName.Split(Path.GetInvalidFileNameChars()));
+            var fileName = $"كشف حساب - {safeName} - {DateTime.Now:yyyy-MM-dd}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
     }
 
     private static async Task<IResult> ReconcileCustomerAccountAsync(

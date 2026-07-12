@@ -57,10 +57,10 @@ public static class InventoryActionRouter
                 InventoryExportService.ExportWarehouseStock(row);
                 break;
             case EntityActionId.WarehouseExportPdf:
-                InventoryPopupService.ShowWarehousePrintPreview(row);
+                _ = WarehouseDocumentService.ShowStockPreviewAsync(row.Id, exportPdf: true);
                 break;
             case EntityActionId.WarehousePrint:
-                InventoryPopupService.ShowWarehousePrintPreview(row);
+                _ = WarehouseDocumentService.ShowStockPreviewAsync(row.Id, exportPdf: false);
                 break;
             case EntityActionId.WarehouseDuplicate:
                 _ = DuplicateAsync(row);

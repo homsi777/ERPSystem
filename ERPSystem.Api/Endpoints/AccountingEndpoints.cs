@@ -18,6 +18,7 @@ public static class AccountingEndpoints
 
         group.MapGet("journal-entries", GetJournalEntryListAsync).WithName("GetJournalEntryList");
         group.MapGet("journal-entries/{entryId:guid}", GetJournalEntryDetailsAsync).WithName("GetJournalEntryDetails");
+        group.MapGet("journal-entries/{entryId:guid}/pdf", GetJournalEntryPdfAsync).WithName("GetJournalEntryPdf");
         group.MapGet("accounts", GetAccountListAsync).WithName("GetAccountList");
         group.MapGet("accounts/{accountId:guid}/ledger", GetAccountLedgerAsync).WithName("GetAccountLedger");
         group.MapGet("reports/trial-balance", GetTrialBalanceAsync).WithName("GetTrialBalance");
@@ -67,6 +68,21 @@ public static class AccountingEndpoints
     {
         var result = await handler.HandleAsync(new GetJournalEntryDetailsQuery { EntryId = entryId }, cancellationToken);
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetJournalEntryPdfAsync(
+        Guid entryId,
+        GetJournalEntryDetailsHandler handler,
+        ERPSystem.Api.Services.JournalEntryPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetJournalEntryDetailsQuery { EntryId = entryId }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result, entry =>
+        {
+            var bytes = pdfService.Generate(entry);
+            var fileName = $"قيد يومية - {entry.EntryNumber}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
     }
 
     private static async Task<IResult> GetAccountListAsync(

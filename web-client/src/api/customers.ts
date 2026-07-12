@@ -1,4 +1,4 @@
-import { apiRequest } from './client.ts';
+import { apiBlobRequest, apiRequest } from './client.ts';
 import type {
   CreateCustomerRequest,
   CustomerAccountLedgerDto,
@@ -75,6 +75,20 @@ export function getCustomerAccountLedger(id: string, params: CustomerDateRangePa
   }
   const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
   return apiRequest<CustomerAccountLedgerDto>(`/api/v1/customers/${id}/ledger${suffix}`);
+}
+
+export function getCustomerAccountLedgerPdf(id: string, params: CustomerDateRangeParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.from) {
+    searchParams.set('from', params.from);
+  }
+  if (params.to) {
+    searchParams.set('to', params.to);
+  }
+  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+  return apiBlobRequest(`/api/v1/customers/${id}/ledger/pdf${suffix}`, {
+    headers: { Accept: 'application/pdf' }
+  });
 }
 
 export function createCustomer(request: CreateCustomerRequest) {

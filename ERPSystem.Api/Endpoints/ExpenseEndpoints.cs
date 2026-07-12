@@ -3,6 +3,7 @@ using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Expenses;
+using ERPSystem.Application.Documents;
 using ERPSystem.Application.Queries.Expenses;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Expenses;
@@ -30,6 +31,7 @@ public static class ExpenseEndpoints
         group.MapGet("{expenseId:guid}/audit", GetExpenseAuditTrailAsync).WithName("GetExpenseAuditTrail");
         group.MapGet("{expenseId:guid}/timeline", GetExpenseTimelineAsync).WithName("GetExpenseTimeline");
         group.MapGet("{expenseId:guid}", GetExpenseDetailsAsync).WithName("GetExpenseDetails");
+        group.MapGet("{expenseId:guid}/pdf", GetExpensePdfAsync).WithName("GetExpensePdf");
         group.MapPost("", CreateExpenseAsync).WithName("CreateExpense");
         group.MapPut("{expenseId:guid}", UpdateExpenseAsync).WithName("UpdateExpense");
         group.MapPost("{expenseId:guid}/approve", ApproveExpenseAsync).WithName("ApproveExpense");
@@ -268,6 +270,22 @@ public static class ExpenseEndpoints
     {
         var result = await handler.HandleAsync(new GetExpenseDetailsQuery { ExpenseId = expenseId }, cancellationToken);
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetExpensePdfAsync(
+        Guid expenseId,
+        GetExpenseOperationsCenterHandler handler,
+        ERPSystem.Api.Services.ExpenseReportPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetExpenseOperationsCenterQuery { ExpenseId = expenseId }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result, operations =>
+        {
+            var report = ExpenseOperationsReportMapper.ToSingleExpenseReport(operations);
+            var bytes = pdfService.Generate(report);
+            var fileName = $"مصروف - {operations.Details.Code} - {DateTime.Now:yyyy-MM-dd}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
     }
 
     private static async Task<IResult> CreateExpenseAsync(

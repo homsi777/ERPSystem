@@ -5,6 +5,7 @@ import {
   getAccounts,
   getJournalEntries,
   getJournalEntry,
+  getJournalEntryPdf,
   getTrialBalance
 } from '../api/accounting.ts';
 import { ApiError } from '../api/client.ts';
@@ -373,7 +374,13 @@ function JournalEntryDetailPage({ entryId }: { entryId: string }) {
             </dl>
           </section>
 
-          <DocumentActions payload={exportPayload} />
+          <DocumentActions
+            payload={exportPayload}
+            pdfSource={{
+              fileName: `قيد يومية - ${entry.entryNumber}.pdf`,
+              load: () => getJournalEntryPdf(entryId)
+            }}
+          />
 
           <section className="form-panel form-compact">
             <h2>سطور القيد</h2>

@@ -1,3 +1,4 @@
+using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Controls.China;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Core;
@@ -5,6 +6,7 @@ using ERPSystem.Core.Actions;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Services.China;
+using ERPSystem.Services.Reports;
 using System.Windows.Controls;
 
 namespace ERPSystem.Services;
@@ -51,11 +53,52 @@ public static class ChinaContainerQuickActionRouter
                 SelectTab(tabs, "LandingCost");
                 return true;
             case "preview:ملخص الحاوية":
-                MockInteractionService.ShowDocumentPreview($"ملخص الحاوية {row.ContainerNumber}", "PDF");
+                _ = ExportContainerSummaryAsync(row);
                 return true;
             default:
                 return false;
         }
+    }
+
+    private static async Task ExportContainerSummaryAsync(ContainerListRow row)
+    {
+        if (!AppServices.IsInitialized)
+            return;
+
+        var result = await ContainerUiService.Instance.GetOperationsCenterAsync(row.Id);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        var oc = result.Value;
+        var container = oc.Container;
+        var report = new ModuleReportResultDto
+        {
+            Title = $"ملخص الحاوية {container.ContainerNumber}",
+            GeneratedAt = DateTime.UtcNow,
+            Kpis =
+            [
+                new ModuleReportKpiDto { Label = "الأمتار", Value = $"{container.TotalMeters:N2}" },
+                new ModuleReportKpiDto { Label = "الأثواب", Value = container.TotalRolls.ToString() },
+                new ModuleReportKpiDto { Label = "فاتورة الصين", Value = $"{container.ChinaInvoiceAmountUsd:N2} USD" }
+            ],
+            Columns =
+            [
+                new ModuleReportColumnDto { Key = "label", HeaderAr = "البند" },
+                new ModuleReportColumnDto { Key = "value", HeaderAr = "القيمة", IsStar = true }
+            ],
+            Rows =
+            [
+                new Dictionary<string, object?> { ["label"] = "رقم الحاوية", ["value"] = container.ContainerNumber },
+                new Dictionary<string, object?> { ["label"] = "المورد", ["value"] = container.SupplierName ?? "—" },
+                new Dictionary<string, object?> { ["label"] = "تاريخ الشحن", ["value"] = container.ShipmentDate },
+                new Dictionary<string, object?> { ["label"] = "الحالة", ["value"] = container.Status.ToString() },
+                new Dictionary<string, object?> { ["label"] = "جاهزة للبيع", ["value"] = oc.IsReadyForSale ? "نعم" : "لا" },
+                new Dictionary<string, object?> { ["label"] = "تكلفة الاستيراد", ["value"] = container.LandingCost?.TotalImportExpenses },
+                new Dictionary<string, object?> { ["label"] = "عدد الأصناف", ["value"] = container.Items.Count }
+            ]
+        };
+
+        ModuleReportDocumentService.ShowPreview(report, exportPdf: false);
     }
 
     private static async Task ApproveAsync(Guid containerId)
