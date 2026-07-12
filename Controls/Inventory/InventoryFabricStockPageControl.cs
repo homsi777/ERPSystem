@@ -47,6 +47,7 @@ public sealed class InventoryFabricStockPageControl : UserControl
             "الحاوية:",
             _containerFilter,
             _searchBox));
+        header.Children.Add(BuildExportRow());
         header.Children.Add(_insightHost);
         _summaryCards.Margin = new Thickness(0, 0, 0, 12);
         header.Children.Add(_summaryCards);
@@ -178,6 +179,35 @@ public sealed class InventoryFabricStockPageControl : UserControl
         _grid.ItemsSource = stock;
         InventoryContainerFilterUi.PopulateStockSummaryCards(_summaryCards, stock);
         InventoryContainerFilterUi.RenderSearchInsightPanel(_insightHost, stock, searchTerm);
+    }
+
+    private UIElement BuildExportRow()
+    {
+        var row = ErpUxFactory.ExportBar("أرصدة الأقمشة", mode =>
+        {
+            var stock = _grid.ItemsSource as IEnumerable<FabricStockBalanceDto> ?? _allStock;
+            var list = stock.ToList();
+            if (list.Count == 0)
+            {
+                MockInteractionService.ShowWarning("لا توجد بيانات للتصدير.", "تصدير");
+                return;
+            }
+
+            switch (mode)
+            {
+                case "excel":
+                    InventoryExportService.ExportFabricStockRows(list, "أرصدة الأقمشة");
+                    break;
+                case "print":
+                case "pdf":
+                    MockInteractionService.ShowInfo(
+                        "لتقرير PDF لمستودع محدد، افتح مركز عمل المستودع أو استخدم «تقرير المخزون» من قائمة المستودع.",
+                        "تصدير");
+                    break;
+            }
+        });
+        row.Margin = new Thickness(0, 0, 0, 8);
+        return row;
     }
 
     private async Task ShowRollDetailsAsync()

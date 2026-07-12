@@ -29,8 +29,10 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             "inv.warehouse_move" => await BuildWarehouseMovementsAsync(query, cancellationToken),
             "inv.item_move" => await BuildItemMovementsAsync(query, cancellationToken),
             "inv.item_analysis" => await BuildItemAnalysisAsync(query, cancellationToken),
+            "inv.length_analysis" => await BuildLengthAnalysisAsync(query, cancellationToken),
             "inv.low_stock" => await BuildLowStockAsync(query, cancellationToken),
             "inv.valuation" => await BuildValuationAsync(query, cancellationToken),
+            "inv.stocktake" => await BuildStocktakeReportAsync(query, cancellationToken),
             "sal.invoices" or "sal.delivery" => await BuildSalesInvoicesAsync(query, key, cancellationToken),
             "sal.returns" => await BuildSalesReturnsAsync(query, cancellationToken),
             "sal.by_customer" => await BuildSalesByCustomerAsync(query, cancellationToken),
@@ -307,6 +309,91 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             Kpi("إجمالي م", grouped.Sum(g => g.Meters).ToString("N0")));
     }
 
+    private async Task<ModuleReportResultDto> BuildLengthAnalysisAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var branchWarehouseIds = await WarehouseEntities(ct)
+            .Where(w => w.BranchId == query.BranchId)
+            .Select(w => w.Id)
+            .ToListAsync(ct);
+
+        var rolls = await context.FabricRolls.AsNoTracking()
+            .Where(r => branchWarehouseIds.Contains(r.WarehouseId)
+                        && r.IsActive
+                        && !r.IsArchived
+                        && r.RemainingLengthMeters > 0)
+            .OrderBy(r => r.FabricItemId)
+            .ThenBy(r => r.FabricColorId)
+            .ThenBy(r => r.RollNumber)
+            .Take(10000)
+            .ToListAsync(ct);
+
+        if (rolls.Count == 0)
+            return Empty(query, "لا توجد أتواب متبقية");
+
+        var fabricIds = rolls.Select(r => r.FabricItemId).Distinct().ToList();
+        var colorIds = rolls.Select(r => r.FabricColorId).Distinct().ToList();
+        var whIds = rolls.Select(r => r.WarehouseId).Distinct().ToList();
+        var containerIds = rolls.Select(r => r.ContainerId).Distinct().ToList();
+
+        var fabrics = await context.FabricItems.AsNoTracking()
+            .Where(f => fabricIds.Contains(f.Id))
+            .ToDictionaryAsync(f => f.Id, f => (f.Code, f.NameAr), ct);
+        var colors = await context.FabricColors.AsNoTracking()
+            .Where(c => colorIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.NameAr, ct);
+        var warehouses = await WarehouseEntities(ct)
+            .Where(w => whIds.Contains(w.Id))
+            .ToDictionaryAsync(w => w.Id, w => w.NameAr, ct);
+        var containers = await context.Containers.AsNoTracking()
+            .Where(c => containerIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.ContainerNumber, ct);
+
+        static string StatusAr(int status) => ((FabricRollStatus)status) switch
+        {
+            FabricRollStatus.Available => "متاح",
+            FabricRollStatus.Reserved => "محجوز",
+            FabricRollStatus.Sold => "مباع",
+            FabricRollStatus.Wasted => "هالك",
+            FabricRollStatus.InTransit => "قيد النقل",
+            _ => status.ToString()
+        };
+
+        var rows = rolls.Select(r =>
+        {
+            var fabric = fabrics.GetValueOrDefault(r.FabricItemId);
+            return Row(
+                ("Warehouse", warehouses.GetValueOrDefault(r.WarehouseId, "—")),
+                ("FabricCode", fabric.Code ?? "—"),
+                ("Fabric", fabric.NameAr ?? "—"),
+                ("Color", colors.GetValueOrDefault(r.FabricColorId, "—")),
+                ("Container", containers.GetValueOrDefault(r.ContainerId, "—")),
+                ("RollNumber", r.RollNumber),
+                ("OriginalLength", r.LengthMeters),
+                ("Remaining", r.RemainingLengthMeters),
+                ("Lot", string.IsNullOrWhiteSpace(r.LotCode) ? "—" : r.LotCode!),
+                ("Status", StatusAr(r.Status)));
+        }).ToList();
+
+        var fabricGroups = rolls.GroupBy(r => r.FabricItemId).Count();
+        return Result(query, "تحليل أطوال مادة", "تفصيل كل توب وطوله المتبقي حسب الصنف والمستودع",
+            Cols(
+                ("Warehouse", "المستودع", 110, null),
+                ("FabricCode", "كود", 80, null),
+                ("Fabric", "القماش / التوب", "*", null),
+                ("Color", "اللون", 90, null),
+                ("Container", "الحاوية", 100, null),
+                ("RollNumber", "رقم التوب", 80, null),
+                ("OriginalLength", "الطول الأصلي", 100, "N2"),
+                ("Remaining", "المتبقي (م)", 100, "N2"),
+                ("Lot", "اللوت", 80, null),
+                ("Status", "الحالة", 80, null)),
+            rows,
+            Kpi("أتواب", rolls.Count.ToString("N0")),
+            Kpi("أصناف", fabricGroups.ToString("N0")),
+            Kpi("إجمالي متبقي", rolls.Sum(r => r.RemainingLengthMeters).ToString("N0"), "\uE821"));
+    }
+
     private async Task<ModuleReportResultDto> BuildLowStockAsync(
         GetModuleReportQuery query, CancellationToken ct)
     {
@@ -373,6 +460,72 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
                 ("Value", "القيمة USD", 120, "N2")),
             rows,
             Kpi("إجمالي USD", total.ToString("N2"), "\uE8C1"));
+    }
+
+    private async Task<ModuleReportResultDto> BuildStocktakeReportAsync(
+        GetModuleReportQuery query, CancellationToken ct)
+    {
+        var whIds = await WarehouseEntities(ct)
+            .Where(w => w.BranchId == query.BranchId)
+            .Select(w => w.Id)
+            .ToListAsync(ct);
+
+        var sessionsQuery = context.StocktakeSessions.AsNoTracking()
+            .Where(s => whIds.Contains(s.WarehouseId) && !s.IsArchived);
+
+        if (query.FromDate.HasValue)
+            sessionsQuery = sessionsQuery.Where(s => s.Date >= UtcDateTimeNormalizer.ToUtc(query.FromDate.Value));
+        if (query.ToDate.HasValue)
+            sessionsQuery = sessionsQuery.Where(s => s.Date <= UtcDateTimeNormalizer.ToUtc(query.ToDate.Value));
+
+        var sessions = await sessionsQuery
+            .OrderByDescending(s => s.Date)
+            .Take(5000)
+            .ToListAsync(ct);
+
+        var whMap = await WarehouseEntities(ct)
+            .Where(w => whIds.Contains(w.Id))
+            .ToDictionaryAsync(w => w.Id, w => w.NameAr, ct);
+
+        var sessionIds = sessions.Select(s => s.Id).ToList();
+        var lineStats = await context.StocktakeLines.AsNoTracking()
+            .Where(l => sessionIds.Contains(l.SessionId))
+            .GroupBy(l => l.SessionId)
+            .Select(g => new
+            {
+                SessionId = g.Key,
+                Lines = g.Count(),
+                Variance = g.Sum(x => Math.Abs(x.DifferenceMeters))
+            })
+            .ToListAsync(ct);
+        var lineMap = lineStats.ToDictionary(x => x.SessionId);
+
+        var rows = sessions.Select(s =>
+        {
+            var stats = lineMap.GetValueOrDefault(s.Id);
+            return Row(
+                ("Number", s.SessionNumber),
+                ("Date", s.Date),
+                ("Warehouse", whMap.GetValueOrDefault(s.WarehouseId, "—")),
+                ("Responsible", s.Responsible),
+                ("Status", ((InventoryDocumentStatus)s.Status).ToString()),
+                ("Lines", stats?.Lines ?? 0),
+                ("Variance", stats?.Variance ?? 0m));
+        }).ToList();
+
+        return Result(query, "تقرير الجرد", "جلسات الجرد والفروقات المسجلة",
+            Cols(
+                ("Number", "رقم الجرد", 110, null),
+                ("Date", "التاريخ", 100, "yyyy/MM/dd"),
+                ("Warehouse", "المستودع", "*", null),
+                ("Responsible", "المسؤول", 110, null),
+                ("Status", "الحالة", 90, null),
+                ("Lines", "أسطر", 70, null),
+                ("Variance", "فروقات (م)", 100, "N2")),
+            rows,
+            Kpi("جلسات", rows.Count.ToString()),
+            Kpi("مرحّل", sessions.Count(s => s.Status == (int)InventoryDocumentStatus.Posted).ToString()),
+            Kpi("إجمالي فروقات", lineStats.Sum(x => x.Variance).ToString("N2")));
     }
 
     private async Task<ModuleReportResultDto> BuildSalesInvoicesAsync(

@@ -28,7 +28,7 @@ internal static class WarehouseExecutiveWorkspaceBuilder
 
         var root = new StackPanel { MaxWidth = 1400 };
 
-        root.Children.Add(BuildExecutiveHeader(w, oc.CostCenterName, openActionPanel));
+        root.Children.Add(BuildExecutiveHeader(w, oc, openActionPanel));
         root.Children.Add(BuildQuantityTiles(ex.Quantities, accent, navigateTab));
         root.Children.Add(BuildMainGrid(ex, w, accent, navigateTab));
 
@@ -51,9 +51,10 @@ internal static class WarehouseExecutiveWorkspaceBuilder
 
     private static UIElement BuildExecutiveHeader(
         WarehouseListExtendedDto w,
-        string? costCenter,
+        InventoryOperationsCenterDto oc,
         Action? openActionPanel)
     {
+        var costCenter = oc.CostCenterName;
         var card = ErpUiFactory.Card(new Grid(), new Thickness(0, 0, 0, ErpDesignTokens.SpaceMd));
         card.Padding = new Thickness(0);
         if (card.Child is not Grid grid) return card;
@@ -110,17 +111,36 @@ internal static class WarehouseExecutiveWorkspaceBuilder
         Grid.SetColumn(left, 0);
         body.Children.Add(left);
 
+        var right = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+        right.Children.Add(ErpUxFactory.ExportBar($"مخزون {w.NameAr}", mode =>
+        {
+            switch (mode)
+            {
+                case "print":
+                    WarehouseDocumentService.ShowPreview(oc, exportPdf: false);
+                    break;
+                case "pdf":
+                    WarehouseDocumentService.ShowPreview(oc, exportPdf: true);
+                    break;
+                case "excel":
+                    InventoryExportService.ExportOperationsCenterStock(oc);
+                    break;
+            }
+        }));
+
         var actionsBtn = new Button
         {
             Content = "إجراءات سريعة \uE712",
             Padding = new Thickness(16, 10, 16, 10),
+            Margin = new Thickness(0, 8, 0, 0),
             Cursor = Cursors.Hand,
             FontFamily = new FontFamily("Segoe UI, Segoe MDL2 Assets"),
             Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!
         };
         actionsBtn.Click += (_, _) => openActionPanel?.Invoke();
-        Grid.SetColumn(actionsBtn, 1);
-        body.Children.Add(actionsBtn);
+        right.Children.Add(actionsBtn);
+        Grid.SetColumn(right, 1);
+        body.Children.Add(right);
 
         Grid.SetRow(body, 1);
         grid.Children.Add(body);

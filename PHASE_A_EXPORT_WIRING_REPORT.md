@@ -153,7 +153,7 @@ Build succeeded — 0 Warning(s), 0 Error(s)
 
 | Step | Status |
 |------|--------|
-| Git commit + push | Pending / see commit hash below after push |
+| Git commit + push | **Done** — `e031c1f` on `main` |
 | VPS `deploy-app.sh` | **BLOCKED** (sudo password) — Nabil must run manually |
 
 **Manual deploy (Nabil):**

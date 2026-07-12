@@ -19,10 +19,21 @@ public static class InventoryExportService
             return;
         }
 
-        var data = oc.Value;
+        ExportOperationsCenterStock(oc.Value);
+    }
+
+    public static void ExportOperationsCenterStock(InventoryOperationsCenterDto data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ExportFabricStockRows(data.Stock, $"مخزون - {data.Warehouse.NameAr}");
+    }
+
+    public static void ExportFabricStockRows(IReadOnlyList<FabricStockBalanceDto> stock, string title)
+    {
         ListExportService.ExportRecords(
-            data.Stock,
-            $"مخزون - {warehouse.NameAr}",
+            stock,
+            title,
+            ("المستودع", s => s.WarehouseName),
             ("القماش", s => s.FabricName),
             ("اللون", s => s.ColorName),
             ("الحاوية", s => s.ContainerNumber),

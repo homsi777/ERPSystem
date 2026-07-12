@@ -38,7 +38,7 @@ public static class InventoryActionRouter
                 InventoryPopupService.ShowTransferWizard(row.Id);
                 break;
             case EntityActionId.WarehouseStockReport:
-                InventoryPopupService.ShowWarehousePanel(row.Id, WarehousePopupPanel.Stock);
+                _ = WarehouseDocumentService.ShowStockPreviewAsync(row.Id, exportPdf: false);
                 break;
             case EntityActionId.FabricMovement:
             case EntityActionId.WarehouseMovementHistory:
@@ -95,6 +95,15 @@ public static class InventoryActionRouter
                 return true;
             case "ws:ActivateWarehouse":
                 _ = ActivateAsync(row);
+                return true;
+            case "warehouse:print":
+                _ = WarehouseDocumentService.ShowStockPreviewAsync(row.Id, exportPdf: false);
+                return true;
+            case "warehouse:pdf":
+                _ = WarehouseDocumentService.ShowStockPreviewAsync(row.Id, exportPdf: true);
+                return true;
+            case "warehouse:excel":
+                InventoryExportService.ExportWarehouseStock(row);
                 return true;
             default:
                 return false;

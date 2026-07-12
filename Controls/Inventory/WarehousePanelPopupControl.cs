@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Services.Documents;
 using ERPSystem.Services.Inventory;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +19,8 @@ public enum WarehousePopupPanel
 /// <summary>عرض بيانات مستودع في نافذة منبثقة — بدون مغادرة القائمة.</summary>
 public sealed class WarehousePanelPopupControl : UserControl
 {
+    private InventoryOperationsCenterDto? _loaded;
+
     public WarehousePanelPopupControl(Guid warehouseId, WarehousePopupPanel panel)
     {
         Content = new TextBlock
@@ -40,6 +43,7 @@ public sealed class WarehousePanelPopupControl : UserControl
         }
 
         var oc = result.Value;
+        _loaded = oc;
         Content = panel switch
         {
             WarehousePopupPanel.Stock => BuildStock(oc),
@@ -63,9 +67,24 @@ public sealed class WarehousePanelPopupControl : UserControl
         };
     }
 
-    private static UIElement BuildStock(InventoryOperationsCenterDto oc)
+    private UIElement BuildStock(InventoryOperationsCenterDto oc)
     {
         var sp = new StackPanel();
+        sp.Children.Add(ErpUxFactory.ExportBar($"مخزون {oc.Warehouse.NameAr}", mode =>
+        {
+            switch (mode)
+            {
+                case "print":
+                    WarehouseDocumentService.ShowPreview(oc, exportPdf: false);
+                    break;
+                case "pdf":
+                    WarehouseDocumentService.ShowPreview(oc, exportPdf: true);
+                    break;
+                case "excel":
+                    InventoryExportService.ExportOperationsCenterStock(oc);
+                    break;
+            }
+        }));
         sp.Children.Add(ErpUxFactory.InfoBanner(
             $"قيمة المخزون: ${oc.InventoryValue:N2}  •  {oc.Stock.Count} صنف  •  {oc.Rolls.Count} roll"));
         if (oc.Stock.Count == 0)

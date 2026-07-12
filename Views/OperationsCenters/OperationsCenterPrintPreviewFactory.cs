@@ -75,62 +75,63 @@ public static class OperationsCenterPrintPreviewFactory
         if (!AppServices.IsInitialized)
             return;
 
-        var exportPdf = mode == "PDF";
+        var normalized = mode.Trim().ToLowerInvariant();
+        var exportPdf = normalized == "pdf";
 
         switch (context.EntityType)
         {
             case EntityType.SalesInvoice when context.EntityRow is SalesInvoiceListRow salesRow:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await SalesPopupService.PrintAsync(salesRow, exportPdf);
-                else
+                else if (normalized == "excel")
                     MockInteractionService.ShowInfo("تصدير Excel غير متاح من معاينة الطباعة.", "معاينة الطباعة");
                 break;
 
             case EntityType.PurchaseInvoice when context.EntityRow is PurchaseListRow purchaseRow:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await PurchaseActionRouter.PrintAsync(purchaseRow, exportPdf);
-                else
+                else if (normalized == "excel")
                     MockInteractionService.ShowInfo("تصدير Excel غير متاح من معاينة الطباعة.", "معاينة الطباعة");
                 break;
 
             case EntityType.JournalEntry when context.EntityRow is JournalEntryListDto journalRow:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await ExportJournalAsync(journalRow.Id, exportPdf);
-                else
+                else if (normalized == "excel")
                     MockInteractionService.ShowInfo("تصدير Excel غير متاح من معاينة الطباعة.", "معاينة الطباعة");
                 break;
 
             case EntityType.Warehouse when context.EntityRow is WarehouseListExtendedDto warehouse:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await WarehouseDocumentService.ShowStockPreviewAsync(warehouse.Id, exportPdf);
-                else if (mode == "Excel")
+                else if (normalized == "excel")
                     InventoryExportService.ExportWarehouseStock(warehouse);
                 break;
 
             case EntityType.Expense when context.EntityRow is ExpenseListDto expenseRow:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await ExpenseDocumentService.HandleExportAsync(
                         exportPdf ? EntityActionId.ExpenseExportPdf : EntityActionId.ExpensePrint,
                         expenseRow);
-                else if (mode == "Excel")
+                else if (normalized == "excel")
                     await ExpenseDocumentService.HandleExportAsync(EntityActionId.ExpenseExportExcel, expenseRow);
                 break;
 
             case EntityType.Expense when context.EntityRow is ExpenseDetailsDto expenseDetails:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await ExpenseDocumentService.HandleExportAsync(
                         exportPdf ? EntityActionId.ExpenseExportPdf : EntityActionId.ExpensePrint,
                         new ExpenseListDto { Id = expenseDetails.Id, Code = expenseDetails.Code, Name = expenseDetails.Name });
-                else if (mode == "Excel")
+                else if (normalized == "excel")
                     await ExpenseDocumentService.HandleExportAsync(
                         EntityActionId.ExpenseExportExcel,
                         new ExpenseListDto { Id = expenseDetails.Id, Code = expenseDetails.Code, Name = expenseDetails.Name });
                 break;
 
             case EntityType.CapitalPartner when context.EntityRow is CapitalPartnerListDto partner:
-                if (mode is "طباعة" or "PDF" or "معاينة")
+                if (normalized is "print" or "pdf")
                     await ExportCapitalPartnerAsync(partner.Id, exportPdf);
-                else if (mode == "Excel")
+                else if (normalized == "excel")
                     await ExportCapitalPartnerExcelAsync(partner.Id);
                 break;
 
