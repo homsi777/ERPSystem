@@ -24,6 +24,7 @@ public sealed class ExpenseEntryListPageControl : UserControl
     private readonly Border _emptyState = new() { Visibility = Visibility.Collapsed, Background = Brushes.White };
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private bool _isLoading;
+    private bool _suppressFilterEvents;
 
     public ExpenseEntryListPageControl()
     {
@@ -34,7 +35,11 @@ public sealed class ExpenseEntryListPageControl : UserControl
         ExpenseListRefreshHub.RefreshRequested += OnRefreshRequested;
         _searchTimer.Tick += async (_, _) => { _searchTimer.Stop(); await LoadAsync(); };
         _search.TextChanged += (_, _) => { _searchTimer.Stop(); _searchTimer.Start(); };
-        _expenseFilter.SelectionChanged += (_, _) => _ = LoadAsync();
+        _expenseFilter.SelectionChanged += (_, _) =>
+        {
+            if (_suppressFilterEvents) return;
+            _ = LoadAsync();
+        };
         _fromDate.SelectedDateChanged += (_, _) => _ = LoadAsync();
         _toDate.SelectedDateChanged += (_, _) => _ = LoadAsync();
         _btnPrimary.Click += (_, _) => ExpensePopupService.ShowEntry();
@@ -179,25 +184,34 @@ public sealed class ExpenseEntryListPageControl : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        var defs = await ExpenseUiService.Instance.GetDefinitionsAsync();
-        if (ApplicationResultPresenter.Present(defs))
+        _suppressFilterEvents = true;
+        try
         {
-            var items = new List<ExpenseListDto> { new() { Id = Guid.Empty, Name = "— الكل —" } };
-            items.AddRange(defs.Value?.Items ?? []);
-            _expenseFilter.ItemsSource = items;
-            _expenseFilter.DisplayMemberPath = nameof(ExpenseListDto.Name);
+            var defs = await ExpenseUiService.Instance.GetDefinitionsAsync();
+            if (ApplicationResultPresenter.Present(defs))
+            {
+                var items = new List<ExpenseListDto> { new() { Id = Guid.Empty, Name = "— الكل —" } };
+                items.AddRange(defs.Value?.Items ?? []);
+                _expenseFilter.ItemsSource = items;
+                _expenseFilter.DisplayMemberPath = nameof(ExpenseListDto.Name);
 
-            var filterExpenseId = ExpenseNavigationContext.TakeEntriesFilter();
-            if (filterExpenseId is Guid expenseId)
-            {
-                var match = items.FindIndex(i => i.Id == expenseId);
-                _expenseFilter.SelectedIndex = match >= 0 ? match : 0;
-            }
-            else
-            {
-                _expenseFilter.SelectedIndex = 0;
+                var filterExpenseId = ExpenseNavigationContext.TakeEntriesFilter();
+                if (filterExpenseId is Guid expenseId)
+                {
+                    var match = items.FindIndex(i => i.Id == expenseId);
+                    _expenseFilter.SelectedIndex = match >= 0 ? match : 0;
+                }
+                else
+                {
+                    _expenseFilter.SelectedIndex = 0;
+                }
             }
         }
+        finally
+        {
+            _suppressFilterEvents = false;
+        }
+
         await LoadAsync();
     }
 
@@ -226,13 +240,21 @@ public sealed class ExpenseEntryListPageControl : UserControl
         perfScope?.IncrementServiceCalls();
             if (!ApplicationResultPresenter.Present(result)) return;
 
-            var list = result.Value?.Items ?? [];
+            var list = (result.Value?.Items ?? [])
+                .GroupBy(e => e.Id)
+                .Select(g => g.First())
+                .ToList();
             _cardsHost.Children.Clear();
             foreach (var entry in list)
                 _cardsHost.Children.Add(new ExpenseEntryCardControl(entry));
 
             _emptyState.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            _recordCount.Text = $"عرض {list.Count} قيد";
+            var definitionCount = _expenseFilter.ItemsSource is IEnumerable<ExpenseListDto> defs
+                ? defs.Count(d => d.Id != Guid.Empty)
+                : 0;
+            _recordCount.Text = definitionCount > 0
+                ? $"عرض {list.Count} قيد دفع — {definitionCount} تعريف مصروف"
+                : $"عرض {list.Count} قيد دفع";
         }
         finally { _isLoading = false; }
     }

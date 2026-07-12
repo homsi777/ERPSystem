@@ -78,9 +78,7 @@ public static class ExpensePopupService
             case EntityActionId.ExpenseExportExcel:
             case EntityActionId.ExpensePrint:
             case EntityActionId.ExpenseShareReport:
-                MockInteractionService.ShowDocumentPreview(
-                    $"تقرير مصروف — {expense.Name}",
-                    actionId == EntityActionId.ExpenseExportExcel ? "Excel" : "PDF");
+                _ = ExpenseDocumentService.HandleExportAsync(actionId, expense);
                 return true;
 
             default:

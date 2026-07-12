@@ -80,7 +80,7 @@ namespace ERPSystem.Core.Navigation
             },
             AppModule.Expenses => new[]
             {
-                new SubmoduleDef("List", "المصاريف", "\uE9D9"),
+                new SubmoduleDef("List", "تعريفات المصاريف", "\uE9D9"),
                 new SubmoduleDef("Entries", "سجل القيود", "\uE8A5"),
                 new SubmoduleDef("Entry", "قيد مصروف جديد", "\uE70F"),
                 new SubmoduleDef("Form", "تعريف مصروف جديد", "\uE710"),
