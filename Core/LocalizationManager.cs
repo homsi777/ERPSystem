@@ -39,8 +39,9 @@ namespace ERPSystem.Core
 
         private readonly Dictionary<string, Dictionary<string, string>> _strings = new()
         {
-            ["AppName"] = new() { ["ar"] = "نظام إدارة الأعمال", ["en"] = "Business ERP" },
-            ["CompanyName"] = new() { ["ar"] = "شركة الحمصي لاستيراد الأقمشة", ["en"] = "Al-Homsi Fabrics Import" },
+            ["AppName"] = new() { ["ar"] = "الأمل.AB", ["en"] = "Alamal.AB" },
+            ["CompanyName"] = new() { ["ar"] = "الأمل.AB", ["en"] = "Alamal.AB" },
+            ["CompanyTagline"] = new() { ["ar"] = "تجارة أقمشة الجينز — جملة", ["en"] = "Denim Fabric Trading — Wholesale" },
             ["Branch"] = new() { ["ar"] = "الفرع", ["en"] = "Branch" },
             ["MainBranch"] = new() { ["ar"] = "الفرع الرئيسي", ["en"] = "Main Branch" },
             ["Search"] = new() { ["ar"] = "بحث...", ["en"] = "Search..." },

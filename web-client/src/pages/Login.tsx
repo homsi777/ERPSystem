@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
+import { BrandMark } from '../components/BrandMark.tsx';
 
 type LocationState = {
   from?: string;
@@ -40,13 +41,8 @@ export function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-panel" aria-labelledby="login-title">
-        <div className="login-panel__brand">
-          <span>AB</span>
-          <div>
-            <p>الأمل.AB</p>
-            <h1 id="login-title">تسجيل الدخول</h1>
-          </div>
-        </div>
+        <BrandMark showTagline />
+        <h1 id="login-title" className="login-panel__title">تسجيل الدخول</h1>
 
         <form className="login-form" onSubmit={(event) => void handleSubmit(event)}>
           <label>

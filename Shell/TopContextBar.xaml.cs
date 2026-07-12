@@ -4,10 +4,12 @@ using ERPSystem.Core;
 using ERPSystem.Services;
 using ERPSystem.Services.Search;
 using ERPSystem.Services.Settings;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace ERPSystem.Shell
@@ -198,6 +200,7 @@ namespace ERPSystem.Shell
                 _languageSubscribed = true;
             }
             InitializeBranchSelector();
+            LoadCompanyLogo();
             UpdateClock();
             _clockTimer.Start();
             UpdateLabels();
@@ -271,10 +274,33 @@ namespace ERPSystem.Shell
             UpdateClock();
         }
 
+        private void LoadCompanyLogo()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Brand", "company-logo.png");
+            if (!File.Exists(path))
+            {
+                ImgCompanyLogo.Visibility = Visibility.Collapsed;
+                LogoFallback.Visibility = Visibility.Visible;
+                return;
+            }
+
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.UriSource = new Uri(path, UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+
+            ImgCompanyLogo.Source = image;
+            ImgCompanyLogo.Visibility = Visibility.Visible;
+            LogoFallback.Visibility = Visibility.Collapsed;
+        }
+
         private void UpdateLabels()
         {
             var loc = LocalizationManager.Instance;
             TxtCompanyName.Text = loc["CompanyName"];
+            TxtCompanyTagline.Text = loc["CompanyTagline"];
             TxtBranchLabel.Text = loc.IsArabic ? "الفرع:" : "Branch:";
             TxtLangToggle.Text = loc["Language"];
             TxtSearch.Text = string.Empty;
@@ -298,9 +324,12 @@ namespace ERPSystem.Shell
         private void BtnSettingsQuick_Click(object sender, RoutedEventArgs e) =>
             SettingsRequested?.Invoke(this, EventArgs.Empty);
 
-        private void BtnUserProfile_Click(object sender, RoutedEventArgs e) =>
+        private void BtnUserProfile_Click(object sender, RoutedEventArgs e)
+        {
+            var company = LocalizationManager.Instance["CompanyName"];
             MockInteractionService.ShowInfo(
-                "مدير النظام\nمسؤول — شركة الحمصي لاستيراد الأقمشة\n\nتعديل الملف الشخصي سيتم تفعيله مع إدارة المستخدمين.",
+                $"مدير النظام\nمسؤول — {company}\n\nتعديل الملف الشخصي سيتم تفعيله مع إدارة المستخدمين.",
                 "الملف الشخصي");
+        }
     }
 }

@@ -82,11 +82,62 @@ svg {
   flex-shrink: 0;
 }
 
+.app-header__titles {
+  min-width: 0;
+}
+
 .app-header__company {
   margin: 0 0 6px;
   color: rgba(255, 255, 255, 0.76);
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block-end: 10px;
+}
+
+.brand-mark--compact {
+  margin-block-end: 8px;
+}
+
+.brand-mark__logo {
+  flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+}
+
+.brand-mark__text {
+  min-width: 0;
+}
+
+.brand-mark__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.brand-mark--compact .brand-mark__name {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.95rem;
+}
+
+.brand-mark__tagline {
+  display: block;
+  margin-block-start: 2px;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.login-panel__title {
+  margin: 0 0 22px;
+  font-size: 1.55rem;
 }
 
 .app-header h1 {

@@ -15,20 +15,23 @@
 
             <!-- Right (RTL start): Logo + company + date -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <Border Width="40" Height="40" CornerRadius="8"
-                        Background="{StaticResource PrimaryBrush}" Margin="0,0,12,0">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="ERP" FontSize="9" FontWeight="Bold" Foreground="White"
-                                   HorizontalAlignment="Center" FontFamily="Segoe UI, Tahoma, Arial"/>
-                        <TextBlock Text="PRO" FontSize="8" FontWeight="SemiBold" Foreground="#BFDBFE"
-                                   HorizontalAlignment="Center" FontFamily="Segoe UI, Tahoma, Arial"/>
-                    </StackPanel>
+                <Image x:Name="ImgCompanyLogo" Width="40" Height="40" Margin="0,0,12,0"
+                       Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                <Border x:Name="LogoFallback" Width="40" Height="40" CornerRadius="8"
+                        Background="{StaticResource PrimaryBrush}" Margin="0,0,12,0"
+                        Visibility="Collapsed">
+                    <TextBlock Text="AB" FontSize="13" FontWeight="Bold" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontFamily="Segoe UI, Tahoma, Arial"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock x:Name="TxtCompanyName" Text="شركة الحمصي لاستيراد الأقمشة"
+                    <TextBlock x:Name="TxtCompanyName" Text="الأمل.AB"
                                FontSize="14" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                FontFamily="Segoe UI, Tahoma, Arial"/>
+                    <TextBlock x:Name="TxtCompanyTagline" Text="تجارة أقمشة الجينز — جملة"
+                               FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                               FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,0,2"/>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock x:Name="TxtBranchLabel" Text="الفرع:"
                                    FontSize="11" Foreground="{StaticResource TextMutedBrush}"
