@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Expenses;
 using ERPSystem.Controls.Expenses;
 using ERPSystem.Controls.Expenses.Popups;
+using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Dialogs;
 using ERPSystem.Domain.Enums;
@@ -67,6 +68,11 @@ public static class ExpensePopupService
 
             case EntityActionId.ExpenseTimeline:
                 return ShowOperationsCenter(expense, "Timeline");
+
+            case EntityActionId.ExpenseEntryLog:
+                ExpenseNavigationContext.BeginEntriesFor(expense.Id);
+                MockInteractionService.Navigate(AppModule.Expenses, "Entries");
+                return true;
 
             case EntityActionId.ExpenseExportPdf:
             case EntityActionId.ExpenseExportExcel:

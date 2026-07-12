@@ -93,6 +93,7 @@ namespace ERPSystem.Core.Actions
         ExpenseCancel,
         ExpenseTimeline,
         ExpenseOperationsCenter,
+        ExpenseEntryLog,
         ExpenseExportPdf,
         ExpenseExportExcel,
         ExpensePrint,

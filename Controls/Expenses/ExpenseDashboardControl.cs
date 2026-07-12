@@ -131,7 +131,7 @@ public sealed class ExpenseDashboardControl : UserControl
             Style = S("PrimaryButtonStyle"),
             Margin = new Thickness(0, 0, 8, 0)
         };
-        listBtn.Click += (_, _) => MockInteractionService.Navigate(AppModule.Expenses, "List");
+        listBtn.Click += (_, _) => MockInteractionService.Navigate(AppModule.Expenses, "Entries");
         var newBtn = new Button { Content = "قيد مصروف جديد", Style = S("SecondaryButtonStyle") };
         newBtn.Click += (_, _) => ExpensePopupService.ShowEntry();
         actions.Children.Add(listBtn);

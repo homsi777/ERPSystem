@@ -29,6 +29,7 @@ public static class ExpenseContextMenuService
         {
             FlowDirection = FlowDirection.RightToLeft,
             MinWidth = 220,
+            MaxHeight = 520,
             Padding = new Thickness(4),
             Background = (Brush)System.Windows.Application.Current.Resources["SurfaceBrush"]!,
             BorderBrush = (Brush)System.Windows.Application.Current.Resources["BorderBrush"]!,
@@ -158,6 +159,7 @@ public static class ExpenseContextMenuService
                 or EntityActionId.ExpenseAttachments
                 or EntityActionId.ExpenseAuditHistory
                 or EntityActionId.ExpenseTimeline
+                or EntityActionId.ExpenseEntryLog
                 or EntityActionId.ExpenseExportPdf
                 or EntityActionId.ExpenseExportExcel
                 or EntityActionId.ExpensePrint
@@ -170,6 +172,7 @@ public static class ExpenseContextMenuService
                 or EntityActionId.ExpenseDetails
                 or EntityActionId.ExpenseAuditHistory
                 or EntityActionId.ExpenseTimeline
+                or EntityActionId.ExpenseEntryLog
                 or EntityActionId.ExpenseExportPdf
                 or EntityActionId.ExpenseExportExcel
                 or EntityActionId.ExpensePrint

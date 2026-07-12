@@ -18,6 +18,7 @@ public static class ExpenseNavigationContext
     public static Guid? WorkspaceExpenseId { get; set; }
     public static string? WorkspaceInitialTab { get; set; }
     public static Guid? PreselectedExpenseId { get; set; }
+    public static Guid? EntriesFilterExpenseId { get; set; }
 
     public static void BeginCreate() => EditExpenseId = null;
 
@@ -25,7 +26,16 @@ public static class ExpenseNavigationContext
 
     public static void BeginEntryFor(Guid expenseId) => PreselectedExpenseId = expenseId;
 
+    public static void BeginEntriesFor(Guid expenseId) => EntriesFilterExpenseId = expenseId;
+
     public static void ClearPreselection() => PreselectedExpenseId = null;
+
+    public static Guid? TakeEntriesFilter()
+    {
+        var id = EntriesFilterExpenseId;
+        EntriesFilterExpenseId = null;
+        return id;
+    }
 
     public static void BeginWorkspace(Guid expenseId, string? tab = null)
     {

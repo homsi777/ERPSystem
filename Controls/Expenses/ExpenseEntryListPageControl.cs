@@ -186,7 +186,17 @@ public sealed class ExpenseEntryListPageControl : UserControl
             items.AddRange(defs.Value?.Items ?? []);
             _expenseFilter.ItemsSource = items;
             _expenseFilter.DisplayMemberPath = nameof(ExpenseListDto.Name);
-            _expenseFilter.SelectedIndex = 0;
+
+            var filterExpenseId = ExpenseNavigationContext.TakeEntriesFilter();
+            if (filterExpenseId is Guid expenseId)
+            {
+                var match = items.FindIndex(i => i.Id == expenseId);
+                _expenseFilter.SelectedIndex = match >= 0 ? match : 0;
+            }
+            else
+            {
+                _expenseFilter.SelectedIndex = 0;
+            }
         }
         await LoadAsync();
     }
