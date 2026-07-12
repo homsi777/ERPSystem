@@ -13,6 +13,7 @@ public static class AppCulture
     private const string LatinLanguageTag = "en-US";
 
     public static CultureInfo ArabicWithLatinDigits { get; } = CreateArabicWithLatinDigits();
+    public static CultureInfo ArabicGregorianWithLatinDigits { get; } = CreateArabicGregorianWithLatinDigits();
 
     public static CultureInfo FormatCulture => Thread.CurrentThread.CurrentCulture;
 
@@ -51,6 +52,14 @@ public static class AppCulture
     private static CultureInfo CreateArabicWithLatinDigits()
     {
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-SA").Clone();
+        culture.NumberFormat = (NumberFormatInfo)CultureInfo.GetCultureInfo(LatinLanguageTag).NumberFormat.Clone();
+        return culture;
+    }
+
+    private static CultureInfo CreateArabicGregorianWithLatinDigits()
+    {
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
+        culture.DateTimeFormat.Calendar = new GregorianCalendar();
         culture.NumberFormat = (NumberFormatInfo)CultureInfo.GetCultureInfo(LatinLanguageTag).NumberFormat.Clone();
         return culture;
     }

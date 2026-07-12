@@ -256,8 +256,12 @@ namespace ERPSystem.Shell
 
             if (loc.IsArabic)
             {
-                TxtCurrentDate.Text = now.ToString("dddd، d MMMM yyyy", AppCulture.ArabicWithLatinDigits);
-                TxtCurrentTime.Text = now.ToString("hh:mm:ss tt", AppCulture.ArabicWithLatinDigits);
+                TxtCurrentDate.Text = now.ToString(
+                    "dddd، d MMMM yyyy",
+                    AppCulture.ArabicGregorianWithLatinDigits);
+                TxtCurrentTime.Text = now.ToString(
+                    "hh:mm:ss tt",
+                    AppCulture.ArabicGregorianWithLatinDigits);
             }
             else
             {
