@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './auth/ProtectedRoute.tsx';
+import { AuthEntryGate } from './components/AuthEntryGate.tsx';
 import { LoginPage } from './pages/Login.tsx';
 import { InventoryPage } from './pages/Inventory.tsx';
 import { InventoryMovementsPage } from './pages/InventoryMovements.tsx';
@@ -13,7 +14,8 @@ import { AccountingPage } from './pages/Accounting.tsx';
 
 export function App() {
   return (
-    <Routes>
+    <AuthEntryGate>
+      <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Navigate to="/home" replace />} />
@@ -43,6 +45,7 @@ export function App() {
         <Route path="/accounting/journal/:entryId" element={<AccountingPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />
-    </Routes>
+      </Routes>
+    </AuthEntryGate>
   );
 }

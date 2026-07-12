@@ -25,8 +25,10 @@ type AuthContextValue = {
   user: AuthenticatedUserDto | null;
   isAuthenticated: boolean;
   isBootstrapping: boolean;
-  login: (request: LoginRequest) => Promise<void>;
+  entrySplashPending: boolean;
+  login: (request: LoginRequest, redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
+  completeEntrySplash: () => void;
   can: (permission: string) => boolean;
 };
 
@@ -36,6 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [user, setUser] = useState<AuthenticatedUserDto | null>(() => getStoredUser());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [entrySplashPending, setEntrySplashPending] = useState(false);
+  const [postSplashRedirect, setPostSplashRedirect] = useState<string | null>(null);
 
   const clearAuth = useCallback(() => {
     clearStoredAuth();
@@ -117,17 +121,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('erp-auth-expired', handleExpired);
   }, [clearAuth, navigate]);
 
-  const login = useCallback(async (request: LoginRequest) => {
+  const login = useCallback(async (request: LoginRequest, redirectTo = '/home') => {
     const response = await loginRequest(request);
     setAccessToken(response.accessToken);
     setRefreshToken(response.refreshToken);
     setStoredUser(response.user);
     setUser(response.user);
+    setPostSplashRedirect(redirectTo);
+    setEntrySplashPending(true);
   }, []);
+
+  const completeEntrySplash = useCallback(() => {
+    setEntrySplashPending(false);
+    if (postSplashRedirect) {
+      navigate(postSplashRedirect, { replace: true });
+      setPostSplashRedirect(null);
+    }
+  }, [navigate, postSplashRedirect]);
 
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
     clearAuth();
+    setEntrySplashPending(false);
+    setPostSplashRedirect(null);
     if (refreshToken) {
       try {
         await logoutRequest(refreshToken);
@@ -148,11 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated: Boolean(user),
       isBootstrapping,
+      entrySplashPending,
       login,
       logout,
+      completeEntrySplash,
       can
     }),
-    [can, isBootstrapping, login, logout, user]
+    [can, completeEntrySplash, entrySplashPending, isBootstrapping, login, logout, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

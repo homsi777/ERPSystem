@@ -1,17 +1,21 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { LoadingState } from '../components/LoadingState.tsx';
 import { useAuth } from './AuthContext.tsx';
+import { canAccessWebModule, WEB_MODULES } from './moduleAccess.ts';
 
 export function ProtectedRoute() {
-  const { isAuthenticated, isBootstrapping } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const location = useLocation();
-
-  if (isBootstrapping) {
-    return <LoadingState label="جاري تجهيز الجلسة..." fullScreen />;
-  }
+  const permissions = user?.permissions ?? [];
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  const module = WEB_MODULES.find((entry) =>
+    location.pathname === entry.route || location.pathname.startsWith(`${entry.route}/`));
+
+  if (module && !canAccessWebModule(permissions, module)) {
+    return <Navigate to="/home" replace />;
   }
 
   return <Outlet />;

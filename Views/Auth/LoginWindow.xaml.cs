@@ -75,7 +75,7 @@ public partial class LoginWindow : Window
 
             var user = result.Value;
             var currentUser = AppServices.GetRequiredService<ICurrentUserService>() as WpfCurrentUserService;
-            currentUser?.SetSession(user.UserId, user.Username, user.FullNameAr);
+            currentUser?.SetSession(user.UserId, user.Username, user.FullNameAr, user.Permissions);
 
             ShowSecuritySplash();
         }

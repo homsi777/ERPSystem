@@ -15,6 +15,7 @@ internal static class LoginSecuritySteps
         new("enter", "تفضل", "→")
     ];
 
-    internal const int StepDelayMs = 720;
-    internal const int FinalStepExtraMs = 420;
+    internal const int StepDelayMs = 1100;
+    internal const int FinalStepExtraMs = 600;
+    internal const int EnterPauseMs = 650;
 }

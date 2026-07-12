@@ -80,7 +80,9 @@ internal sealed class IdentityAdminRepository(ErpDbContext context) : IIdentityA
             .ToListAsync(cancellationToken);
 
         return permissions
+            .Where(p => PermissionModuleCatalog.IsAssignableModule(p.Module))
             .GroupBy(p => p.Module)
+            .OrderBy(g => PermissionModuleCatalog.GetModuleSortOrder(g.Key))
             .Select(g => new PermissionModuleGroupDto
             {
                 ModuleKey = g.Key,

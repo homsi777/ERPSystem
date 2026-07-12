@@ -16,15 +16,12 @@ export function LoginSecuritySplash({ onComplete }: LoginSecuritySplashProps) {
   useEffect(() => {
     let cancelled = false;
 
-    void runSecuritySplashSequence((index, step) => {
+    void runSecuritySplashSequence((index) => {
       if (cancelled) return;
       setActiveIndex(index);
       setCompletedThrough(index - 1);
-      if (step.id === 'enter') {
-        window.setTimeout(() => {
-          if (!cancelled) onComplete();
-        }, 420);
-      }
+    }).then(() => {
+      if (!cancelled) onComplete();
     });
 
     return () => {

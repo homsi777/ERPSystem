@@ -1,14 +1,11 @@
-import { useCallback, useState, type FormEvent } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useState, type FormEvent } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { ApiError } from '../api/client.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
-import { LoginSecuritySplash } from '../components/LoginSecuritySplash.tsx';
 
 type LocationState = {
   from?: string;
 };
-
-type LoginPhase = 'form' | 'splash';
 
 const FEATURES = [
   { icon: '⚡', tone: 'violet', title: 'مبيعات ومشتريات', desc: 'فواتير، اعتماد، وتتبع كامل' },
@@ -18,27 +15,16 @@ const FEATURES = [
 ] as const;
 
 export function LoginPage() {
-  const { isAuthenticated, login } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated, entrySplashPending, login } = useAuth();
   const location = useLocation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<LoginPhase>('form');
-  const [redirectTo, setRedirectTo] = useState('/home');
 
-  const finishSplash = useCallback(() => {
-    navigate(redirectTo, { replace: true });
-  }, [navigate, redirectTo]);
-
-  if (isAuthenticated && phase === 'form') {
+  if (isAuthenticated && !entrySplashPending) {
     return <Navigate to="/home" replace />;
-  }
-
-  if (phase === 'splash') {
-    return <LoginSecuritySplash onComplete={finishSplash} />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -47,10 +33,8 @@ export function LoginPage() {
     setError(null);
 
     try {
-      await login({ username, password });
       const state = location.state as LocationState | null;
-      setRedirectTo(state?.from ?? '/home');
-      setPhase('splash');
+      await login({ username, password }, state?.from ?? '/home');
     } catch (caught) {
       const message = caught instanceof ApiError ? caught.message : 'تعذر تسجيل الدخول.';
       setError(message);

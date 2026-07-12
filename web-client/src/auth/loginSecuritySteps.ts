@@ -14,7 +14,9 @@ export const LOGIN_SECURITY_STEPS: SecuritySplashStep[] = [
   { id: 'enter', text: 'تفضل', icon: '→' },
 ];
 
-export const LOGIN_SECURITY_STEP_MS = 720;
+export const LOGIN_SECURITY_STEP_MS = 550;
+export const LOGIN_SECURITY_FINAL_STEP_EXTRA_MS = 500;
+export const LOGIN_SECURITY_ENTER_PAUSE_MS = 500;
 
 export async function runSecuritySplashSequence(
   onStep: (index: number, step: SecuritySplashStep) => void,
@@ -22,7 +24,11 @@ export async function runSecuritySplashSequence(
 ): Promise<void> {
   for (let index = 0; index < LOGIN_SECURITY_STEPS.length; index += 1) {
     onStep(index, LOGIN_SECURITY_STEPS[index]!);
-    const delay = index === LOGIN_SECURITY_STEPS.length - 1 ? stepMs + 280 : stepMs;
+    const delay = index === LOGIN_SECURITY_STEPS.length - 1
+      ? stepMs + LOGIN_SECURITY_FINAL_STEP_EXTRA_MS
+      : stepMs;
     await new Promise((resolve) => window.setTimeout(resolve, delay));
   }
+
+  await new Promise((resolve) => window.setTimeout(resolve, LOGIN_SECURITY_ENTER_PAUSE_MS));
 }

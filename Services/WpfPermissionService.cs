@@ -7,7 +7,7 @@ public sealed class WpfPermissionService(PermissionService permissionService) : 
 {
     // TEMP (testing): full-access mode — every permission check passes.
     // To restore real role-based permissions, set BypassAllPermissions = false.
-    private const bool BypassAllPermissions = true;
+    private const bool BypassAllPermissions = false;
 
     public Task<bool> CanAsync(string permissionCode, CancellationToken cancellationToken = default) =>
         BypassAllPermissions

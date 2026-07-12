@@ -8,17 +8,24 @@ public sealed class WpfCurrentUserService : ICurrentUserService
     private Guid? _userId;
     private string? _username;
     private string? _fullNameAr;
+    private IReadOnlyList<string> _permissions = [];
 
     public Guid? UserId => _userId;
     public string? Username => _username;
     public string? FullNameAr => _fullNameAr;
+    public IReadOnlyList<string> Permissions => _permissions;
     public bool IsAuthenticated => _userId.HasValue;
 
-    public void SetSession(Guid userId, string username, string fullNameAr)
+    public void SetSession(
+        Guid userId,
+        string username,
+        string fullNameAr,
+        IReadOnlyList<string> permissions)
     {
         _userId = userId;
         _username = username;
         _fullNameAr = fullNameAr;
+        _permissions = permissions;
     }
 
     public void ClearSession()
@@ -26,6 +33,7 @@ public sealed class WpfCurrentUserService : ICurrentUserService
         _userId = null;
         _username = null;
         _fullNameAr = null;
+        _permissions = [];
     }
 }
 

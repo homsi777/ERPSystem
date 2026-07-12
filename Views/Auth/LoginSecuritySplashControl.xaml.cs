@@ -65,7 +65,14 @@ public partial class LoginSecuritySplashControl : UserControl
         _activeIndex++;
         if (_activeIndex >= LoginSecuritySteps.All.Length)
         {
-            Completed?.Invoke(this, EventArgs.Empty);
+            _timer?.Stop();
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(LoginSecuritySteps.EnterPauseMs) };
+            _timer.Tick += (_, _) =>
+            {
+                _timer.Stop();
+                Completed?.Invoke(this, EventArgs.Empty);
+            };
+            _timer.Start();
             return;
         }
 

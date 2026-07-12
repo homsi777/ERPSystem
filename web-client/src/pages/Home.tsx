@@ -8,10 +8,12 @@ import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
+import { visibleWebModules } from '../auth/moduleAccess.ts';
 import { formatDate, formatNumber } from '../lib/format.ts';
 
 export function HomePage() {
   const { user } = useAuth();
+  const shortcuts = visibleWebModules(user?.permissions ?? []).filter((module) => module.route !== '/home');
 
   const summaryQuery = useQuery({
     queryKey: ['dashboard', 'summary'],
@@ -45,37 +47,15 @@ export function HomePage() {
       ) : null}
 
       <section className="shortcut-grid" aria-label="اختصارات سريعة">
-        <Link className="shortcut-card" to="/inventory">
-          <Icon name="inventory" />
-          <span>المخزون</span>
-        </Link>
-        <Link className="shortcut-card" to="/sales">
-          <Icon name="sales" />
-          <span>فواتير البيع</span>
-        </Link>
-        <Link className="shortcut-card" to="/customers">
-          <Icon name="customers" />
-          <span>العملاء</span>
-        </Link>
-        <Link className="shortcut-card" to="/expenses">
-          <Icon name="expenses" />
-          <span>المصاريف</span>
-        </Link>
-        <Link className="shortcut-card" to="/accounting">
-          <Icon name="accounting" />
-          <span>المحاسبة</span>
-        </Link>
-        <Link className="shortcut-card" to="/china">
-          <Icon name="china" />
-          <span>طلبات الصين</span>
-        </Link>
-        <Link className="shortcut-card" to="/delivery">
-          <Icon name="delivery" />
-          <span>التسليم</span>
-          {summary && summary.awaitingDetailingCount > 0 ? (
-            <em className="shortcut-card__badge">{formatNumber(summary.awaitingDetailingCount)} بانتظار التفنيد</em>
-          ) : null}
-        </Link>
+        {shortcuts.map((module) => (
+          <Link className="shortcut-card" key={module.route} to={module.route}>
+            <Icon name={module.icon} />
+            <span>{module.label}</span>
+            {module.route === '/delivery' && summary && summary.awaitingDetailingCount > 0 ? (
+              <em className="shortcut-card__badge">{formatNumber(summary.awaitingDetailingCount)} بانتظار التفنيد</em>
+            ) : null}
+          </Link>
+        ))}
       </section>
 
       {summary && summary.recentActivity.length > 0 ? (

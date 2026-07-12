@@ -1,5 +1,7 @@
 using ERPSystem.Core;
 using ERPSystem.Core.Navigation;
+using ERPSystem.Services;
+using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Helpers;
 using System.Windows;
 using System.Windows.Controls;
@@ -75,8 +77,12 @@ namespace ERPSystem.Shell
 
         private IEnumerable<MenuDef> GetMenuDefinitions()
         {
+            var permissionCodes = GetCurrentPermissionCodes();
             foreach (var item in NavigationCatalog.TopLevel)
             {
+                if (!AppModuleAccess.CanAccess(item.Module, permissionCodes))
+                    continue;
+
                 var subs = NavigationCatalog.GetSubItems(item.Module);
                 if (item.Direct || subs.Count == 0)
                 {
@@ -433,6 +439,16 @@ namespace ERPSystem.Shell
             if (_overflowPopup == null) return;
             CloseAllDropdowns();
             _overflowPopup.IsOpen = !_overflowPopup.IsOpen;
+        }
+
+        private static IReadOnlyList<string> GetCurrentPermissionCodes()
+        {
+            if (!AppServices.IsInitialized)
+                return Array.Empty<string>();
+
+            return AppServices.GetRequiredService<ICurrentUserService>() is WpfCurrentUserService wpf
+                ? wpf.Permissions
+                : Array.Empty<string>();
         }
     }
 }
