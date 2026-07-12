@@ -5,15 +5,26 @@ using ERPSystem.Domain.Enums;
 using ERPSystem.Services;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ERPSystem.Services.Expenses;
 
 /// <summary>
-/// قائمة مهام المصروف — تظهر عند النقر بزر اليمين على بطاقة التعريف.
+/// قائمة مهام المصروف — تظهر عند النقر بزر اليمين على بطاقة التعريف أو القيد.
 /// </summary>
 public static class ExpenseContextMenuService
 {
+    private static readonly EntityActionId[] ExportActionOrder =
+    [
+        EntityActionId.ExpenseEntryLog,
+        EntityActionId.ExpenseExportPdf,
+        EntityActionId.ExpenseExportExcel,
+        EntityActionId.ExpensePrint,
+        EntityActionId.ExpenseShareReport
+    ];
+
     public static void Show(ExpenseListDto expense, UIElement placementTarget)
     {
         _ = ShowAsync(expense, placementTarget);
@@ -25,23 +36,47 @@ public static class ExpenseContextMenuService
         var actions = EntityActionRegistry.GetActions(EntityType.Expense);
         if (actions.Count == 0) return;
 
+        var exportActions = actions
+            .Where(a => ExportActionOrder.Contains(a.Id))
+            .OrderBy(a => Array.IndexOf(ExportActionOrder, a.Id))
+            .ToList();
+
+        var mainActions = actions.Where(a => !ExportActionOrder.Contains(a.Id)).ToList();
+
         var menu = new ContextMenu
         {
             FlowDirection = FlowDirection.RightToLeft,
             MinWidth = 220,
-            MaxHeight = 520,
+            MaxHeight = 480,
             Padding = new Thickness(4),
-            Background = (Brush)System.Windows.Application.Current.Resources["SurfaceBrush"]!,
-            BorderBrush = (Brush)System.Windows.Application.Current.Resources["BorderBrush"]!,
-            BorderThickness = new Thickness(1)
+            Background = Br("SurfaceBrush"),
+            BorderBrush = Br("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            Placement = PlacementMode.Custom,
+            CustomPopupPlacementCallback = (popupSize, _, _) =>
+            {
+                var mouse = Mouse.GetPosition(placementTarget);
+                var screen = placementTarget.PointToScreen(mouse);
+                var workArea = SystemParameters.WorkArea;
+                var openUp = screen.Y + popupSize.Height > workArea.Bottom;
+                var y = openUp ? Math.Max(0, mouse.Y - popupSize.Height) : mouse.Y;
+                return [new CustomPopupPlacement(new Point(mouse.X, y), PopupPrimaryAxis.None)];
+            }
         };
 
         menu.Items.Add(BuildExpenseHeader(expense));
         menu.Items.Add(new Separator());
 
+        var exportSubmenu = BuildExportSubmenu(expense, perms, exportActions);
+        var exportInserted = false;
+
         string? currentGroup = null;
-        foreach (var action in actions)
+        foreach (var action in mainActions)
         {
+            var enabled = IsActionEnabled(action.Id, expense, perms);
+            if (!enabled)
+                continue;
+
             if (action.GroupAr != currentGroup && action.GroupAr != null)
             {
                 if (menu.Items.Count > 2)
@@ -55,39 +90,79 @@ public static class ExpenseContextMenuService
                 currentGroup = null;
             }
 
-            var captured = action;
-            var enabled = IsActionEnabled(captured.Id, expense, perms);
-            var mi = new MenuItem
+            menu.Items.Add(BuildActionItem(action, expense, enabled: true));
+
+            if (action.Id == EntityActionId.ExpenseDetails && !exportInserted)
             {
-                Header = BuildMenuHeader(captured),
-                Tag = captured,
-                IsEnabled = enabled,
-                FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
-                FontSize = 13,
-                Padding = new Thickness(12, 8, 12, 8)
-            };
+                menu.Items.Add(new Separator());
+                menu.Items.Add(exportSubmenu);
+                exportInserted = true;
+            }
+        }
 
-            if (captured.IsDestructive)
-                mi.Foreground = (Brush)System.Windows.Application.Current.Resources["DangerBrush"]!;
-
-            mi.Click += (_, _) =>
-            {
-                if (!enabled) return;
-
-                var displayName = EntityDisplayNameResolver.Resolve(expense, EntityType.Expense);
-                if (captured.RequiresConfirmation &&
-                    !ConfirmationDialogService.ConfirmDangerous(captured.LabelAr, displayName))
-                    return;
-
-                ExpensePopupService.HandleAction(captured.Id, expense);
-            };
-
-            menu.Items.Add(mi);
+        if (!exportInserted)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(exportSubmenu);
         }
 
         menu.PlacementTarget = placementTarget;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
         menu.IsOpen = true;
+    }
+
+    private static MenuItem BuildExportSubmenu(
+        ExpenseListDto expense,
+        ExpenseMenuPermissions perms,
+        IReadOnlyList<EntityActionDefinition> exportActions)
+    {
+        var exportRoot = new MenuItem
+        {
+            Header = BuildMenuHeader("\uEDE1", "تصدير", destructive: false),
+            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
+            FontSize = 13,
+            Padding = new Thickness(12, 8, 12, 8)
+        };
+
+        var anyEnabled = false;
+        foreach (var action in exportActions)
+        {
+            var enabled = IsActionEnabled(action.Id, expense, perms);
+            anyEnabled |= enabled;
+            exportRoot.Items.Add(BuildActionItem(action, expense, enabled));
+        }
+
+        exportRoot.IsEnabled = anyEnabled || exportActions.Count == 0;
+        return exportRoot;
+    }
+
+    private static MenuItem BuildActionItem(EntityActionDefinition action, ExpenseListDto expense, bool enabled)
+    {
+        var mi = new MenuItem
+        {
+            Header = BuildMenuHeader(action),
+            Tag = action,
+            IsEnabled = enabled,
+            FontFamily = new FontFamily("Segoe UI, Tahoma, Arial"),
+            FontSize = 13,
+            Padding = new Thickness(12, 8, 12, 8)
+        };
+
+        if (action.IsDestructive)
+            mi.Foreground = Br("DangerBrush");
+
+        mi.Click += (_, _) =>
+        {
+            if (!enabled) return;
+
+            var displayName = EntityDisplayNameResolver.Resolve(expense, EntityType.Expense);
+            if (action.RequiresConfirmation &&
+                !ConfirmationDialogService.ConfirmDangerous(action.LabelAr, displayName))
+                return;
+
+            ExpensePopupService.HandleAction(action.Id, expense);
+        };
+
+        return mi;
     }
 
     private static MenuItem BuildExpenseHeader(ExpenseListDto expense)
@@ -98,14 +173,14 @@ public static class ExpenseContextMenuService
             Text = expense.Name,
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
-            Foreground = (Brush)System.Windows.Application.Current.Resources["TextPrimaryBrush"]!
+            Foreground = Br("TextPrimaryBrush")
         });
         sp.Children.Add(new TextBlock
         {
             Text = $"{expense.Code} • {expense.StatusDisplay} • {expense.CategoryKindDisplay}",
             FontSize = 11,
             Margin = new Thickness(0, 2, 0, 0),
-            Foreground = (Brush)System.Windows.Application.Current.Resources["TextMutedBrush"]!
+            Foreground = Br("TextMutedBrush")
         });
 
         return new MenuItem
@@ -124,26 +199,27 @@ public static class ExpenseContextMenuService
         FontWeight = FontWeights.SemiBold,
         FontSize = 11,
         Padding = new Thickness(12, 6, 12, 4),
-        Foreground = (Brush)System.Windows.Application.Current.Resources["TextMutedBrush"]!
+        Foreground = Br("TextMutedBrush")
     };
 
-    private static object BuildMenuHeader(EntityActionDefinition action)
+    private static object BuildMenuHeader(EntityActionDefinition action) =>
+        BuildMenuHeader(action.IconGlyph, action.LabelAr, action.IsDestructive);
+
+    private static object BuildMenuHeader(string glyph, string label, bool destructive)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
         sp.Children.Add(new TextBlock
         {
-            Text = action.IconGlyph,
+            Text = glyph,
             FontFamily = new FontFamily("Segoe MDL2 Assets"),
             FontSize = 14,
             Margin = new Thickness(0, 0, 10, 0),
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = action.IsDestructive
-                ? (Brush)System.Windows.Application.Current.Resources["DangerBrush"]!
-                : (Brush)System.Windows.Application.Current.Resources["TextSecondaryBrush"]!
+            Foreground = destructive ? Br("DangerBrush") : Br("TextSecondaryBrush")
         });
         sp.Children.Add(new TextBlock
         {
-            Text = action.LabelAr,
+            Text = label,
             VerticalAlignment = VerticalAlignment.Center
         });
         return sp;
@@ -208,6 +284,8 @@ public static class ExpenseContextMenuService
             await svc.CanArchiveAsync(),
             await svc.CanDeleteAsync());
     }
+
+    private static Brush Br(string key) => (Brush)System.Windows.Application.Current.Resources[key]!;
 
     private sealed record ExpenseMenuPermissions(
         bool CanEdit,
