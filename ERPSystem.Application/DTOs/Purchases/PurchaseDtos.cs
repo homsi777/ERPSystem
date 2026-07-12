@@ -16,6 +16,9 @@ public sealed class PurchaseInvoiceListDto
     public PurchaseInvoiceStatus Status { get; init; }
     public string StatusDisplay { get; init; } = "";
     public bool IsOverdue { get; init; }
+    public Guid? SourceContainerId { get; init; }
+    public string? SourceContainerNumber { get; init; }
+    public string SourceDisplay { get; init; } = "محلي";
 }
 
 public sealed class PurchaseInvoiceDetailsDto
@@ -43,6 +46,9 @@ public sealed class PurchaseInvoiceDetailsDto
     public string? Notes { get; init; }
     public DateTime? PostedAt { get; init; }
     public bool IsReadOnly { get; init; }
+    public Guid? SourceContainerId { get; init; }
+    public string? SourceContainerNumber { get; init; }
+    public bool IsFromChinaContainer => SourceContainerId.HasValue;
     public IReadOnlyList<PurchaseInvoiceLineDto> Lines { get; init; } = [];
 }
 

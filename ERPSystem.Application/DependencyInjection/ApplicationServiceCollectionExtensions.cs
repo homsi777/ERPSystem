@@ -51,6 +51,7 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IDomainEventDispatcher, DomainEvents.DomainEventDispatcher>();
+        services.AddScoped<IChinaContainerPurchaseBridgeService, ChinaContainerPurchaseBridgeService>();
         services.AddScoped<PermissionService>();
         services.AddScoped<IPermissionService>(sp => sp.GetRequiredService<PermissionService>());
         services.AddSingleton<ISalesTaxEngine, Tax.SalesTaxEngine>();
@@ -115,6 +116,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CreatePurchaseReturnCommand, ApplicationResult<Guid>>, CreatePurchaseReturnHandler>();
         services.AddScoped<ICommandHandler<UpdatePurchaseReturnDraftCommand, ApplicationResult>, UpdatePurchaseReturnDraftHandler>();
         services.AddScoped<ICommandHandler<PostPurchaseReturnCommand, ApplicationResult<string>>, PostPurchaseReturnHandler>();
+        services.AddScoped<ICommandHandler<BackfillChinaContainerPurchaseInvoicesCommand, ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>>, BackfillChinaContainerPurchaseInvoicesHandler>();
     }
 
     private static void RegisterExpenseHandlers(IServiceCollection services)

@@ -21,6 +21,10 @@ public interface IPurchaseInvoiceRepository
     Task AddAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default);
     Task UpdateAsync(PurchaseInvoice invoice, CancellationToken cancellationToken = default);
 
+    Task<PurchaseInvoice?> GetBySourceContainerIdAsync(
+        Guid sourceContainerId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyDictionary<Guid, string>> GetInvoiceNumberLookupAsync(
         IEnumerable<Guid> invoiceIds,
         CancellationToken cancellationToken = default);

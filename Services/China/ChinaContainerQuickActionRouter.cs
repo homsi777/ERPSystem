@@ -3,9 +3,11 @@ using ERPSystem.Controls.China;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
+using ERPSystem.Core.Purchases;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Helpers;
 using ERPSystem.Services.China;
+using ERPSystem.Services.Purchases;
 using ERPSystem.Services.Reports;
 using System.Windows.Controls;
 
@@ -45,6 +47,9 @@ public static class ChinaContainerQuickActionRouter
                 return true;
             case "china:Documentation":
                 ContainerDocumentationPopupService.Show(row);
+                return true;
+            case "china:PurchaseInvoice":
+                _ = OpenLinkedPurchaseInvoiceAsync(row.Id);
                 return true;
             case "nav:ChinaImport:NewImport":
                 ChinaImportNavigation.Navigate("NewImport");
@@ -113,13 +118,36 @@ public static class ChinaContainerQuickActionRouter
             {
                 ContainerListRefreshHub.RequestRefresh();
                 ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.OperationsCenter);
-                MockInteractionService.ShowSuccess("تم اعتماد الحاوية بنجاح.", "اعتماد الحاوية");
+                MockInteractionService.ShowSuccess(
+                    "تم اعتماد الحاوية وإنشاء فاتورة الشراء في المشتريات.",
+                    "اعتماد الحاوية");
             }
         }
         catch (Exception ex)
         {
             MockInteractionService.ShowWarning($"تعذّر اعتماد الحاوية.\n\n{ex.Message}", "اعتماد الحاوية");
         }
+    }
+
+    private static async Task OpenLinkedPurchaseInvoiceAsync(Guid containerId)
+    {
+        if (!AppServices.IsInitialized)
+            return;
+
+        var result = await PurchaseUiService.Instance.GetInvoiceBySourceContainerAsync(containerId);
+        if (!ApplicationResultPresenter.Present(result))
+            return;
+
+        if (result.Value is null)
+        {
+            MockInteractionService.ShowWarning(
+                "لا توجد فاتورة شراء مرتبطة بهذه الحاوية بعد.\n\n" +
+                "تُنشأ تلقائياً عند الاعتماد، أو عبر «ربط حاويات معتمدة» من قائمة المشتريات.",
+                "فاتورة الشراء");
+            return;
+        }
+
+        PurchaseActionRouter.OpenOperationsCenter(PurchaseListRow.FromDto(result.Value));
     }
 
     private static async Task ArchiveAsync(Guid containerId)

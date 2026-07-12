@@ -10,7 +10,8 @@ namespace ERPSystem.Application.UseCases.Queries;
 
 public sealed class GetPurchaseInvoiceListHandler(
     IPurchaseInvoiceRepository invoiceRepository,
-    ISupplierRepository supplierRepository)
+    ISupplierRepository supplierRepository,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetPurchaseInvoiceListQuery, ApplicationResult<IReadOnlyList<PurchaseInvoiceListDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<PurchaseInvoiceListDto>>> HandleAsync(
@@ -24,21 +25,40 @@ public sealed class GetPurchaseInvoiceListHandler(
         var supplierNames = await supplierRepository.GetNameLookupAsync(
             query.CompanyId, supplierIds, cancellationToken);
 
-        var rows = invoices.Select(i => new PurchaseInvoiceListDto
+        var containerIds = invoices
+            .Where(i => i.SourceContainerId.HasValue)
+            .Select(i => i.SourceContainerId!.Value)
+            .Distinct();
+        var containerNumbers = containerIds.Any()
+            ? await containerRepository.GetNumberLookupAsync(query.CompanyId, containerIds, cancellationToken)
+            : new Dictionary<Guid, string>();
+
+        var rows = invoices.Select(i =>
         {
-            Id = i.Id,
-            InvoiceNumber = i.InvoiceNumber,
-            InvoiceDate = i.InvoiceDate,
-            DueDate = i.DueDate,
-            SupplierId = i.SupplierId,
-            SupplierName = supplierNames.GetValueOrDefault(i.SupplierId, "—"),
-            TotalAmount = i.TotalAmount.Amount,
-            PaidAmount = i.PaidAmount.Amount,
-            RemainingAmount = i.Remaining.Amount,
-            Status = i.Status,
-            StatusDisplay = i.Status.ToStatusDisplay(),
-            IsOverdue = i.DueDate.Date < DateTime.Today &&
-                        i.Status is not (PurchaseInvoiceStatus.Paid or PurchaseInvoiceStatus.Cancelled or PurchaseInvoiceStatus.Draft)
+            var containerNumber = i.SourceContainerId.HasValue
+                ? containerNumbers.GetValueOrDefault(i.SourceContainerId.Value)
+                : null;
+            return new PurchaseInvoiceListDto
+            {
+                Id = i.Id,
+                InvoiceNumber = i.InvoiceNumber,
+                InvoiceDate = i.InvoiceDate,
+                DueDate = i.DueDate,
+                SupplierId = i.SupplierId,
+                SupplierName = supplierNames.GetValueOrDefault(i.SupplierId, "—"),
+                TotalAmount = i.TotalAmount.Amount,
+                PaidAmount = i.PaidAmount.Amount,
+                RemainingAmount = i.Remaining.Amount,
+                Status = i.Status,
+                StatusDisplay = i.Status.ToStatusDisplay(),
+                IsOverdue = i.DueDate.Date < DateTime.Today &&
+                            i.Status is not (PurchaseInvoiceStatus.Paid or PurchaseInvoiceStatus.Cancelled or PurchaseInvoiceStatus.Draft),
+                SourceContainerId = i.SourceContainerId,
+                SourceContainerNumber = containerNumber,
+                SourceDisplay = i.IsFromChinaContainer
+                    ? $"حاوية {containerNumber ?? "—"}"
+                    : "محلي"
+            };
         }).ToList();
 
         return ApplicationResult<IReadOnlyList<PurchaseInvoiceListDto>>.Success(rows);
@@ -49,7 +69,8 @@ public sealed class GetPurchaseInvoiceDetailsHandler(
     IPurchaseInvoiceRepository invoiceRepository,
     ISupplierRepository supplierRepository,
     IWarehouseRepository warehouseRepository,
-    IFabricCatalogRepository fabricCatalog)
+    IFabricCatalogRepository fabricCatalog,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetPurchaseInvoiceDetailsQuery, ApplicationResult<PurchaseInvoiceDetailsDto>>
 {
     public async Task<ApplicationResult<PurchaseInvoiceDetailsDto>> HandleAsync(
@@ -66,6 +87,14 @@ public sealed class GetPurchaseInvoiceDetailsHandler(
         {
             var wh = await warehouseRepository.GetByIdAsync(whId, cancellationToken);
             warehouseName = wh?.Warehouse.NameAr;
+        }
+
+        string? sourceContainerNumber = null;
+        if (invoice.SourceContainerId is Guid containerId)
+        {
+            var lookup = await containerRepository.GetNumberLookupAsync(
+                invoice.CompanyId, [containerId], cancellationToken);
+            sourceContainerNumber = lookup.GetValueOrDefault(containerId);
         }
 
         var lineDtos = new List<PurchaseInvoiceLineDto>();
@@ -118,6 +147,8 @@ public sealed class GetPurchaseInvoiceDetailsHandler(
             Notes = invoice.Notes,
             PostedAt = invoice.PostedAt,
             IsReadOnly = invoice.Status != PurchaseInvoiceStatus.Draft,
+            SourceContainerId = invoice.SourceContainerId,
+            SourceContainerNumber = sourceContainerNumber,
             Lines = lineDtos
         });
     }

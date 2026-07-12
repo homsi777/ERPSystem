@@ -311,6 +311,9 @@ internal sealed class PurchaseInvoiceConfiguration : IEntityTypeConfiguration<Pu
         builder.HasKey(x => x.Id);
         builder.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceNumber }).IsUnique();
+        builder.HasIndex(x => x.SourceContainerId)
+            .IsUnique()
+            .HasFilter("\"SourceContainerId\" IS NOT NULL");
     }
 }
 

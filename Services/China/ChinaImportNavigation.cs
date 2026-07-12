@@ -1,9 +1,11 @@
+using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls.China;
 using ERPSystem.Core;
 using ERPSystem.Core.Actions;
 using ERPSystem.Core.ChinaImport;
 using ERPSystem.Core.Workspace;
 using ERPSystem.Domain.Enums;
+using ERPSystem.Helpers;
 using ERPSystem.Services.China;
 
 namespace ERPSystem.Services;
@@ -43,5 +45,33 @@ public static class ChinaImportNavigation
     {
         ChinaImportNavigationContext.SetActiveContainer(row.Id);
         Navigate(ChinaImportWorkflow.ResolveRouteForStatus(row.Status), row.Status);
+    }
+
+    public static async Task OpenOperationsCenterByIdAsync(Guid containerId)
+    {
+        if (!AppServices.IsInitialized)
+            return;
+
+        var result = await ContainerUiService.Instance.GetOperationsCenterAsync(containerId);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+        {
+            MockInteractionService.ShowWarning("تعذّر فتح الحاوية المرتبطة.", "استيراد الصين");
+            return;
+        }
+
+        var c = result.Value.Container;
+        var row = ContainerListRow.FromDto(new ContainerListDto
+        {
+            Id = c.Id,
+            ContainerNumber = c.ContainerNumber,
+            Status = c.Status,
+            ShipmentDate = c.ShipmentDate,
+            ExpectedArrival = c.ArrivalDate,
+            TotalRolls = c.TotalRolls,
+            TotalMeters = c.TotalMeters,
+            TotalWeightKg = c.TotalWeightKg,
+            SupplierName = c.SupplierName
+        });
+        OpenOperationsCenter(row);
     }
 }

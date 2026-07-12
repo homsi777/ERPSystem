@@ -21,6 +21,18 @@ internal sealed class PurchaseInvoiceRepository(ErpDbContext context) : IPurchas
         return PurchaseMapper.ToDomain(header, items);
     }
 
+    public async Task<PurchaseInvoice?> GetBySourceContainerIdAsync(
+        Guid sourceContainerId,
+        CancellationToken cancellationToken = default)
+    {
+        var header = await context.PurchaseInvoices.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.SourceContainerId == sourceContainerId && !p.IsArchived, cancellationToken);
+        if (header is null) return null;
+        var items = await context.PurchaseInvoiceItems.AsNoTracking()
+            .Where(i => i.PurchaseInvoiceId == header.Id).ToListAsync(cancellationToken);
+        return PurchaseMapper.ToDomain(header, items);
+    }
+
     public async Task<PurchaseInvoice?> GetByNumberAsync(Guid companyId, string invoiceNumber, CancellationToken cancellationToken = default)
     {
         var header = await context.PurchaseInvoices.AsNoTracking()

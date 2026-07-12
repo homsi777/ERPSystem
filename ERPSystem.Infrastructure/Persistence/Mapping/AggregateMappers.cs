@@ -641,6 +641,7 @@ internal static class PurchaseMapper
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.Notes), header.Notes);
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.PostedAt), header.PostedAt);
         DomainHydrator.Set(invoice, nameof(PurchaseInvoice.PostedByUserId), header.PostedByUserId);
+        DomainHydrator.Set(invoice, nameof(PurchaseInvoice.SourceContainerId), header.SourceContainerId);
 
         var domainItems = new List<PurchaseInvoiceItem>();
         foreach (var item in items)
@@ -688,6 +689,7 @@ internal static class PurchaseMapper
         Notes = invoice.Notes,
         PostedAt = invoice.PostedAt,
         PostedByUserId = invoice.PostedByUserId,
+        SourceContainerId = invoice.SourceContainerId,
         CreatedAt = DateTime.UtcNow,
         IsActive = true
     };
@@ -710,6 +712,7 @@ internal static class PurchaseMapper
         entity.Notes = invoice.Notes;
         entity.PostedAt = invoice.PostedAt;
         entity.PostedByUserId = invoice.PostedByUserId;
+        entity.SourceContainerId = invoice.SourceContainerId;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 

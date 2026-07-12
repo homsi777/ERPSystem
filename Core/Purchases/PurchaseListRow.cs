@@ -15,6 +15,9 @@ public sealed class PurchaseListRow
     public decimal RemainingAmount { get; init; }
     public string StatusDisplay { get; init; } = "";
     public bool IsOverdue { get; init; }
+    public Guid? SourceContainerId { get; init; }
+    public string? SourceContainerNumber { get; init; }
+    public string SourceDisplay { get; init; } = "محلي";
 
     public static PurchaseListRow FromDto(PurchaseInvoiceListDto dto) => new()
     {
@@ -27,6 +30,9 @@ public sealed class PurchaseListRow
         PaidAmount = dto.PaidAmount,
         RemainingAmount = dto.RemainingAmount,
         StatusDisplay = dto.StatusDisplay,
-        IsOverdue = dto.IsOverdue
+        IsOverdue = dto.IsOverdue,
+        SourceContainerId = dto.SourceContainerId,
+        SourceContainerNumber = dto.SourceContainerNumber,
+        SourceDisplay = dto.SourceDisplay
     };
 }

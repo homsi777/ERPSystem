@@ -183,6 +183,9 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         if (data.CanMoveToWarehouse)
             actions.Add(Q("تحويل للمخزن", false, null, actionKey: "china:MoveToWarehouse"));
 
+        if (data.LinkedPurchaseInvoiceId is Guid)
+            actions.Add(Q("فاتورة الشراء", false, null, actionKey: "china:PurchaseInvoice"));
+
         if (row.Status is not ChinaContainerStatus.Archived and not ChinaContainerStatus.Cancelled)
             actions.Add(Q("أرشفة", false, null, destructive: true, confirm: true, actionKey: "china:Archive"));
 

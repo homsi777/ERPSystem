@@ -22,6 +22,7 @@ public class PurchaseInvoiceEntity : CancellablePersistenceEntity
     public string? Notes { get; set; }
     public DateTime? PostedAt { get; set; }
     public Guid? PostedByUserId { get; set; }
+    public Guid? SourceContainerId { get; set; }
 }
 
 public class PurchaseInvoiceItemEntity : PersistenceEntity

@@ -174,7 +174,8 @@ public sealed class PostPurchaseInvoiceHandler(
         try
         {
             invoice.Post(command.UserId);
-            await inventoryService.PostPurchaseInvoiceStockAsync(invoice, cancellationToken);
+            if (!invoice.SourceContainerId.HasValue)
+                await inventoryService.PostPurchaseInvoiceStockAsync(invoice, cancellationToken);
             var entryNumber = await accountingService.PostPurchaseInvoiceAsync(
                 invoice, supplierAgg.Supplier.PayablesAccountId, cancellationToken);
             supplierAgg.Supplier.ApplyPostedPurchase(invoice.TotalAmount);
@@ -598,6 +599,42 @@ public sealed class UpdatePurchaseReturnDraftHandler(
         catch (Exception ex)
         {
             return ex.ToFailureResult();
+        }
+    }
+}
+
+public sealed class BackfillChinaContainerPurchaseInvoicesHandler(
+    IChinaContainerPurchaseBridgeService purchaseBridge,
+    IUnitOfWork unitOfWork,
+    IIntegratedAccountingService accountingService,
+    IPostingSaveCoordinator postingSaveCoordinator,
+    IPermissionService permissionService)
+    : ICommandHandler<BackfillChinaContainerPurchaseInvoicesCommand, ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>>
+{
+    public async Task<ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>> HandleAsync(
+        BackfillChinaContainerPurchaseInvoicesCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await permissionService.CanAsync("purchases.post", cancellationToken))
+            return ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>.PermissionDenied("Not allowed.");
+
+        try
+        {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            var result = await purchaseBridge.BackfillApprovedContainersAsync(
+                command.CompanyId, command.UserId, cancellationToken);
+
+            var recovery = accountingService.ConsumePendingPostingRequests();
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recovery, cancellationToken);
+
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
+            return ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
+            return ex.ToFailureResult<ChinaContainerPurchaseBridgeBackfillResult>();
         }
     }
 }

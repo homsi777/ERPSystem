@@ -1,6 +1,7 @@
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.Commands.Purchases;
 using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.DTOs.Purchases;
@@ -327,6 +328,60 @@ public sealed class PurchaseUiService
         var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<CancelPurchaseOrderCommand, ApplicationResult>>();
         return await handler.HandleAsync(new CancelPurchaseOrderCommand { OrderId = orderId }, cancellationToken);
     }
+
+    public async Task<ApplicationResult<PurchaseInvoiceListDto?>> GetInvoiceBySourceContainerAsync(
+        Guid sourceContainerId,
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IPurchaseInvoiceRepository>();
+        var containerRepo = scope.ServiceProvider.GetRequiredService<IChinaContainerRepository>();
+        var supplierRepo = scope.ServiceProvider.GetRequiredService<ISupplierRepository>();
+
+        var invoice = await repo.GetBySourceContainerIdAsync(sourceContainerId, cancellationToken);
+        if (invoice is null)
+            return ApplicationResult<PurchaseInvoiceListDto?>.Success(null);
+
+        var supplierNames = await supplierRepo.GetNameLookupAsync(
+            invoice.CompanyId, [invoice.SupplierId], cancellationToken);
+        var containerNumbers = await containerRepo.GetNumberLookupAsync(
+            invoice.CompanyId, [sourceContainerId], cancellationToken);
+        var containerNumber = containerNumbers.GetValueOrDefault(sourceContainerId);
+
+        return ApplicationResult<PurchaseInvoiceListDto?>.Success(new PurchaseInvoiceListDto
+        {
+            Id = invoice.Id,
+            InvoiceNumber = invoice.InvoiceNumber,
+            InvoiceDate = invoice.InvoiceDate,
+            DueDate = invoice.DueDate,
+            SupplierId = invoice.SupplierId,
+            SupplierName = supplierNames.GetValueOrDefault(invoice.SupplierId, "—"),
+            TotalAmount = invoice.TotalAmount.Amount,
+            PaidAmount = invoice.PaidAmount.Amount,
+            RemainingAmount = invoice.Remaining.Amount,
+            Status = invoice.Status,
+            StatusDisplay = invoice.Status.ToStatusDisplay(),
+            IsOverdue = invoice.DueDate.Date < DateTime.Today &&
+                        invoice.Status is not (PurchaseInvoiceStatus.Paid or PurchaseInvoiceStatus.Cancelled or PurchaseInvoiceStatus.Draft),
+            SourceContainerId = invoice.SourceContainerId,
+            SourceContainerNumber = containerNumber,
+            SourceDisplay = $"حاوية {containerNumber ?? "—"}"
+        });
+    }
+
+    public async Task<ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>> BackfillChinaContainerPurchaseInvoicesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<
+            ICommandHandler<BackfillChinaContainerPurchaseInvoicesCommand, ApplicationResult<ChinaContainerPurchaseBridgeBackfillResult>>>();
+        var user = scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+        return await handler.HandleAsync(new BackfillChinaContainerPurchaseInvoicesCommand
+        {
+            CompanyId = CompanyId,
+            UserId = user.UserId ?? Guid.Empty
+        }, cancellationToken);
+    }
 }
 
 public static class PurchaseActionRouter
@@ -368,6 +423,10 @@ public static class PurchaseActionRouter
                 return true;
             case "purchase:pdf":
                 _ = PrintAsync(row, exportPdf: true);
+                return true;
+            case "purchase:OpenContainer":
+                if (row.SourceContainerId is Guid containerId)
+                    _ = ChinaImportNavigation.OpenOperationsCenterByIdAsync(containerId);
                 return true;
             default:
                 return false;

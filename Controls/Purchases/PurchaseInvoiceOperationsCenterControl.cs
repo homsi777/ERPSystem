@@ -61,7 +61,12 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
             RemainingAmount = inv.RemainingAmount,
             Status = inv.Status,
             StatusDisplay = inv.StatusDisplay,
-            IsOverdue = data.IsOverdue
+            IsOverdue = data.IsOverdue,
+            SourceContainerId = inv.SourceContainerId,
+            SourceContainerNumber = inv.SourceContainerNumber,
+            SourceDisplay = inv.IsFromChinaContainer
+                ? $"حاوية {inv.SourceContainerNumber ?? "—"}"
+                : "محلي"
         });
 
         UIElement BuildLinesTab() => ErpUiFactory.Card(ErpUiFactory.BuildGrid(inv.Lines.Select(l => new
@@ -133,13 +138,7 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
                 Tab("Notes", "ملاحظات", BuildNotesTab),
                 Tab("Print", "معاينة الطباعة", () => OperationsCenterPrintPreviewFactory.Build(ocContext)),
             ],
-            QuickActions =
-            [
-                Q("تسجيل دفعة", inv.RemainingAmount > 0, null, actionKey: "ws:PurchasePayment"),
-                Q("طباعة", false, null, actionKey: "preview:PurchaseInvoice"),
-                Q("تصدير PDF", false, null, actionKey: "purchase:pdf"),
-                Q("تعديل", !inv.IsReadOnly, null, actionKey: "form:EditPurchaseInvoice"),
-            ],
+            QuickActions = BuildQuickActions(inv, row),
             Context = ocContext
         });
     }
@@ -156,7 +155,34 @@ public sealed class PurchaseInvoiceOperationsCenterControl : UserControl
         });
         sp.Children.Add(new TextBlock { Text = $"المستودع: {inv.WarehouseName ?? "—"}" });
         sp.Children.Add(new TextBlock { Text = $"مرجع المورد: {inv.SupplierReference ?? "—"}" });
+        if (inv.IsFromChinaContainer)
+        {
+            sp.Children.Add(new TextBlock
+            {
+                Text = $"مصدر الاستيراد: حاوية {inv.SourceContainerNumber ?? "—"} (جسر استيراد الصين ↔ المشتريات)",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 8, 0, 0)
+            });
+        }
         return ErpUiFactory.Card(sp);
+    }
+
+    private static IReadOnlyList<OperationsCenterQuickAction> BuildQuickActions(
+        PurchaseInvoiceDetailsDto inv,
+        PurchaseListRow row)
+    {
+        var actions = new List<OperationsCenterQuickAction>
+        {
+            Q("تسجيل دفعة", inv.RemainingAmount > 0, null, actionKey: "ws:PurchasePayment"),
+            Q("طباعة", false, null, actionKey: "preview:PurchaseInvoice"),
+            Q("تصدير PDF", false, null, actionKey: "purchase:pdf"),
+            Q("تعديل", !inv.IsReadOnly, null, actionKey: "form:EditPurchaseInvoice"),
+        };
+
+        if (inv.IsFromChinaContainer)
+            actions.Insert(1, Q("فتح الحاوية", false, null, actionKey: "purchase:OpenContainer"));
+
+        return actions;
     }
 
     private static OperationsCenterTab Tab(string key, string label, Func<UIElement> contentFactory) =>

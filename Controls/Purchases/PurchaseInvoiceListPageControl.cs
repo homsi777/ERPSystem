@@ -20,6 +20,12 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
     private readonly ErpListModuleControl _page = new();
     private readonly ComboBox _statusFilter = ErpUiFactory.FilterCombo(
         ["الكل", "مسودة", "مرحّلة", "مدفوعة جزئياً", "مدفوعة", "ملغاة"]);
+    private readonly Button _backfillButton = new()
+    {
+        Content = "ربط حاويات معتمدة",
+        Margin = new Thickness(0, 0, 8, 0),
+        Padding = new Thickness(12, 6, 12, 6)
+    };
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
     private string _pendingSearch = "";
 
@@ -29,9 +35,14 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
         _page.Configure(EntityType.PurchaseInvoice, AppModule.Purchases);
         _page.SetHeader("فواتير الشراء", "مشتريات الأقمشة والموردين", "\uE9F9", B("AccentOrdersBrush"));
         _page.SetPrimaryButton("فاتورة شراء جديدة");
-        _page.SetEmptyState("لا توجد فواتير مشتريات", "فاتورة شراء جديدة", "\uE9F9");
+        _page.SetEmptyState(
+            "لا توجد فواتير مشتريات. فواتير استيراد الصين تُنشأ تلقائياً عند اعتماد الحاوية — أو استخدم «ربط حاويات معتمدة» للحاويات السابقة.",
+            "فاتورة شراء جديدة",
+            "\uE9F9");
+        _backfillButton.SetResourceReference(StyleProperty, "SecondaryButtonStyle");
+        _backfillButton.Click += async (_, _) => await BackfillAsync();
+        _page.SetFilterExtras(_statusFilter, _backfillButton);
         _page.EnableServerSideSearch();
-        _page.SetFilterExtras(_statusFilter);
         _statusFilter.SelectionChanged += (_, _) => _ = LoadAsync(_pendingSearch);
         _page.PrimaryActionRequested += (_, _) =>
         {
@@ -63,6 +74,7 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
             ("رقم الفاتورة", nameof(PurchaseListRow.InvoiceNumber), 110, null),
             ("التاريخ", nameof(PurchaseListRow.InvoiceDate), 100, "yyyy/MM/dd"),
             ("المورد", nameof(PurchaseListRow.SupplierName), "*", null),
+            ("المصدر", nameof(PurchaseListRow.SourceDisplay), 120, null),
             ("الإجمالي", nameof(PurchaseListRow.TotalAmount), 100, "N2"),
             ("المدفوع", nameof(PurchaseListRow.PaidAmount), 90, "N2"),
             ("المتبقي", nameof(PurchaseListRow.RemainingAmount), 90, "N2"),
@@ -86,6 +98,43 @@ public sealed class PurchaseInvoiceListPageControl : UserControl
         PurchaseListRefreshHub.RefreshRequested -= OnRefreshRequested;
 
     private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync(_pendingSearch);
+
+    private async Task BackfillAsync()
+    {
+        if (!AppServices.IsInitialized)
+            return;
+
+        if (!MockInteractionService.Confirm(
+                "سيتم إنشاء فواتير شراء للحاويات المعتمدة التي لا تملك فاتورة مرتبطة.\n\n" +
+                "الحاويات التي سبق ترحيل قيودها المحاسبية لن يُكرّر قيد GL لها.",
+                "ربط حاويات معتمدة"))
+            return;
+
+        _page.SetLoadingState(true);
+        try
+        {
+            var result = await PurchaseUiService.Instance.BackfillChinaContainerPurchaseInvoicesAsync();
+            if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+                return;
+
+            var summary = result.Value;
+            var detail = summary.Messages.Count > 0
+                ? string.Join("\n", summary.Messages.Take(8))
+                : "—";
+            MockInteractionService.ShowSuccess(
+                $"تمت المعالجة: {summary.Processed}\n" +
+                $"أُنشئت: {summary.Created}\n" +
+                $"موجودة مسبقاً: {summary.SkippedExisting}\n" +
+                $"تخطي (لا مبلغ): {summary.SkippedNoAmount}\n\n{detail}",
+                "ربط حاويات معتمدة");
+            PurchaseListRefreshHub.RequestRefresh();
+            await LoadAsync(_pendingSearch);
+        }
+        finally
+        {
+            _page.SetLoadingState(false);
+        }
+    }
 
     private async Task LoadAsync(string search)
     {

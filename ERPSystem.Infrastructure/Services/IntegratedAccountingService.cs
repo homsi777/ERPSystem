@@ -197,12 +197,18 @@ internal sealed class IntegratedAccountingService(
         CancellationToken cancellationToken = default)
     {
         var lines = new List<(Guid AccountId, decimal Debit, decimal Credit, string Narrative, Guid? PartyId)>();
+        var inventoryDebitAccount = invoice.SourceContainerId.HasValue
+            ? AccountingAccountIds.LandingCostClearing
+            : AccountingAccountIds.InventoryAsset;
+
         foreach (var item in invoice.Items)
         {
             if (item.LineType == PurchaseLineType.Inventory)
             {
-                lines.Add((AccountingAccountIds.InventoryAsset, item.LineTotal.Amount, 0m,
-                    $"مشتريات مخزون — {item.Description}", null));
+                lines.Add((inventoryDebitAccount, item.LineTotal.Amount, 0m,
+                    invoice.SourceContainerId.HasValue
+                        ? $"تكلفة قماش حاوية — {item.Description}"
+                        : $"مشتريات مخزون — {item.Description}", null));
             }
             else
             {

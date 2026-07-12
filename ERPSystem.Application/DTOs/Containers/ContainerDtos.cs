@@ -80,6 +80,8 @@ public sealed class ContainerOperationsCenterDto
     public bool CanMoveToWarehouse { get; init; }
     public bool CanCalculateLandingCost { get; init; }
     public bool IsReadyForSale { get; init; }
+    public Guid? LinkedPurchaseInvoiceId { get; init; }
+    public string? LinkedPurchaseInvoiceNumber { get; init; }
 }
 
 public sealed class ContainerExcelParseResultDto

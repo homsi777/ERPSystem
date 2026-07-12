@@ -218,6 +218,7 @@ public sealed class ApproveContainerHandler(
     ICurrentUserService currentUserService,
     IAuditLogRepository auditLogRepository,
     ICurrentBranchService currentBranchService,
+    IChinaContainerPurchaseBridgeService purchaseBridge,
     IIntegratedAccountingService accountingService,
     IPostingSaveCoordinator postingSaveCoordinator,
     INotificationService notificationService)
@@ -260,7 +261,15 @@ public sealed class ApproveContainerHandler(
                 aggregate.Status,
                 cancellationToken: cancellationToken);
 
-            await accountingService.PostContainerApprovalAsync(aggregate, cancellationToken);
+            var invoiceId = await purchaseBridge.EnsurePostedPurchaseInvoiceAsync(
+                aggregate, userId, skipGeneralLedger: false, cancellationToken);
+            if (invoiceId is null)
+            {
+                await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ApplicationResult.Conflict(
+                    "تعذر إنشاء فاتورة الشراء من الحاوية. تأكد من مبلغ فاتورة المورد الصيني أو بنود Fabric Type Lines.");
+            }
+
             var recovery = accountingService.ConsumePendingPostingRequests();
 
             await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(recovery, cancellationToken);

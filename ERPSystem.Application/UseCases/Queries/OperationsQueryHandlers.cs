@@ -49,7 +49,8 @@ public sealed class GetChinaContainerListHandler(
 public sealed class GetContainerOperationsCenterHandler(
     IChinaContainerRepository containerRepository,
     ISupplierRepository supplierRepository,
-    IInventoryRepository inventoryRepository)
+    IInventoryRepository inventoryRepository,
+    IPurchaseInvoiceRepository purchaseInvoiceRepository)
     : IQueryHandler<GetContainerOperationsCenterQuery, ApplicationResult<ContainerOperationsCenterDto>>
 {
     public async Task<ApplicationResult<ContainerOperationsCenterDto>> HandleAsync(
@@ -65,6 +66,9 @@ public sealed class GetContainerOperationsCenterHandler(
         var inventory = await inventoryRepository.GetContainerMetricsAsync(query.ContainerId, cancellationToken);
         var baseDto = ContainerMapper.ToOperationsCenterDto(aggregate, supplierName);
 
+        var linkedInvoice = await purchaseInvoiceRepository.GetBySourceContainerIdAsync(
+            query.ContainerId, cancellationToken);
+
         return ApplicationResult<ContainerOperationsCenterDto>.Success(new ContainerOperationsCenterDto
         {
             Container = baseDto.Container,
@@ -73,7 +77,9 @@ public sealed class GetContainerOperationsCenterHandler(
             CanSetSalePrices = baseDto.CanSetSalePrices,
             CanMoveToWarehouse = baseDto.CanMoveToWarehouse,
             CanCalculateLandingCost = baseDto.CanCalculateLandingCost,
-            IsReadyForSale = baseDto.IsReadyForSale
+            IsReadyForSale = baseDto.IsReadyForSale,
+            LinkedPurchaseInvoiceId = linkedInvoice?.Id,
+            LinkedPurchaseInvoiceNumber = linkedInvoice?.InvoiceNumber
         });
     }
 }

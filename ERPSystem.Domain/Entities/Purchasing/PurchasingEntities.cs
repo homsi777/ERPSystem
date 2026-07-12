@@ -24,6 +24,7 @@ public class PurchaseInvoice
     public Money PaidAmount { get; private set; } = Money.Zero();
     public Money Remaining { get; private set; } = Money.Zero();
     public Guid? PurchaseOrderId { get; private set; }
+    public Guid? SourceContainerId { get; private set; }
     public string? Notes { get; private set; }
     public DateTime? PostedAt { get; private set; }
     public Guid? PostedByUserId { get; private set; }
@@ -42,7 +43,8 @@ public class PurchaseInvoice
         DateTime dueDate,
         string currencyCode = "USD",
         Guid? warehouseId = null,
-        Guid? purchaseOrderId = null) => new()
+        Guid? purchaseOrderId = null,
+        Guid? sourceContainerId = null) => new()
     {
         Id = Guid.NewGuid(),
         CompanyId = companyId,
@@ -54,9 +56,12 @@ public class PurchaseInvoice
         CurrencyCode = currencyCode,
         WarehouseId = warehouseId,
         PurchaseOrderId = purchaseOrderId,
+        SourceContainerId = sourceContainerId,
         Status = PurchaseInvoiceStatus.Draft,
         Remaining = Money.Zero()
     };
+
+    public bool IsFromChinaContainer => SourceContainerId.HasValue;
 
     public void UpdateHeader(
         Guid supplierId,

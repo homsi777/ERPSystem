@@ -2077,10 +2077,17 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SourceContainerId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "InvoiceNumber")
                         .IsUnique();
+
+                    b.HasIndex("SourceContainerId")
+                        .IsUnique()
+                        .HasFilter("\"SourceContainerId\" IS NOT NULL");
 
                     b.ToTable("purchase_invoices", "purchasing");
                 });

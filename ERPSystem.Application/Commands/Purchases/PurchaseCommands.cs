@@ -132,3 +132,10 @@ public sealed class PurchaseReturnLineInput
     public decimal QuantityMeters { get; init; }
     public decimal UnitPrice { get; init; }
 }
+
+/// <summary>Backfill purchase invoices for approved China containers missing a financial mirror.</summary>
+public sealed class BackfillChinaContainerPurchaseInvoicesCommand
+{
+    public Guid CompanyId { get; init; }
+    public Guid UserId { get; init; }
+}
