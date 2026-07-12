@@ -17,7 +17,8 @@ public static class PermissionDisplayCatalog
         ["expenses"] = "المصاريف",
         ["capital"] = "رأس المال والشركاء",
         ["settings"] = "الإعدادات",
-        ["inventory"] = "المخزون"
+        ["inventory"] = "المخزون",
+        ["security"] = "الأمان والحساسية"
     };
 
     private static readonly Dictionary<string, string> PermissionLabels = new(StringComparer.OrdinalIgnoreCase)
@@ -84,7 +85,8 @@ public static class PermissionDisplayCatalog
         ["capital.archive"] = "أرشفة حركة",
         ["settings.users.view"] = "عرض المستخدمين",
         ["settings.users.manage"] = "إدارة المستخدمين",
-        ["settings.roles.manage"] = "إدارة الأدوار والصلاحيات"
+        ["settings.roles.manage"] = "إدارة الأدوار والصلاحيات",
+        ["security.general-manager"] = "مدير عام — أسعار التكلفة/الاستيراد وقسم الصين"
     };
 
     public static string GetModuleLabel(string module) =>

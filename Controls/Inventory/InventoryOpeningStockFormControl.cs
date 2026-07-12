@@ -45,8 +45,11 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         ErpUiFactory.AddGridColumn(_lines, "اللون", nameof(OpeningLineRow.ColorName), 100, null);
         ErpUiFactory.AddGridColumn(_lines, "الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, null);
         ErpUiFactory.AddGridColumn(_lines, "Rolls", nameof(OpeningLineRow.RollCount), 60, null);
-        ErpUiFactory.AddGridColumn(_lines, "التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, null);
-        ErpUiFactory.AddGridColumn(_lines, "القيمة", nameof(OpeningLineRow.TotalValue), 90, null);
+        if (WpfGeneralManagerAccess.CanViewSensitivePricing)
+        {
+            ErpUiFactory.AddGridColumn(_lines, "التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, null);
+            ErpUiFactory.AddGridColumn(_lines, "القيمة", nameof(OpeningLineRow.TotalValue), 90, null);
+        }
         _lines.ItemsSource = _lineRows;
         stack.Children.Add(_lines);
 
@@ -56,7 +59,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         addRow.Children.Add(_color);
         addRow.Children.Add(_meters);
         addRow.Children.Add(_rolls);
-        addRow.Children.Add(_unitCost);
+        if (WpfGeneralManagerAccess.CanViewSensitivePricing)
+            addRow.Children.Add(_unitCost);
         var addBtn = new Button { Content = "إضافة", Margin = new Thickness(8, 0, 0, 0) };
         addBtn.Click += (_, _) => AddLine();
         addRow.Children.Add(addBtn);

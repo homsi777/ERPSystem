@@ -16,13 +16,18 @@ namespace ERPSystem.Application.UseCases.Queries;
 
 public sealed class GetChinaContainerListHandler(
     IChinaContainerRepository containerRepository,
-    ISupplierRepository supplierRepository)
+    ISupplierRepository supplierRepository,
+    IPermissionService permissions)
     : IQueryHandler<GetChinaContainerListQuery, ApplicationResult<PagedResult<ContainerListDto>>>
 {
     public async Task<ApplicationResult<PagedResult<ContainerListDto>>> HandleAsync(
         GetChinaContainerListQuery query,
         CancellationToken cancellationToken = default)
     {
+        if (!await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken))
+            return ApplicationResult<PagedResult<ContainerListDto>>.PermissionDenied(
+                "General manager access required for China import.");
+
         var containers = await containerRepository.GetListAsync(
             query.CompanyId, query.BranchId, query.Status, cancellationToken);
 
@@ -50,13 +55,18 @@ public sealed class GetContainerOperationsCenterHandler(
     IChinaContainerRepository containerRepository,
     ISupplierRepository supplierRepository,
     IInventoryRepository inventoryRepository,
-    IPurchaseInvoiceRepository purchaseInvoiceRepository)
+    IPurchaseInvoiceRepository purchaseInvoiceRepository,
+    IPermissionService permissions)
     : IQueryHandler<GetContainerOperationsCenterQuery, ApplicationResult<ContainerOperationsCenterDto>>
 {
     public async Task<ApplicationResult<ContainerOperationsCenterDto>> HandleAsync(
         GetContainerOperationsCenterQuery query,
         CancellationToken cancellationToken = default)
     {
+        if (!await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken))
+            return ApplicationResult<ContainerOperationsCenterDto>.PermissionDenied(
+                "General manager access required for China import.");
+
         var aggregate = await containerRepository.GetByIdAsync(query.ContainerId, cancellationToken);
         if (aggregate is null)
             return ApplicationResult<ContainerOperationsCenterDto>.NotFound("Container not found.");

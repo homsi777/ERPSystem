@@ -1,5 +1,7 @@
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.Abstractions.Services;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Application.Queries.Inventory;
 using ERPSystem.Application.Results;
@@ -46,25 +48,39 @@ public sealed class GetInventoryOperationsCenterHandler(IInventoryManagementRepo
     }
 }
 
-public sealed class GetInventoryDashboardHandler(IInventoryManagementRepository repository)
+public sealed class GetInventoryDashboardHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetInventoryDashboardQuery, ApplicationResult<InventoryDashboardDto>>
 {
     public async Task<ApplicationResult<InventoryDashboardDto>> HandleAsync(
-        GetInventoryDashboardQuery query, CancellationToken cancellationToken = default) =>
-        ApplicationResult<InventoryDashboardDto>.Success(
-            await repository.GetDashboardAsync(query.BranchId, cancellationToken));
+        GetInventoryDashboardQuery query, CancellationToken cancellationToken = default)
+    {
+        var dto = await repository.GetDashboardAsync(query.BranchId, cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
+        return ApplicationResult<InventoryDashboardDto>.Success(SensitivePricingSanitizer.Redact(dto, canView));
+    }
 }
 
-public sealed class GetFabricStockBalancesHandler(IInventoryManagementRepository repository)
+public sealed class GetFabricStockBalancesHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetFabricStockBalancesQuery, ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>> HandleAsync(
-        GetFabricStockBalancesQuery query, CancellationToken cancellationToken = default) =>
-        ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>.Success(
-            await repository.GetFabricStockBalancesAsync(query.BranchId, query.WarehouseId, query.Search, cancellationToken));
+        GetFabricStockBalancesQuery query, CancellationToken cancellationToken = default)
+    {
+        var items = await repository.GetFabricStockBalancesAsync(
+            query.BranchId, query.WarehouseId, query.Search, cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
+        return ApplicationResult<IReadOnlyList<FabricStockBalanceDto>>.Success(
+            SensitivePricingSanitizer.RedactStock(items, canView));
+    }
 }
 
-public sealed class GetFabricSearchProfilesHandler(IInventoryManagementRepository repository)
+public sealed class GetFabricSearchProfilesHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetFabricSearchProfilesQuery, ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>> HandleAsync(
@@ -73,22 +89,30 @@ public sealed class GetFabricSearchProfilesHandler(IInventoryManagementRepositor
         if (string.IsNullOrWhiteSpace(query.Search) || query.Search.Trim().Length < 2)
             return ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>.Success([]);
 
+        var items = await repository.GetFabricSearchProfilesAsync(
+            query.BranchId,
+            query.Search.Trim(),
+            query.WarehouseId,
+            cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
         return ApplicationResult<IReadOnlyList<FabricSearchProfileDto>>.Success(
-            await repository.GetFabricSearchProfilesAsync(
-                query.BranchId,
-                query.Search.Trim(),
-                query.WarehouseId,
-                cancellationToken));
+            SensitivePricingSanitizer.RedactProfiles(items, canView));
     }
 }
 
-public sealed class GetInventoryMovementsHandler(IInventoryManagementRepository repository)
+public sealed class GetInventoryMovementsHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetInventoryMovementsQuery, ApplicationResult<IReadOnlyList<StockMovementListDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<StockMovementListDto>>> HandleAsync(
-        GetInventoryMovementsQuery query, CancellationToken cancellationToken = default) =>
-        ApplicationResult<IReadOnlyList<StockMovementListDto>>.Success(
-            await repository.GetMovementsAsync(query.BranchId, query.WarehouseId, cancellationToken));
+        GetInventoryMovementsQuery query, CancellationToken cancellationToken = default)
+    {
+        var items = await repository.GetMovementsAsync(query.BranchId, query.WarehouseId, cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
+        return ApplicationResult<IReadOnlyList<StockMovementListDto>>.Success(
+            SensitivePricingSanitizer.RedactMovements(items, canView));
+    }
 }
 
 public sealed class GetInventoryAlertsHandler(IInventoryManagementRepository repository)
@@ -131,14 +155,20 @@ public sealed class GetWarehouseTransferRollsHandler(IInventoryManagementReposit
             await repository.GetTransferableRollsAsync(query.WarehouseId, cancellationToken));
 }
 
-public sealed class GetFabricRollsByStockHandler(IInventoryManagementRepository repository)
+public sealed class GetFabricRollsByStockHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetFabricRollsByStockQuery, ApplicationResult<IReadOnlyList<FabricRollListDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<FabricRollListDto>>> HandleAsync(
-        GetFabricRollsByStockQuery query, CancellationToken cancellationToken = default) =>
-        ApplicationResult<IReadOnlyList<FabricRollListDto>>.Success(
-            await repository.GetFabricRollsByStockAsync(
-                query.WarehouseId, query.ContainerId, query.FabricItemId, query.FabricColorId, cancellationToken));
+        GetFabricRollsByStockQuery query, CancellationToken cancellationToken = default)
+    {
+        var items = await repository.GetFabricRollsByStockAsync(
+            query.WarehouseId, query.ContainerId, query.FabricItemId, query.FabricColorId, cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
+        return ApplicationResult<IReadOnlyList<FabricRollListDto>>.Success(
+            SensitivePricingSanitizer.RedactRolls(items, canView));
+    }
 }
 
 public sealed class GetFabricRollSalesReservationsHandler(IInventoryManagementRepository repository)
@@ -168,7 +198,9 @@ public sealed class GetDetailingCandidateRollsHandler(IInventoryManagementReposi
                 cancellationToken));
 }
 
-public sealed class GetFabricRollsPageHandler(IInventoryManagementRepository repository)
+public sealed class GetFabricRollsPageHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetFabricRollsPageQuery, ApplicationResult<PaginatedFabricRollDto>>
 {
     public async Task<ApplicationResult<PaginatedFabricRollDto>> HandleAsync(
@@ -177,14 +209,15 @@ public sealed class GetFabricRollsPageHandler(IInventoryManagementRepository rep
         var pageNumber = Math.Max(1, query.PageNumber);
         var pageSize = Math.Clamp(query.PageSize, 10, 500);
 
-        return ApplicationResult<PaginatedFabricRollDto>.Success(
-            await repository.GetFabricRollsPageAsync(
-                query.WarehouseId,
-                pageNumber,
-                pageSize,
-                query.Status,
-                query.Search,
-                cancellationToken));
+        var page = await repository.GetFabricRollsPageAsync(
+            query.WarehouseId,
+            pageNumber,
+            pageSize,
+            query.Status,
+            query.Search,
+            cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
+        return ApplicationResult<PaginatedFabricRollDto>.Success(SensitivePricingSanitizer.Redact(page, canView));
     }
 }
 
@@ -210,13 +243,19 @@ public sealed class GetStocktakeDetailHandler(IInventoryManagementRepository rep
     }
 }
 
-public sealed class GetOpeningStockDocumentsHandler(IInventoryManagementRepository repository)
+public sealed class GetOpeningStockDocumentsHandler(
+    IInventoryManagementRepository repository,
+    IPermissionService permissions)
     : IQueryHandler<GetOpeningStockDocumentsQuery, ApplicationResult<IReadOnlyList<OpeningStockListDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<OpeningStockListDto>>> HandleAsync(
-        GetOpeningStockDocumentsQuery query, CancellationToken cancellationToken = default) =>
-        ApplicationResult<IReadOnlyList<OpeningStockListDto>>.Success(
-            await repository.GetOpeningStockDocumentsAsync(query.BranchId, cancellationToken));
+        GetOpeningStockDocumentsQuery query, CancellationToken cancellationToken = default)
+    {
+        var items = await repository.GetOpeningStockDocumentsAsync(query.BranchId, cancellationToken);
+        var canView = await permissions.CanAsync(GeneralManagerAccess.PermissionCode, cancellationToken);
+        return ApplicationResult<IReadOnlyList<OpeningStockListDto>>.Success(
+            SensitivePricingSanitizer.RedactOpeningStock(items, canView));
+    }
 }
 
 public sealed class GetWarehouseStorageLocationsHandler(IInventoryManagementRepository repository)

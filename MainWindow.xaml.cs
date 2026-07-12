@@ -1,6 +1,7 @@
 ﻿using ERPSystem.Core;
 using ERPSystem.Core.Navigation;
 using ERPSystem.Modules;
+using ERPSystem.Services;
 using System.Windows;
 
 namespace ERPSystem
@@ -60,6 +61,14 @@ namespace ERPSystem
 
         private void NavigateTo(NavigationRequest req)
         {
+            if (req.Module == AppModule.ChinaImport && !WpfGeneralManagerAccess.IsGeneralManager)
+            {
+                MockInteractionService.ShowWarning(
+                    "قسم الصين وأسعار الاستيراد/التكلفة متاحان لحساب المدير العام فقط.",
+                    "صلاحية محدودة");
+                return;
+            }
+
             var currentModule = ResolveActiveModule();
             if (currentModule.HasValue
                 && currentModule.Value != req.Module

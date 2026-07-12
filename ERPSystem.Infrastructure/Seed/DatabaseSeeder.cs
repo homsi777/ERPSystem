@@ -486,7 +486,13 @@ public static class DatabaseSeeder
         ..GetHrPermissionDefinitions(),
         ..GetExpensePermissionDefinitions(),
         ..GetCapitalPermissionDefinitions(),
-        ..GetSettingsPermissionDefinitions()
+        ..GetSettingsPermissionDefinitions(),
+        ..GetSecurityPermissionDefinitions()
+    ];
+
+    private static IEnumerable<(string Code, string Module, string Action)> GetSecurityPermissionDefinitions() =>
+    [
+        (GeneralManagerAccess.PermissionCode, "security", "general-manager")
     ];
 
     private static IEnumerable<(string Code, string Module, string Action)> GetAccountingPermissionDefinitions() =>

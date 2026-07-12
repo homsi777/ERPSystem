@@ -7,11 +7,11 @@ public static class PermissionModuleCatalog
 {
     public static readonly IReadOnlyList<string> AssignableModuleOrder =
     [
+        "security",
         "sales",
         "customers",
         "purchases",
         "suppliers",
-        "containers",
         "warehouse",
         "accounting",
         "finance",

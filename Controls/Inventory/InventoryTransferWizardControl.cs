@@ -200,7 +200,12 @@ public sealed class InventoryTransferWizardControl : UserControl
         var to = _toWarehouse.SelectedItem as WarehouseListExtendedDto;
         var lines = _qtyRows.Where(r => r.TransferMeters > 0).ToList();
         var totalM = lines.Sum(l => l.TransferMeters);
-        var totalV = lines.Sum(l => l.TransferMeters * l.CostPerMeter);
+        var totalV = WpfGeneralManagerAccess.CanViewSensitivePricing
+            ? lines.Sum(l => l.TransferMeters * l.CostPerMeter)
+            : 0m;
+        var previewSummary = WpfGeneralManagerAccess.CanViewSensitivePricing
+            ? $"Rolls: {lines.Count}  •  الأمتار: {totalM:N2}  •  القيمة: ${totalV:N2}"
+            : $"Rolls: {lines.Count}  •  الأمتار: {totalM:N2}";
 
         _previewPanel.Children.Add(new TextBlock
         {
@@ -210,7 +215,7 @@ public sealed class InventoryTransferWizardControl : UserControl
         });
         _previewPanel.Children.Add(new TextBlock
         {
-            Text = $"Rolls: {lines.Count}  •  الأمتار: {totalM:N2}  •  القيمة: ${totalV:N2}",
+            Text = previewSummary,
             Margin = new Thickness(0, 0, 0, 12)
         });
 
@@ -218,7 +223,8 @@ public sealed class InventoryTransferWizardControl : UserControl
         ErpUiFactory.AddGridColumn(grid, "Roll", nameof(QtyRow.RollNumber), 60, null);
         ErpUiFactory.AddGridColumn(grid, "القماش", nameof(QtyRow.FabricName), "*", null);
         ErpUiFactory.AddGridColumn(grid, "أمتار", nameof(QtyRow.TransferMeters), 90, null);
-        ErpUiFactory.AddGridColumn(grid, "قيمة $", nameof(QtyRow.LineValue), 90, null);
+        if (WpfGeneralManagerAccess.CanViewSensitivePricing)
+            ErpUiFactory.AddGridColumn(grid, "قيمة $", nameof(QtyRow.LineValue), 90, null);
         _previewPanel.Children.Add(grid);
     }
 

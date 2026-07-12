@@ -27,6 +27,9 @@ public static class AppModuleAccess
         if (module == AppModule.Dashboard)
             return true;
 
+        if (module == AppModule.ChinaImport)
+            return GeneralManagerAccess.IsGeneralManager(permissionCodes);
+
         if (!ModuleKeys.TryGetValue(module, out var keys) || keys.Length == 0)
             return false;
 

@@ -2,6 +2,7 @@ using ERPSystem.Api.Mapping;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Containers;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.Queries.Containers;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.UseCases.Containers;
@@ -110,7 +111,7 @@ public static class ContainerEndpoints
         if (branchService.CompanyId is not Guid companyId || branchService.BranchId is not Guid branchId)
             return Unauthorized();
 
-        var permissionResult = await EnsurePermissionAsync(permissions, "containers.create", cancellationToken);
+        var permissionResult = await EnsureGeneralManagerAsync(permissions, cancellationToken);
         if (permissionResult is not null)
             return permissionResult;
 
@@ -139,7 +140,7 @@ public static class ContainerEndpoints
         ICommandHandler<CalculateLandingCostCommand, ApplicationResult> handler,
         CancellationToken cancellationToken)
     {
-        var permissionResult = await EnsurePermissionAsync(permissions, "containers.landing-cost", cancellationToken);
+        var permissionResult = await EnsureGeneralManagerAsync(permissions, cancellationToken);
         if (permissionResult is not null)
             return permissionResult;
 
@@ -172,7 +173,7 @@ public static class ContainerEndpoints
         ICommandHandler<SetContainerTypeSalePricesCommand, ApplicationResult> handler,
         CancellationToken cancellationToken)
     {
-        var permissionResult = await EnsurePermissionAsync(permissions, "containers.landing-cost", cancellationToken);
+        var permissionResult = await EnsureGeneralManagerAsync(permissions, cancellationToken);
         if (permissionResult is not null)
             return permissionResult;
 
@@ -191,7 +192,7 @@ public static class ContainerEndpoints
         ICommandHandler<ApproveContainerCommand, ApplicationResult> handler,
         CancellationToken cancellationToken)
     {
-        var permissionResult = await EnsurePermissionAsync(permissions, "containers.approve", cancellationToken);
+        var permissionResult = await EnsureGeneralManagerAsync(permissions, cancellationToken);
         if (permissionResult is not null)
             return permissionResult;
 
@@ -210,7 +211,7 @@ public static class ContainerEndpoints
         ICommandHandler<MoveContainerToWarehouseCommand, ApplicationResult> handler,
         CancellationToken cancellationToken)
     {
-        var permissionResult = await EnsurePermissionAsync(permissions, "containers.move-to-warehouse", cancellationToken);
+        var permissionResult = await EnsureGeneralManagerAsync(permissions, cancellationToken);
         if (permissionResult is not null)
             return permissionResult;
 
@@ -229,7 +230,7 @@ public static class ContainerEndpoints
         ICommandHandler<ArchiveContainerCommand, ApplicationResult> handler,
         CancellationToken cancellationToken)
     {
-        var permissionResult = await EnsurePermissionAsync(permissions, "containers.approve", cancellationToken);
+        var permissionResult = await EnsureGeneralManagerAsync(permissions, cancellationToken);
         if (permissionResult is not null)
             return permissionResult;
 
@@ -296,6 +297,11 @@ public static class ContainerEndpoints
 
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
+
+    private static async Task<IResult?> EnsureGeneralManagerAsync(
+        IPermissionService permissions,
+        CancellationToken cancellationToken) =>
+        await EnsurePermissionAsync(permissions, GeneralManagerAccess.PermissionCode, cancellationToken);
 
     private static async Task<IResult?> EnsurePermissionAsync(
         IPermissionService permissions,
