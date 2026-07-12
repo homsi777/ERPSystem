@@ -13,7 +13,7 @@ internal sealed class IdentityAdminRepository(ErpDbContext context) : IIdentityA
     public async Task<IReadOnlyList<IdentityUserListDto>> GetVisibleUsersAsync(CancellationToken cancellationToken = default)
     {
         var users = await context.Users.AsNoTracking()
-            .Where(u => !IdentityHiddenAccounts.IsHidden(u.Username))
+            .Where(u => u.Id != IdentityHiddenAccounts.RootUserId)
             .OrderBy(u => u.Username)
             .ToListAsync(cancellationToken);
 
@@ -233,7 +233,7 @@ internal sealed class IdentityAdminRepository(ErpDbContext context) : IIdentityA
         IReadOnlyList<Guid> roleIds,
         CancellationToken cancellationToken = default)
     {
-        if (await context.Users.AnyAsync(u => u.Id == userId && IdentityHiddenAccounts.IsHidden(u.Username), cancellationToken))
+        if (userId == IdentityHiddenAccounts.RootUserId)
             throw new InvalidOperationException("Cannot modify this user.");
 
         var existing = await context.UserRoles.Where(ur => ur.UserId == userId).ToListAsync(cancellationToken);
