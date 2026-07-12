@@ -27,17 +27,52 @@ using WpfStartLocation = System.Windows.WindowStartupLocation;
 namespace ERPSystem.Services.Documents;
 
 /// <summary>
-/// Shared "generated → open/print/close" preview window for desktop QuestPDF documents.
-/// Extracted from the sales invoice preview flow so every new print service (vouchers, reports)
-/// reuses the same window instead of re-implementing it.
+/// Shared preview/save/print shell for desktop PDF documents (shared generators or local QuestPDF).
 /// </summary>
 public static class PdfPreviewWindow
 {
+    public static void ShowFromBytes(byte[] pdfBytes, string title)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"erp-preview-{Guid.NewGuid():N}.pdf");
+        File.WriteAllBytes(tempPath, pdfBytes);
+        ShowShell(tempPath, title);
+    }
+
     public static void Show(IDocument document, string title)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"erp-preview-{Guid.NewGuid():N}.pdf");
         document.GeneratePdf(tempPath);
+        ShowShell(tempPath, title);
+    }
 
+    public static void SaveAndOpenFromBytes(byte[] pdfBytes, string suggestedFileName)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "PDF Document (*.pdf)|*.pdf",
+            FileName = Sanitize(suggestedFileName)
+        };
+        if (dlg.ShowDialog() != true) return;
+        File.WriteAllBytes(dlg.FileName, pdfBytes);
+        try { Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true }); }
+        catch { /* opening is optional */ }
+    }
+
+    public static void SaveAndOpen(IDocument document, string suggestedFileName)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "PDF Document (*.pdf)|*.pdf",
+            FileName = Sanitize(suggestedFileName)
+        };
+        if (dlg.ShowDialog() != true) return;
+        document.GeneratePdf(dlg.FileName);
+        try { Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true }); }
+        catch { /* opening is optional */ }
+    }
+
+    private static void ShowShell(string tempPath, string title)
+    {
         var win = new WpfWindow
         {
             Title = title,
@@ -104,19 +139,6 @@ public static class PdfPreviewWindow
 
         win.Content = grid;
         win.ShowDialog();
-    }
-
-    public static void SaveAndOpen(IDocument document, string suggestedFileName)
-    {
-        var dlg = new SaveFileDialog
-        {
-            Filter = "PDF Document (*.pdf)|*.pdf",
-            FileName = Sanitize(suggestedFileName)
-        };
-        if (dlg.ShowDialog() != true) return;
-        document.GeneratePdf(dlg.FileName);
-        try { Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true }); }
-        catch { /* opening is optional */ }
     }
 
     private static void Print(string path)

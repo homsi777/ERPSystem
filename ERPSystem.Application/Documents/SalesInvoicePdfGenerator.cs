@@ -14,7 +14,7 @@ namespace ERPSystem.Application.Documents;
 /// </summary>
 public sealed class SalesInvoicePdfGenerator
 {
-    private const string FontFamily = "Noto Sans Arabic";
+    private const string FontFamily = FinanceDocumentTheme.FontFamily;
     private const string Navy = "#071A2B";
     private const string NavySoft = "#102C45";
     private const string Gold = "#C99A4A";
@@ -24,8 +24,6 @@ public sealed class SalesInvoicePdfGenerator
     private const string Border = "#D9C9A7";
 
     private static readonly CultureInfo WesternNumbers = CultureInfo.InvariantCulture;
-    private static readonly object SetupLock = new();
-    private static bool _configured;
 
     private readonly string _logoPath;
 
@@ -33,8 +31,8 @@ public sealed class SalesInvoicePdfGenerator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fontPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(logoPath);
+        FinanceDocumentTheme.ConfigureQuestPdf(fontPath);
         _logoPath = logoPath;
-        ConfigureQuestPdf(fontPath);
     }
 
     public static SalesInvoicePdfGenerator FromContentRoot(string contentRoot)
@@ -72,23 +70,6 @@ public sealed class SalesInvoicePdfGenerator
                 page.Footer().Element(container => ComposeFooter(container, invoice.InvoiceNumber));
             });
         }).GeneratePdf();
-    }
-
-    private static void ConfigureQuestPdf(string fontPath)
-    {
-        lock (SetupLock)
-        {
-            if (_configured)
-                return;
-
-            if (!File.Exists(fontPath))
-                throw new FileNotFoundException("Embedded Arabic PDF font is missing.", fontPath);
-
-            QuestPDF.Settings.License = LicenseType.Community;
-            using var font = File.OpenRead(fontPath);
-            FontManager.RegisterFontWithCustomName(FontFamily, font);
-            _configured = true;
-        }
     }
 
     private void ComposeHeader(IContainer container, SalesInvoiceDto invoice)

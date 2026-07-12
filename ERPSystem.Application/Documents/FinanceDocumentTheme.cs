@@ -1,15 +1,13 @@
 using QuestPDF.Drawing;
 using QuestPDF.Infrastructure;
 
-namespace ERPSystem.Api.Services;
+namespace ERPSystem.Application.Documents;
 
 /// <summary>
-/// Shared QuestPDF branding (colors, font, logo) for finance/report documents — same visual
-/// identity as <see cref="ERPSystem.Application.Documents.SalesInvoicePdfGenerator"/> (Navy/Gold), so every printed document in the
-/// system reads as one family. Receipt/payment vouchers add a green/red accent only for the
-/// amount box and status badge, matching standard inbound/outbound cash convention.
+/// Shared QuestPDF branding for finance documents (vouchers, expense reports) — same Navy/Gold
+/// identity as <see cref="SalesInvoicePdfGenerator"/>.
 /// </summary>
-internal static class FinanceDocumentTheme
+public static class FinanceDocumentTheme
 {
     public const string FontFamily = "Noto Sans Arabic";
     public const string Navy = "#071A2B";
@@ -44,19 +42,6 @@ internal static class FinanceDocumentTheme
         }
     }
 
-    public static string ResolveLogoPath(string contentRootPath)
-    {
-        var packaged = Path.Combine(contentRootPath, "Assets", "Brand", "company-logo.png");
-        if (File.Exists(packaged))
-            return packaged;
-
-        var repositoryAsset = Path.GetFullPath(Path.Combine(contentRootPath, "..", "66.png"));
-        if (File.Exists(repositoryAsset))
-            return repositoryAsset;
-
-        throw new FileNotFoundException("Packaged company logo is missing.", packaged);
-    }
-
-    public static string ResolveFontPath(string contentRootPath) =>
-        Path.Combine(contentRootPath, "Assets", "Fonts", "NotoSansArabic.ttf");
+    public static (string FontPath, string LogoPath) ResolveAssets(string contentRoot) =>
+        SalesInvoicePdfAssetPaths.Resolve(contentRoot);
 }
