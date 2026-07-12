@@ -49,7 +49,7 @@ public sealed class IdentityUiService
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
-        var handler = scope.ServiceProvider.GetRequiredService<UpdateRolePermissionsHandler>();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<UpdateRolePermissionsCommand, ApplicationResult>>();
         return await handler.HandleAsync(new UpdateRolePermissionsCommand
         {
             RoleId = roleId,
@@ -63,7 +63,7 @@ public sealed class IdentityUiService
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
-        var handler = scope.ServiceProvider.GetRequiredService<CreateIdentityRoleHandler>();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<CreateIdentityRoleCommand, ApplicationResult<Guid>>>();
         return await handler.HandleAsync(new CreateIdentityRoleCommand
         {
             Name = name,
@@ -80,7 +80,7 @@ public sealed class IdentityUiService
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
-        var handler = scope.ServiceProvider.GetRequiredService<CreateIdentityUserHandler>();
+        var handler = scope.ServiceProvider.GetRequiredService<ICommandHandler<CreateIdentityUserCommand, ApplicationResult<Guid>>>();
         return await handler.HandleAsync(new CreateIdentityUserCommand
         {
             Username = username,

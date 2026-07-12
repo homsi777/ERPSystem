@@ -93,14 +93,15 @@ export function LoginPage() {
           </h2>
           <p className="login-card__hint">سجّل الدخول للمتابعة إلى لوحة التحكم</p>
 
-          <form className="login-form login-form--dark" onSubmit={(event) => void handleSubmit(event)}>
+          <form className="login-form login-form--dark" autoComplete="off" onSubmit={(event) => void handleSubmit(event)}>
             <label className="login-field">
               <span>اسم المستخدم</span>
               <input
+                name="erp-username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                autoComplete="username"
-                placeholder="admin"
+                autoComplete="off"
+                placeholder="أدخل اسم المستخدم"
                 required
               />
             </label>
@@ -109,11 +110,12 @@ export function LoginPage() {
               <span>كلمة المرور</span>
               <div className="login-field__password">
                 <input
+                  name="erp-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  placeholder="أدخل كلمة المرور"
                   required
                 />
                 <button
