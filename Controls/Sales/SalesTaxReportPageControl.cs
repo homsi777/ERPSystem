@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Services.Reports;
 using ERPSystem.Services.Sales;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,9 @@ public sealed class SalesTaxReportPageControl : UserControl
     private readonly DataGrid _grid = new() { AutoGenerateColumns = false, IsReadOnly = true, MinHeight = 280 };
     private readonly DataGrid _summaryGrid = new() { AutoGenerateColumns = false, IsReadOnly = true, MaxHeight = 200, Margin = new Thickness(0, 12, 0, 0) };
     private bool _running;
+    private SalesTaxReportDto? _lastReport;
+    private DateTime _lastFrom;
+    private DateTime _lastTo;
 
     public SalesTaxReportPageControl()
     {
@@ -49,9 +53,15 @@ public sealed class SalesTaxReportPageControl : UserControl
             ("", _includeLegacy))));
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
-        var runBtn = new Button { Content = "عرض التقرير", Style = S("PrimaryButtonStyle") };
+        var runBtn = new Button { Content = "عرض التقرير", Style = S("PrimaryButtonStyle"), Margin = new Thickness(0, 0, 8, 0) };
         runBtn.Click += async (_, _) => await RunAsync();
         actions.Children.Add(runBtn);
+        foreach (var (label, mode) in new[] { ("طباعة", "print"), ("PDF", "pdf"), ("Excel", "excel") })
+        {
+            var btn = new Button { Content = label, Style = S("SecondaryButtonStyle"), Margin = new Thickness(0, 0, 8, 0) };
+            btn.Click += (_, _) => ExportReport(mode);
+            actions.Children.Add(btn);
+        }
         stack.Children.Add(actions);
         stack.Children.Add(_kpiRow);
         stack.Children.Add(_meta);
@@ -113,6 +123,9 @@ public sealed class SalesTaxReportPageControl : UserControl
 
     private void Render(SalesTaxReportDto report, DateTime from, DateTime to)
     {
+        _lastReport = report;
+        _lastFrom = from;
+        _lastTo = to;
         _kpiRow.Children.Clear();
         var outputVat = report.Rows.Where(r => !r.IsLegacyUntaxed).Sum(r => r.TaxAmount);
         var taxable = report.Rows.Where(r => !r.IsLegacyUntaxed).Sum(r => r.TaxableAmount);
@@ -127,6 +140,17 @@ public sealed class SalesTaxReportPageControl : UserControl
         _meta.Text = $"الفترة: {from:yyyy/MM/dd} → {to:yyyy/MM/dd}  •  {report.Rows.Count} سجل";
         _grid.ItemsSource = report.Rows.Select(r => new ReportRow(r)).ToList();
         _summaryGrid.ItemsSource = report.SummaryByTaxCode.Select(s => new SummaryRow(s)).ToList();
+    }
+
+    private void ExportReport(string mode)
+    {
+        if (_lastReport is null)
+        {
+            MockInteractionService.ShowWarning("شغّل التقرير أولاً.", "تصدير");
+            return;
+        }
+
+        SalesTaxReportDocumentService.Export(_lastReport, _lastFrom, _lastTo, mode);
     }
 
     private static DataGridTextColumn Col(string header, string path, double width = 0, string? format = null, bool star = false)

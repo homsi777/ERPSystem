@@ -1,8 +1,10 @@
 using ERPSystem.Application.DTOs.Accounting;
+using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Accounting;
+using ERPSystem.Services.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -62,6 +64,13 @@ public sealed class AccountLedgerReportControl : UserControl
             ("من", _from),
             ("إلى", _to),
             ("", _load))));
+        stack.Children.Add(GridReportExportService.CreateActionBar("كشف حساب", mode =>
+            GridReportExportService.Export(
+                _grid,
+                BuildExportTitle(),
+                mode,
+                _from.SelectedDate,
+                _to.SelectedDate)));
         stack.Children.Add(ErpUiFactory.Card(_grid));
         stack.Children.Add(_footer);
 
@@ -123,6 +132,13 @@ public sealed class AccountLedgerReportControl : UserControl
         var totalCredit = result.Value.Sum(r => r.Credit);
         var closing = rows.Count > 0 ? result.Value[^1].RunningBalance : 0m;
         _footer.Text = $"إجمالي مدين {AppFormats.Amount(totalDebit)} | إجمالي دائن {AppFormats.Amount(totalCredit)} | الرصيد الختامي {AppFormats.Amount(closing)}";
+    }
+
+    private string BuildExportTitle()
+    {
+        if (_account.SelectedItem is AccountListDto account)
+            return $"كشف حساب — {account.Code} {account.NameAr}";
+        return "كشف حساب";
     }
 
     private static Style S(string k) => (Style)WpfApplication.Current.Resources[k]!;

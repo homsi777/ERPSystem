@@ -98,6 +98,13 @@ namespace ERPSystem.Helpers
             ActionToolbar(documentTitle,
                 ("طباعة", false), ("PDF", false), ("Excel", false), ("معاينة", false));
 
+        /// <summary>Report export bar wired to real handlers (print / pdf / excel).</summary>
+        public static StackPanel ExportBar(string documentTitle, Action<string> onExport) =>
+            ActionToolbar(
+                ("طباعة", false, () => onExport("print")),
+                ("PDF", false, () => onExport("pdf")),
+                ("Excel", false, () => onExport("excel")));
+
         /// <summary>Toolbar wired to real callbacks instead of the mock preview.</summary>
         public static StackPanel ActionToolbar(params (string Label, bool Primary, Action OnClick)[] actions)
         {

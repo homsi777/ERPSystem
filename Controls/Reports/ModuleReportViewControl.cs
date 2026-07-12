@@ -195,20 +195,37 @@ public sealed class ModuleReportViewControl : UserControl
     {
         if (_lastReport is null)
         {
-            MockInteractionService.ShowWarning("شغّل التقرير أولاً.", "تصدير");
+            _ = ExportAfterLoadAsync(mode);
             return;
         }
 
+        ExportLoadedReport(mode);
+    }
+
+    private async Task ExportAfterLoadAsync(string mode)
+    {
+        await RunAsync();
+        if (_lastReport is null)
+        {
+            MockInteractionService.ShowWarning("لا توجد بيانات للتصدير.", "تصدير");
+            return;
+        }
+
+        ExportLoadedReport(mode);
+    }
+
+    private void ExportLoadedReport(string mode)
+    {
         switch (mode)
         {
             case "excel":
-                ModuleReportDocumentService.ExportExcel(_lastReport);
+                ModuleReportDocumentService.ExportExcel(_lastReport!);
                 break;
             case "pdf":
-                ModuleReportDocumentService.ShowPreview(_lastReport, exportPdf: true);
+                ModuleReportDocumentService.ShowPreview(_lastReport!, exportPdf: true);
                 break;
             default:
-                ModuleReportDocumentService.ShowPreview(_lastReport, exportPdf: false);
+                ModuleReportDocumentService.ShowPreview(_lastReport!, exportPdf: false);
                 break;
         }
     }

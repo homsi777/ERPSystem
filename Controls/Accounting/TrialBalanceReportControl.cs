@@ -1,8 +1,10 @@
+using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Application.DTOs.Accounting;
 using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Accounting;
+using ERPSystem.Services.Reports;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -53,6 +55,8 @@ public sealed class TrialBalanceReportControl : UserControl
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFilterRow(
             ("حتى تاريخ", _asOf),
             ("", _load))));
+        stack.Children.Add(GridReportExportService.CreateActionBar("ميزان المراجعة", mode =>
+            GridReportExportService.Export(_grid, "ميزان المراجعة", mode, to: _asOf.SelectedDate, kpis: BuildKpis())));
         stack.Children.Add(ErpUiFactory.Card(_grid));
         stack.Children.Add(_footer);
 
@@ -96,6 +100,18 @@ public sealed class TrialBalanceReportControl : UserControl
             ? $"الإجمالي: مدين {totalDebit:N2} = دائن {totalCredit:N2} ✓"
             : $"الإجمالي: مدين {totalDebit:N2} | دائن {totalCredit:N2} | الفرق {diff:N2}";
         _footer.Foreground = (Brush)WpfApplication.Current.Resources[balanced ? "SuccessBrush" : "WarningBrush"]!;
+    }
+
+    private IEnumerable<ModuleReportKpiDto> BuildKpis()
+    {
+        if (_grid.ItemsSource is not IEnumerable<TrialBalanceRow> rows)
+            yield break;
+
+        var list = rows.ToList();
+        var totalDebit = list.Sum(r => r.DebitTotal);
+        var totalCredit = list.Sum(r => r.CreditTotal);
+        yield return new ModuleReportKpiDto { Label = "إجمالي المدين", Value = $"{totalDebit:N2}" };
+        yield return new ModuleReportKpiDto { Label = "إجمالي الدائن", Value = $"{totalCredit:N2}" };
     }
 
     private static Style S(string k) => (Style)WpfApplication.Current.Resources[k]!;
