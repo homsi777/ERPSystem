@@ -1,4 +1,4 @@
-import { apiRequest } from './client.ts';
+import { apiBlobRequest, apiRequest } from './client.ts';
 import type { CreateReceiptVoucherRequest } from './types.ts';
 
 export type PaymentMethodDto = {
@@ -54,5 +54,11 @@ export function reverseReceiptVoucher(id: string, reason: string) {
   return apiRequest<void>(`/api/v1/finance/receipts/${id}/reverse`, {
     method: 'POST',
     body: { reason }
+  });
+}
+
+export function getReceiptVoucherPdf(id: string) {
+  return apiBlobRequest(`/api/v1/finance/receipts/${id}/pdf`, {
+    headers: { Accept: 'application/pdf' }
   });
 }

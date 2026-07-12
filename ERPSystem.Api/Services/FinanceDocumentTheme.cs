@@ -5,7 +5,7 @@ namespace ERPSystem.Api.Services;
 
 /// <summary>
 /// Shared QuestPDF branding (colors, font, logo) for finance/report documents — same visual
-/// identity as <see cref="SalesInvoicePdfService"/> (Navy/Gold), so every printed document in the
+/// identity as <see cref="ERPSystem.Application.Documents.SalesInvoicePdfGenerator"/> (Navy/Gold), so every printed document in the
 /// system reads as one family. Receipt/payment vouchers add a green/red accent only for the
 /// amount box and status badge, matching standard inbound/outbound cash convention.
 /// </summary>

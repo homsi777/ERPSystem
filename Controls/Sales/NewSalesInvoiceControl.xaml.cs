@@ -1721,11 +1721,7 @@ namespace ERPSystem.Controls.Sales
 
             var oc = await SalesUiService.Instance.GetOperationsCenterAsync(_invoiceId.Value);
             if (!ApplicationResultPresenter.Present(oc) || oc.Value?.Invoice is null) return;
-            SalesDocumentService.ShowInvoicePreview(
-                oc.Value.Invoice,
-                oc.Value.Invoice.CustomerName,
-                exportPdf,
-                oc.Value.CustomerBalance);
+            SalesDocumentService.ShowInvoicePreview(oc.Value, exportPdf);
         }
 
         private void UpdateStatusBadge()

@@ -18,9 +18,11 @@ import {
   createReceiptVoucher,
   getBankAccounts,
   getPaymentMethods,
+  getReceiptVoucherPdf,
   postReceiptVoucher
 } from '../api/receipts.ts';
 import { ApiError } from '../api/client.ts';
+import { downloadPdfBlob } from '../lib/documentExport.ts';
 import type {
   CustomerAccountLedgerDto,
   CustomerAccountLedgerLineDto,
@@ -662,6 +664,12 @@ function ReceiptVoucherForm({
       });
       await approveReceiptVoucher(voucherId);
       await postReceiptVoucher(voucherId);
+      try {
+        const pdfBlob = await getReceiptVoucherPdf(voucherId);
+        downloadPdfBlob(pdfBlob, `سند قبض - ${voucherId}.pdf`);
+      } catch {
+        /* voucher is posted regardless — PDF download is a bonus, not a blocker */
+      }
     },
     onSuccess: () => onDone('تم إنشاء وترحيل سند القبض بنجاح.'),
     onError: (error) => onToast(errorToast(error))

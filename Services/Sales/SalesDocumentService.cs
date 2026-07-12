@@ -1,3 +1,4 @@
+using ERPSystem.Application.Documents;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Services;
@@ -34,38 +35,31 @@ using QPageSizes = QuestPDF.Helpers.PageSizes;
 namespace ERPSystem.Services.Sales;
 
 /// <summary>
-/// Real invoice/delivery note PDF generator using QuestPDF (community license).
-/// Replaces the mock DocumentPreviewWindow shell — renders a live A4 document
-/// preview, printable and exportable to PDF.
+/// Sales invoice PDF uses the shared <see cref="SalesInvoicePdfGenerator"/> (same bytes as web/API).
+/// Delivery note PDF remains a local QuestPDF document until its own migration.
 /// </summary>
 public static class SalesDocumentService
 {
-    private static bool _licenseInitialized;
+    private static SalesInvoicePdfGenerator? _invoiceGenerator;
 
-    private static void EnsureLicense()
-    {
-        if (_licenseInitialized) return;
-        QuestPDF.Settings.License = LicenseType.Community;
-        _licenseInitialized = true;
-    }
+    private static SalesInvoicePdfGenerator InvoiceGenerator =>
+        _invoiceGenerator ??= SalesInvoicePdfGenerator.FromContentRoot(AppContext.BaseDirectory);
 
-    public static void ShowInvoicePreview(
-        SalesInvoiceDto invoice,
-        string customerName,
-        bool exportPdf,
-        decimal customerBalance = 0m)
+    public static void ShowInvoicePreview(SalesInvoiceOperationsCenterDto operations, bool exportPdf)
     {
-        EnsureLicense();
-        var resolvedCustomerName = string.IsNullOrWhiteSpace(invoice.CustomerName)
-            ? customerName
-            : invoice.CustomerName;
-        var document = BuildInvoiceDocument(invoice, resolvedCustomerName, customerBalance);
+        ArgumentNullException.ThrowIfNull(operations);
+        var invoice = operations.Invoice;
+        var pdfBytes = InvoiceGenerator.Generate(operations);
+        var customerName = string.IsNullOrWhiteSpace(invoice.CustomerName) ? "عميل" : invoice.CustomerName.Trim();
+        var fileName = BuildInvoiceFileName(customerName, invoice.InvoiceDate);
+
         if (exportPdf)
         {
-            SavePdf(document, BuildInvoiceFileName(resolvedCustomerName, invoice.InvoiceDate));
+            SavePdfBytes(pdfBytes, fileName);
             return;
         }
-        ShowPreview(document, $"فاتورة بيع — {invoice.InvoiceNumber}");
+
+        ShowPreviewFromBytes(pdfBytes, $"فاتورة بيع — {invoice.InvoiceNumber}");
     }
 
     private static string BuildInvoiceFileName(string customerName, DateTime invoiceDate)
@@ -100,6 +94,19 @@ public static class SalesDocumentService
         SavePdf(document, $"DeliveryNote-{invoice.InvoiceNumber}.pdf");
     }
 
+    private static void SavePdfBytes(byte[] pdfBytes, string suggestedName)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "PDF Document (*.pdf)|*.pdf",
+            FileName = suggestedName
+        };
+        if (dlg.ShowDialog() != true) return;
+        File.WriteAllBytes(dlg.FileName, pdfBytes);
+        try { Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true }); }
+        catch { /* opening is optional */ }
+    }
+
     private static void SavePdf(IDocument document, string suggestedName)
     {
         var dlg = new SaveFileDialog
@@ -113,11 +120,22 @@ public static class SalesDocumentService
         catch { /* opening is optional */ }
     }
 
+    private static void ShowPreviewFromBytes(byte[] pdfBytes, string title)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"erp-preview-{Guid.NewGuid():N}.pdf");
+        File.WriteAllBytes(tempPath, pdfBytes);
+        ShowPreviewShell(tempPath, title);
+    }
+
     private static void ShowPreview(IDocument document, string title)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"erp-preview-{Guid.NewGuid():N}.pdf");
         document.GeneratePdf(tempPath);
+        ShowPreviewShell(tempPath, title);
+    }
 
+    private static void ShowPreviewShell(string tempPath, string title)
+    {
         var win = new WpfWindow
         {
             Title = title,
@@ -210,39 +228,14 @@ public static class SalesDocumentService
         }
     }
 
-    private static IDocument BuildInvoiceDocument(
-        SalesInvoiceDto invoice,
-        string customerName,
-        decimal customerBalance) =>
-        Document.Create(container =>
-        {
-            container.Page(page =>
-            {
-                page.Size(QPageSizes.A4);
-                page.Margin(30);
-                page.DefaultTextStyle(t => t.FontFamily("Arial").FontSize(10));
-                page.ContentFromRightToLeft();
+    private static bool _licenseInitialized;
 
-                page.Header().Element(h => InvoiceHeader(h, invoice));
-                page.Content().Column(col =>
-                {
-                    col.Spacing(12);
-                    col.Item().Element(e => CustomerBox(e, invoice, customerName, customerBalance));
-                    col.Item().Element(e => LinesTable(e, invoice, invoice.Lines));
-                    col.Item().AlignRight().Element(e => TotalsBox(e, invoice));
-                    col.Item().PaddingTop(20).Text("شكراً لتعاملكم معنا").FontSize(11).Bold().AlignCenter();
-                });
-                page.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("فاتورة رقم ").FontSize(8);
-                    t.Span(invoice.InvoiceNumber).FontSize(8).Bold();
-                    t.Span(" — صفحة ").FontSize(8);
-                    t.CurrentPageNumber().FontSize(8);
-                    t.Span(" / ").FontSize(8);
-                    t.TotalPages().FontSize(8);
-                });
-            });
-        });
+    private static void EnsureLicense()
+    {
+        if (_licenseInitialized) return;
+        QuestPDF.Settings.License = LicenseType.Community;
+        _licenseInitialized = true;
+    }
 
     private static IDocument BuildDeliveryNoteDocument(SalesInvoiceDto invoice, string customerName) =>
         Document.Create(container =>
@@ -293,22 +286,6 @@ public static class SalesDocumentService
             });
         });
 
-    private static void InvoiceHeader(IContainer c, SalesInvoiceDto invoice)
-    {
-        c.PaddingBottom(10).BorderBottom(1).BorderColor(QColors.Grey.Lighten2).PaddingBottom(10).Row(row =>
-        {
-            row.RelativeItem().Column(col =>
-            {
-                col.Item().Text("فاتورة بيع").FontSize(20).Bold();
-                col.Item().Text($"رقم الفاتورة: {invoice.InvoiceNumber}").FontSize(11).SemiBold();
-                col.Item().Text($"تاريخ الإصدار: {invoice.InvoiceDate:yyyy-MM-dd}").FontSize(10);
-                col.Item().Text($"طريقة الدفع: {DisplayPaymentType(invoice.PaymentType)}").FontSize(10);
-                col.Item().Text($"الحالة: {DisplayStatus(invoice.Status)}").FontSize(10);
-            });
-            row.ConstantItem(110).Height(65).Background(QColors.Grey.Lighten3).AlignCenter().AlignMiddle().Text("شعار الشركة").FontSize(10);
-        });
-    }
-
     private static void CustomerBox(
         IContainer c,
         SalesInvoiceDto invoice,
@@ -325,12 +302,15 @@ public static class SalesDocumentService
             col.Item().PaddingTop(3)
                 .Text($"المستودع: {(string.IsNullOrWhiteSpace(invoice.WarehouseName) ? "غير محدد" : invoice.WarehouseName)}")
                 .FontSize(10);
-            col.Item().PaddingTop(3).Row(row =>
+            if (customerBalance != 0m)
             {
-                row.AutoItem().Text("آخر رصيد للعميل:").FontSize(10).SemiBold();
-                row.AutoItem().PaddingRight(5).ContentFromLeftToRight()
-                    .Text($"{customerBalance:N2}").FontSize(10).SemiBold();
-            });
+                col.Item().PaddingTop(3).Row(row =>
+                {
+                    row.AutoItem().Text("آخر رصيد للعميل:").FontSize(10).SemiBold();
+                    row.AutoItem().PaddingRight(5).ContentFromLeftToRight()
+                        .Text($"{customerBalance:N2}").FontSize(10).SemiBold();
+                });
+            }
         });
 
     private static void LinesTable(IContainer c, SalesInvoiceDto invoice, IReadOnlyList<SalesInvoiceLineDto> lines) =>
@@ -388,69 +368,4 @@ public static class SalesDocumentService
             static IContainer BreakdownCell(IContainer x) =>
                 x.Background(QColors.Grey.Lighten5).PaddingVertical(3).PaddingHorizontal(8).BorderBottom(1).BorderColor(QColors.Grey.Lighten3).AlignRight();
         });
-
-    private static void TotalsBox(IContainer c, SalesInvoiceDto invoice) =>
-        c.Width(280).Padding(6).Column(col =>
-        {
-            if (invoice.IsLegacyUntaxed)
-            {
-                col.Item().Text("فاتورة تاريخية — بدون ضريبة (Legacy Untaxed)")
-                    .FontSize(9).Italic().FontColor(QColors.Grey.Darken1);
-            }
-
-            var lineDiscount = invoice.Lines.Sum(l => l.DiscountAmount);
-            AddRow(col, "المجموع الفرعي", invoice.SubTotal);
-            AddRow(col, "خصم الأسطر", lineDiscount);
-            AddRow(col, "خصم الفاتورة", invoice.DiscountTotal);
-            if (!invoice.IsLegacyUntaxed)
-            {
-                var taxable = invoice.Lines.Sum(l => l.TaxableAmount);
-                if (taxable > 0) AddRow(col, "المبلغ الخاضع", taxable);
-            }
-            AddRow(col, "الضريبة", invoice.TaxTotal);
-            if (invoice.TaxTotal != 0m)
-            {
-                foreach (var group in invoice.Lines.Where(l => l.TaxAmount > 0).GroupBy(l => l.TaxCode))
-                {
-                    AddRow(col, $"  {group.Key} ({group.First().TaxRate:P0})", group.Sum(x => x.TaxAmount));
-                }
-            }
-            if (Math.Abs(invoice.RoundingDifference) >= 0.01m)
-                AddRow(col, "فرق التقريب", invoice.RoundingDifference);
-            col.Item().PaddingTop(4).BorderTop(1).BorderColor(QColors.Grey.Medium);
-            col.Item().PaddingTop(4).Row(r =>
-            {
-                r.RelativeItem().Text("الإجمالي المستحق").FontSize(12).Bold();
-                r.ConstantItem(90).AlignRight().Text($"{invoice.GrandTotal:N2}").FontSize(12).Bold();
-            });
-        });
-
-    private static void AddRow(ColumnDescriptor col, string label, decimal value) =>
-        col.Item().Row(r =>
-        {
-            r.RelativeItem().Text(label).FontSize(10);
-            r.ConstantItem(90).AlignRight().Text($"{value:N2}").FontSize(10);
-        });
-
-    private static string DisplayPaymentType(PaymentType t) => t switch
-    {
-        PaymentType.Cash => "نقداً",
-        PaymentType.Credit => "بالآجل",
-        _ => t.ToString()
-    };
-
-    private static string DisplayStatus(SalesInvoiceStatus s) => s switch
-    {
-        SalesInvoiceStatus.Draft => "مسودة",
-        SalesInvoiceStatus.AwaitingDetailing => "بانتظار التفصيل",
-        SalesInvoiceStatus.Detailed => "تم التفصيل",
-        SalesInvoiceStatus.ReadyForApproval => "بانتظار الاعتماد",
-        SalesInvoiceStatus.Approved => "معتمدة",
-        SalesInvoiceStatus.Printed => "مطبوعة",
-        SalesInvoiceStatus.Delivered => "مُسلمة",
-        SalesInvoiceStatus.PartiallyReturned => "مرتجع جزئي",
-        SalesInvoiceStatus.Returned => "مرتجعة",
-        SalesInvoiceStatus.Cancelled => "ملغاة",
-        _ => s.ToString()
-    };
 }

@@ -1,4 +1,4 @@
-import { apiRequest } from './client.ts';
+import { apiBlobRequest, apiRequest } from './client.ts';
 import type {
   CostCenterDto,
   CreateExpenseRequest,
@@ -130,6 +130,25 @@ export function getExpenseReport(params: ExpenseReportParams) {
     searchParams.set('costCenterId', params.costCenterId);
   }
   return apiRequest<ExpenseReportDto>(`/api/v1/expenses/reports?${searchParams.toString()}`);
+}
+
+export function getExpenseReportPdf(params: ExpenseReportParams) {
+  const searchParams = new URLSearchParams({ reportType: params.reportType });
+  if (params.from) {
+    searchParams.set('from', params.from);
+  }
+  if (params.to) {
+    searchParams.set('to', params.to);
+  }
+  if (params.categoryKind !== undefined) {
+    searchParams.set('categoryKind', String(params.categoryKind));
+  }
+  if (params.costCenterId) {
+    searchParams.set('costCenterId', params.costCenterId);
+  }
+  return apiBlobRequest(`/api/v1/expenses/reports/pdf?${searchParams.toString()}`, {
+    headers: { Accept: 'application/pdf' }
+  });
 }
 
 export function getExpenseCategories() {

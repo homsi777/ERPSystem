@@ -1,4 +1,5 @@
 using ERPSystem.Api.Mapping;
+using ERPSystem.Api.Services;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
@@ -28,8 +29,24 @@ public static class FinanceEndpoints
         group.MapPost("/receipts/{id:guid}/approve", ApproveReceiptAsync);
         group.MapPost("/receipts/{id:guid}/post", PostReceiptAsync);
         group.MapPost("/receipts/{id:guid}/reverse", ReverseReceiptAsync);
+        group.MapGet("/receipts/{id:guid}/pdf", GetReceiptPdfAsync);
 
         return app;
+    }
+
+    private static async Task<IResult> GetReceiptPdfAsync(
+        Guid id,
+        GetReceiptVoucherPrintHandler handler,
+        ReceiptVoucherPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetReceiptVoucherPrintQuery { VoucherId = id }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result, voucher =>
+        {
+            var bytes = pdfService.Generate(voucher);
+            var fileName = $"سند قبض - {voucher.VoucherNumber} - {voucher.VoucherDate:yyyy-MM-dd}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
+        });
     }
 
     private static async Task<IResult> GetCashboxesAsync(

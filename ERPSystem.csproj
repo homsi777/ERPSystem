@@ -46,6 +46,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="ERPSystem.Api\Assets\Fonts\NotoSansArabic.ttf" Link="Assets\Fonts\NotoSansArabic.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="66.png" Link="Assets\Brand\company-logo.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

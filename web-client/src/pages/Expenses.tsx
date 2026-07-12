@@ -13,6 +13,7 @@ import {
   getExpenseEntries,
   getExpenseOperationsCenter,
   getExpenseReport,
+  getExpenseReportPdf,
   getExpenses,
   payExpense
 } from '../api/expenses.ts';
@@ -709,6 +710,7 @@ function ReportsPage() {
   const [reportType, setReportType] = useState('Detailed');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const reportQuery = useQuery({
     queryKey: ['expenses', 'report', reportType, from, to],
@@ -721,6 +723,26 @@ function ReportsPage() {
   });
 
   const report = reportQuery.data;
+
+  const exportPayload: DocumentExportPayload | null = report
+    ? {
+        title: report.title || 'تقرير مصاريف',
+        subtitle: `${formatNumber(report.expenseCount)} مصروف — الإجمالي ${formatCurrency(report.totalBase)}`,
+        fileName: `تقرير مصاريف - ${new Date().toISOString().slice(0, 10)}.pdf`,
+        shareText: `${report.title}\nعدد المصاريف: ${report.expenseCount}\nالإجمالي: ${formatCurrency(report.totalBase)}\nالمدفوع: ${formatCurrency(report.totalPaidBase)}\nالمتبقي: ${formatCurrency(report.totalRemainingBase)}`,
+        sections: [
+          {
+            heading: 'الملخص',
+            rows: [
+              { label: 'عدد المصاريف', value: formatNumber(report.expenseCount) },
+              { label: 'الإجمالي', value: formatCurrency(report.totalBase) },
+              { label: 'المدفوع', value: formatCurrency(report.totalPaidBase) },
+              { label: 'المتبقي', value: formatCurrency(report.totalRemainingBase) }
+            ]
+          }
+        ]
+      }
+    : null;
 
   return (
     <AppShell title="تقارير المصاريف">
@@ -795,8 +817,22 @@ function ReportsPage() {
             ) : (
               <EmptyState title="لا توجد بيانات" />
             )}
+            <DocumentActions
+              payload={exportPayload}
+              pdfSource={{
+                fileName: `تقرير مصاريف - ${new Date().toISOString().slice(0, 10)}.pdf`,
+                load: () =>
+                  getExpenseReportPdf({
+                    reportType,
+                    from: from ? toIsoDate(from) : undefined,
+                    to: to ? toIsoDate(to) : undefined
+                  })
+              }}
+              onToast={(message, tone = 'success') => setToast({ tone, message })}
+            />
           </>
         ) : null}
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
     </AppShell>
   );
