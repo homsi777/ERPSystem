@@ -28,6 +28,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private readonly TextBox _meters = ErpUiFactory.FormField("");
     private readonly TextBox _rolls = ErpUiFactory.FormField("");
     private readonly TextBox _unitCost = ErpUiFactory.FormField("");
+    private readonly TextBox _lineNote = ErpUiFactory.FormField("");
     private readonly Button _saveButton = new();
     private readonly Button _postButton = new();
     private bool _isSaving;
@@ -48,9 +49,9 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             ("العملة", _currency),
             ("ملاحظات", _notes)));
 
-        ErpUiFactory.AddGridColumn(_lines, "كود التوب", nameof(OpeningLineRow.FabricCode), 100, null);
         ErpUiFactory.AddGridColumn(_lines, "اسم التوب", nameof(OpeningLineRow.FabricName), "*", null);
-        ErpUiFactory.AddGridColumn(_lines, "لون التوب", nameof(OpeningLineRow.ColorName), 100, null);
+        ErpUiFactory.AddGridColumn(_lines, "كود التوب", nameof(OpeningLineRow.FabricCode), 100, null);
+        ErpUiFactory.AddGridColumn(_lines, "اللون", nameof(OpeningLineRow.ColorName), 100, null);
         ErpUiFactory.AddGridColumn(_lines, "الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, null);
         ErpUiFactory.AddGridColumn(_lines, "عدد الأتواب", nameof(OpeningLineRow.RollCount), 80, null);
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
@@ -58,31 +59,37 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             ErpUiFactory.AddGridColumn(_lines, "التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, null);
             ErpUiFactory.AddGridColumn(_lines, "القيمة", nameof(OpeningLineRow.TotalValue), 90, null);
         }
+        ErpUiFactory.AddGridColumn(_lines, "ملاحظة", nameof(OpeningLineRow.LineNote), 140, null);
         _lines.ItemsSource = _lineRows;
         stack.Children.Add(_lines);
 
         var addRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
-        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 180 });
-        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 160 });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
-            addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+            addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 120 });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
 
-        AddEntryField(addRow, "كود التوب *", _fabricCode, 0);
-        AddEntryField(addRow, "اسم التوب *", _fabricName, 1);
-        AddEntryField(addRow, "لون التوب *", _colorName, 2);
+        AddEntryField(addRow, "اسم التوب *", _fabricName, 0);
+        AddEntryField(addRow, "كود التوب *", _fabricCode, 1);
+        AddEntryField(addRow, "اللون *", _colorName, 2);
         AddEntryField(addRow, "الأمتار *", _meters, 3);
         AddEntryField(addRow, "عدد الأتواب *", _rolls, 4);
 
-        var buttonColumn = 5;
+        var noteColumn = 5;
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
             AddEntryField(addRow, "التكلفة/م", _unitCost, 5);
-            buttonColumn = 6;
+            noteColumn = 6;
         }
+
+        AddEntryField(addRow, "ملاحظة", _lineNote, noteColumn);
+
+        var buttonColumn = noteColumn + 1;
 
         var addBtn = new Button
         {
@@ -117,18 +124,18 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     {
         EnterFocusNavigation.WireChain(
             [_warehouse, _date, _reference, _currency, _notes],
-            onLastEnter: () => EnterFocusNavigation.FocusNext(_fabricCode));
+            onLastEnter: () => EnterFocusNavigation.FocusNext(_fabricName));
 
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
             EnterFocusNavigation.WireChain(
-                [_fabricCode, _fabricName, _colorName, _meters, _rolls, _unitCost],
+                [_fabricName, _fabricCode, _colorName, _meters, _rolls, _unitCost, _lineNote],
                 onLastEnter: AddLineAndRefocusFabric);
         }
         else
         {
             EnterFocusNavigation.WireChain(
-                [_fabricCode, _fabricName, _colorName, _meters, _rolls],
+                [_fabricName, _fabricCode, _colorName, _meters, _rolls, _lineNote],
                 onLastEnter: AddLineAndRefocusFabric);
         }
     }
@@ -136,7 +143,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private void AddLineAndRefocusFabric()
     {
         AddLine();
-        EnterFocusNavigation.FocusNext(_fabricCode);
+        EnterFocusNavigation.FocusNext(_fabricName);
     }
 
     private static UIElement Wrap(UIElement c) => new Border { Child = c, Padding = new Thickness(0, 4, 0, 0) };
@@ -207,7 +214,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             ColorName = colorName,
             QuantityMeters = m,
             RollCount = r,
-            UnitCost = cost
+            UnitCost = cost,
+            LineNote = _lineNote.Text.Trim()
         });
 
         _fabricCode.Clear();
@@ -216,7 +224,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         _meters.Clear();
         _rolls.Clear();
         _unitCost.Clear();
-        _fabricCode.Focus();
+        _lineNote.Clear();
+        _fabricName.Focus();
     }
 
     private async Task SaveAsync()
@@ -248,7 +257,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             RollCount = l.RollCount,
             UnitCost = l.UnitCost,
             Debit = l.TotalValue,
-            Credit = 0m
+            Credit = 0m,
+            Notes = string.IsNullOrWhiteSpace(l.LineNote) ? null : l.LineNote
         }).ToList();
 
         _isSaving = true;
@@ -342,6 +352,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         public decimal QuantityMeters { get; init; }
         public int RollCount { get; init; }
         public decimal UnitCost { get; init; }
+        public string LineNote { get; init; } = "";
         public decimal TotalValue => QuantityMeters * UnitCost;
     }
 }
