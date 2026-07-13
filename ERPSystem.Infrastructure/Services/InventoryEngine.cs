@@ -862,8 +862,9 @@ internal sealed class InventoryEngine(
 
     public async Task<Guid> PostOpeningStockAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
-        var doc = await context.OpeningStockDocuments
-            .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken)
+        var doc = context.OpeningStockDocuments.Local.FirstOrDefault(d => d.Id == documentId)
+            ?? await context.OpeningStockDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken)
             ?? throw new ValidationException("Opening stock document not found.");
 
         if (doc.Status == (int)InventoryDocumentStatus.Posted)
@@ -879,9 +880,15 @@ internal sealed class InventoryEngine(
                 return existingMovementId;
         }
 
-        var lines = await context.OpeningStockLines
+        var lines = context.OpeningStockLines.Local
             .Where(l => l.DocumentId == documentId)
-            .ToListAsync(cancellationToken);
+            .ToList();
+        if (lines.Count == 0)
+        {
+            lines = await context.OpeningStockLines
+                .Where(l => l.DocumentId == documentId)
+                .ToListAsync(cancellationToken);
+        }
         if (lines.Count == 0)
             throw new ValidationException("Opening stock has no lines.");
 
@@ -989,7 +996,7 @@ internal sealed class InventoryEngine(
             {
                 var stockDocId = Guid.NewGuid();
                 var stockNumber = await numberingService.NextOpeningStockNumberAsync(obDoc.BranchId, cancellationToken);
-                await context.OpeningStockDocuments.AddAsync(new OpeningStockDocumentEntity
+                stockDoc = new OpeningStockDocumentEntity
                 {
                     Id = stockDocId,
                     DocumentNumber = stockNumber,
@@ -1000,7 +1007,8 @@ internal sealed class InventoryEngine(
                     Status = (int)InventoryDocumentStatus.Draft,
                     Notes = $"من رصيد افتتاحي {obDoc.Number}",
                     CreatedAt = DateTime.UtcNow
-                }, cancellationToken);
+                };
+                await context.OpeningStockDocuments.AddAsync(stockDoc, cancellationToken);
 
                 foreach (var line in warehouseGroup)
                 {
@@ -1026,9 +1034,6 @@ internal sealed class InventoryEngine(
                         CreatedAt = DateTime.UtcNow
                     }, cancellationToken);
                 }
-
-                stockDoc = await context.OpeningStockDocuments
-                    .FirstAsync(d => d.Id == stockDocId, cancellationToken);
             }
 
             movementIds.Add(await PostOpeningStockAsync(stockDoc.Id, cancellationToken));
@@ -1253,11 +1258,16 @@ internal sealed class InventoryEngine(
         DateTime now,
         CancellationToken cancellationToken)
     {
-        var existing = await context.WarehouseStocks.FirstOrDefaultAsync(
+        var existing = context.WarehouseStocks.Local.FirstOrDefault(
             s => s.WarehouseId == warehouseId &&
                  s.FabricItemId == fabricItemId &&
                  s.FabricColorId == fabricColorId &&
-                 s.ContainerId == containerId, cancellationToken);
+                 s.ContainerId == containerId)
+            ?? await context.WarehouseStocks.FirstOrDefaultAsync(
+                s => s.WarehouseId == warehouseId &&
+                     s.FabricItemId == fabricItemId &&
+                     s.FabricColorId == fabricColorId &&
+                     s.ContainerId == containerId, cancellationToken);
 
         if (existing is null)
         {

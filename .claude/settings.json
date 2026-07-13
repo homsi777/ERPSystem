@@ -42,7 +42,10 @@
       "PowerShell(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -ge 3000 -and $_.LocalPort -le 9000 } | Select-Object LocalPort, OwningProcess | Sort-Object LocalPort)",
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\")",
       "Bash(grep -rl \"ERPSystem.DocumentEngine\" --include=*.csproj .)",
-      "Bash(grep -i \"DocumentEngine\" *.sln)"
+      "Bash(grep -i \"DocumentEngine\" *.sln)",
+      "Bash(awk 'NR==280,NR==360{print NR\": \"$0}' ERPSystem.Infrastructure/Services/OpeningBalanceEngine.cs)",
+      "Bash(awk 'NR==190,NR==215{print NR\": \"$0}' ERPSystem.Infrastructure/Repositories/AccountingReportRepository.cs)",
+      "Bash(awk 'NR==1,NR==45{print NR\": \"$0}' ERPSystem.Application/UseCases/Queries/GetCustomerAccountLedgerHandler.cs)"
     ],
     "additionalDirectories": [
       "\\tmp"

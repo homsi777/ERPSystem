@@ -24,9 +24,13 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private readonly ObservableCollection<OpeningLineRow> _lineRows = [];
     private readonly TextBox _fabricName = ErpUiFactory.FormField("");
     private readonly TextBox _colorName = ErpUiFactory.FormField("");
-    private readonly TextBox _meters = ErpUiFactory.FormField("0");
-    private readonly TextBox _rolls = ErpUiFactory.FormField("1");
-    private readonly TextBox _unitCost = ErpUiFactory.FormField("0");
+    private readonly TextBox _meters = ErpUiFactory.FormField("");
+    private readonly TextBox _rolls = ErpUiFactory.FormField("");
+    private readonly TextBox _unitCost = ErpUiFactory.FormField("");
+    private readonly Button _saveButton = new();
+    private readonly Button _postButton = new();
+    private bool _isSaving;
+    private bool _isPosting;
     private Guid? _documentId;
 
     public InventoryOpeningStockFormControl()
@@ -88,12 +92,15 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         stack.Children.Add(addRow);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
-        var saveBtn = new Button { Content = "حفظ المستند", Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!, Margin = new Thickness(0, 0, 8, 0) };
-        saveBtn.Click += async (_, _) => await SaveAsync();
-        var postBtn = new Button { Content = "ترحيل للمخزون", Style = (Style)System.Windows.Application.Current.Resources["SecondaryButtonStyle"]! };
-        postBtn.Click += async (_, _) => await PostAsync();
-        actions.Children.Add(saveBtn);
-        actions.Children.Add(postBtn);
+        _saveButton.Content = "حفظ المستند";
+        _saveButton.Style = (Style)System.Windows.Application.Current.Resources["PrimaryButtonStyle"]!;
+        _saveButton.Margin = new Thickness(0, 0, 8, 0);
+        _saveButton.Click += async (_, _) => await SaveAsync();
+        _postButton.Content = "ترحيل للمخزون";
+        _postButton.Style = (Style)System.Windows.Application.Current.Resources["SecondaryButtonStyle"]!;
+        _postButton.Click += async (_, _) => await PostAsync();
+        actions.Children.Add(_saveButton);
+        actions.Children.Add(_postButton);
         stack.Children.Add(actions);
 
         root.Content = stack;
@@ -139,10 +146,23 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             MessageBox.Show("اكتب اسم القماش واللون.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        if (!decimal.TryParse(_meters.Text, out var m) || m <= 0) return;
-        if (!int.TryParse(_rolls.Text, out var r) || r <= 0) r = 1;
-        if (!decimal.TryParse(_unitCost.Text, out var cost) || cost < 0) cost = 0;
-
+        if (!decimal.TryParse(_meters.Text, out var m) || m <= 0)
+        {
+            MessageBox.Show("اكتب إجمالي الأمتار بقيمة أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (!int.TryParse(_rolls.Text, out var r) || r <= 0)
+        {
+            MessageBox.Show("اكتب عدد الرولات بقيمة صحيحة أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var cost = 0m;
+        if (!string.IsNullOrWhiteSpace(_unitCost.Text) &&
+            (!decimal.TryParse(_unitCost.Text, out cost) || cost < 0))
+        {
+            MessageBox.Show("اكتب تكلفة صحيحة أو اتركها فارغة.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         _lineRows.Add(new OpeningLineRow
         {
             FabricName = fabricName,
@@ -154,14 +174,17 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
         _fabricName.Clear();
         _colorName.Clear();
-        _meters.Text = "0";
-        _rolls.Text = "1";
-        _unitCost.Text = "0";
+        _meters.Clear();
+        _rolls.Clear();
+        _unitCost.Clear();
         _fabricName.Focus();
     }
 
     private async Task SaveAsync()
     {
+        if (_isSaving)
+            return;
+
         if (_warehouse.SelectedItem is not WarehouseListExtendedDto wh)
         {
             MessageBox.Show("اختر المستودع.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -188,46 +211,79 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             Credit = 0m
         }).ToList();
 
-        var result = await OpeningBalanceUiService.Instance.CreateAsync(new CreateOpeningBalanceCommand
+        _isSaving = true;
+        _saveButton.IsEnabled = false;
+        try
         {
-            Type = OpeningBalanceType.OpeningStock,
-            Source = OpeningBalanceSource.Manual,
-            OpeningDate = ApplicationDateNormalizer.ToUtcDate(_date.SelectedDate) ?? DateTime.UtcNow,
-            CurrencyCode = _currency.Text.Trim().ToUpperInvariant(),
-            ExchangeRate = 1m,
-            Reference = _reference.Text.Trim(),
-            Notes = _notes.Text.Trim(),
-            Lines = lines
-        });
+            var result = await OpeningBalanceUiService.Instance.CreateAsync(new CreateOpeningBalanceCommand
+            {
+                Type = OpeningBalanceType.OpeningStock,
+                Source = OpeningBalanceSource.Manual,
+                OpeningDate = ApplicationDateNormalizer.ToUtcDate(_date.SelectedDate) ?? DateTime.UtcNow,
+                CurrencyCode = _currency.Text.Trim().ToUpperInvariant(),
+                ExchangeRate = 1m,
+                Reference = _reference.Text.Trim(),
+                Notes = _notes.Text.Trim(),
+                Lines = lines
+            });
 
-        if (ApplicationResultPresenter.Present(result) && result.IsSuccess)
+            if (ApplicationResultPresenter.Present(result) && result.IsSuccess)
+            {
+                _documentId = result.Value?.Id;
+                InventoryListRefreshHub.RequestRefresh();
+            }
+        }
+        catch (Exception ex)
         {
-            _documentId = result.Value?.Id;
-            InventoryListRefreshHub.RequestRefresh();
+            MessageBox.Show($"تعذّر حفظ مستند مواد أول المدة.\n\n{ex.Message}",
+                "مواد أول المدة", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            _saveButton.IsEnabled = true;
         }
     }
 
     private async Task PostAsync()
     {
+        if (_isPosting)
+            return;
+
         if (!_documentId.HasValue)
         {
             MessageBox.Show("احفظ المستند أولاً.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        var submit = await OpeningBalanceUiService.Instance.SubmitAsync(_documentId.Value);
-        if (!ApplicationResultPresenter.Present(submit))
-            return;
-
-        var approve = await OpeningBalanceUiService.Instance.ApproveAsync(
-            _documentId.Value, "اعتماد رصيد مخزون من شاشة مواد أول المدة");
-        if (!ApplicationResultPresenter.Present(approve))
-            return;
-
-        var post = await OpeningBalanceUiService.Instance.PostAsync(_documentId.Value, lockAfterPost: true);
-        if (ApplicationResultPresenter.Present(post))
+        _isPosting = true;
+        _postButton.IsEnabled = false;
+        try
         {
-            InventoryListRefreshHub.RequestRefresh();
-            InventoryPopupService.CompleteSuccess();
+            var submit = await OpeningBalanceUiService.Instance.SubmitAsync(_documentId.Value);
+            if (!ApplicationResultPresenter.Present(submit))
+                return;
+
+            var approve = await OpeningBalanceUiService.Instance.ApproveAsync(
+                _documentId.Value, "اعتماد رصيد مخزون من شاشة مواد أول المدة");
+            if (!ApplicationResultPresenter.Present(approve))
+                return;
+
+            var post = await OpeningBalanceUiService.Instance.PostAsync(_documentId.Value, lockAfterPost: true);
+            if (ApplicationResultPresenter.Present(post))
+            {
+                InventoryListRefreshHub.RequestRefresh();
+                InventoryPopupService.CompleteSuccess();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"تعذّر ترحيل مستند مواد أول المدة.\n\n{ex.Message}",
+                "مواد أول المدة", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isPosting = false;
+            _postButton.IsEnabled = true;
         }
     }
 

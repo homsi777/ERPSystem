@@ -96,8 +96,50 @@ internal sealed class PostgreSqlNumberingService(ErpDbContext context) : INumber
     public Task<string> NextDepartmentCodeAsync(Guid branchId, CancellationToken cancellationToken = default) =>
         NextAsync(branchId, "Department", cancellationToken);
 
-    public Task<string> NextOpeningBalanceNumberAsync(Guid branchId, CancellationToken cancellationToken = default) =>
-        NextAsync(branchId, "OpeningBalance", cancellationToken);
+    public async Task<string> NextOpeningBalanceNumberAsync(
+        Guid branchId,
+        CancellationToken cancellationToken = default)
+    {
+        var branch = await context.Branches.AsNoTracking()
+            .Where(b => b.Id == branchId)
+            .Select(b => new { b.CompanyId, b.Code })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Branch context was not found.");
+
+        var counter = await context.DocumentCounters
+            .FirstOrDefaultAsync(c =>
+                c.BranchId == branchId && c.DocumentType == "OpeningBalance", cancellationToken);
+
+        if (counter is null)
+        {
+            counter = new DocumentCounterEntity
+            {
+                Id = Guid.NewGuid(),
+                BranchId = branchId,
+                DocumentType = "OpeningBalance",
+                Prefix = Prefixes["OpeningBalance"],
+                LastNumber = 0,
+                RowVersion = [0, 0, 0, 0, 0, 0, 0, 1]
+            };
+            await context.DocumentCounters.AddAsync(counter, cancellationToken);
+        }
+
+        var numberPrefix = $"{counter.Prefix}-{branch.Code}-";
+        var existingNumbers = await context.OpeningBalanceDocuments.AsNoTracking()
+            .Where(d => d.CompanyId == branch.CompanyId && d.Number.StartsWith(numberPrefix))
+            .Select(d => d.Number)
+            .ToListAsync(cancellationToken);
+
+        var highestExisting = existingNumbers
+            .Select(number => long.TryParse(number.AsSpan(numberPrefix.Length), out var value) ? value : 0L)
+            .DefaultIfEmpty(0L)
+            .Max();
+        counter.LastNumber = Math.Max(counter.LastNumber, highestExisting) + 1;
+        counter.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync(cancellationToken);
+
+        return $"{numberPrefix}{counter.LastNumber:D6}";
+    }
 
     private async Task<string> NextAsync(Guid branchId, string documentType, CancellationToken cancellationToken)
     {

@@ -12,6 +12,7 @@ using ERPSystem.Application.Common;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Mapping;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ERPSystem.Infrastructure.Services;
 
@@ -126,8 +127,8 @@ internal sealed class OpeningBalanceEngine(
             return ApplicationResult<OpeningBalanceListDto>.ValidationFailed(
                 validation.Errors.Select(e => new ValidationError(e.Field, e.Message)));
 
-        var resolved = await ResolveLinesAsync(command.Type, command.Lines, cancellationToken);
         var number = await numbering.NextOpeningBalanceNumberAsync(branchId, cancellationToken);
+        var resolved = await ResolveLinesAsync(command.Type, command.Lines, cancellationToken);
         var doc = OpeningBalanceDocument.Create(
             companyId, branchId, number, command.Type, command.Source,
             command.OpeningDate, command.CurrencyCode, command.ExchangeRate,
@@ -141,7 +142,20 @@ internal sealed class OpeningBalanceEngine(
         await OpeningBalanceTrailRecorder.RecordAsync(
             repository, user, doc.Id, command.Source == OpeningBalanceSource.ExcelImport ? "Imported" : "Created",
             notes: $"{OpeningBalanceDisplay.TypeName(command.Type)} — {doc.Number}", cancellationToken: cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsDuplicateOpeningBalanceNumber(ex))
+        {
+            return ApplicationResult<OpeningBalanceListDto>.Conflict(
+                "تعذّر حجز رقم المستند بسبب حفظ متزامن. اضغط حفظ مرة أخرى.");
+        }
+        catch (DbUpdateException)
+        {
+            return ApplicationResult<OpeningBalanceListDto>.Failure(
+                "تعذّر حفظ مستند الرصيد الافتتاحي في قاعدة البيانات. لم يتم ترحيل المخزون.");
+        }
 
         return ApplicationResult<OpeningBalanceListDto>.Success(OpeningBalanceMappers.ToListDto(doc));
     }
@@ -844,4 +858,11 @@ internal sealed class OpeningBalanceEngine(
         Errors = errors,
         Warnings = warnings
     };
+
+    private static bool IsDuplicateOpeningBalanceNumber(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_opening_balance_documents_CompanyId_Number"
+        };
 }
