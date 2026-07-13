@@ -1,7 +1,11 @@
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Application.DTOs.Inventory;
+using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Core;
+using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
+using ERPSystem.Services.Finance;
 using ERPSystem.Services.Inventory;
 using System.Windows;
 using System.Windows.Controls;
@@ -346,27 +350,30 @@ public sealed class InventoryOpeningStockPageControl : UserControl
         DockPanel.SetDock(header, Dock.Top);
         root.Children.Add(header);
 
-        ErpUiFactory.AddGridColumn(_grid, "الرقم", nameof(OpeningStockListDto.DocumentNumber), 120, null);
-        ErpUiFactory.AddGridColumn(_grid, "المستودع", nameof(OpeningStockListDto.WarehouseName), "*", null);
-        ErpUiFactory.AddGridColumn(_grid, "التاريخ", nameof(OpeningStockListDto.OpeningDate), 120, null);
-        ErpUiFactory.AddGridColumn(_grid, "القيمة", nameof(OpeningStockListDto.TotalValue), 100, "N2");
-        ErpUiFactory.AddGridColumn(_grid, "الحالة", nameof(OpeningStockListDto.Status), 100, null);
+        ErpUiFactory.AddGridColumn(_grid, "الرقم", nameof(OpeningBalanceListDto.Number), 120, null);
+        ErpUiFactory.AddGridColumn(_grid, "التاريخ", nameof(OpeningBalanceListDto.OpeningDate), 120, null);
+        ErpUiFactory.AddGridColumn(_grid, "المرجع", nameof(OpeningBalanceListDto.Reference), 140, null);
+        ErpUiFactory.AddGridColumn(_grid, "القيمة", nameof(OpeningBalanceListDto.TotalBaseAmount), 100, "N2");
+        ErpUiFactory.AddGridColumn(_grid, "الحالة", nameof(OpeningBalanceListDto.StatusDisplay), 120, null);
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
         Unloaded += OnUnloaded;
-        InventoryListRefreshHub.RefreshRequested += OnRefreshRequested;
+        OpeningBalanceListRefreshHub.RefreshRequested += OnRefreshRequested;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e) =>
-        InventoryListRefreshHub.RefreshRequested -= OnRefreshRequested;
+        OpeningBalanceListRefreshHub.RefreshRequested -= OnRefreshRequested;
 
     private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
 
     private async Task LoadAsync()
     {
         if (!AppServices.IsInitialized) return;
-        var result = await InventoryUiService.Instance.GetOpeningStockDocumentsAsync();
-        if (result.IsSuccess && result.Value is not null) _grid.ItemsSource = result.Value;
+        var result = await OpeningBalanceUiService.Instance.GetListAsync(
+            new OpeningBalanceListFilter { Type = OpeningBalanceType.OpeningStock },
+            pageSize: 200);
+        if (result.IsSuccess && result.Value is not null)
+            _grid.ItemsSource = result.Value.Items;
     }
 }

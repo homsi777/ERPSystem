@@ -5,8 +5,8 @@ using ERPSystem.Core;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
-using ERPSystem.Services.Inventory;
 using ERPSystem.Services.Finance;
+using ERPSystem.Services.Inventory;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -230,7 +230,11 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             if (ApplicationResultPresenter.Present(result) && result.IsSuccess)
             {
                 _documentId = result.Value?.Id;
+                OpeningBalanceListRefreshHub.RequestRefresh();
                 InventoryListRefreshHub.RequestRefresh();
+                MockInteractionService.ShowInfo(
+                    $"تم حفظ مستند مواد أول المدة رقم {result.Value?.Number ?? "—"}.\nيمكنك الآن الضغط على «ترحيل للمخزون».",
+                    "مواد أول المدة");
             }
         }
         catch (Exception ex)
@@ -271,6 +275,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             var post = await OpeningBalanceUiService.Instance.PostAsync(_documentId.Value, lockAfterPost: true);
             if (ApplicationResultPresenter.Present(post))
             {
+                OpeningBalanceListRefreshHub.RequestRefresh();
                 InventoryListRefreshHub.RequestRefresh();
                 InventoryPopupService.CompleteSuccess();
             }

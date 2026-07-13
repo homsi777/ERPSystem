@@ -49,6 +49,7 @@ public static class PermissionDisplayCatalog
         ["containers.landing-cost"] = "تكلفة وصول",
         ["containers.move-to-warehouse"] = "تحويل للمخزن",
         ["warehouse.detailing"] = "تفصيل المستودع",
+        [OpeningBalanceAuthorization.InventoryOpeningStockPermission] = "مواد أول المدة — المخزون",
         ["finance.receipt.create"] = "إنشاء سند قبض",
         ["finance.receipt.post"] = "ترحيل سند قبض",
         ["finance.payment.create"] = "إنشاء سند صرف",

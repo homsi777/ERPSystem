@@ -564,7 +564,8 @@ public static class DatabaseSeeder
 
     private static IEnumerable<(string Code, string Module, string Action)> GetWarehousePermissionDefinitions() =>
     [
-        ("warehouse.detailing", "warehouse", "detailing")
+        ("warehouse.detailing", "warehouse", "detailing"),
+        (OpeningBalanceAuthorization.InventoryOpeningStockPermission, "warehouse", "opening-stock")
     ];
 
     private static IEnumerable<(string Code, string Module, string Action)> GetPurchasePermissionDefinitions() =>

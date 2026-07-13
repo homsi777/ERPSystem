@@ -19,7 +19,7 @@ public sealed class CreateOpeningBalanceHandler(
     public async Task<ApplicationResult<OpeningBalanceListDto>> HandleAsync(
         CreateOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await permissions.CanAsync("openingbalances.create", cancellationToken))
+        if (!await OpeningBalanceAuthorization.CanCreateAsync(permissions, command.Type, cancellationToken))
             return ApplicationResult<OpeningBalanceListDto>.PermissionDenied("غير مسموح بإنشاء أرصدة افتتاحية.");
         return await engine.CreateAsync(command, cancellationToken);
     }
@@ -27,13 +27,17 @@ public sealed class CreateOpeningBalanceHandler(
 
 public sealed class UpdateOpeningBalanceHandler(
     IOpeningBalanceEngine engine,
-    IPermissionService permissions)
+    IPermissionService permissions,
+    IOpeningBalanceRepository repository)
     : ICommandHandler<UpdateOpeningBalanceCommand, ApplicationResult<OpeningBalanceListDto>>
 {
     public async Task<ApplicationResult<OpeningBalanceListDto>> HandleAsync(
         UpdateOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await permissions.CanAsync("openingbalances.edit", cancellationToken))
+        var doc = await repository.GetAsync(command.DocumentId, cancellationToken);
+        if (doc is null)
+            return ApplicationResult<OpeningBalanceListDto>.NotFound("المستند غير موجود.");
+        if (!await OpeningBalanceAuthorization.CanEditAsync(permissions, doc.Type, cancellationToken))
             return ApplicationResult<OpeningBalanceListDto>.PermissionDenied("غير مسموح بتعديل أرصدة افتتاحية.");
         return await engine.UpdateAsync(command, cancellationToken);
     }
@@ -41,13 +45,15 @@ public sealed class UpdateOpeningBalanceHandler(
 
 public sealed class SubmitOpeningBalanceHandler(
     IOpeningBalanceEngine engine,
-    IPermissionService permissions)
+    IPermissionService permissions,
+    IOpeningBalanceRepository repository)
     : ICommandHandler<SubmitOpeningBalanceCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
         SubmitOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await permissions.CanAsync("openingbalances.edit", cancellationToken))
+        if (!await OpeningBalanceAuthorization.CanWorkflowAsync(
+                permissions, repository, command.DocumentId, "openingbalances.edit", cancellationToken))
             return ApplicationResult.PermissionDenied("غير مسموح.");
         return await engine.SubmitAsync(command.DocumentId, cancellationToken);
     }
@@ -55,13 +61,15 @@ public sealed class SubmitOpeningBalanceHandler(
 
 public sealed class ApproveOpeningBalanceHandler(
     IOpeningBalanceEngine engine,
-    IPermissionService permissions)
+    IPermissionService permissions,
+    IOpeningBalanceRepository repository)
     : ICommandHandler<ApproveOpeningBalanceCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
         ApproveOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await permissions.CanAsync("openingbalances.approve", cancellationToken))
+        if (!await OpeningBalanceAuthorization.CanWorkflowAsync(
+                permissions, repository, command.DocumentId, "openingbalances.approve", cancellationToken))
             return ApplicationResult.PermissionDenied("غير مسموح بالاعتماد.");
         return await engine.ApproveAsync(command.DocumentId, command.Notes, cancellationToken);
     }
@@ -83,13 +91,15 @@ public sealed class RejectOpeningBalanceHandler(
 
 public sealed class PostOpeningBalanceHandler(
     IOpeningBalanceEngine engine,
-    IPermissionService permissions)
+    IPermissionService permissions,
+    IOpeningBalanceRepository repository)
     : ICommandHandler<PostOpeningBalanceCommand, ApplicationResult<OpeningBalancePostResultDto>>
 {
     public async Task<ApplicationResult<OpeningBalancePostResultDto>> HandleAsync(
         PostOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await permissions.CanAsync("openingbalances.post", cancellationToken))
+        if (!await OpeningBalanceAuthorization.CanWorkflowAsync(
+                permissions, repository, command.DocumentId, "openingbalances.post", cancellationToken))
             return ApplicationResult<OpeningBalancePostResultDto>.PermissionDenied("غير مسموح بالترحيل.");
         return await engine.PostAsync(command.DocumentId, command.LockAfterPost, cancellationToken);
     }
