@@ -45,7 +45,8 @@
       "Bash(grep -i \"DocumentEngine\" *.sln)",
       "Bash(awk 'NR==280,NR==360{print NR\": \"$0}' ERPSystem.Infrastructure/Services/OpeningBalanceEngine.cs)",
       "Bash(awk 'NR==190,NR==215{print NR\": \"$0}' ERPSystem.Infrastructure/Repositories/AccountingReportRepository.cs)",
-      "Bash(awk 'NR==1,NR==45{print NR\": \"$0}' ERPSystem.Application/UseCases/Queries/GetCustomerAccountLedgerHandler.cs)"
+      "Bash(awk 'NR==1,NR==45{print NR\": \"$0}' ERPSystem.Application/UseCases/Queries/GetCustomerAccountLedgerHandler.cs)",
+      "PowerShell(cd \"C:\\\\Users\\\\Homsi\\\\Desktop\\\\POS ERP C#\\\\ERPSystem\"; $env:ERP_LOCAL_DB_TESTS=\"1\"; dotnet test ERPSystem.Application.Tests/ERPSystem.Application.Tests.csproj --filter \"FullyQualifiedName~InventoryOpeningBalanceLocalDbVerificationTests|FullyQualifiedName~CustomerAccountLedgerLiveDbVerificationTests\" --no-restore 2>&1 | Select-Object -Last 60)"
     ],
     "additionalDirectories": [
       "\\tmp"
