@@ -81,6 +81,7 @@ public static class OpeningBalanceMappers
         WarehouseName = line.WarehouseName,
         FabricItemId = line.FabricItemId,
         FabricColorId = line.FabricColorId,
+        ItemCode = line.ItemCode,
         ItemName = line.ItemName,
         ColorName = line.ColorName,
         BatchNumber = line.BatchNumber,
@@ -118,7 +119,7 @@ public static class OpeningBalanceMappers
             input.AccountId, input.AccountName,
             input.WarehouseId, input.WarehouseName,
             input.FabricItemId, input.FabricColorId,
-            input.ItemName, input.ColorName, input.BatchNumber, input.LocationCode,
+            input.ItemCode, input.ItemName, input.ColorName, input.BatchNumber, input.LocationCode,
             input.RollCount, input.Quantity, input.UnitCost,
             input.BankName, input.BankAccountNumber, input.InvestmentScope,
             input.Reference, input.Description, input.Notes);

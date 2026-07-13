@@ -264,6 +264,7 @@ public class OpeningBalanceLine
     public string? WarehouseName { get; private set; }
     public Guid? FabricItemId { get; private set; }
     public Guid? FabricColorId { get; private set; }
+    public string? ItemCode { get; private set; }
     public string? ItemName { get; private set; }
     public string? ColorName { get; private set; }
     public string? BatchNumber { get; private set; }
@@ -303,6 +304,7 @@ public class OpeningBalanceLine
         string? warehouseName = null,
         Guid? fabricItemId = null,
         Guid? fabricColorId = null,
+        string? itemCode = null,
         string? itemName = null,
         string? colorName = null,
         string? batchNumber = null,
@@ -328,6 +330,7 @@ public class OpeningBalanceLine
         WarehouseName = warehouseName,
         FabricItemId = fabricItemId,
         FabricColorId = fabricColorId,
+        ItemCode = itemCode,
         ItemName = itemName,
         ColorName = colorName,
         BatchNumber = batchNumber,

@@ -91,6 +91,7 @@ public sealed class InventoryOpeningBalanceLocalDbVerificationTests
         var warehouse = await db.Warehouses.AsNoTracking()
             .FirstAsync(w => w.BranchId == DatabaseSeeder.DefaultBranchId);
         var suffix = Guid.NewGuid().ToString("N");
+        var itemCode = $"OB-{suffix}";
         var itemName = $"قماش أول مدة {suffix}";
         var colorName = $"لون أول مدة {suffix}";
         var engine = scope.ServiceProvider.GetRequiredService<IOpeningBalanceEngine>();
@@ -109,6 +110,7 @@ public sealed class InventoryOpeningBalanceLocalDbVerificationTests
                 {
                     WarehouseId = warehouse.Id,
                     WarehouseName = warehouse.NameAr,
+                    ItemCode = itemCode,
                     ItemName = itemName,
                     ColorName = colorName,
                     Quantity = 100m,
@@ -128,11 +130,12 @@ public sealed class InventoryOpeningBalanceLocalDbVerificationTests
         Assert.NotEqual(Guid.Empty, storedLine.FabricItemId);
         Assert.NotNull(storedLine.FabricColorId);
         Assert.NotEqual(Guid.Empty, storedLine.FabricColorId);
+        Assert.Equal(itemCode, storedLine.ItemCode);
         Assert.Equal(itemName, storedLine.ItemName);
         Assert.Equal(colorName, storedLine.ColorName);
 
         Assert.True(await db.FabricItems.AsNoTracking()
-            .AnyAsync(i => i.Id == storedLine.FabricItemId && i.NameAr == itemName));
+            .AnyAsync(i => i.Id == storedLine.FabricItemId && i.Code == itemCode && i.NameAr == itemName));
         Assert.True(await db.FabricColors.AsNoTracking()
             .AnyAsync(c => c.Id == storedLine.FabricColorId && c.NameAr == colorName));
 
@@ -235,6 +238,7 @@ public sealed class InventoryOpeningBalanceLocalDbVerificationTests
                 {
                     WarehouseId = warehouse.Id,
                     WarehouseName = warehouse.NameAr,
+                    ItemCode = $"CNT-{suffix}",
                     ItemName = $"قماش عداد {suffix}",
                     ColorName = $"لون عداد {suffix}",
                     Quantity = 10m,

@@ -69,7 +69,8 @@ public static class OpeningBalanceExcelParser
             OpeningBalanceType.OpeningStock => new OpeningBalanceLineInput
             {
                 WarehouseName = G("Warehouse"),
-                ItemName = G("Fabric"),
+                ItemCode = FirstNonEmpty(G("FabricCode"), G("Code")),
+                ItemName = FirstNonEmpty(G("FabricName"), G("Fabric")),
                 ColorName = G("Color"),
                 BatchNumber = G("Batch"),
                 LocationCode = G("Location"),
@@ -179,7 +180,7 @@ public static class OpeningBalanceExcelParser
     public static IReadOnlyList<string> ExpectedHeaders(OpeningBalanceType type) => type switch
     {
         OpeningBalanceType.OpeningStock =>
-            ["Warehouse", "Fabric", "Color", "Batch", "RollCount", "Meters", "Cost", "Location", "Notes"],
+            ["Warehouse", "FabricCode", "FabricName", "Color", "Batch", "RollCount", "Meters", "Cost", "Location", "Notes"],
         OpeningBalanceType.CustomerReceivable =>
             ["CustomerCode", "CustomerName", "Debit", "Credit", "Currency", "Reference", "Notes"],
         OpeningBalanceType.SupplierPayable =>

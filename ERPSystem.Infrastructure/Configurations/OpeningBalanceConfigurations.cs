@@ -36,6 +36,7 @@ internal sealed class OpeningBalanceLineConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.RollCount).HasPrecision(18, 4);
         builder.Property(x => x.Quantity).HasPrecision(18, 4);
         builder.Property(x => x.UnitCost).HasPrecision(18, 4);
+        builder.Property(x => x.ItemCode).HasMaxLength(100);
         builder.HasIndex(x => new { x.DocumentId, x.LineNumber }).IsUnique();
         builder.HasIndex(x => x.PartyId);
         builder.HasIndex(x => x.AccountId);

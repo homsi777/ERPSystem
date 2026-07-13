@@ -44,6 +44,7 @@ public class OpeningBalanceLineEntity
     public string? WarehouseName { get; set; }
     public Guid? FabricItemId { get; set; }
     public Guid? FabricColorId { get; set; }
+    public string? ItemCode { get; set; }
     public string? ItemName { get; set; }
     public string? ColorName { get; set; }
     public string? BatchNumber { get; set; }

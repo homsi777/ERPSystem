@@ -393,7 +393,7 @@ internal sealed class OpeningBalanceEngine(
             AccountId = l.AccountId, AccountName = l.AccountName,
             WarehouseId = l.WarehouseId, WarehouseName = l.WarehouseName,
             FabricItemId = l.FabricItemId, FabricColorId = l.FabricColorId,
-            ItemName = l.ItemName, ColorName = l.ColorName, BatchNumber = l.BatchNumber,
+            ItemCode = l.ItemCode, ItemName = l.ItemName, ColorName = l.ColorName, BatchNumber = l.BatchNumber,
             LocationCode = l.LocationCode, RollCount = l.RollCount, Quantity = l.Quantity,
             UnitCost = l.UnitCost, BankName = l.BankName, BankAccountNumber = l.BankAccountNumber,
             InvestmentScope = l.InvestmentScope, Debit = l.Debit, Credit = l.Credit,
@@ -533,6 +533,7 @@ internal sealed class OpeningBalanceEngine(
             var warehouseName = input.WarehouseName;
             var fabricItemId = input.FabricItemId;
             var fabricColorId = input.FabricColorId;
+            var itemCode = input.ItemCode?.Trim();
             var itemName = input.ItemName?.Trim();
             var colorName = input.ColorName?.Trim();
 
@@ -540,14 +541,17 @@ internal sealed class OpeningBalanceEngine(
                 (fabricItemId is null || fabricItemId == Guid.Empty ||
                  fabricColorId is null || fabricColorId == Guid.Empty))
             {
+                var resolvedCode = string.IsNullOrWhiteSpace(itemCode) ? itemName ?? "" : itemCode;
                 var catalogEntry = await openingStockCatalog.EnsureAsync(
                     fabricCatalogRepository,
                     companyId,
+                    resolvedCode,
                     itemName ?? "",
                     colorName ?? "",
                     cancellationToken);
                 fabricItemId = catalogEntry.Item.Id;
                 fabricColorId = catalogEntry.Color.Id;
+                itemCode = catalogEntry.Item.Code;
                 itemName = catalogEntry.Item.NameAr;
                 colorName = catalogEntry.Color.NameAr;
             }
@@ -631,7 +635,7 @@ internal sealed class OpeningBalanceEngine(
             resolved.Add(OpeningBalanceLine.Create(
                 debit, credit, partyId, partyName, accountId, accountName,
                 warehouseId, warehouseName, fabricItemId, fabricColorId,
-                itemName, colorName, input.BatchNumber,
+                itemCode, itemName, colorName, input.BatchNumber,
                 input.LocationCode, input.RollCount, input.Quantity, input.UnitCost,
                 input.BankName, input.BankAccountNumber, input.InvestmentScope,
                 input.Reference, input.Description, input.Notes));
@@ -808,10 +812,12 @@ internal sealed class OpeningBalanceEngine(
             case OpeningBalanceType.OpeningStock:
                 if (string.IsNullOrWhiteSpace(input.WarehouseName) && input.WarehouseId is null)
                     errors.Add(new() { RowNumber = row, Field = "Warehouse", Message = "المستودع مطلوب." });
+                if (string.IsNullOrWhiteSpace(input.ItemCode) && string.IsNullOrWhiteSpace(input.ItemName))
+                    errors.Add(new() { RowNumber = row, Field = "FabricCode", Message = "كود التوب مطلوب." });
                 if (string.IsNullOrWhiteSpace(input.ItemName))
-                    errors.Add(new() { RowNumber = row, Field = "Fabric", Message = "الصنف مطلوب." });
+                    errors.Add(new() { RowNumber = row, Field = "Fabric", Message = "اسم التوب مطلوب." });
                 if (string.IsNullOrWhiteSpace(input.ColorName))
-                    errors.Add(new() { RowNumber = row, Field = "FabricColor", Message = "اللون مطلوب." });
+                    errors.Add(new() { RowNumber = row, Field = "FabricColor", Message = "لون التوب مطلوب." });
                 if ((input.Quantity ?? 0) <= 0)
                     warnings.Add(new() { RowNumber = row, Field = "Meters", Message = "الكمية صفر أو غير محددة.", IsWarning = true });
                 break;

@@ -51,7 +51,7 @@ internal static class OpeningBalanceMapper
             entity.AccountId, entity.AccountName,
             entity.WarehouseId, entity.WarehouseName,
             entity.FabricItemId, entity.FabricColorId,
-            entity.ItemName, entity.ColorName, entity.BatchNumber, entity.LocationCode,
+            entity.ItemCode, entity.ItemName, entity.ColorName, entity.BatchNumber, entity.LocationCode,
             entity.RollCount, entity.Quantity, entity.UnitCost,
             entity.BankName, entity.BankAccountNumber, entity.InvestmentScope,
             entity.Reference, entity.Description, entity.Notes);
@@ -110,6 +110,7 @@ internal static class OpeningBalanceMapper
             WarehouseName = l.WarehouseName,
             FabricItemId = l.FabricItemId,
             FabricColorId = l.FabricColorId,
+            ItemCode = l.ItemCode,
             ItemName = l.ItemName,
             ColorName = l.ColorName,
             BatchNumber = l.BatchNumber,
