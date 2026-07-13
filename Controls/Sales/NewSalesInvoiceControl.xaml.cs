@@ -1,3 +1,4 @@
+using ERPSystem.Helpers;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.DTOs.Sales;
@@ -574,6 +575,7 @@ namespace ERPSystem.Controls.Sales
                 CmbDiscountReason.SelectionChanged += (s, _) => CmbDiscountReason_TextChanged(s, new RoutedEventArgs());
                 foreach (var row in _lines)
                     row.PropertyChanged += OnLinePropertyChanged;
+                WireHeaderEnterNavigation();
             }
 
             await LoadLookupsAsync();
@@ -591,6 +593,48 @@ namespace ERPSystem.Controls.Sales
             UpdateStatusBadge();
             UpdateWorkflowUi();
             ScheduleTaxPreviewRefresh();
+        }
+
+        private void WireHeaderEnterNavigation()
+        {
+            EnterFocusNavigation.WireChain(
+                [DpDate, TxtInvoiceNumber, CmbCustomer, CmbWarehouse, CmbContainer, CmbCashbox, CmbCurrency],
+                onLastEnter: () =>
+                {
+                    if (BtnCredit.IsChecked == true)
+                        EnterFocusNavigation.FocusNext(TxtPartialPayment);
+                    else
+                        AdvanceFromLineNotesArea();
+                });
+
+            EnterFocusNavigation.WireChain(
+                [TxtPartialPayment, TxtLineNotes],
+                onLastEnter: AdvanceFromLineNotesArea);
+
+            EnterFocusNavigation.WireEnterToNext(CmbDiscountReason, null, FocusFirstGridCell);
+        }
+
+        private void AdvanceFromLineNotesArea()
+        {
+            if (DiscountReasonPanel.Visibility == Visibility.Visible)
+                EnterFocusNavigation.FocusNext(CmbDiscountReason);
+            else
+                FocusFirstGridCell();
+        }
+
+        private void FocusFirstGridCell()
+        {
+            if (_domainStatus != SalesInvoiceStatus.Draft)
+                return;
+
+            EnsureDefaultLine();
+            var editableColumns = GetEditableColumnsForRow(_lines[0]);
+            if (editableColumns.Count == 0)
+                return;
+
+            ItemsGrid.CurrentCell = new DataGridCellInfo(_lines[0], editableColumns[0]);
+            ItemsGrid.Focus();
+            ItemsGrid.BeginEdit();
         }
 
         private void OnSalesListRefreshRequested(object? sender, EventArgs e)
@@ -1849,6 +1893,13 @@ namespace ERPSystem.Controls.Sales
                 return;
             }
 
+            if (e.EditingElement is ComboBox comboBox)
+            {
+                comboBox.PreviewKeyDown -= ItemsGrid_EditingComboBox_PreviewKeyDown;
+                comboBox.PreviewKeyDown += ItemsGrid_EditingComboBox_PreviewKeyDown;
+                return;
+            }
+
             if (e.EditingElement is not TextBox textBox)
                 return;
 
@@ -1870,6 +1921,18 @@ namespace ERPSystem.Controls.Sales
         private void ItemsGrid_EditingTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Enter)
+                return;
+
+            e.Handled = true;
+            _cellEditFailed = false;
+            ItemsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            ItemsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            Dispatcher.BeginInvoke(MoveToNextEditableCell);
+        }
+
+        private void ItemsGrid_EditingComboBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Enter || sender is ComboBox { IsDropDownOpen: true })
                 return;
 
             e.Handled = true;

@@ -105,7 +105,34 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
         root.Content = stack;
         Content = root;
+        WireEnterNavigation();
         Loaded += async (_, _) => await InitAsync();
+    }
+
+    private void WireEnterNavigation()
+    {
+        EnterFocusNavigation.WireChain(
+            [_warehouse, _date, _reference, _currency, _notes],
+            onLastEnter: () => EnterFocusNavigation.FocusNext(_fabricName));
+
+        if (WpfGeneralManagerAccess.CanViewSensitivePricing)
+        {
+            EnterFocusNavigation.WireChain(
+                [_fabricName, _colorName, _meters, _rolls, _unitCost],
+                onLastEnter: AddLineAndRefocusFabric);
+        }
+        else
+        {
+            EnterFocusNavigation.WireChain(
+                [_fabricName, _colorName, _meters, _rolls],
+                onLastEnter: AddLineAndRefocusFabric);
+        }
+    }
+
+    private void AddLineAndRefocusFabric()
+    {
+        AddLine();
+        EnterFocusNavigation.FocusNext(_fabricName);
     }
 
     private static UIElement Wrap(UIElement c) => new Border { Child = c, Padding = new Thickness(0, 4, 0, 0) };
