@@ -3,7 +3,8 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 & (Join-Path $repoRoot "installer\convert-app-icon.ps1")
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (-not $?) { exit 1 }
+$global:LASTEXITCODE = 0
 
 $outDir = Join-Path $repoRoot "publish\desktop"
 $installerDir = Join-Path $repoRoot "publish\installer-input"

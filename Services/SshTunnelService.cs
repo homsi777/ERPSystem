@@ -1,18 +1,19 @@
-using System.Diagnostics;
 using System.Net.Sockets;
+using System.IO;
 using System.Threading;
 using Microsoft.Extensions.Configuration;
+using Renci.SshNet;
 
 namespace ERPSystem.Services;
 
 /// <summary>
-/// Optionally opens an SSH port-forward (local -> remote PostgreSQL) so the desktop
-/// app can reach a cloud database that is only reachable through the SSH port.
-/// Driven by the "SshTunnel" section in appsettings(.Local).json. No-ops when disabled.
+/// Opens an in-process SSH port-forward to PostgreSQL.
+/// SSH.NET is packaged with the desktop app, so no external ssh.exe is required.
 /// </summary>
 public sealed class SshTunnelService : IDisposable
 {
-    private Process? _process;
+    private SshClient? _client;
+    private ForwardedPortLocal? _forwardedPort;
 
     private sealed record TunnelOptions(
         string SshHost,
@@ -47,6 +48,16 @@ public sealed class SshTunnelService : IDisposable
         if (string.IsNullOrWhiteSpace(options.SshHost) || string.IsNullOrWhiteSpace(options.SshUser))
             return null;
 
+        if (string.IsNullOrWhiteSpace(options.IdentityFile))
+            throw new InvalidOperationException("مسار مفتاح SSH غير معرّف في إعدادات التطبيق.");
+
+        var identityFile = ResolveIdentityFile(options.IdentityFile);
+        if (!File.Exists(identityFile))
+            throw new FileNotFoundException(
+                $"مفتاح نفق SSH غير موجود:\n{identityFile}\n\nأعد تثبيت التطبيق لإصلاح ملفات الاتصال.",
+                identityFile);
+
+        options = options with { IdentityFile = identityFile };
         var service = new SshTunnelService();
         await service.StartAsync(options, cancellationToken);
         return service;
@@ -58,34 +69,35 @@ public sealed class SshTunnelService : IDisposable
         if (await IsPortOpenAsync(options.LocalPort, cancellationToken))
             return;
 
-        var identityArg = string.IsNullOrWhiteSpace(options.IdentityFile)
-            ? string.Empty
-            : $"-i \"{options.IdentityFile}\" -o IdentitiesOnly=yes ";
-
-        var args =
-            $"-p {options.SshPort} -N " +
-            identityArg +
-            "-o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes " +
-            $"-L {options.LocalPort}:{options.RemoteHost}:{options.RemotePort} " +
-            $"{options.SshUser}@{options.SshHost}";
-
-        _process = new Process
+        var key = new PrivateKeyFile(options.IdentityFile!);
+        var connectionInfo = new ConnectionInfo(
+            options.SshHost,
+            options.SshPort,
+            options.SshUser,
+            new PrivateKeyAuthenticationMethod(options.SshUser, key))
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "ssh",
-                Arguments = args,
-                // Visible window so a one-time password/host-key prompt can be answered.
-                UseShellExecute = true,
-                CreateNoWindow = false,
-                WindowStyle = ProcessWindowStyle.Minimized
-            }
+            Timeout = TimeSpan.FromSeconds(15)
         };
 
-        _process.Start();
+        _client = new SshClient(connectionInfo)
+        {
+            KeepAliveInterval = TimeSpan.FromSeconds(30)
+        };
 
-        // Wait up to ~20s for the forwarded port to accept connections.
-        for (var attempt = 0; attempt < 40; attempt++)
+        await Task.Run(_client.Connect, cancellationToken);
+        if (!_client.IsConnected)
+            throw new InvalidOperationException("تعذّر إنشاء اتصال SSH بالخادم.");
+
+        _forwardedPort = new ForwardedPortLocal(
+            "127.0.0.1",
+            (uint)options.LocalPort,
+            options.RemoteHost,
+            (uint)options.RemotePort);
+        _client.AddForwardedPort(_forwardedPort);
+        _forwardedPort.Start();
+
+        // Wait up to 10 seconds for the forwarded port to accept connections.
+        for (var attempt = 0; attempt < 20; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (await IsPortOpenAsync(options.LocalPort, cancellationToken))
@@ -112,19 +124,31 @@ public sealed class SshTunnelService : IDisposable
         }
     }
 
+    private static string ResolveIdentityFile(string configuredPath)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(configuredPath.Trim());
+        return Path.IsPathRooted(expanded)
+            ? expanded
+            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, expanded));
+    }
+
     public void Dispose()
     {
         try
         {
-            if (_process is { HasExited: false })
-                _process.Kill(entireProcessTree: true);
+            if (_forwardedPort?.IsStarted == true)
+                _forwardedPort.Stop();
+            _forwardedPort?.Dispose();
+            _forwardedPort = null;
+
+            if (_client?.IsConnected == true)
+                _client.Disconnect();
+            _client?.Dispose();
+            _client = null;
         }
         catch
         {
             // Best-effort cleanup.
         }
-
-        _process?.Dispose();
-        _process = null;
     }
 }
