@@ -2,7 +2,6 @@ using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Core;
-using ERPSystem.Domain.Entities.Catalog;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -23,8 +22,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private readonly TextBox _notes = ErpUiFactory.FormField("");
     private readonly DataGrid _lines = new() { AutoGenerateColumns = false, CanUserAddRows = false, MinHeight = 200 };
     private readonly ObservableCollection<OpeningLineRow> _lineRows = [];
-    private readonly ComboBox _fabric = new() { MinWidth = 180, DisplayMemberPath = nameof(FabricItem.NameAr) };
-    private readonly ComboBox _color = new() { MinWidth = 120, DisplayMemberPath = nameof(FabricColor.NameAr) };
+    private readonly TextBox _fabricName = ErpUiFactory.FormField("");
+    private readonly TextBox _colorName = ErpUiFactory.FormField("");
     private readonly TextBox _meters = ErpUiFactory.FormField("0");
     private readonly TextBox _rolls = ErpUiFactory.FormField("1");
     private readonly TextBox _unitCost = ErpUiFactory.FormField("0");
@@ -65,9 +64,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
 
-        _fabric.SelectionChanged += async (_, _) => await LoadColorsAsync();
-        AddEntryField(addRow, "القماش *", _fabric, 0);
-        AddEntryField(addRow, "اللون *", _color, 1);
+        AddEntryField(addRow, "القماش *", _fabricName, 0);
+        AddEntryField(addRow, "اللون *", _colorName, 1);
         AddEntryField(addRow, "الأمتار *", _meters, 2);
         AddEntryField(addRow, "Rolls *", _rolls, 3);
 
@@ -130,23 +128,15 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             if (pre.HasValue)
                 _warehouse.SelectedItem = wh.Value.FirstOrDefault(w => w.Id == pre.Value);
         }
-        var fabrics = await InventoryUiService.Instance.GetFabricCatalogAsync();
-        if (fabrics.IsSuccess && fabrics.Value is not null)
-            _fabric.ItemsSource = fabrics.Value;
-    }
-
-    private async Task LoadColorsAsync()
-    {
-        if (_fabric.SelectedItem is not FabricItem item) { _color.ItemsSource = null; return; }
-        var colors = await InventoryUiService.Instance.GetFabricColorsAsync(item.Id);
-        _color.ItemsSource = colors.IsSuccess ? colors.Value : [];
     }
 
     private void AddLine()
     {
-        if (_fabric.SelectedItem is not FabricItem fabric || _color.SelectedItem is not FabricColor color)
+        var fabricName = _fabricName.Text.Trim();
+        var colorName = _colorName.Text.Trim();
+        if (string.IsNullOrWhiteSpace(fabricName) || string.IsNullOrWhiteSpace(colorName))
         {
-            MessageBox.Show("اختر القماش واللون.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("اكتب اسم القماش واللون.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (!decimal.TryParse(_meters.Text, out var m) || m <= 0) return;
@@ -155,14 +145,19 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
         _lineRows.Add(new OpeningLineRow
         {
-            FabricItemId = fabric.Id,
-            FabricColorId = color.Id,
-            FabricName = fabric.NameAr,
-            ColorName = color.NameAr,
+            FabricName = fabricName,
+            ColorName = colorName,
             QuantityMeters = m,
             RollCount = r,
             UnitCost = cost
         });
+
+        _fabricName.Clear();
+        _colorName.Clear();
+        _meters.Text = "0";
+        _rolls.Text = "1";
+        _unitCost.Text = "0";
+        _fabricName.Focus();
     }
 
     private async Task SaveAsync()
@@ -238,8 +233,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
     private sealed class OpeningLineRow
     {
-        public Guid FabricItemId { get; init; }
-        public Guid FabricColorId { get; init; }
+        public Guid? FabricItemId { get; init; }
+        public Guid? FabricColorId { get; init; }
         public string FabricName { get; init; } = "";
         public string ColorName { get; init; } = "";
         public decimal QuantityMeters { get; init; }

@@ -2,6 +2,8 @@ using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Common;
+using ERPSystem.Application.Commands.Finance;
+using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Models.Catalog;
@@ -73,6 +75,72 @@ public sealed class InventoryOpeningBalanceLocalDbVerificationTests
         Assert.False(await db.FabricRolls.AsNoTracking().AnyAsync(r => r.Id == legacy.Id || r.Id == china.Id));
     }
 
+    [Fact]
+    public async Task Manually_typed_opening_stock_names_receive_catalog_ids_then_roll_back()
+    {
+        if (Environment.GetEnvironmentVariable("ERP_LOCAL_DB_TESTS") != "1")
+            return;
+
+        await using var provider = BuildProvider();
+        using var scope = provider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
+        await using var tx = await db.Database.BeginTransactionAsync();
+
+        var warehouse = await db.Warehouses.AsNoTracking()
+            .FirstAsync(w => w.BranchId == DatabaseSeeder.DefaultBranchId);
+        var suffix = Guid.NewGuid().ToString("N");
+        var itemName = $"قماش أول مدة {suffix}";
+        var colorName = $"لون أول مدة {suffix}";
+        var engine = scope.ServiceProvider.GetRequiredService<IOpeningBalanceEngine>();
+
+        var result = await engine.CreateAsync(new CreateOpeningBalanceCommand
+        {
+            Type = OpeningBalanceType.OpeningStock,
+            Source = OpeningBalanceSource.Manual,
+            OpeningDate = DateTime.UtcNow,
+            CurrencyCode = "USD",
+            ExchangeRate = 1m,
+            Reference = $"LOCAL-MANUAL-{suffix}",
+            Lines =
+            [
+                new OpeningBalanceLineInput
+                {
+                    WarehouseId = warehouse.Id,
+                    WarehouseName = warehouse.NameAr,
+                    ItemName = itemName,
+                    ColorName = colorName,
+                    Quantity = 100m,
+                    RollCount = 5,
+                    UnitCost = 2m,
+                    Debit = 200m
+                }
+            ]
+        });
+
+        Assert.True(result.IsSuccess, result.ErrorMessage);
+        Assert.NotNull(result.Value);
+        var documentId = result.Value!.Id;
+        var storedLine = await db.OpeningBalanceLines.AsNoTracking()
+            .SingleAsync(l => l.DocumentId == documentId);
+        Assert.NotNull(storedLine.FabricItemId);
+        Assert.NotEqual(Guid.Empty, storedLine.FabricItemId);
+        Assert.NotNull(storedLine.FabricColorId);
+        Assert.NotEqual(Guid.Empty, storedLine.FabricColorId);
+        Assert.Equal(itemName, storedLine.ItemName);
+        Assert.Equal(colorName, storedLine.ColorName);
+
+        Assert.True(await db.FabricItems.AsNoTracking()
+            .AnyAsync(i => i.Id == storedLine.FabricItemId && i.NameAr == itemName));
+        Assert.True(await db.FabricColors.AsNoTracking()
+            .AnyAsync(c => c.Id == storedLine.FabricColorId && c.NameAr == colorName));
+
+        await tx.RollbackAsync();
+
+        Assert.False(await db.OpeningBalanceDocuments.AsNoTracking().AnyAsync(d => d.Id == documentId));
+        Assert.False(await db.FabricItems.AsNoTracking().AnyAsync(i => i.NameAr == itemName));
+        Assert.False(await db.FabricColors.AsNoTracking().AnyAsync(c => c.NameAr == colorName));
+    }
+
     private static FabricRollEntity Clone(
         FabricRollEntity source,
         Guid id,
@@ -109,6 +177,7 @@ public sealed class InventoryOpeningBalanceLocalDbVerificationTests
             })
             .Build();
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddSingleton<ICurrentUserService, LocalUserService>();
         services.AddSingleton<ICurrentBranchService, LocalBranchService>();
         services.AddInfrastructure(configuration);

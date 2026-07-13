@@ -26,7 +26,8 @@ internal sealed class OpeningBalanceEngine(
     ICurrentUserService user,
     ICurrentBranchService branch,
     ICustomerRepository customerRepository,
-    ISupplierRepository supplierRepository) : IOpeningBalanceEngine
+    ISupplierRepository supplierRepository,
+    IFabricCatalogRepository fabricCatalogRepository) : IOpeningBalanceEngine
 {
     public byte[] BuildImportTemplate(OpeningBalanceType type) =>
         OpeningBalanceExcelParser.BuildTemplate(type);
@@ -504,16 +505,38 @@ internal sealed class OpeningBalanceEngine(
         var companyId = branch.CompanyId ?? Guid.Empty;
         var lookup = await lookups.GetLookupsAsync(companyId, cancellationToken);
         var resolved = new List<OpeningBalanceLine>();
+        var openingStockCatalog = type == OpeningBalanceType.OpeningStock
+            ? new OpeningBalanceFabricCatalogBatch()
+            : null;
 
         foreach (var input in inputs)
         {
-            var copy = input;
             var partyId = input.PartyId;
             var partyName = input.PartyName;
             var accountId = input.AccountId;
             var accountName = input.AccountName;
             var warehouseId = input.WarehouseId;
             var warehouseName = input.WarehouseName;
+            var fabricItemId = input.FabricItemId;
+            var fabricColorId = input.FabricColorId;
+            var itemName = input.ItemName?.Trim();
+            var colorName = input.ColorName?.Trim();
+
+            if (openingStockCatalog is not null &&
+                (fabricItemId is null || fabricItemId == Guid.Empty ||
+                 fabricColorId is null || fabricColorId == Guid.Empty))
+            {
+                var catalogEntry = await openingStockCatalog.EnsureAsync(
+                    fabricCatalogRepository,
+                    companyId,
+                    itemName ?? "",
+                    colorName ?? "",
+                    cancellationToken);
+                fabricItemId = catalogEntry.Item.Id;
+                fabricColorId = catalogEntry.Color.Id;
+                itemName = catalogEntry.Item.NameAr;
+                colorName = catalogEntry.Color.NameAr;
+            }
 
             if (partyId is null && !string.IsNullOrWhiteSpace(partyName))
             {
@@ -593,8 +616,8 @@ internal sealed class OpeningBalanceEngine(
 
             resolved.Add(OpeningBalanceLine.Create(
                 debit, credit, partyId, partyName, accountId, accountName,
-                warehouseId, warehouseName, input.FabricItemId, input.FabricColorId,
-                input.ItemName, input.ColorName, input.BatchNumber,
+                warehouseId, warehouseName, fabricItemId, fabricColorId,
+                itemName, colorName, input.BatchNumber,
                 input.LocationCode, input.RollCount, input.Quantity, input.UnitCost,
                 input.BankName, input.BankAccountNumber, input.InvestmentScope,
                 input.Reference, input.Description, input.Notes));
@@ -771,12 +794,10 @@ internal sealed class OpeningBalanceEngine(
             case OpeningBalanceType.OpeningStock:
                 if (string.IsNullOrWhiteSpace(input.WarehouseName) && input.WarehouseId is null)
                     errors.Add(new() { RowNumber = row, Field = "Warehouse", Message = "المستودع مطلوب." });
-                if (input.FabricItemId is null || input.FabricItemId == Guid.Empty)
-                    errors.Add(new() { RowNumber = row, Field = "FabricItem", Message = "معرف الصنف مطلوب." });
-                if (input.FabricColorId is null || input.FabricColorId == Guid.Empty)
-                    errors.Add(new() { RowNumber = row, Field = "FabricColor", Message = "معرف اللون مطلوب." });
                 if (string.IsNullOrWhiteSpace(input.ItemName))
                     errors.Add(new() { RowNumber = row, Field = "Fabric", Message = "الصنف مطلوب." });
+                if (string.IsNullOrWhiteSpace(input.ColorName))
+                    errors.Add(new() { RowNumber = row, Field = "FabricColor", Message = "اللون مطلوب." });
                 if ((input.Quantity ?? 0) <= 0)
                     warnings.Add(new() { RowNumber = row, Field = "Meters", Message = "الكمية صفر أو غير محددة.", IsWarning = true });
                 break;
