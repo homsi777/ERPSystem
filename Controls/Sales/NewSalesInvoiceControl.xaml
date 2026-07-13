@@ -172,8 +172,8 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12">
-        <StackPanel MaxWidth="1200">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,12" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel HorizontalAlignment="Stretch">
 
             <!-- Page header + actions -->
             <Grid Margin="0,0,0,12">
@@ -521,6 +521,8 @@
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                               HorizontalGridLinesBrush="#E8E8E8"
                               BorderThickness="0" Background="White"
+                              HorizontalAlignment="Stretch"
+                              MinWidth="900"
                               RowHeight="44" FontSize="12"
                               Foreground="#1A1A1A"
                               FontFamily="Segoe UI, Tahoma, Arial"
@@ -531,7 +533,7 @@
                               BeginningEdit="ItemsGrid_BeginningEdit"
                               PreparingCellForEdit="ItemsGrid_PreparingCellForEdit">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="الحاوية" Width="170">
+                            <DataGridTemplateColumn Header="الحاوية" Width="150">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding ContainerDisplay}"
@@ -547,7 +549,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="اختر التوب" Width="320">
+                            <DataGridTemplateColumn Header="اختر التوب" Width="*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding StockSelectionDisplay}"
@@ -562,7 +564,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellEditingTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding GoodsType}" Width="*"
+                            <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding GoodsType}" Width="140"
                                                 IsReadOnly="True"
                                                 ElementStyle="{StaticResource InvoiceGridCellText}"/>
                             <DataGridTextColumn Header="كود الثوب" Binding="{Binding BoltCode}" Width="90"

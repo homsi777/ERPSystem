@@ -350,11 +350,13 @@ public sealed class InventoryOpeningStockPageControl : UserControl
         DockPanel.SetDock(header, Dock.Top);
         root.Children.Add(header);
 
-        ErpUiFactory.AddGridColumn(_grid, "الرقم", nameof(OpeningBalanceListDto.Number), 120, null);
-        ErpUiFactory.AddGridColumn(_grid, "التاريخ", nameof(OpeningBalanceListDto.OpeningDate), 120, null);
-        ErpUiFactory.AddGridColumn(_grid, "المرجع", nameof(OpeningBalanceListDto.Reference), 140, null);
-        ErpUiFactory.AddGridColumn(_grid, "القيمة", nameof(OpeningBalanceListDto.TotalBaseAmount), 100, "N2");
-        ErpUiFactory.AddGridColumn(_grid, "الحالة", nameof(OpeningBalanceListDto.StatusDisplay), 120, null);
+        ErpUiFactory.AddGridColumn(_grid, "الرقم", nameof(OpeningBalanceListDto.Number), 110, null);
+        ErpUiFactory.AddGridColumn(_grid, "اسم المادة", nameof(OpeningBalanceListDto.StockItemsSummary), "*", null);
+        ErpUiFactory.AddGridColumn(_grid, "عدد الأتواب", nameof(OpeningBalanceListDto.TotalRollCount), 90, null);
+        ErpUiFactory.AddGridColumn(_grid, "التاريخ", nameof(OpeningBalanceListDto.OpeningDate), 110, null);
+        ErpUiFactory.AddGridColumn(_grid, "المرجع", nameof(OpeningBalanceListDto.Reference), 120, null);
+        ErpUiFactory.AddGridColumn(_grid, "القيمة", nameof(OpeningBalanceListDto.TotalBaseAmount), 90, "N2");
+        ErpUiFactory.AddGridColumn(_grid, "الحالة", nameof(OpeningBalanceListDto.StatusDisplay), 110, null);
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();

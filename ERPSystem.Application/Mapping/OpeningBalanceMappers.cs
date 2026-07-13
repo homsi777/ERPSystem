@@ -31,8 +31,33 @@ public static class OpeningBalanceMappers
         UpdatedAt = doc.UpdatedAt,
         PostedAt = doc.PostedAt,
         PrimaryPartyDisplay = FormatPrimaryParty(doc),
-        DisplayNotes = doc.Notes ?? doc.Lines.FirstOrDefault()?.Notes ?? doc.Description
+        DisplayNotes = doc.Notes ?? doc.Lines.FirstOrDefault()?.Notes ?? doc.Description,
+        StockItemsSummary = FormatStockItemsSummary(doc),
+        TotalRollCount = SumRollCount(doc)
     };
+
+    private static string FormatStockItemsSummary(OpeningBalanceDocument doc)
+    {
+        if (doc.Type != OpeningBalanceType.OpeningStock || doc.Lines.Count == 0)
+            return "—";
+
+        var names = doc.Lines
+            .Select(l => l.ItemName?.Trim())
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (names.Count == 0)
+            return "—";
+        if (names.Count == 1)
+            return names[0]!;
+        return string.Join("، ", names.Take(2)) + (names.Count > 2 ? $" (+{names.Count - 2})" : "");
+    }
+
+    private static int SumRollCount(OpeningBalanceDocument doc) =>
+        doc.Type == OpeningBalanceType.OpeningStock
+            ? (int)doc.Lines.Sum(l => l.RollCount ?? 0m)
+            : 0;
 
     private static string FormatPrimaryParty(OpeningBalanceDocument doc)
     {

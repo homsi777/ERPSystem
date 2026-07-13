@@ -28,6 +28,10 @@ public sealed class OpeningBalanceListDto
     public DateTime? PostedAt { get; init; }
     public string? PrimaryPartyDisplay { get; init; }
     public string? DisplayNotes { get; init; }
+    /// <summary>Opening stock: summarized fabric/item names from document lines.</summary>
+    public string? StockItemsSummary { get; init; }
+    /// <summary>Opening stock: total roll count across all lines.</summary>
+    public int TotalRollCount { get; init; }
     public decimal NetBalance => TotalDebit - TotalCredit;
 }
 
