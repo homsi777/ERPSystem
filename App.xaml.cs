@@ -52,12 +52,16 @@ public partial class App : System.Windows.Application
                 .AddEnvironmentVariables()
                 .Build();
 
-            // Bring up the optional SSH tunnel without blocking the dispatcher thread.
+            // SSH tunnel is for developer machines only (local host + tunnel enabled).
+            // Company installs connect directly to alamal-ab.org over SSL.
             var connectionStatus = CreateConnectionStatusWindow();
             connectionStatus.Show();
             try
             {
-                _sshTunnel = await SshTunnelService.StartIfConfiguredAsync(configuration);
+                if (DesktopConnectionBootstrap.RequiresSshTunnel(configuration))
+                    _sshTunnel = await SshTunnelService.StartIfConfiguredAsync(configuration);
+
+                await DesktopConnectionBootstrap.ValidateDatabaseAsync(configuration);
             }
             finally
             {
@@ -246,7 +250,7 @@ public partial class App : System.Windows.Application
         ShowInTaskbar = false,
         Content = new System.Windows.Controls.TextBlock
         {
-            Text = "جاري الاتصال...",
+            Text = "جاري الاتصال بقاعدة البيانات...",
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             FontSize = 16

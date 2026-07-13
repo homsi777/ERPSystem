@@ -9,6 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <ApplicationIcon>Assets\Brand\app-icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -42,12 +43,14 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.6" />
+    <PackageReference Include="Npgsql" Version="9.0.4" />
     <PackageReference Include="QuestPDF" Version="2024.12.3" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="ERPSystem.Api\Assets\Fonts\NotoSansArabic.ttf" Link="Assets\Fonts\NotoSansArabic.ttf" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="66.png" Link="Assets\Brand\company-logo.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Brand\app-icon.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

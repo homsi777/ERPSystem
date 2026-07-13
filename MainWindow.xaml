@@ -4,6 +4,7 @@
         xmlns:shell="clr-namespace:ERPSystem.Shell"
         xmlns:workspace="clr-namespace:ERPSystem.Controls.Workspace"
         Title="الأمل.AB — تجارة أفخر أنواع أقمشة الجينز | استيراد من المصنع إلى منتجك"
+        Icon="pack://siteoforigin:,,,/Assets/Brand/app-icon.ico"
         MinWidth="1024" MinHeight="660"
         Width="1440" Height="900"
         WindowStartupLocation="CenterScreen"
