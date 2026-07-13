@@ -124,6 +124,8 @@ internal sealed class InventoryEngine(
                     Status = (int)FabricRollStatus.Available,
                     QualityStatus = (int)InventoryQualityStatus.Good,
                     ReservationStatus = (int)InventoryReservationStatus.Available,
+                    IsLegacyOpeningBalance = false,
+                    LegacyLengthConfirmed = true,
                     CreatedAt = now
                 }, cancellationToken);
             }
@@ -571,9 +573,14 @@ internal sealed class InventoryEngine(
 
                 invoice.AssignFabricRollToDetail(detail.Id, roll.Id);
 
-                // Serial pins the physical roll; optional length allows partial sale.
-                // When length omitted, use remaining meters on the matched roll.
-                var meters = entry.LengthMeters > 0 ? entry.LengthMeters : roll.RemainingLengthMeters;
+                // A legacy opening-balance roll carries only an even provisional length until its
+                // physical paper label is read for the first time. That first explicit length is
+                // authoritative even when greater than the provisional remaining length.
+
+                // Serial pins the physical roll; optional length allows partial sale. China rolls
+                // and already-confirmed legacy rolls retain the normal remaining-length ceiling.
+                var meters = LegacyOpeningBalanceRollLengthPolicy.ResolveAndValidateSaleLength(
+                    roll, entry.LengthMeters);
                 if (meters > roll.RemainingLengthMeters)
                 {
                     throw new InventoryException(
@@ -883,6 +890,7 @@ internal sealed class InventoryEngine(
         var movementLines = new List<StockMovementLineEntity>();
         var rollSequence = await context.FabricRolls.AsNoTracking().CountAsync(cancellationToken);
 
+        var rollsToInsert = new List<FabricRollEntity>(lines.Sum(l => Math.Max(1, l.RollCount)));
         foreach (var line in lines)
         {
             var rollsToCreate = Math.Max(1, line.RollCount);
@@ -893,7 +901,7 @@ internal sealed class InventoryEngine(
                 rollSequence++;
                 var length = rollsToCreate == 1 ? line.QuantityMeters : perRoll;
                 var rollId = Guid.NewGuid();
-                await context.FabricRolls.AddAsync(new FabricRollEntity
+                rollsToInsert.Add(new FabricRollEntity
                 {
                     Id = rollId,
                     ContainerId = Guid.Empty,
@@ -910,8 +918,10 @@ internal sealed class InventoryEngine(
                     Status = (int)FabricRollStatus.Available,
                     QualityStatus = (int)InventoryQualityStatus.Good,
                     ReservationStatus = (int)InventoryReservationStatus.Available,
+                    IsLegacyOpeningBalance = true,
+                    LegacyLengthConfirmed = false,
                     CreatedAt = now
-                }, cancellationToken);
+                });
             }
 
             await UpsertWarehouseStockAsync(doc.WarehouseId, line.FabricItemId, line.FabricColorId,
@@ -932,6 +942,10 @@ internal sealed class InventoryEngine(
                 CreatedAt = now
             });
         }
+
+        // Track the complete batch once. SaveChanges uses the provider's command batching instead
+        // of invoking EF AddAsync for each of the potentially 10,000 legacy rolls.
+        context.FabricRolls.AddRange(rollsToInsert);
 
         await PostMovementAsync(movementId, doc.DocumentNumber, MovementType.OpeningBalance,
             doc.WarehouseId, DocumentType.OpeningBalance, doc.Id, movementLines, now, cancellationToken);
@@ -990,8 +1004,11 @@ internal sealed class InventoryEngine(
 
                 foreach (var line in warehouseGroup)
                 {
-                    var (fabricItemId, fabricColorId) = await ResolveFabricByNameAsync(
-                        obDoc.CompanyId, line.ItemName, line.ColorName, cancellationToken);
+                    if (line.FabricItemId is not Guid fabricItemId || fabricItemId == Guid.Empty ||
+                        line.FabricColorId is not Guid fabricColorId || fabricColorId == Guid.Empty)
+                    {
+                        throw new ValidationException("Fabric item and color IDs are required on every opening stock line.");
+                    }
                     var qty = line.Quantity ?? 0;
                     var unitCost = line.UnitCost ?? (qty > 0 ? line.Debit / qty : 0);
                     var rolls = Math.Max(1, (int)(line.RollCount ?? 1));

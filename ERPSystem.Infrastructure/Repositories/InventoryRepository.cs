@@ -116,8 +116,7 @@ internal sealed class InventoryRepository(ErpDbContext context) : IInventoryRepo
     public async Task<IReadOnlyList<Guid>> GetSellableContainerIdsAsync(
         CancellationToken cancellationToken = default) =>
         await context.FabricRolls.AsNoTracking()
-            .Where(r => r.ContainerId != Guid.Empty &&
-                        r.Status == (int)FabricRollStatus.Available &&
+            .Where(r => r.Status == (int)FabricRollStatus.Available &&
                         r.RemainingLengthMeters > 0)
             .Select(r => r.ContainerId)
             .Distinct()

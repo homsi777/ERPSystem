@@ -24,10 +24,27 @@ internal sealed class InventoryOperationsService(
         CancellationToken cancellationToken = default)
     {
         foreach (var containerId in lines.Select(l => l.ChinaContainerId).Distinct())
-            await ValidateContainerForSaleAsync(containerId, cancellationToken);
+        {
+            if (containerId != Guid.Empty)
+                await ValidateContainerForSaleAsync(containerId, cancellationToken);
+        }
 
         foreach (var line in lines)
         {
+            if (line.ChinaContainerId == Guid.Empty)
+            {
+                var invalidLegacyRows = await context.FabricRolls.AsNoTracking()
+                    .AnyAsync(r =>
+                        r.ContainerId == Guid.Empty &&
+                        r.WarehouseId == warehouseId &&
+                        r.FabricItemId == line.FabricItemId &&
+                        r.FabricColorId == line.FabricColorId &&
+                        r.Status == (int)FabricRollStatus.Available &&
+                        !r.IsLegacyOpeningBalance, cancellationToken);
+                if (invalidLegacyRows)
+                    throw new ValidationException("Container-less sales stock must be tagged as legacy opening balance.");
+            }
+
             var availableRolls = await context.FabricRolls.AsNoTracking()
                 .CountAsync(r =>
                     r.ContainerId == line.ChinaContainerId &&

@@ -44,8 +44,6 @@ public static class SalesInvoiceValidator
             throw new ValidationException("Customer is required.");
         if (invoice.WarehouseId == Guid.Empty)
             throw new ValidationException("Warehouse is required.");
-        if (invoice.ChinaContainerId == Guid.Empty)
-            throw new ValidationException("China container is required.");
         if (invoice.Items.Count == 0)
             throw new ValidationException("Invoice must have at least one line item.");
     }

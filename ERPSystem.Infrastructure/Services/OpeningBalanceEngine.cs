@@ -377,6 +377,7 @@ internal sealed class OpeningBalanceEngine(
             PartyId = l.PartyId, PartyName = l.PartyName,
             AccountId = l.AccountId, AccountName = l.AccountName,
             WarehouseId = l.WarehouseId, WarehouseName = l.WarehouseName,
+            FabricItemId = l.FabricItemId, FabricColorId = l.FabricColorId,
             ItemName = l.ItemName, ColorName = l.ColorName, BatchNumber = l.BatchNumber,
             LocationCode = l.LocationCode, RollCount = l.RollCount, Quantity = l.Quantity,
             UnitCost = l.UnitCost, BankName = l.BankName, BankAccountNumber = l.BankAccountNumber,
@@ -592,7 +593,8 @@ internal sealed class OpeningBalanceEngine(
 
             resolved.Add(OpeningBalanceLine.Create(
                 debit, credit, partyId, partyName, accountId, accountName,
-                warehouseId, warehouseName, input.ItemName, input.ColorName, input.BatchNumber,
+                warehouseId, warehouseName, input.FabricItemId, input.FabricColorId,
+                input.ItemName, input.ColorName, input.BatchNumber,
                 input.LocationCode, input.RollCount, input.Quantity, input.UnitCost,
                 input.BankName, input.BankAccountNumber, input.InvestmentScope,
                 input.Reference, input.Description, input.Notes));
@@ -769,6 +771,10 @@ internal sealed class OpeningBalanceEngine(
             case OpeningBalanceType.OpeningStock:
                 if (string.IsNullOrWhiteSpace(input.WarehouseName) && input.WarehouseId is null)
                     errors.Add(new() { RowNumber = row, Field = "Warehouse", Message = "المستودع مطلوب." });
+                if (input.FabricItemId is null || input.FabricItemId == Guid.Empty)
+                    errors.Add(new() { RowNumber = row, Field = "FabricItem", Message = "معرف الصنف مطلوب." });
+                if (input.FabricColorId is null || input.FabricColorId == Guid.Empty)
+                    errors.Add(new() { RowNumber = row, Field = "FabricColor", Message = "معرف اللون مطلوب." });
                 if (string.IsNullOrWhiteSpace(input.ItemName))
                     errors.Add(new() { RowNumber = row, Field = "Fabric", Message = "الصنف مطلوب." });
                 if ((input.Quantity ?? 0) <= 0)

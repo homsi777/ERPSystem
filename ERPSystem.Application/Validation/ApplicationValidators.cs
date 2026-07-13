@@ -78,11 +78,6 @@ public static class ApplicationValidators
             errors.Add(new ValidationError("WarehouseId", "Warehouse is required."));
         if (lines.Count == 0)
             errors.Add(new ValidationError("Lines", "At least one line item is required."));
-        for (var i = 0; i < lines.Count; i++)
-        {
-            if (lines[i].ChinaContainerId == Guid.Empty)
-                errors.Add(new ValidationError($"Lines[{i}].ChinaContainerId", "China container is required for every line."));
-        }
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
     }
 

@@ -262,6 +262,8 @@ public class OpeningBalanceLine
     // Inventory (opening stock)
     public Guid? WarehouseId { get; private set; }
     public string? WarehouseName { get; private set; }
+    public Guid? FabricItemId { get; private set; }
+    public Guid? FabricColorId { get; private set; }
     public string? ItemName { get; private set; }
     public string? ColorName { get; private set; }
     public string? BatchNumber { get; private set; }
@@ -299,6 +301,8 @@ public class OpeningBalanceLine
         string? accountName = null,
         Guid? warehouseId = null,
         string? warehouseName = null,
+        Guid? fabricItemId = null,
+        Guid? fabricColorId = null,
         string? itemName = null,
         string? colorName = null,
         string? batchNumber = null,
@@ -322,6 +326,8 @@ public class OpeningBalanceLine
         AccountName = accountName,
         WarehouseId = warehouseId,
         WarehouseName = warehouseName,
+        FabricItemId = fabricItemId,
+        FabricColorId = fabricColorId,
         ItemName = itemName,
         ColorName = colorName,
         BatchNumber = batchNumber,

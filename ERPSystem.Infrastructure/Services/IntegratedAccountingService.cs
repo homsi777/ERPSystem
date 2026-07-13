@@ -431,7 +431,7 @@ internal sealed class IntegratedAccountingService(
             .ToList();
 
         var result = await PostViaEngineAsync(
-            DocumentType.FinanceOpeningBalance,
+            OpeningBalanceDocumentTypePolicy.SourceType,
             documentId,
             PostingKind.FinanceOpeningBalance,
             JournalBookIds.General,
@@ -441,7 +441,7 @@ internal sealed class IntegratedAccountingService(
             postingDate);
 
         return result.JournalEntryNumber
-            ?? await LookupEntryNumberAsync(DocumentType.FinanceOpeningBalance, documentId, cancellationToken)
+            ?? await LookupEntryNumberAsync(OpeningBalanceDocumentTypePolicy.SourceType, documentId, cancellationToken)
             ?? documentNumber;
     }
 

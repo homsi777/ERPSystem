@@ -32,7 +32,7 @@ public sealed class GetCustomerAccountLedgerHandler(
 
         var opening = aggregate.Customer.OpeningBalancePosted
             ? await accountingReports.GetPartyOpeningBalanceAsync(
-                query.CustomerId, DocumentType.CustomerOpeningBalance, cancellationToken)
+                query.CustomerId, OpeningBalanceDocumentTypePolicy.SourceType, cancellationToken)
             : 0m;
 
         var rawLines = new List<CustomerAccountLedgerLineDto>();

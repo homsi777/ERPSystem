@@ -1,10 +1,13 @@
-using ERPSystem.Application.Commands.Inventory;
+using ERPSystem.Application.Commands.Finance;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Core;
 using ERPSystem.Domain.Entities.Catalog;
+using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Inventory;
+using ERPSystem.Services.Finance;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -141,16 +144,36 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             return;
         }
 
-        var lines = _lineRows.Select(l => new OpeningStockLineCommand(
-            l.FabricItemId, l.FabricColorId, l.QuantityMeters, l.RollCount, l.UnitCost)).ToList();
+        var lines = _lineRows.Select(l => new OpeningBalanceLineInput
+        {
+            WarehouseId = wh.Id,
+            WarehouseName = wh.NameAr,
+            FabricItemId = l.FabricItemId,
+            FabricColorId = l.FabricColorId,
+            ItemName = l.FabricName,
+            ColorName = l.ColorName,
+            Quantity = l.QuantityMeters,
+            RollCount = l.RollCount,
+            UnitCost = l.UnitCost,
+            Debit = l.TotalValue,
+            Credit = 0m
+        }).ToList();
 
-        var result = await InventoryUiService.Instance.CreateOpeningStockAsync(new CreateOpeningStockCommand(
-            Guid.Empty, wh.Id, _date.SelectedDate ?? DateTime.Today,
-            _reference.Text.Trim(), _currency.Text.Trim(), _notes.Text.Trim(), lines));
+        var result = await OpeningBalanceUiService.Instance.CreateAsync(new CreateOpeningBalanceCommand
+        {
+            Type = OpeningBalanceType.OpeningStock,
+            Source = OpeningBalanceSource.Manual,
+            OpeningDate = ApplicationDateNormalizer.ToUtcDate(_date.SelectedDate) ?? DateTime.UtcNow,
+            CurrencyCode = _currency.Text.Trim().ToUpperInvariant(),
+            ExchangeRate = 1m,
+            Reference = _reference.Text.Trim(),
+            Notes = _notes.Text.Trim(),
+            Lines = lines
+        });
 
         if (ApplicationResultPresenter.Present(result) && result.IsSuccess)
         {
-            _documentId = result.Value;
+            _documentId = result.Value?.Id;
             InventoryListRefreshHub.RequestRefresh();
         }
     }
@@ -162,8 +185,17 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             MessageBox.Show("احفظ المستند أولاً.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        var result = await InventoryUiService.Instance.PostOpeningStockAsync(_documentId.Value);
-        if (ApplicationResultPresenter.Present(result))
+        var submit = await OpeningBalanceUiService.Instance.SubmitAsync(_documentId.Value);
+        if (!ApplicationResultPresenter.Present(submit))
+            return;
+
+        var approve = await OpeningBalanceUiService.Instance.ApproveAsync(
+            _documentId.Value, "اعتماد رصيد مخزون من شاشة مواد أول المدة");
+        if (!ApplicationResultPresenter.Present(approve))
+            return;
+
+        var post = await OpeningBalanceUiService.Instance.PostAsync(_documentId.Value, lockAfterPost: true);
+        if (ApplicationResultPresenter.Present(post))
         {
             InventoryListRefreshHub.RequestRefresh();
             InventoryPopupService.CompleteSuccess();

@@ -753,6 +753,16 @@ namespace ERPSystem.Controls.Sales
 
                     var sellableIds = (await inventoryRepo.GetSellableContainerIdsAsync()).ToHashSet();
 
+                    if (sellableIds.Remove(Guid.Empty))
+                    {
+                        seenIds.Add(Guid.Empty);
+                        items.Add(new ContainerPickItem
+                        {
+                            Id = Guid.Empty,
+                            Display = "مخزون أول المدة"
+                        });
+                    }
+
                     var result = await handler.HandleAsync(new GetChinaContainerListQuery
                     {
                         CompanyId = DatabaseSeeder.DefaultCompanyId,
@@ -1096,7 +1106,7 @@ namespace ERPSystem.Controls.Sales
                     return;
                 }
 
-                if (row.ChinaContainerId == Guid.Empty)
+                if (row.SelectedContainer is null)
                 {
                     MockInteractionService.ShowWarning("اختر حاوية لكل سطر قبل الحفظ.");
                     return;

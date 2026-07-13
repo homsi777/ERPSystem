@@ -83,6 +83,8 @@ internal sealed class FabricRollConfiguration : IEntityTypeConfiguration<FabricR
             .HasDatabaseName("idx_fabric_rolls_container");
         builder.HasIndex(x => x.Status)
             .HasDatabaseName("idx_fabric_rolls_status");
+        builder.HasIndex(x => new { x.IsLegacyOpeningBalance, x.WarehouseId, x.Status })
+            .HasDatabaseName("idx_fabric_rolls_legacy_opening");
         builder.HasIndex(x => new { x.WarehouseId, x.Status, x.RollNumber })
             .HasDatabaseName("idx_fabric_rolls_available_partial")
             .HasFilter("\"Status\" = 0 AND \"RemainingLengthMeters\" > 0");

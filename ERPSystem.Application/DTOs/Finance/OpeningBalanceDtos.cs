@@ -53,6 +53,8 @@ public sealed class OpeningBalanceLineDto
     public string? AccountName { get; init; }
     public Guid? WarehouseId { get; init; }
     public string? WarehouseName { get; init; }
+    public Guid? FabricItemId { get; init; }
+    public Guid? FabricColorId { get; init; }
     public string? ItemName { get; init; }
     public string? ColorName { get; init; }
     public string? BatchNumber { get; init; }

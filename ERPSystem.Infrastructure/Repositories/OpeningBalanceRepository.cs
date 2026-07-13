@@ -188,7 +188,7 @@ internal sealed class OpeningBalanceRepository(ErpDbContext context) : IOpeningB
             from l in context.JournalEntryLines.AsNoTracking()
             join j in context.JournalEntries.AsNoTracking() on l.JournalEntryId equals j.Id
             join a in context.Accounts.AsNoTracking() on l.AccountId equals a.Id
-            where j.SourceType == (int)DocumentType.FinanceOpeningBalance && j.SourceId == documentId
+            where j.SourceType == (int)OpeningBalanceDocumentTypePolicy.SourceType && j.SourceId == documentId
             orderby j.EntryDate
             select new OpeningBalanceJournalLineDto
             {

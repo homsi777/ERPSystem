@@ -73,9 +73,6 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     {
         if (warehouseId == Guid.Empty)
             throw new ValidationException("Warehouse is required.");
-        if (chinaContainerId == Guid.Empty)
-            throw new ValidationException("China container is required for imported fabric sales.");
-
         var aggregate = new SalesInvoiceAggregate
         {
             InvoiceNumber = invoiceNumber,
@@ -113,9 +110,6 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
             throw new ValidationException("Customer is required.");
         if (warehouseId == Guid.Empty)
             throw new ValidationException("Warehouse is required.");
-        if (chinaContainerId == Guid.Empty)
-            throw new ValidationException("China container is required for imported fabric sales.");
-
         CustomerId = customerId;
         WarehouseId = warehouseId;
         ChinaContainerId = chinaContainerId;

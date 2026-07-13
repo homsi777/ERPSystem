@@ -50,6 +50,7 @@ internal static class OpeningBalanceMapper
             entity.PartyId, entity.PartyName,
             entity.AccountId, entity.AccountName,
             entity.WarehouseId, entity.WarehouseName,
+            entity.FabricItemId, entity.FabricColorId,
             entity.ItemName, entity.ColorName, entity.BatchNumber, entity.LocationCode,
             entity.RollCount, entity.Quantity, entity.UnitCost,
             entity.BankName, entity.BankAccountNumber, entity.InvestmentScope,
@@ -107,6 +108,8 @@ internal static class OpeningBalanceMapper
             AccountName = l.AccountName,
             WarehouseId = l.WarehouseId,
             WarehouseName = l.WarehouseName,
+            FabricItemId = l.FabricItemId,
+            FabricColorId = l.FabricColorId,
             ItemName = l.ItemName,
             ColorName = l.ColorName,
             BatchNumber = l.BatchNumber,
@@ -142,7 +145,7 @@ internal static class OpeningBalanceMapper
         OpeningBalanceType.Cash or OpeningBalanceType.Bank or OpeningBalanceType.GeneralLedger
             => line.AccountId?.ToString() ?? line.BankAccountNumber ?? line.AccountName ?? "",
         OpeningBalanceType.OpeningStock
-            => $"{line.WarehouseId}:{line.ItemName}:{line.ColorName}:{line.BatchNumber}",
+            => $"{line.WarehouseId}:{line.FabricItemId}:{line.FabricColorId}:{line.BatchNumber}",
         _ => $"{line.PartyId}:{line.AccountId}:{line.Debit}:{line.Credit}"
     };
 }

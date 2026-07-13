@@ -50,9 +50,6 @@ public class SalesInvoiceItem
         if (unitPrice.Amount <= 0)
             throw new ValidationException("سعر البيع يجب أن يكون أكبر من صفر.");
 
-        if (chinaContainerId == Guid.Empty)
-            throw new ValidationException("China container is required for every sales invoice line.");
-
         var baseline = originalUnitPrice is { Amount: > 0 } original ? original : unitPrice;
 
         return new()

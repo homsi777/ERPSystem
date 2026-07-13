@@ -47,4 +47,6 @@ public class FabricRollEntity : PersistenceEntity
     public int Status { get; set; }
     public int QualityStatus { get; set; }
     public int ReservationStatus { get; set; }
+    public bool IsLegacyOpeningBalance { get; set; }
+    public bool LegacyLengthConfirmed { get; set; }
 }

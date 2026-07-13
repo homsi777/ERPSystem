@@ -199,7 +199,7 @@ public sealed class GetCustomerStatementHandler(
 
         var opening = aggregate.Customer.OpeningBalancePosted
             ? await accountingReports.GetPartyOpeningBalanceAsync(
-                query.CustomerId, DocumentType.CustomerOpeningBalance, cancellationToken)
+                query.CustomerId, OpeningBalanceDocumentTypePolicy.SourceType, cancellationToken)
             : 0m;
 
         var sorted = rawLines.OrderBy(l => l.Date).ThenBy(l => l.Number).ToList();

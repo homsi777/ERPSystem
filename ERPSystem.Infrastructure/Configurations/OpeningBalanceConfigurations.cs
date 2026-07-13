@@ -40,6 +40,7 @@ internal sealed class OpeningBalanceLineConfiguration : IEntityTypeConfiguration
         builder.HasIndex(x => x.PartyId);
         builder.HasIndex(x => x.AccountId);
         builder.HasIndex(x => x.WarehouseId);
+        builder.HasIndex(x => new { x.FabricItemId, x.FabricColorId });
     }
 }
 
