@@ -56,16 +56,36 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         _lines.ItemsSource = _lineRows;
         stack.Children.Add(_lines);
 
-        var addRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-        _fabric.SelectionChanged += async (_, _) => await LoadColorsAsync();
-        addRow.Children.Add(_fabric);
-        addRow.Children.Add(_color);
-        addRow.Children.Add(_meters);
-        addRow.Children.Add(_rolls);
+        var addRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 240 });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
-            addRow.Children.Add(_unitCost);
-        var addBtn = new Button { Content = "إضافة", Margin = new Thickness(8, 0, 0, 0) };
+            addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+
+        _fabric.SelectionChanged += async (_, _) => await LoadColorsAsync();
+        AddEntryField(addRow, "القماش *", _fabric, 0);
+        AddEntryField(addRow, "اللون *", _color, 1);
+        AddEntryField(addRow, "الأمتار *", _meters, 2);
+        AddEntryField(addRow, "Rolls *", _rolls, 3);
+
+        var buttonColumn = 4;
+        if (WpfGeneralManagerAccess.CanViewSensitivePricing)
+        {
+            AddEntryField(addRow, "التكلفة/م", _unitCost, 4);
+            buttonColumn = 5;
+        }
+
+        var addBtn = new Button
+        {
+            Content = "إضافة",
+            Margin = new Thickness(8, 20, 0, 0),
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
         addBtn.Click += (_, _) => AddLine();
+        Grid.SetColumn(addBtn, buttonColumn);
         addRow.Children.Add(addBtn);
         stack.Children.Add(addRow);
 
@@ -84,6 +104,20 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     }
 
     private static UIElement Wrap(UIElement c) => new Border { Child = c, Padding = new Thickness(0, 4, 0, 0) };
+
+    private static void AddEntryField(Grid row, string label, FrameworkElement field, int column)
+    {
+        field.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var container = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
+        container.Children.Add(new TextBlock
+        {
+            Text = label,
+            Margin = new Thickness(0, 0, 0, 4)
+        });
+        container.Children.Add(field);
+        Grid.SetColumn(container, column);
+        row.Children.Add(container);
+    }
 
     private async Task InitAsync()
     {
