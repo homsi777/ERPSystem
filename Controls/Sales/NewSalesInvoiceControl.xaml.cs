@@ -1,6 +1,7 @@
 using ERPSystem.Helpers;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Queries.Containers;
 using ERPSystem.Application.Results;
@@ -29,6 +30,7 @@ namespace ERPSystem.Controls.Sales
     {
         public Guid Id { get; init; }
         public string Display { get; init; } = "";
+        public DplQuantityUnit? DplQuantityUnit { get; init; }
     }
 
     public sealed class CustomerPickItem
@@ -100,6 +102,7 @@ namespace ERPSystem.Controls.Sales
 
                 _selectedContainer = value;
                 ClearStockSelection();
+                Unit = SaleLengthUnitHelper.DisplayArabic(value?.DplQuantityUnit);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedContainer)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChinaContainerId)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerDisplay)));
@@ -803,7 +806,8 @@ namespace ERPSystem.Controls.Sales
                         items.Add(new ContainerPickItem
                         {
                             Id = Guid.Empty,
-                            Display = "مخزون أول المدة"
+                            Display = "مخزون أول المدة",
+                            DplQuantityUnit = DplQuantityUnit.Meters
                         });
                     }
 
@@ -826,7 +830,8 @@ namespace ERPSystem.Controls.Sales
                             items.Add(new ContainerPickItem
                             {
                                 Id = c.Id,
-                                Display = c.ContainerNumber
+                                Display = c.ContainerNumber,
+                                DplQuantityUnit = c.DplQuantityUnit
                             });
                         }
                     }
@@ -852,7 +857,8 @@ namespace ERPSystem.Controls.Sales
                                 items.Add(new ContainerPickItem
                                 {
                                     Id = c.Id,
-                                    Display = c.ContainerNumber
+                                    Display = c.ContainerNumber,
+                                    DplQuantityUnit = c.DplQuantityUnit
                                 });
                             }
                         }
@@ -961,6 +967,7 @@ namespace ERPSystem.Controls.Sales
                     UnitPrice = line.UnitPrice,
                     MissingSalePrice = line.UnitPrice <= 0,
                     LengthStatus = BuildLengthStatus(line, _domainStatus),
+                    Unit = line.LengthUnitDisplay,
                     DiscountReason = line.DiscountReason ?? "",
                     Notes = line.Notes ?? "",
                     SelectedTaxCode = TaxCodeOptions.FirstOrDefault(t => t.Id == line.TaxCodeId),
@@ -1011,7 +1018,7 @@ namespace ERPSystem.Controls.Sales
         private static string BuildLengthStatus(SalesInvoiceLineDto line, SalesInvoiceStatus status)
         {
             if (line.TotalLengthMeters > 0)
-                return $"{line.TotalLengthMeters:N1} م / {line.RollCount} ثوب";
+                return $"{line.TotalLengthDisplay} / {line.RollCount} ثوب";
 
             return status switch
             {
@@ -1747,7 +1754,8 @@ namespace ERPSystem.Controls.Sales
                         ? row.DiscountReason.Trim()
                         : null,
                     Notes = string.IsNullOrWhiteSpace(row.Notes) ? null : row.Notes.Trim(),
-                    TaxCodeId = row.TaxCodeId
+                    TaxCodeId = row.TaxCodeId,
+                    Unit = SaleLengthUnitHelper.StorageFromDisplay(row.Unit)
                 });
             }
             return commands;

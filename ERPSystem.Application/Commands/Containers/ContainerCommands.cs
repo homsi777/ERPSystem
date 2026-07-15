@@ -1,3 +1,5 @@
+using ERPSystem.Domain.Enums;
+
 namespace ERPSystem.Application.Commands.Containers;
 
 public sealed class CreateChinaContainerCommand
@@ -11,6 +13,7 @@ public sealed class CreateChinaContainerCommand
     public string? Notes { get; init; }
     public decimal ExchangeRateToLocalCurrency { get; init; } = 1m;
     public decimal ChinaInvoiceAmountUsd { get; init; }
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
     public string? ImportFileName { get; init; }
     public IReadOnlyList<ImportContainerLineCommand> Lines { get; init; } = [];
 }
@@ -22,6 +25,8 @@ public sealed class ImportContainerLineCommand
     public Guid FabricColorId { get; init; }
     public int RollCount { get; init; } = 1;
     public decimal LengthMeters { get; init; }
+    public decimal? DplQuantityNative { get; init; }
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
     public decimal? WeightKg { get; init; }
     public string? LotCode { get; init; }
     public Guid? BuyerCustomerId { get; init; }

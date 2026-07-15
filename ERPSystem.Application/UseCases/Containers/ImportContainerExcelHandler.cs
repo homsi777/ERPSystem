@@ -169,6 +169,7 @@ public sealed class ImportContainerExcelHandler(
             {
                 FileName = query.FileName,
                 SupplierNameFromFile = parsed.SupplierNameFromFile,
+                DetectedQuantityUnit = parsed.DetectedQuantityUnit,
                 HasUnresolvedGroups = hasUnresolved,
                 GrandTotal = new PackingListGrandTotalDto
                 {

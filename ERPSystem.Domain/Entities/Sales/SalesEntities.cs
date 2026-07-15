@@ -45,12 +45,14 @@ public class SalesInvoiceItem
         string? discountReason = null,
         Guid? priceModifiedByUserId = null,
         DateTime? priceModifiedAt = null,
-        Guid? taxCodeId = null)
+        Guid? taxCodeId = null,
+        string? unit = null)
     {
         if (unitPrice.Amount <= 0)
             throw new ValidationException("سعر البيع يجب أن يكون أكبر من صفر.");
 
         var baseline = originalUnitPrice is { Amount: > 0 } original ? original : unitPrice;
+        var resolvedUnit = string.IsNullOrWhiteSpace(unit) ? "meter" : unit.Trim();
 
         return new()
         {
@@ -62,6 +64,7 @@ public class SalesInvoiceItem
             RollCount = rollCount,
             UnitPrice = unitPrice,
             OriginalUnitPrice = baseline,
+            Unit = resolvedUnit,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
             DiscountReason = string.IsNullOrWhiteSpace(discountReason) ? null : discountReason.Trim(),
             PriceModifiedByUserId = priceModifiedByUserId,

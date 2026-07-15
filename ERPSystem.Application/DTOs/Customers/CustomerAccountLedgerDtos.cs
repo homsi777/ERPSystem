@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.DTOs.Customers;
@@ -12,6 +13,9 @@ public sealed class CustomerAccountLedgerLineDto
     public string FabricDescription { get; init; } = "";
     public int? RollCount { get; init; }
     public decimal? TotalMeters { get; init; }
+    public string? LengthUnit { get; init; }
+    public string LengthUnitDisplay => SaleLengthUnitHelper.DisplayArabic(LengthUnit);
+    public string TotalLengthDisplay => SaleLengthUnitHelper.FormatLength(TotalMeters, LengthUnit);
     public decimal? UnitPrice { get; init; }
     public decimal LineAmount { get; init; }
     public string? Notes { get; init; }

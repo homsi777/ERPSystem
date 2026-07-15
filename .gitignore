@@ -6,6 +6,9 @@ bin/
 obj/
 artifacts/
 
+# Desktop packaging / installer output (win-x64 — local only, not for cloud deploy)
+publish/
+
 # Diagnostic / temp output
 _perf_audit.txt
 _dump_*.txt

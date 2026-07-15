@@ -16,6 +16,7 @@ public class ContainerEntity : PersistenceEntity
     public decimal? TotalWeightKg { get; set; }
     public string? Port { get; set; }
     public string? Notes { get; set; }
+    public int? DplQuantityUnit { get; set; }
     public decimal ExchangeRateToLocalCurrency { get; set; } = 1m;
     public decimal ChinaInvoiceAmountUsd { get; set; }
     public decimal? FinancialTaxReservePostedLocal { get; set; }
@@ -31,6 +32,8 @@ public class ContainerItemEntity : PersistenceEntity
     public Guid FabricColorId { get; set; }
     public int RollCount { get; set; }
     public decimal LengthMeters { get; set; }
+    public decimal? DplQuantityNative { get; set; }
+    public int? DplQuantityUnit { get; set; }
     public decimal? WeightKg { get; set; }
     public string? LotCode { get; set; }
     public Guid? BuyerCustomerId { get; set; }

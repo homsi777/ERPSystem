@@ -25,6 +25,7 @@ public sealed class ContainerAggregate : AggregateRoot
     public string? Notes { get; private set; }
     public decimal ExchangeRateToLocalCurrency { get; private set; } = 1m;
     public decimal ChinaInvoiceAmountUsd { get; private set; }
+    public DplQuantityUnit? DplQuantityUnit { get; private set; }
     public decimal? FinancialTaxReservePostedLocal { get; private set; }
     public DateTime? ApprovedAt { get; private set; }
     public Guid? ApprovedByUserId { get; private set; }
@@ -83,6 +84,8 @@ public sealed class ContainerAggregate : AggregateRoot
             ? Domain.Services.ChinaImportFinancials.TaxReserveLocal(chinaInvoiceAmountUsd, exchangeRateToLocalCurrency)
             : null;
     }
+
+    public void SetDplQuantityUnit(DplQuantityUnit? unit) => DplQuantityUnit = unit;
 
     public void MarkInTransit() => TransitionTo(ChinaContainerStatus.InTransit);
     public void MarkArrived(DateTime arrivalDate)

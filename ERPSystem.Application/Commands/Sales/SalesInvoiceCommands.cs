@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.Commands.Sales;
@@ -28,7 +29,8 @@ public sealed class SalesInvoiceLineCommand
 
     /// <summary>Catalog (card) price shown to the user before any manual override.</summary>
     public decimal OriginalUnitPrice { get; init; }
-
+    /// <summary>Length unit for this line: "meter" or "yard" (from container DPL).</summary>
+    public string Unit { get; init; } = SaleLengthUnitHelper.MeterStorage;
     public string? DiscountReason { get; init; }
     public Guid? TaxCodeId { get; init; }
     public string? Notes { get; init; }

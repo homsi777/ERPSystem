@@ -129,7 +129,7 @@ public sealed class DeliveryNotePdfGenerator
                 t.Cell().Element(BodyCell).Text($"{line.FabricDisplayName} ({line.FabricCode})");
                 t.Cell().Element(BodyCell).Text(line.ColorDisplayName);
                 t.Cell().Element(BodyCell).AlignCenter().Text(line.RollCount.ToString(WesternNumbers));
-                t.Cell().Element(BodyCell).AlignRight().Text($"{line.TotalLengthMeters:N2}");
+                t.Cell().Element(BodyCell).AlignRight().Text(line.TotalLengthDisplay);
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.UnitPrice:N2}");
                 t.Cell().Element(BodyCell).AlignRight().Text($"{line.DiscountAmount:N2}");
                 t.Cell().Element(BodyCell).AlignRight().Text(line.TaxAmount > 0 ? $"{line.TaxAmount:N2}" : "—");

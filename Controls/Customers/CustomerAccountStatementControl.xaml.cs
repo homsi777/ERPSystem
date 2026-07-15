@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Customers;
 using ERPSystem.Core;
 using ERPSystem.Domain.Enums;
@@ -20,6 +21,7 @@ public sealed class CustomerLedgerRow
     public string FabricDescription { get; init; } = "";
     public int? RollCount { get; init; }
     public decimal? TotalMeters { get; init; }
+    public string? LengthUnit { get; init; }
     public decimal? UnitPrice { get; init; }
     public decimal LineAmount { get; init; }
     public string? Notes { get; init; }
@@ -28,7 +30,7 @@ public sealed class CustomerLedgerRow
 
     public string DateDisplay => AppFormats.Date(TransactionDate);
     public string RollCountDisplay => RollCount.HasValue ? RollCount.Value.ToString() : "—";
-    public string TotalMetersDisplay => TotalMeters.HasValue ? AppFormats.Number(TotalMeters.Value, 2) : "—";
+    public string TotalLengthDisplay => SaleLengthUnitHelper.FormatLength(TotalMeters, LengthUnit);
     public string UnitPriceDisplay => UnitPrice.HasValue ? AppFormats.Amount(UnitPrice.Value) : "—";
     public string LineAmountDisplay => AppFormats.Amount(LineAmount);
     public string RunningBalanceDisplay => AppFormats.Amount(RunningBalance);
@@ -51,6 +53,7 @@ public sealed class CustomerLedgerRow
         FabricDescription = string.IsNullOrWhiteSpace(dto.FabricDescription) ? "—" : dto.FabricDescription,
         RollCount = dto.RollCount,
         TotalMeters = dto.TotalMeters,
+        LengthUnit = dto.LengthUnit,
         UnitPrice = dto.UnitPrice,
         LineAmount = dto.LineAmount,
         Notes = dto.Notes,
@@ -276,6 +279,7 @@ public partial class CustomerAccountStatementControl : UserControl
         FabricDescription = row.FabricDescription == "—" ? "" : row.FabricDescription,
         RollCount = row.RollCount,
         TotalMeters = row.TotalMeters,
+        LengthUnit = row.LengthUnit,
         UnitPrice = row.UnitPrice,
         LineAmount = row.LineAmount,
         Notes = row.Notes,

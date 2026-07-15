@@ -46,6 +46,7 @@ public static class SalesInvoiceCatalogEnricher
                 RollCount = line.RollCount,
                 UnitPrice = line.UnitPrice,
                 OriginalUnitPrice = line.OriginalUnitPrice,
+                Unit = line.Unit,
                 TotalLengthMeters = line.TotalLengthMeters,
                 LineTotal = line.LineTotal,
                 DiscountAmount = line.DiscountAmount,

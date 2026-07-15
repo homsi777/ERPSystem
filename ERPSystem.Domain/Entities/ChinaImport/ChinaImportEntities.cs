@@ -32,6 +32,8 @@ public class ChinaContainerItem
     public Guid FabricColorId { get; private set; }
     public int RollCount { get; private set; }
     public LengthInMeters LengthMeters { get; private set; } = null!;
+    public decimal? DplQuantityNative { get; private set; }
+    public DplQuantityUnit? DplQuantityUnit { get; private set; }
     public WeightInKg? WeightKg { get; private set; }
     public string? LotCode { get; private set; }
     public Guid? BuyerCustomerId { get; private set; }
@@ -49,7 +51,9 @@ public class ChinaContainerItem
         WeightInKg? weightKg = null,
         string? lotCode = null,
         Guid? buyerCustomerId = null,
-        int? supplierRollNumber = null) => new()
+        int? supplierRollNumber = null,
+        decimal? dplQuantityNative = null,
+        DplQuantityUnit? dplQuantityUnit = null) => new()
     {
         Id = Guid.NewGuid(),
         LineNumber = lineNumber,
@@ -57,6 +61,8 @@ public class ChinaContainerItem
         FabricColorId = fabricColorId,
         RollCount = rollCount,
         LengthMeters = lengthMeters,
+        DplQuantityNative = dplQuantityNative,
+        DplQuantityUnit = dplQuantityUnit,
         WeightKg = weightKg,
         LotCode = lotCode,
         BuyerCustomerId = buyerCustomerId,

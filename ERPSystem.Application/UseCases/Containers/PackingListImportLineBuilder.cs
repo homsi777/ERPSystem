@@ -9,6 +9,7 @@ public static class PackingListImportLineBuilder
     {
         var lines = new List<ImportContainerLineCommand>();
         var lineNumber = 0;
+        var fileUnit = parse.DetectedQuantityUnit;
 
         foreach (var group in parse.Groups.Where(g => g.FabricResolved && g.ColorResolved))
         {
@@ -25,6 +26,8 @@ public static class PackingListImportLineBuilder
                         FabricColorId = group.FabricColorId!.Value,
                         RollCount = 1,
                         LengthMeters = roll.QuantityMeters,
+                        DplQuantityNative = roll.QuantityNative,
+                        DplQuantityUnit = roll.QuantityUnit,
                         LotCode = string.IsNullOrWhiteSpace(roll.LotCode) ? null : roll.LotCode,
                         SupplierRollNumber = roll.RollNumber > 0 ? roll.RollNumber : null
                     });
@@ -42,7 +45,9 @@ public static class PackingListImportLineBuilder
                 FabricItemId = group.FabricItemId!.Value,
                 FabricColorId = group.FabricColorId!.Value,
                 RollCount = group.ParsedTotalRolls > 0 ? group.ParsedTotalRolls : 1,
-                LengthMeters = group.ParsedTotalMeters
+                LengthMeters = group.ParsedTotalMeters,
+                DplQuantityNative = group.ParsedTotalMeters,
+                DplQuantityUnit = fileUnit
             });
         }
 

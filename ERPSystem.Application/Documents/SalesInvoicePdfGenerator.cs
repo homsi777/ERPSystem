@@ -182,7 +182,7 @@ public sealed class SalesInvoicePdfGenerator
                 BodyCell(table, $"{line.FabricDisplayName}\n{line.FabricCode}", TextAlign.Right);
                 BodyCell(table, line.ColorDisplayName, TextAlign.Right);
                 BodyCell(table, Integer(line.RollCount));
-                BodyCell(table, Number(line.TotalLengthMeters));
+                BodyCell(table, line.TotalLengthDisplay);
                 BodyCell(table, Money(line.UnitPrice));
                 BodyCell(table, Money(line.DiscountAmount));
                 BodyCell(table, Money(line.TaxAmount));

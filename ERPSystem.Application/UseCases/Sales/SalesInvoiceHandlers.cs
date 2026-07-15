@@ -105,7 +105,8 @@ public sealed class CreateSalesInvoiceDraftHandler(
                     reason,
                     modifiedBy,
                     modifiedAt,
-                    line.TaxCodeId);
+                    line.TaxCodeId,
+                    line.Unit);
                 aggregate.AddItem(item);
             }
 
@@ -194,7 +195,8 @@ public sealed class UpdateSalesInvoiceDraftHandler(
                         reason,
                         modifiedBy,
                         modifiedAt,
-                        line.TaxCodeId);
+                        line.TaxCodeId,
+                        line.Unit);
                 })
                 .ToList();
 

@@ -123,6 +123,8 @@ internal static class SalesInvoiceMapper
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.UnitPrice), new Money(i.UnitPrice));
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.OriginalUnitPrice),
                 new Money(i.OriginalUnitPrice > 0 ? i.OriginalUnitPrice : i.UnitPrice));
+            DomainHydrator.Set(item, nameof(SalesInvoiceItem.Unit),
+                string.IsNullOrWhiteSpace(i.Unit) ? "meter" : i.Unit);
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.LineTotal), new Money(i.LineTotal));
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.DiscountAmount), new Money(i.DiscountAmount));
             DomainHydrator.Set(item, nameof(SalesInvoiceItem.DiscountReason), i.DiscountReason);
@@ -281,6 +283,7 @@ internal static class ContainerMapper
         Notes = aggregate.Notes,
         ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
         ChinaInvoiceAmountUsd = aggregate.ChinaInvoiceAmountUsd,
+        DplQuantityUnit = aggregate.DplQuantityUnit.HasValue ? (int)aggregate.DplQuantityUnit.Value : null,
         FinancialTaxReservePostedLocal = aggregate.FinancialTaxReservePostedLocal,
         ApprovedAt = aggregate.ApprovedAt,
         ApprovedByUserId = aggregate.ApprovedByUserId,
@@ -312,6 +315,8 @@ internal static class ContainerMapper
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Notes), header.Notes);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ExchangeRateToLocalCurrency), header.ExchangeRateToLocalCurrency);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ChinaInvoiceAmountUsd), header.ChinaInvoiceAmountUsd);
+        if (header.DplQuantityUnit.HasValue)
+            DomainHydrator.Set(aggregate, nameof(ContainerAggregate.DplQuantityUnit), (DplQuantityUnit)header.DplQuantityUnit.Value);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.FinancialTaxReservePostedLocal), header.FinancialTaxReservePostedLocal);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ApprovedAt), header.ApprovedAt);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ApprovedByUserId), header.ApprovedByUserId);
@@ -326,6 +331,9 @@ internal static class ContainerMapper
             DomainHydrator.Set(item, nameof(ChinaContainerItem.FabricColorId), i.FabricColorId);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.RollCount), i.RollCount);
             DomainHydrator.Set(item, nameof(ChinaContainerItem.LengthMeters), new LengthInMeters(i.LengthMeters));
+            DomainHydrator.Set(item, nameof(ChinaContainerItem.DplQuantityNative), i.DplQuantityNative);
+            if (i.DplQuantityUnit.HasValue)
+                DomainHydrator.Set(item, nameof(ChinaContainerItem.DplQuantityUnit), (DplQuantityUnit)i.DplQuantityUnit.Value);
             if (i.WeightKg.HasValue)
                 DomainHydrator.Set(item, nameof(ChinaContainerItem.WeightKg), new WeightInKg(i.WeightKg.Value));
             DomainHydrator.Set(item, nameof(ChinaContainerItem.LotCode), i.LotCode);

@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Finance;
+using ERPSystem.Application.Common;
 using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.DTOs.Sales;
@@ -50,7 +51,10 @@ public sealed class SalesInvoiceLineDto
     public int RollCount { get; init; }
     public decimal UnitPrice { get; init; }
     public decimal OriginalUnitPrice { get; init; }
+    public string Unit { get; init; } = SaleLengthUnitHelper.MeterStorage;
+    public string LengthUnitDisplay => SaleLengthUnitHelper.DisplayArabic(Unit);
     public decimal TotalLengthMeters { get; init; }
+    public string TotalLengthDisplay => SaleLengthUnitHelper.FormatLength(TotalLengthMeters, Unit);
     public decimal LineTotal { get; init; }
     public decimal DiscountAmount { get; init; }
     public string? DiscountReason { get; init; }

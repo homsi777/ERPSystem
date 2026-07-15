@@ -135,7 +135,7 @@ public sealed class CustomerAccountLedgerPdfGenerator
                 BodyCell(table, MovementLabel(line.MovementType));
                 BodyCell(table, string.IsNullOrWhiteSpace(line.FabricDescription) ? "—" : line.FabricDescription, TextAlign.Right);
                 BodyCell(table, FormatOptionalInt(line.RollCount));
-                BodyCell(table, FormatOptionalDecimal(line.TotalMeters));
+                BodyCell(table, line.TotalLengthDisplay);
                 BodyCell(table, FormatOptionalDecimal(line.UnitPrice));
                 BodyCell(table, Amount(line.LineAmount));
                 BodyCell(table, line.DocumentNumber);

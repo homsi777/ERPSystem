@@ -55,6 +55,9 @@ public sealed class CreateChinaContainerHandler(
             if (command.ChinaInvoiceAmountUsd > 0)
                 aggregate.SetChinaInvoiceFinancials(command.ChinaInvoiceAmountUsd, command.ExchangeRateToLocalCurrency);
 
+            if (command.DplQuantityUnit.HasValue)
+                aggregate.SetDplQuantityUnit(command.DplQuantityUnit);
+
             if (!string.IsNullOrWhiteSpace(command.ImportFileName))
             {
                 var userId = currentUserService.UserId ?? Guid.Empty;
@@ -77,7 +80,9 @@ public sealed class CreateChinaContainerHandler(
                     line.WeightKg.HasValue ? new WeightInKg(line.WeightKg.Value) : null,
                     line.LotCode,
                     line.BuyerCustomerId,
-                    line.SupplierRollNumber));
+                    line.SupplierRollNumber,
+                    line.DplQuantityNative,
+                    line.DplQuantityUnit));
             }
 
             var previousStatus = aggregate.Status;

@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.China;
@@ -69,7 +70,10 @@ public sealed class PackingListRollAnalysisRow
     public string Color { get; init; } = "";
     public int RollNumber { get; init; }
     public decimal Meters { get; init; }
-    public string YardOrLot { get; init; } = "";
+    public decimal NativeQuantity { get; init; }
+    public DplQuantityUnit QuantityUnit { get; init; }
+    public string QuantityDisplay { get; init; } = "";
+    public string LotCode { get; init; } = "";
     public string StatusDisplay { get; init; } = "";
 
     public static IEnumerable<PackingListRollAnalysisRow> FromParseResult(ContainerExcelParseResultDto result) =>
@@ -80,7 +84,10 @@ public sealed class PackingListRollAnalysisRow
             Color = g.Color,
             RollNumber = r.RollNumber,
             Meters = r.QuantityMeters,
-            YardOrLot = string.IsNullOrWhiteSpace(r.LotCode) ? "—" : r.LotCode,
+            NativeQuantity = r.QuantityNative,
+            QuantityUnit = r.QuantityUnit,
+            QuantityDisplay = r.QuantityDisplay,
+            LotCode = string.IsNullOrWhiteSpace(r.LotCode) ? "—" : r.LotCode,
             StatusDisplay = r.IsValid ? "صحيح" : (r.InvalidReason ?? "خطأ")
         }));
 }
@@ -144,8 +151,12 @@ public sealed class PackingListAnalysisControl : UserControl
         {
             Text = $"الملف: {parseResult.FileName}",
             Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!,
-            Margin = new Thickness(0, 0, 0, 12)
+            Margin = new Thickness(0, 0, 0, 4)
         });
+
+        _stack.Children.Add(ErpUxFactory.InfoBanner(
+            $"وحدة DPL المكتشفة: {parseResult.DetectedQuantityUnitDisplay} — البيع والتفصيل حسب قيم الملف (المخزون والتكلفة بالمتر المكافئ).",
+            parseResult.DetectedQuantityUnit == DplQuantityUnit.Yards ? "warning" : "info"));
 
         if (!string.IsNullOrWhiteSpace(parseResult.SupplierNameFromFile))
         {
@@ -411,8 +422,9 @@ public sealed class PackingListAnalysisControl : UserControl
             ("كود القماش", nameof(PackingListRollAnalysisRow.FabricCode), 100, null),
             ("اللون", nameof(PackingListRollAnalysisRow.Color), 90, null),
             ("رقم التوب", nameof(PackingListRollAnalysisRow.RollNumber), 80, null),
+            ("الكمية (DPL)", nameof(PackingListRollAnalysisRow.QuantityDisplay), 150, null),
             ("المتر (M)", nameof(PackingListRollAnalysisRow.Meters), 90, "N2"),
-            ("يارد / لوت (Y)", nameof(PackingListRollAnalysisRow.YardOrLot), 100, null),
+            ("اللوت", nameof(PackingListRollAnalysisRow.LotCode), 70, null),
             ("الحالة", nameof(PackingListRollAnalysisRow.StatusDisplay), 120, null)
         })
         {

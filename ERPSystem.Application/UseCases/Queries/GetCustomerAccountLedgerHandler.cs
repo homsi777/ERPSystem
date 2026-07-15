@@ -66,6 +66,7 @@ public sealed class GetCustomerAccountLedgerHandler(
                     FabricDescription = $"{fabricPart} — {colorPart}",
                     RollCount = line.RollCount,
                     TotalMeters = line.TotalLengthMeters > 0 ? line.TotalLengthMeters : null,
+                    LengthUnit = line.Unit,
                     UnitPrice = line.UnitPrice,
                     LineAmount = line.LineTotal,
                     Notes = line.Notes
@@ -180,6 +181,7 @@ public sealed class GetCustomerAccountLedgerHandler(
                 FabricDescription = line.FabricDescription,
                 RollCount = line.RollCount,
                 TotalMeters = line.TotalMeters,
+                LengthUnit = line.LengthUnit,
                 UnitPrice = line.UnitPrice,
                 LineAmount = line.LineAmount,
                 Notes = line.Notes,

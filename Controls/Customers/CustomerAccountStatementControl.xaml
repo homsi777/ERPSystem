@@ -161,7 +161,7 @@
                         <DataGridTextColumn Header="نوع الحركة" Binding="{Binding MovementTypeDisplay}" Width="100"/>
                         <DataGridTextColumn Header="نوع البضاعة" Binding="{Binding FabricDescription}" Width="*" MinWidth="160"/>
                         <DataGridTextColumn Header="عدد الأثواب" Binding="{Binding RollCountDisplay}" Width="90"/>
-                        <DataGridTextColumn Header="مجموع الأطوال" Binding="{Binding TotalMetersDisplay}" Width="110"/>
+                        <DataGridTextColumn Header="مجموع الأطوال" Binding="{Binding TotalLengthDisplay}" Width="120"/>
                         <DataGridTextColumn Header="السعر" Binding="{Binding UnitPriceDisplay}" Width="90"/>
                         <DataGridTextColumn Header="مجموع المبلغ" Binding="{Binding LineAmountDisplay}" Width="110"/>
                         <DataGridTemplateColumn Header="رقم المستند" Width="120">

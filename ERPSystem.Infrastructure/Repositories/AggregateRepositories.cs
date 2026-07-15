@@ -117,6 +117,8 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             FabricColorId = i.FabricColorId,
             RollCount = i.RollCount,
             LengthMeters = i.LengthMeters.Value,
+            DplQuantityNative = i.DplQuantityNative,
+            DplQuantityUnit = i.DplQuantityUnit.HasValue ? (int)i.DplQuantityUnit.Value : null,
             WeightKg = i.WeightKg?.Value,
             LotCode = i.LotCode,
             BuyerCustomerId = i.BuyerCustomerId,

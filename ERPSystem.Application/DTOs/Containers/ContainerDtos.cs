@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Domain.Enums;
 
@@ -17,6 +18,8 @@ public sealed class ContainerListDto
     public int ColorCount { get; init; }
     public decimal ExchangeRateToLocalCurrency { get; init; }
     public string SupplierName { get; init; } = "";
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
+    public string LengthUnitDisplay => SaleLengthUnitHelper.DisplayArabic(DplQuantityUnit);
 }
 
 public sealed class ContainerDetailsDto
@@ -33,6 +36,7 @@ public sealed class ContainerDetailsDto
     public decimal? TotalWeightKg { get; init; }
     public decimal ExchangeRateToLocalCurrency { get; init; }
     public decimal ChinaInvoiceAmountUsd { get; init; }
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
     public decimal FinancialTaxReserveUsd { get; init; }
     public decimal? FinancialTaxReservePostedLocal { get; init; }
     public LandingCostDto? LandingCost { get; init; }
@@ -47,6 +51,8 @@ public sealed class ContainerItemDto
     public Guid FabricColorId { get; init; }
     public int RollCount { get; init; }
     public decimal LengthMeters { get; init; }
+    public decimal? DplQuantityNative { get; init; }
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
     public bool IsValid { get; init; }
 }
 
@@ -88,6 +94,9 @@ public sealed class ContainerExcelParseResultDto
 {
     public string FileName { get; init; } = "";
     public string? SupplierNameFromFile { get; init; }
+    public DplQuantityUnit DetectedQuantityUnit { get; init; } = DplQuantityUnit.Meters;
+    public string DetectedQuantityUnitDisplay =>
+        DetectedQuantityUnit == DplQuantityUnit.Yards ? "يارد (YDS)" : "متر (M)";
     public PackingListGrandTotalDto GrandTotal { get; init; } = new();
     public IReadOnlyList<PackingListGroupDto> Groups { get; init; } = [];
     public bool HasUnresolvedGroups { get; init; }
@@ -132,10 +141,19 @@ public sealed class PackingListRollDto
     public int SequenceNumber { get; init; }
     public int GroupIndex { get; init; }
     public int RollNumber { get; init; }
+    /// <summary>Raw quantity from DPL file (source of truth for sales).</summary>
+    public decimal QuantityNative { get; init; }
+    public DplQuantityUnit QuantityUnit { get; init; } = DplQuantityUnit.Meters;
+    /// <summary>Meter equivalent used for costing, invoice matching, and inventory.</summary>
     public decimal QuantityMeters { get; init; }
     public string LotCode { get; init; } = "";
     public bool IsValid { get; init; } = true;
     public string? InvalidReason { get; init; }
+
+    public string QuantityDisplay =>
+        QuantityUnit == DplQuantityUnit.Yards
+            ? $"{QuantityNative:N2} yd ({QuantityMeters:N2} m)"
+            : $"{QuantityNative:N2} m";
 }
 
 public sealed class PackingListResolutionIssueDto

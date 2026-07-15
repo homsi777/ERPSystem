@@ -108,7 +108,8 @@ public static class ContainerMapper
         CodeCount = aggregate.Items.Select(i => i.FabricItemId).Distinct().Count(),
         ColorCount = aggregate.Items.Select(i => i.FabricColorId).Distinct().Count(),
         ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
-        SupplierName = supplierName
+        SupplierName = supplierName,
+        DplQuantityUnit = aggregate.DplQuantityUnit
     };
 
     public static ContainerDetailsDto ToDetailsDto(ContainerAggregate aggregate, string supplierName = "") => new()
@@ -125,6 +126,7 @@ public static class ContainerMapper
         TotalWeightKg = aggregate.TotalWeight?.Value,
         ExchangeRateToLocalCurrency = aggregate.ExchangeRateToLocalCurrency,
         ChinaInvoiceAmountUsd = aggregate.ChinaInvoiceAmountUsd,
+        DplQuantityUnit = aggregate.DplQuantityUnit,
         FinancialTaxReserveUsd = ChinaImportFinancials.TaxReserveUsd(aggregate.ChinaInvoiceAmountUsd),
         FinancialTaxReservePostedLocal = aggregate.FinancialTaxReservePostedLocal,
         LandingCost = aggregate.LandingCost is null ? null : ToLandingCostDto(aggregate.LandingCost),
@@ -136,6 +138,8 @@ public static class ContainerMapper
             FabricColorId = i.FabricColorId,
             RollCount = i.RollCount,
             LengthMeters = i.LengthMeters.Value,
+            DplQuantityNative = i.DplQuantityNative,
+            DplQuantityUnit = i.DplQuantityUnit,
             IsValid = i.IsValid
         }).ToList()
     };
@@ -240,6 +244,7 @@ public static class SalesInvoiceMapper
                 RollCount = i.RollCount,
                 UnitPrice = i.UnitPrice.Amount,
                 OriginalUnitPrice = i.OriginalUnitPrice.Amount,
+                Unit = i.Unit,
                 TotalLengthMeters = totalLength,
                 LineTotal = i.LineTotal.Amount,
                 DiscountAmount = i.DiscountAmount.Amount,
