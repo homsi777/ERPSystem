@@ -73,6 +73,13 @@ The audit found a real exception in `ERPSystem.Application/Documents/ModuleRepor
 
 Live WPF and web screenshots were intentionally not captured. Test access/screenshots were declined before implementation, so this report does not claim a manual authenticated-screen verification.
 
+## Source and deployment status
+
+- Commit: `c85db76` (`fix: enforce western digits globally`)
+- The commit was pushed to `main`.
+- Production deployment was attempted twice through the configured SSH endpoint (`65.21.136.217:2727`), but both attempts timed out before reaching the server. This is a network/connectivity blocker; no remote deployment command ran.
+- The current production health endpoint returned `OK` at `https://alamal-ab.org/health`. This confirms the existing deployment is healthy, but it does not confirm that commit `c85db76` has been deployed.
+
 ## Data integrity confirmation
 
 No entity, DTO, command, calculation, migration, database query, or persistence mapping was changed. All changes are confined to string formatting, WPF binding culture, web display helpers, report presentation strings, and automated presentation regression checks.
