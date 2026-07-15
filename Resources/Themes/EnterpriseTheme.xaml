@@ -500,14 +500,13 @@
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
-    <!-- China import cost entry — clearer field borders for amount + note pairs -->
+    <!-- China import cost entry — visible black borders (amount + note) -->
     <Style x:Key="EnterpriseCostEntryAmountInputStyle" TargetType="TextBox" BasedOn="{StaticResource EnterpriseInputStyle}">
-        <Setter Property="Background" Value="{StaticResource AccentOrdersLightBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource AccentOrdersBrush}"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#FF1E293B"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
                 <Setter Property="BorderThickness" Value="2"/>
             </Trigger>
         </Style.Triggers>
@@ -515,11 +514,10 @@
 
     <Style x:Key="EnterpriseCostEntryNoteInputStyle" TargetType="TextBox" BasedOn="{StaticResource EnterpriseInputStyle}">
         <Setter Property="Background" Value="White"/>
-        <Setter Property="BorderBrush" Value="{StaticResource PrimaryLightBrush}"/>
+        <Setter Property="BorderBrush" Value="#FF1E293B"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource AccentOrdersBrush}"/>
                 <Setter Property="BorderThickness" Value="2"/>
             </Trigger>
         </Style.Triggers>
