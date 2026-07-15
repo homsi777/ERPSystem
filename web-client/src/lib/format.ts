@@ -105,6 +105,28 @@ export function formatContainerLength(meters: number, unit?: number | null) {
   return `${numberFormatter.format(displayLengthFromMeters(meters, unit))} ${lengthAbbrev(unit)}`;
 }
 
+export function unitStorageToDpl(unit?: string | null): DplQuantityUnit | null {
+  if (!unit) {
+    return null;
+  }
+  return unit.toLowerCase() === 'yard' ? 1 : 0;
+}
+
+export function formatSalesLineLength(
+  totalLengthMeters: number,
+  options?: {
+    totalLengthDisplay?: string | null;
+    unit?: string | null;
+    dplQuantityUnit?: number | null;
+  }
+) {
+  if (options?.totalLengthDisplay) {
+    return options.totalLengthDisplay;
+  }
+  const unit = unitStorageToDpl(options?.unit) ?? options?.dplQuantityUnit ?? 0;
+  return formatContainerLength(totalLengthMeters, unit);
+}
+
 export function formatRatePerUnit(perMeter: number, unit?: number | null) {
   return `${numberFormatter.format(displayRateFromPerMeter(perMeter, unit))} ${lengthAbbrev(unit)}`;
 }

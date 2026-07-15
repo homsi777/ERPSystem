@@ -74,6 +74,14 @@ public sealed class CustomerDetailsDto
     public string? Email { get; init; }
     public bool IsActive { get; init; }
     public bool OpeningBalancePosted { get; init; }
+    public decimal OpeningBalanceAmount { get; init; }
+    public decimal PendingOpeningBalanceAmount { get; init; }
+    public decimal TotalInvoiced { get; init; }
+    public decimal TotalReceipts { get; init; }
+    public int PostedReceiptCount { get; init; }
+    public int OpenInvoicesCount { get; init; }
+    public decimal ComputedBalance { get; init; }
+    public DateTime? LastReceiptDate { get; init; }
 }
 
 public sealed class CustomerStatementDto

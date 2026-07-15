@@ -472,6 +472,14 @@ export type CustomerDetailsDto = {
   email: string | null;
   isActive: boolean;
   openingBalancePosted: boolean;
+  openingBalanceAmount: number;
+  pendingOpeningBalanceAmount: number;
+  totalInvoiced: number;
+  totalReceipts: number;
+  postedReceiptCount: number;
+  openInvoicesCount: number;
+  computedBalance: number;
+  lastReceiptDate?: string | null;
 };
 
 export type CustomerStatementLineDto = {
@@ -510,6 +518,9 @@ export type CustomerAccountLedgerLineDto = {
   fabricDescription: string;
   rollCount: number | null;
   totalMeters: number | null;
+  lengthUnit?: string | null;
+  lengthUnitDisplay?: string | null;
+  totalLengthDisplay?: string | null;
   unitPrice: number | null;
   lineAmount: number;
   notes: string | null;
@@ -851,7 +862,10 @@ export type SalesInvoiceLineDto = {
   rollCount: number;
   unitPrice: number;
   originalUnitPrice: number;
+  unit?: string | null;
+  lengthUnitDisplay?: string | null;
   totalLengthMeters: number;
+  totalLengthDisplay?: string | null;
   lineTotal: number;
   discountAmount: number;
   discountReason: string | null;
@@ -937,6 +951,8 @@ export type SalesWarehouseStockOptionDto = {
   availableRollCount: number;
   availableMeters: number;
   salePricePerMeter: number | null;
+  dplQuantityUnit?: number | null;
+  lengthUnitDisplay?: string | null;
   display: string;
 };
 
@@ -948,6 +964,7 @@ export type CreateSalesInvoiceLineRequest = {
   rollCount: number;
   unitPrice: number;
   originalUnitPrice: number;
+  unit?: string | null;
   discountReason: string | null;
   notes: string | null;
   taxCodeId?: string | null;

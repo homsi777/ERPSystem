@@ -58,23 +58,40 @@ public static class CustomerMapper
         };
     }
 
-    public static CustomerDetailsDto ToDetailsDto(CustomerAggregate aggregate) => new()
+    public static CustomerDetailsDto ToDetailsDto(CustomerAggregate aggregate) =>
+        ToDetailsDto(aggregate, null);
+
+    public static CustomerDetailsDto ToDetailsDto(
+        CustomerAggregate aggregate,
+        CustomerListFinancialSummary? financials)
     {
-        Id = aggregate.Customer.Id,
-        Code = aggregate.Customer.Code,
-        NameAr = aggregate.Customer.NameAr,
-        NameEn = aggregate.Customer.NameEn,
-        Type = aggregate.Customer.Type,
-        Status = aggregate.Customer.Status,
-        Balance = aggregate.Customer.Balance.Amount,
-        CreditLimit = aggregate.Customer.CreditLimit.Amount,
-        CreditLimitEnabled = aggregate.Customer.CreditLimitEnabled,
-        PaymentTermsDays = aggregate.Customer.PaymentTermsDays,
-        Phone = aggregate.Customer.Phone?.Value,
-        Email = aggregate.Customer.Email?.Value,
-        IsActive = aggregate.Customer.IsActive,
-        OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted
-    };
+        var listDto = ToListDto(aggregate, financials);
+        return new CustomerDetailsDto
+        {
+            Id = aggregate.Customer.Id,
+            Code = aggregate.Customer.Code,
+            NameAr = aggregate.Customer.NameAr,
+            NameEn = aggregate.Customer.NameEn,
+            Type = aggregate.Customer.Type,
+            Status = aggregate.Customer.Status,
+            Balance = aggregate.Customer.Balance.Amount,
+            CreditLimit = aggregate.Customer.CreditLimit.Amount,
+            CreditLimitEnabled = aggregate.Customer.CreditLimitEnabled,
+            PaymentTermsDays = aggregate.Customer.PaymentTermsDays,
+            Phone = aggregate.Customer.Phone?.Value,
+            Email = aggregate.Customer.Email?.Value,
+            IsActive = aggregate.Customer.IsActive,
+            OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted,
+            OpeningBalanceAmount = listDto.OpeningBalanceAmount,
+            PendingOpeningBalanceAmount = listDto.PendingOpeningBalanceAmount,
+            TotalInvoiced = listDto.TotalInvoiced,
+            TotalReceipts = listDto.TotalReceipts,
+            PostedReceiptCount = listDto.PostedReceiptCount,
+            OpenInvoicesCount = listDto.OpenInvoicesCount,
+            ComputedBalance = listDto.ComputedBalance,
+            LastReceiptDate = listDto.LastReceiptDate
+        };
+    }
 }
 
 public static class SupplierMapper

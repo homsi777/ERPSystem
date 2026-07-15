@@ -43,7 +43,7 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import type { DocumentExportPayload } from '../lib/documentExport.ts';
-import { formatCurrency, formatDateOnly, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDateOnly, formatNumber, formatSalesLineLength, EMPTY_CELL } from '../lib/format.ts';
 import {
   customerAccountMovementTypeLabels,
   customerStatusLabels,
@@ -53,6 +53,16 @@ import {
 } from '../lib/enums.ts';
 
 const LIST_PAGE_SIZE = 500;
+
+function formatOpeningBalanceCell(
+  customer: Pick<CustomerListDto, 'openingBalanceAmount' | 'pendingOpeningBalanceAmount' | 'openingBalancePosted'>
+) {
+  const opening = customer.openingBalanceAmount ?? 0;
+  if (opening > 0) {
+    return `${formatCurrency(opening)}${(customer.pendingOpeningBalanceAmount ?? 0) > 0 ? ' *' : ''}`;
+  }
+  return customer.openingBalancePosted ? formatCurrency(0) : EMPTY_CELL;
+}
 
 type ToastState = {
   tone: 'success' | 'error';
@@ -179,14 +189,10 @@ function CustomerListPage() {
                     </td>
                     <td>{customer.nameAr}</td>
                     <td>{customerTypeLabels[customer.type as CustomerType]}</td>
-                    <td>
-                      {customer.openingBalanceAmount > 0
-                        ? `${formatCurrency(customer.openingBalanceAmount)}${customer.pendingOpeningBalanceAmount > 0 ? ' *' : ''}`
-                        : '—'}
-                    </td>
+                    <td>{formatOpeningBalanceCell(customer)}</td>
                     <td>{formatCurrency(customer.totalInvoiced ?? 0)}</td>
                     <td>{formatCurrency(customer.totalReceipts ?? 0)}</td>
-                    <td>{formatCurrency(customer.computedBalance ?? customer.balance)}</td>
+                    <td>{formatCurrency(customer.computedBalance ?? customer.balance ?? 0)}</td>
                     <td>{customer.postedReceiptCount ?? 0}</td>
                     <td>
                       {customer.type === 0
@@ -213,19 +219,18 @@ function CustomerListPage() {
 function CustomerListCard({ customer }: { customer: CustomerListDto }) {
   const subtitle = `${customer.code} • ${customerTypeLabels[customer.type as CustomerType]}`;
   const financialMeta = [
-    customer.openingBalanceAmount > 0
-      ? `افتتاحي ${formatCurrency(customer.openingBalanceAmount)}${customer.pendingOpeningBalanceAmount > 0 ? ' *' : ''}`
-      : null,
-    customer.totalReceipts > 0 ? `قبض ${formatCurrency(customer.totalReceipts)}` : null,
-    customer.postedReceiptCount > 0 ? `${customer.postedReceiptCount} سند` : null
-  ].filter(Boolean).join(' • ');
+    `افتتاحي ${formatOpeningBalanceCell(customer)}`,
+    `مبيعات ${formatCurrency(customer.totalInvoiced ?? 0)}`,
+    `قبض ${formatCurrency(customer.totalReceipts ?? 0)}`,
+    `المتبقي ${formatCurrency(customer.computedBalance ?? customer.balance ?? 0)}`
+  ].join(' • ');
 
   return (
     <DataCard
       icon={<Icon name="customers" />}
       title={customer.nameAr}
       subtitle={subtitle}
-      meta={financialMeta || formatCurrency(customer.computedBalance ?? customer.balance)}
+      meta={financialMeta}
       value={<CustomerStatusPill status={customer.status} />}
       tone={customer.status === 0 ? 'available' : 'low'}
     />
@@ -380,8 +385,10 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
 
   const headerSummary = customer ? (
     <>
-      <SummaryCard label="الرصيد" value={formatCurrency(customer.balance)} tone={customer.balance > 0 ? 'amber' : 'green'} />
-      <SummaryCard label="حد الائتمان" value={formatCurrency(customer.creditLimit)} />
+      <SummaryCard label="افتتاحي" value={formatOpeningBalanceCell(customer)} />
+      <SummaryCard label="مبيعات" value={formatCurrency(customer.totalInvoiced ?? 0)} />
+      <SummaryCard label="قبض" value={formatCurrency(customer.totalReceipts ?? 0)} tone="green" />
+      <SummaryCard label="المتبقي" value={formatCurrency(customer.computedBalance ?? customer.balance ?? 0)} tone="amber" />
     </>
   ) : undefined;
 
@@ -438,6 +445,19 @@ function CustomerDetailsPage({ customerId }: { customerId: string }) {
               <DetailItem label="شروط الدفع" value={`${formatNumber(customer.paymentTermsDays)} يوم`} />
               <DetailItem label="الهاتف" value={customer.phone ?? 'غير محدد'} />
               <DetailItem label="البريد" value={customer.email ?? 'غير محدد'} />
+            </dl>
+          </section>
+
+          <section className="form-panel form-compact">
+            <h2>الملخص المالي</h2>
+            <dl className="detail-grid">
+              <DetailItem label="افتتاحي" value={formatOpeningBalanceCell(customer)} />
+              <DetailItem label="مبيعات" value={formatCurrency(customer.totalInvoiced ?? 0)} />
+              <DetailItem label="قبض" value={formatCurrency(customer.totalReceipts ?? 0)} />
+              <DetailItem label="المتبقي" value={formatCurrency(customer.computedBalance ?? customer.balance ?? 0)} />
+              <DetailItem label="سندات قبض" value={formatNumber(customer.postedReceiptCount ?? 0)} />
+              <DetailItem label="فواتير مفتوحة" value={formatNumber(customer.openInvoicesCount ?? 0)} />
+              <DetailItem label="حد الائتمان" value={formatCurrency(customer.creditLimit)} />
             </dl>
           </section>
 
@@ -1002,7 +1022,7 @@ function CustomerLedgerPanel({
                     </td>
                     <td>{line.fabricDescription || '—'}</td>
                     <td>{line.rollCount != null ? formatNumber(line.rollCount) : '—'}</td>
-                    <td>{line.totalMeters != null ? formatNumber(line.totalMeters) : '—'}</td>
+                    <td>{line.totalLengthDisplay ?? (line.totalMeters != null ? formatSalesLineLength(line.totalMeters, { unit: line.lengthUnit }) : '—')}</td>
                     <td>{line.unitPrice != null ? formatCurrency(line.unitPrice) : '—'}</td>
                     <td>{formatCurrency(line.lineAmount)}</td>
                     <td>{line.documentNumber}</td>
@@ -1033,7 +1053,7 @@ function LedgerMobileCard({ ledger, line }: { ledger: CustomerAccountLedgerDto; 
       </p>
       <dl className="record-card__grid record-card__grid--quad">
         <RecordField label="عدد الأثواب" value={line.rollCount != null ? formatNumber(line.rollCount) : '—'} />
-        <RecordField label="مجموع الأطوال" value={line.totalMeters != null ? formatNumber(line.totalMeters) : '—'} />
+        <RecordField label="مجموع الأطوال" value={line.totalLengthDisplay ?? (line.totalMeters != null ? formatSalesLineLength(line.totalMeters, { unit: line.lengthUnit }) : '—')} />
         <RecordField label="السعر" value={line.unitPrice != null ? formatCurrency(line.unitPrice) : '—'} />
         <RecordField label="مجموع المبلغ" value={formatCurrency(line.lineAmount)} emphasis />
       </dl>

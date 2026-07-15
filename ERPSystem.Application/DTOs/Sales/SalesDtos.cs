@@ -138,9 +138,11 @@ public sealed class SalesWarehouseStockOptionDto
     public int AvailableRollCount { get; init; }
     public decimal AvailableMeters { get; init; }
     public decimal? SalePricePerMeter { get; init; }
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
+    public string LengthUnitDisplay => SaleLengthUnitHelper.DisplayArabic(DplQuantityUnit);
 
     public string Display =>
-        $"{FabricDisplayName} / {ColorDisplayName} — {AvailableRollCount} توب — {AvailableMeters:N1} م";
+        $"{FabricDisplayName} / {ColorDisplayName} — {AvailableRollCount} توب — {SaleLengthUnitHelper.FormatLength(AvailableMeters, SaleLengthUnitHelper.StorageFrom(DplQuantityUnit))}";
 }
 
 public sealed class SalesInvoiceOperationsCenterDto

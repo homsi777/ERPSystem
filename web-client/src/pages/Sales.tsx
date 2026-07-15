@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   approveSalesInvoice,
@@ -36,7 +36,7 @@ import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import type { DocumentExportPayload } from '../lib/documentExport.ts';
-import { formatCurrency, formatDate, formatLineIndex, formatMeters, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatLineIndex, formatNumber, formatSalesLineLength, formatContainerLength, perUnitLabel } from '../lib/format.ts';
 import {
   getJournalEntryStatusTone,
   getSalesInvoiceStatusTone,
@@ -207,13 +207,13 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
   const ops = opsQuery.data;
   const invoice = ops?.invoice;
 
-  const headerSummary = invoice ? (
+  const headerSummary = (
     <>
-      <SummaryCard label="الإجمالي" value={formatCurrency(invoice.grandTotal)} tone="green" />
+      <SummaryCard label="الإجمالي" value={formatCurrency(invoice?.grandTotal ?? 0)} tone="green" />
       <SummaryCard label="المحصّل" value={formatCurrency(ops?.collectedAmount ?? 0)} />
       <SummaryCard label="المتبقي" value={formatCurrency(ops?.remainingBalance ?? 0)} tone="amber" />
     </>
-  ) : undefined;
+  );
 
   const exportPayload: DocumentExportPayload | null = invoice
     ? {
@@ -238,7 +238,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
             heading: 'الأصناف',
             rows: invoice.lines.map((line) => ({
               label: `${formatLineIndex(line.lineNumber)} ${line.fabricDisplayName}/${line.colorDisplayName}`,
-              value: `${formatNumber(line.rollCount)} ثوب · ${formatMeters(line.totalLengthMeters)} · ${formatCurrency(line.lineTotal)}`
+              value: `${formatNumber(line.rollCount)} ثوب · ${formatSalesLineLength(line.totalLengthMeters, { totalLengthDisplay: line.totalLengthDisplay, unit: line.unit })} · ${formatCurrency(line.lineTotal)}`
             }))
           }
         ]
@@ -326,9 +326,11 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
                     </p>
                     <div className="form-field-row form-field-row--2">
                       <span className="form-hint">{formatNumber(line.rollCount)} ثوب</span>
-                      <span className="form-hint">{formatMeters(line.totalLengthMeters)}</span>
+                      <span className="form-hint">{formatSalesLineLength(line.totalLengthMeters, { totalLengthDisplay: line.totalLengthDisplay, unit: line.unit })}</span>
                     </div>
-                    <p className="form-hint">سعر المتر: {formatCurrency(line.unitPrice)}</p>
+                    <p className="form-hint">
+                      سعر {line.lengthUnitDisplay ?? 'متر'}: {formatCurrency(line.unitPrice)}
+                    </p>
                   </article>
                 ))}
               </div>
@@ -552,7 +554,8 @@ function SalesCreatePage() {
   const taxPreviewQuery = useQuery({
     queryKey: ['sales-invoice-tax-preview', debouncedTaxRequest],
     queryFn: () => calculateSalesInvoiceTax(debouncedTaxRequest!),
-    enabled: debouncedTaxRequest !== null && debouncedTaxRequest.lines.length > 0
+    enabled: debouncedTaxRequest !== null && debouncedTaxRequest.lines.length > 0,
+    placeholderData: keepPreviousData
   });
 
   const taxPreview = taxPreviewQuery.data;
@@ -568,6 +571,7 @@ function SalesCreatePage() {
             return null;
           }
           const unitPrice = toNumber(line.unitPrice);
+          const unit = stock.dplQuantityUnit === 1 ? 'yard' : 'meter';
           return {
             lineNumber: index + 1,
             chinaContainerId: line.containerId,
@@ -576,6 +580,7 @@ function SalesCreatePage() {
             rollCount: Math.round(toNumber(line.rollCount)),
             unitPrice,
             originalUnitPrice: stock.salePricePerMeter ?? unitPrice,
+            unit,
             discountReason: null,
             notes: null,
             taxCodeId: line.taxCodeId || null
@@ -808,7 +813,7 @@ function SalesCreatePage() {
                       <input inputMode="numeric" value={line.rollCount} onChange={(event) => updateLine(line.key, { rollCount: event.target.value })} />
                     </label>
                     <label className="form-field">
-                      <span className="form-field__label">سعر/م</span>
+                      <span className="form-field__label">{perUnitLabel(stock?.dplQuantityUnit ?? 0, '$')}</span>
                       <input inputMode="decimal" value={line.unitPrice} onChange={(event) => updateLine(line.key, { unitPrice: event.target.value })} />
                     </label>
                   </div>
@@ -829,7 +834,7 @@ function SalesCreatePage() {
                   </label>
                   {stock ? (
                     <p className="line-item__meta">
-                      متاح {formatNumber(stock.availableRollCount)} ثوب · {formatMeters(stock.availableMeters)}
+                      متاح {formatNumber(stock.availableRollCount)} ثوب · {formatContainerLength(stock.availableMeters, stock.dplQuantityUnit ?? 0)}
                       {stock.salePricePerMeter != null ? ` · بطاقة ${formatCurrency(stock.salePricePerMeter)}` : ''}
                     </p>
                   ) : null}
@@ -891,6 +896,8 @@ function SalesCreatePage() {
                   <strong>{formatCurrency(taxPreview.grandTotal)}</strong>
                 </div>
               </div>
+            ) : debouncedTaxRequest ? (
+              <p className="form-hint">جار حساب الإجمالي...</p>
             ) : (
               <>
                 <span>الإجمالي</span>

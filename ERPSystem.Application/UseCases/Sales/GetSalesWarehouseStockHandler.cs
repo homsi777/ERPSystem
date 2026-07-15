@@ -7,13 +7,17 @@ using ERPSystem.Application.Results;
 namespace ERPSystem.Application.UseCases.Sales;
 
 public sealed class GetSalesWarehouseStockHandler(
-    IInventoryRepository inventoryRepository)
+    IInventoryRepository inventoryRepository,
+    IChinaContainerRepository containerRepository)
     : IQueryHandler<GetSalesWarehouseStockQuery, ApplicationResult<IReadOnlyList<SalesWarehouseStockOptionDto>>>
 {
     public async Task<ApplicationResult<IReadOnlyList<SalesWarehouseStockOptionDto>>> HandleAsync(
         GetSalesWarehouseStockQuery query,
         CancellationToken cancellationToken = default)
     {
+        var container = await containerRepository.GetByIdAsync(query.ContainerId, cancellationToken);
+        var dplUnit = container?.DplQuantityUnit;
+
         var rolls = await inventoryRepository.GetAvailableRollsForContainerAsync(
             query.ContainerId,
             query.WarehouseId,
@@ -37,7 +41,8 @@ public sealed class GetSalesWarehouseStockHandler(
                     ColorDisplayName = first.ColorName,
                     AvailableRollCount = g.Count(),
                     AvailableMeters = g.Sum(r => r.RemainingLengthMeters),
-                    SalePricePerMeter = salePrice
+                    SalePricePerMeter = salePrice,
+                    DplQuantityUnit = dplUnit
                 };
             })
             .OrderBy(o => o.FabricDisplayName)

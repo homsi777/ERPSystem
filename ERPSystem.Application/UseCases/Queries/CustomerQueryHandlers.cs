@@ -251,7 +251,15 @@ public sealed class GetCustomerDetailsHandler(ICustomerRepository customerReposi
         if (aggregate is null)
             return ApplicationResult<CustomerDetailsDto>.NotFound("Customer not found.");
 
-        return ApplicationResult<CustomerDetailsDto>.Success(CustomerMapper.ToDetailsDto(aggregate));
+        var financials = await customerRepository.GetFinancialSummariesAsync(
+            aggregate.Customer.CompanyId,
+            [aggregate.Customer.Id],
+            cancellationToken);
+
+        return ApplicationResult<CustomerDetailsDto>.Success(
+            CustomerMapper.ToDetailsDto(
+                aggregate,
+                financials.GetValueOrDefault(aggregate.Customer.Id)));
     }
 }
 
