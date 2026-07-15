@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Markup;
+using System.Windows.Media;
 
 namespace ERPSystem.Core;
 
@@ -35,11 +36,31 @@ public static class AppCulture
         Apply(FormatCulture);
     }
 
+    /// <summary>
+    /// Forces Western-digit GLYPH rendering app-wide. WPF's text engine can substitute
+    /// Arabic-Indic glyphs for plain '0'-'9' characters at paint time based on the
+    /// effective Language/culture (NumberSubstitution "AsCulture"/"Context" modes) — this
+    /// happens regardless of what the bound string actually contains. Overriding the
+    /// default metadata for every DependencyObject makes "European" (always Western
+    /// digits) the app-wide default, closing that gap for every control, including ones
+    /// with no explicit Style (e.g. third-party or auto-generated elements).
+    /// </summary>
     public static void ConfigureWpfPresentation()
     {
         FrameworkElement.LanguageProperty.OverrideMetadata(
             typeof(FrameworkElement),
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(LatinLanguageTag)));
+
+        var latin = CultureInfo.GetCultureInfo(LatinLanguageTag);
+        NumberSubstitution.CultureSourceProperty.OverrideMetadata(
+            typeof(DependencyObject),
+            new FrameworkPropertyMetadata(NumberCultureSource.Override));
+        NumberSubstitution.CultureOverrideProperty.OverrideMetadata(
+            typeof(DependencyObject),
+            new FrameworkPropertyMetadata(latin));
+        NumberSubstitution.SubstitutionProperty.OverrideMetadata(
+            typeof(DependencyObject),
+            new FrameworkPropertyMetadata(NumberSubstitutionMethod.European));
     }
 
     private static void Apply(CultureInfo culture)

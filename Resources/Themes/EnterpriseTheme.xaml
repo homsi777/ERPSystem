@@ -712,18 +712,46 @@
         <Setter Property="Background" Value="{StaticResource PrimaryVeryLightBrush}"/>
     </Style>
 
-    <!-- Latin digits (0-9) across Arabic RTL UI -->
+    <!--
+        Latin digits (0-9) across Arabic RTL UI.
+        NumberSubstitution.Substitution="European" is the decisive setting: WPF's text
+        engine (DirectWrite) can render Western-digit characters (U+0030-0039) as
+        Arabic-Indic GLYPHS at paint time when the effective Language/culture is Arabic
+        and Substitution is left at its default "AsCulture"/"Context" mode — regardless
+        of what the bound string actually contains. Forcing "European" bypasses that
+        contextual glyph shaping entirely.
+    -->
     <Style TargetType="{x:Type TextBlock}">
         <Setter Property="Typography.NumeralStyle" Value="Lining"/>
         <Setter Property="Language" Value="en-US"/>
+        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
+        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
+        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
     </Style>
     <Style TargetType="{x:Type Label}">
         <Setter Property="Typography.NumeralStyle" Value="Lining"/>
         <Setter Property="Language" Value="en-US"/>
+        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
+        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
+        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
     </Style>
     <Style TargetType="{x:Type DataGridCell}">
         <Setter Property="Typography.NumeralStyle" Value="Lining"/>
         <Setter Property="Language" Value="en-US"/>
+        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
+        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
+        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
+    </Style>
+    <Style TargetType="{x:Type DataGridColumnHeader}">
+        <Setter Property="Language" Value="en-US"/>
+        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
+        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
+        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
+    </Style>
+    <Style TargetType="{x:Type TextBox}">
+        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
+        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
+        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
     </Style>
 
 </ResourceDictionary>
