@@ -6,6 +6,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Threading;
+using System.Runtime.CompilerServices;
 
 namespace ERPSystem.Helpers;
 
@@ -13,6 +15,9 @@ internal static class ForcedLatinDigitsEnforcer
 {
     private static readonly XmlLanguage LatinLang = XmlLanguage.GetLanguage("en-US");
     private static readonly CultureInfo LatinCulture = CultureInfo.GetCultureInfo("en-US");
+    private static readonly ConditionalWeakTable<DependencyObject, object> Tracked = new();
+    private static readonly ConditionalWeakTable<Window, DispatcherTimer> WindowTimers = new();
+    private const int DebounceMs = 200;
 
     public static void Enable()
     {
@@ -22,12 +27,74 @@ internal static class ForcedLatinDigitsEnforcer
     private static void OnWindowLoaded(object? sender, RoutedEventArgs e)
     {
         if (sender is not Window window) return;
+        if (Tracked.TryGetValue(window, out _))
+            return;
+
+        Tracked.Add(window, null!);
+
         try
         {
             // force language on window
             window.Language = LatinLang;
-            // traverse visual tree and normalize
+
+            // immediate normalization once
             NormalizeVisualTree(window);
+
+            // create a debounce timer for layout updates
+            var timer = new DispatcherTimer(DispatcherPriority.Background, window.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(DebounceMs)
+            };
+            timer.Tick += (_, _) =>
+            {
+                try
+                {
+                    timer.Stop();
+                    NormalizeVisualTree(window);
+                }
+                catch
+                {
+                    // best-effort
+                }
+            };
+
+            WindowTimers.Add(window, timer);
+
+            // attach LayoutUpdated to restart debounce timer when UI changes
+            void OnLayoutUpdated(object? s, EventArgs args)
+            {
+                try
+                {
+                    if (!WindowTimers.TryGetValue(window, out var t))
+                        return;
+                    // restart debounce
+                    t.Stop();
+                    t.Start();
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            window.LayoutUpdated += OnLayoutUpdated;
+
+            // cleanup when window is closed
+            void OnClosed(object? s, EventArgs args)
+            {
+                try
+                {
+                    window.LayoutUpdated -= OnLayoutUpdated;
+                    window.Closed -= OnClosed;
+                    if (WindowTimers.TryGetValue(window, out var t))
+                    {
+                        t.Stop();
+                    }
+                }
+                catch { }
+            }
+
+            window.Closed += OnClosed;
         }
         catch
         {
@@ -42,10 +109,14 @@ internal static class ForcedLatinDigitsEnforcer
         // Set number substitution and language on the element itself if applicable
         if (root is FrameworkElement fe)
         {
-            fe.Language = LatinLang;
-            fe.SetValue(NumberSubstitution.CultureOverrideProperty, LatinCulture);
-            fe.SetValue(NumberSubstitution.SubstitutionProperty, NumberSubstitutionMethod.European);
-            fe.SetValue(NumberSubstitution.CultureSourceProperty, NumberCultureSource.Override);
+            try
+            {
+                fe.Language = LatinLang;
+                fe.SetValue(NumberSubstitution.CultureOverrideProperty, LatinCulture);
+                fe.SetValue(NumberSubstitution.SubstitutionProperty, NumberSubstitutionMethod.European);
+                fe.SetValue(NumberSubstitution.CultureSourceProperty, NumberCultureSource.Override);
+            }
+            catch { }
         }
 
         // Normalize textual children
