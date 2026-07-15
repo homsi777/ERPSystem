@@ -16,8 +16,11 @@ public sealed class CustomerListDto
     public bool IsActive { get; init; }
     public bool OpeningBalancePosted { get; init; }
 
-    /// <summary>Posted customer-receivable opening balance (debit lines).</summary>
+    /// <summary>Posted + approved (not yet posted) customer-receivable opening balance.</summary>
     public decimal OpeningBalanceAmount { get; init; }
+
+    /// <summary>Approved opening balance awaiting GL post.</summary>
+    public decimal PendingOpeningBalanceAmount { get; init; }
 
     /// <summary>Sum of approved+ sales invoices.</summary>
     public decimal TotalInvoiced { get; init; }
@@ -36,13 +39,17 @@ public sealed class CustomerListDto
 
 /// <summary>Batch financial aggregates for customer list rows.</summary>
 public sealed record CustomerListFinancialSummary(
-    decimal OpeningBalanceAmount,
+    decimal PostedOpeningBalanceAmount,
+    decimal PendingOpeningBalanceAmount,
     decimal TotalInvoiced,
     int InvoiceCount,
     decimal TotalReceipts,
     int PostedReceiptCount,
     int OpenInvoicesCount,
-    DateTime? LastReceiptDate);
+    DateTime? LastReceiptDate)
+{
+    public decimal OpeningBalanceAmount => PostedOpeningBalanceAmount + PendingOpeningBalanceAmount;
+}
 
 public sealed class CustomerOpeningBalanceResultDto
 {

@@ -17,6 +17,7 @@ public sealed class CustomerListRow
     public string NameEn => Dto.NameEn;
     public decimal Balance => Dto.Balance;
     public decimal OpeningBalanceAmount => Dto.OpeningBalanceAmount;
+    public decimal PendingOpeningBalanceAmount => Dto.PendingOpeningBalanceAmount;
     public decimal TotalInvoiced => Dto.TotalInvoiced;
     public decimal TotalReceipts => Dto.TotalReceipts;
     public decimal ComputedBalance => Dto.ComputedBalance;
@@ -52,9 +53,9 @@ public sealed class CustomerListRow
         _ => AppFormats.Amount(CreditLimit)
     };
 
-    public string OpeningBalanceDisplay => OpeningBalancePosted || OpeningBalanceAmount > 0
-        ? AppFormats.Amount(OpeningBalanceAmount)
-        : "—";
+    public string OpeningBalanceDisplay => OpeningBalanceAmount > 0
+        ? AppFormats.Amount(OpeningBalanceAmount) + (PendingOpeningBalanceAmount > 0 ? " *" : "")
+        : OpeningBalancePosted ? AppFormats.Amount(0) : "—";
 
     public string LastReceiptDisplay => LastReceiptDate?.ToString("yyyy-MM-dd") ?? "—";
 

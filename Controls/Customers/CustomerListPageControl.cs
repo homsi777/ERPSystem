@@ -80,7 +80,7 @@ public sealed class CustomerListPageControl : UserControl
             ("الكود", "Code", 80),
             ("الاسم", "NameAr", "*"),
             ("النوع", "TypeDisplay", 70),
-            ("افتتاحي", "OpeningBalanceAmount", 95),
+            ("افتتاحي", "OpeningBalanceDisplay", 95),
             ("مبيعات", "TotalInvoiced", 95),
             ("قبض", "TotalReceipts", 95),
             ("المتبقي", "ComputedBalance", 100),
@@ -89,7 +89,7 @@ public sealed class CustomerListPageControl : UserControl
             ("الحالة", "StatusDisplay", 75)
         })
         {
-            AddCol(g, h, p, w, p is "OpeningBalanceAmount" or "TotalInvoiced" or "TotalReceipts" or "ComputedBalance" ? "N2" : null);
+            AddCol(g, h, p, w, p is "TotalInvoiced" or "TotalReceipts" or "ComputedBalance" ? "N2" : null);
         }
     }
 

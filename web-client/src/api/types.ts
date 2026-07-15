@@ -448,6 +448,7 @@ export type CustomerListDto = {
   isActive: boolean;
   openingBalancePosted: boolean;
   openingBalanceAmount: number;
+  pendingOpeningBalanceAmount: number;
   totalInvoiced: number;
   totalReceipts: number;
   postedReceiptCount: number;

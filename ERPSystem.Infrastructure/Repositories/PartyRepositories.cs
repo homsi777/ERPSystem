@@ -110,12 +110,19 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         var customerOpeningType = (int)OpeningBalanceType.CustomerReceivable;
         var openingPosted = (int)OpeningBalanceStatus.Posted;
         var openingLocked = (int)OpeningBalanceStatus.Locked;
+        var openingApproved = (int)OpeningBalanceStatus.Approved;
         var postedJournal = (int)JournalEntryStatus.Posted;
         var openingSourceTypes = new[]
         {
             (int)OpeningBalanceDocumentTypePolicy.SourceType,
             (int)DocumentType.CustomerOpeningBalance
         };
+
+        var customerNames = await context.Customers.AsNoTracking()
+            .Where(c => c.CompanyId == companyId && ids.Contains(c.Id))
+            .Select(c => new { c.Id, c.NameAr })
+            .ToListAsync(cancellationToken);
+        var nameByCustomerId = customerNames.ToDictionary(c => c.Id, c => c.NameAr);
 
         var receiptRows = await context.ReceiptVouchers.AsNoTracking()
             .Where(v => v.CompanyId == companyId && ids.Contains(v.CustomerId) && v.Status == postedReceipt)
@@ -142,23 +149,23 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
             })
             .ToListAsync(cancellationToken);
 
-        var openingRows = await context.OpeningBalanceLines.AsNoTracking()
-            .Where(l => l.PartyId.HasValue && ids.Contains(l.PartyId.Value))
-            .Join(
-                context.OpeningBalanceDocuments.AsNoTracking()
-                    .Where(d => d.CompanyId == companyId
-                                && d.Type == customerOpeningType
-                                && (d.Status == openingPosted || d.Status == openingLocked)),
-                l => l.DocumentId,
-                d => d.Id,
-                (l, _) => l)
-            .GroupBy(l => l.PartyId!.Value)
-            .Select(g => new
+        var openingLineRows = await (
+            from l in context.OpeningBalanceLines.AsNoTracking()
+            join d in context.OpeningBalanceDocuments.AsNoTracking() on l.DocumentId equals d.Id
+            where d.CompanyId == companyId
+                  && d.Type == customerOpeningType
+                  && (d.Status == openingPosted
+                      || d.Status == openingLocked
+                      || d.Status == openingApproved
+                      || d.PostedAt != null)
+            select new
             {
-                CustomerId = g.Key,
-                Amount = g.Sum(l => l.Debit - l.Credit)
-            })
-            .ToListAsync(cancellationToken);
+                l.PartyId,
+                l.PartyName,
+                Amount = l.Debit - l.Credit,
+                d.Status,
+                d.PostedAt
+            }).ToListAsync(cancellationToken);
 
         var glOpeningRows = await (
             from line in context.JournalEntryLines.AsNoTracking()
@@ -178,15 +185,34 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
 
         var receiptById = receiptRows.ToDictionary(r => r.CustomerId);
         var invoiceById = invoiceRows.ToDictionary(r => r.CustomerId);
-        var openingById = openingRows.ToDictionary(r => r.CustomerId);
         var glOpeningById = glOpeningRows.ToDictionary(r => r.CustomerId);
+
+        static bool IsPostedOpening(int status, DateTime? postedAt, int posted, int locked) =>
+            postedAt != null || status == posted || status == locked;
+
+        static bool IsPendingOpening(int status, DateTime? postedAt, int approved) =>
+            postedAt == null && status == approved;
 
         var result = new Dictionary<Guid, CustomerListFinancialSummary>();
         foreach (var id in ids)
         {
+            nameByCustomerId.TryGetValue(id, out var customerName);
+
+            var matchedOpeningLines = openingLineRows.Where(l =>
+                (l.PartyId.HasValue && l.PartyId.Value == id)
+                || CustomerListFinancialsCalculator.NamesMatch(l.PartyName, customerName)).ToList();
+
+            var postedFromDocs = matchedOpeningLines
+                .Where(l => IsPostedOpening(l.Status, l.PostedAt, openingPosted, openingLocked))
+                .Sum(l => l.Amount);
+            var pendingFromDocs = matchedOpeningLines
+                .Where(l => IsPendingOpening(l.Status, l.PostedAt, openingApproved))
+                .Sum(l => l.Amount);
+
             var openingFromGl = glOpeningById.TryGetValue(id, out var glOb) ? glOb.Amount : 0m;
-            var openingFromDoc = openingById.TryGetValue(id, out var ob) ? ob.Amount : 0m;
-            var opening = openingFromGl > 0 ? openingFromGl : openingFromDoc;
+            var postedOpening = openingFromGl > 0 ? openingFromGl : postedFromDocs;
+            var pendingOpening = openingFromGl > 0 ? 0m : pendingFromDocs;
+
             var invoiced = invoiceById.TryGetValue(id, out var inv) ? inv.Total : 0m;
             var invoiceCount = invoiceById.TryGetValue(id, out inv) ? inv.Count : 0;
             var openInvoices = invoiceById.TryGetValue(id, out inv) ? inv.OpenCount : 0;
@@ -195,7 +221,8 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
             var lastReceipt = receiptById.TryGetValue(id, out rc) ? rc.LastDate : (DateTime?)null;
 
             result[id] = new CustomerListFinancialSummary(
-                opening,
+                postedOpening,
+                pendingOpening,
                 invoiced,
                 invoiceCount,
                 receipts,

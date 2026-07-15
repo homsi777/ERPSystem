@@ -22,18 +22,17 @@ public static class CustomerMapper
         CustomerAggregate aggregate,
         CustomerListFinancialSummary? financials)
     {
-        var opening = financials?.OpeningBalanceAmount ?? 0m;
+        var postedOpening = financials?.PostedOpeningBalanceAmount ?? 0m;
+        var pendingOpening = financials?.PendingOpeningBalanceAmount ?? 0m;
         var invoiced = financials?.TotalInvoiced ?? 0m;
         var receipts = financials?.TotalReceipts ?? 0m;
 
-        if (opening <= 0 && aggregate.Customer.OpeningBalancePosted)
-        {
-            var implied = aggregate.Customer.Balance.Amount + receipts - invoiced;
-            if (implied > 0)
-                opening = implied;
-        }
-
-        var computed = opening + invoiced - receipts;
+        var (opening, computed) = CustomerListFinancialsCalculator.Calculate(
+            aggregate,
+            postedOpening,
+            pendingOpening,
+            invoiced,
+            receipts);
 
         return new CustomerListDto
         {
@@ -49,6 +48,7 @@ public static class CustomerMapper
             IsActive = aggregate.Customer.IsActive,
             OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted,
             OpeningBalanceAmount = opening,
+            PendingOpeningBalanceAmount = pendingOpening,
             TotalInvoiced = invoiced,
             TotalReceipts = receipts,
             PostedReceiptCount = financials?.PostedReceiptCount ?? 0,

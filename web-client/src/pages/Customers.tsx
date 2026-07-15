@@ -147,13 +147,63 @@ function CustomerListPage() {
       ) : null}
 
       {customersQuery.isSuccess && customersQuery.data.items.length > 0 ? (
-        <section className="card-list" aria-label="قائمة العملاء">
-          {customersQuery.data.items.map((customer) => (
-            <Link className="card-link" key={customer.id} to={`/customers/${customer.id}`}>
-              <CustomerListCard customer={customer} />
-            </Link>
-          ))}
-        </section>
+        <>
+          <section className="card-list mobile-only" aria-label="قائمة العملاء">
+            {customersQuery.data.items.map((customer) => (
+              <Link className="card-link" key={customer.id} to={`/customers/${customer.id}`}>
+                <CustomerListCard customer={customer} />
+              </Link>
+            ))}
+          </section>
+          <div className="table-scroll desktop-only">
+            <table className="data-table" aria-label="قائمة العملاء">
+              <thead>
+                <tr>
+                  <th>الكود</th>
+                  <th>الاسم</th>
+                  <th>النوع</th>
+                  <th>افتتاحي</th>
+                  <th>مبيعات</th>
+                  <th>قبض</th>
+                  <th>المتبقي</th>
+                  <th>سندات قبض</th>
+                  <th>حد الائتمان</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customersQuery.data.items.map((customer) => (
+                  <tr key={customer.id}>
+                    <td>
+                      <Link to={`/customers/${customer.id}`}>{customer.code}</Link>
+                    </td>
+                    <td>{customer.nameAr}</td>
+                    <td>{customerTypeLabels[customer.type as CustomerType]}</td>
+                    <td>
+                      {customer.openingBalanceAmount > 0
+                        ? `${formatCurrency(customer.openingBalanceAmount)}${customer.pendingOpeningBalanceAmount > 0 ? ' *' : ''}`
+                        : '—'}
+                    </td>
+                    <td>{formatCurrency(customer.totalInvoiced ?? 0)}</td>
+                    <td>{formatCurrency(customer.totalReceipts ?? 0)}</td>
+                    <td>{formatCurrency(customer.computedBalance ?? customer.balance)}</td>
+                    <td>{customer.postedReceiptCount ?? 0}</td>
+                    <td>
+                      {customer.type === 0
+                        ? '—'
+                        : customer.creditLimitEnabled
+                          ? formatCurrency(customer.creditLimit)
+                          : 'بدون حد'}
+                    </td>
+                    <td>
+                      <CustomerStatusPill status={customer.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : null}
       </div>
     </AppShell>
@@ -163,7 +213,9 @@ function CustomerListPage() {
 function CustomerListCard({ customer }: { customer: CustomerListDto }) {
   const subtitle = `${customer.code} • ${customerTypeLabels[customer.type as CustomerType]}`;
   const financialMeta = [
-    customer.openingBalanceAmount > 0 ? `افتتاحي ${formatCurrency(customer.openingBalanceAmount)}` : null,
+    customer.openingBalanceAmount > 0
+      ? `افتتاحي ${formatCurrency(customer.openingBalanceAmount)}${customer.pendingOpeningBalanceAmount > 0 ? ' *' : ''}`
+      : null,
     customer.totalReceipts > 0 ? `قبض ${formatCurrency(customer.totalReceipts)}` : null,
     customer.postedReceiptCount > 0 ? `${customer.postedReceiptCount} سند` : null
   ].filter(Boolean).join(' • ');
