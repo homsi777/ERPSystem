@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Core;
 using ERPSystem.Core.ChinaImport;
 using ERPSystem.Helpers;
@@ -51,12 +52,13 @@ public sealed class ContainerWorkflowSummaryControl : UserControl
         }
 
         var c = result.Value.Container;
+        var unit = c.DplQuantityUnit;
         if (_stocktakeMode)
         {
             _stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildGrid(new[]
             {
                 new { البند = "الأثواب في النظام", القيمة = AppFormats.Number(c.TotalRolls) },
-                new { البند = "الأمتار في النظام", القيمة = $"{c.TotalMeters:N0} م" },
+                new { البند = ChinaImportLengthDisplay.LengthInSystemLabel(unit), القيمة = ChinaImportLengthDisplay.FormatLength(c.TotalMeters, unit, "N0") },
                 new { البند = "الوزن", القيمة = c.TotalWeightKg.HasValue ? $"{c.TotalWeightKg:N0} كغ" : "—" },
                 new { البند = "الحالة", القيمة = c.Status.ToArabic() },
                 new { البند = "بنود الحاوية", القيمة = c.Items.Count.ToString() },
@@ -71,15 +73,21 @@ public sealed class ContainerWorkflowSummaryControl : UserControl
             return;
         }
 
-        var rows = c.Items.Select(i => new
+        var displayRows = c.Items.Select(i => new
         {
-            السطر = i.LineNumber,
-            الأثواب = i.RollCount,
-            الأمتار = $"{i.LengthMeters:N2}",
-            الحالة = i.IsValid ? "صالح" : "خطأ"
-        }).Cast<object>().ToArray();
+            i.LineNumber,
+            i.RollCount,
+            LengthDisplay = ChinaImportLengthDisplay.FormatLength(i.LengthMeters, unit),
+            Status = i.IsValid ? "صالح" : "خطأ"
+        }).ToList();
 
-        _stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows)));
+        var g = ErpUiFactory.BuildGrid(displayRows, false);
+        g.AutoGenerateColumns = false;
+        ErpUiFactory.AddGridColumn(g, "السطر", "LineNumber", 60, null);
+        ErpUiFactory.AddGridColumn(g, "الأثواب", "RollCount", 80, null);
+        ErpUiFactory.AddGridColumn(g, ChinaImportLengthDisplay.LengthColumnHeader(unit), "LengthDisplay", 100, null);
+        ErpUiFactory.AddGridColumn(g, "الحالة", "Status", 80, null);
+        _stack.Children.Add(ErpUiFactory.Card(g));
         _stack.Children.Add(ErpUxFactory.InfoBanner("توزيع العملاء والحجوزات يُفعَّل مع وحدة المبيعات.", "info"));
     }
 }

@@ -77,6 +77,9 @@ public sealed class PackingListRollAnalysisRow
     public string LotCode { get; init; } = "";
     public string StatusDisplay { get; init; } = "";
 
+    public decimal DisplayLength(DplQuantityUnit? displayUnit) =>
+        ChinaImportLengthDisplay.FromStoredLength(Meters, displayUnit ?? QuantityUnit);
+
     public static IEnumerable<PackingListRollAnalysisRow> FromParseResult(ContainerExcelParseResultDto result) =>
         result.Groups.SelectMany(g => g.Rolls.Select(r => new PackingListRollAnalysisRow
         {
@@ -171,14 +174,19 @@ public sealed class PackingListAnalysisControl : UserControl
             Margin = new Thickness(0, 0, 0, 4)
         });
 
+        var unit = parseResult.SelectedQuantityUnit ?? DplQuantityUnit.Meters;
+
         _stack.Children.Add(ErpUxFactory.InfoBanner(
-            $"وحدة DPL المختارة: {parseResult.SelectedQuantityUnitDisplay} (تحويل يارد → متر: × {DplQuantityConverter.YardsToMetersFactor}) — التخزين والتكلفة بالمتر؛ البيع حسب القيمة الأصلية + الوحدة.",
-            parseResult.SelectedQuantityUnit == DplQuantityUnit.Yards ? "warning" : "success"));
+            unit == DplQuantityUnit.Yards
+                ? $"وحدة DPL المختارة: {parseResult.SelectedQuantityUnitDisplay} — ستُعرض الأطوال والأسعار باليارد في جميع شاشات الاستيراد (التحويل الداخلي: × {DplQuantityConverter.YardsToMetersFactor} للمخزون)."
+                : $"وحدة DPL المختارة: {parseResult.SelectedQuantityUnitDisplay} — ستُعرض الأطوال والأسعار بالمتر في جميع شاشات الاستيراد.",
+            "success"));
 
         var crossValidation = ChinaImportNavigationContext.CrossValidationResults;
         if (crossValidation.Count > 0)
         {
-            _stack.Children.Add(ErpUiFactory.SectionTitle("التحقق من المطابقة — DPL مقابل فاتورة/PL (بالمتر)"));
+            _stack.Children.Add(ErpUiFactory.SectionTitle(
+                $"التحقق من المطابقة — DPL مقابل فاتورة/PL ({ChinaImportLengthDisplay.UnitArabic(unit)})"));
             _stack.Children.Add(ErpUiFactory.Card(BuildCrossValidationPanel(crossValidation)));
         }
 
@@ -213,15 +221,15 @@ public sealed class PackingListAnalysisControl : UserControl
             }
 
             if (session.TypeLines.Count > 0)
-                _stack.Children.Add(ErpUiFactory.Card(BuildTypeLinesGrid(session.TypeLines)));
+                _stack.Children.Add(ErpUiFactory.Card(BuildTypeLinesGrid(session.TypeLines, unit)));
         }
 
         _stack.Children.Add(ErpUiFactory.SectionTitle("تحليل المجموعات (كود + لون)"));
-        _stack.Children.Add(ErpUiFactory.Card(BuildGroupsGrid(parseResult)));
+        _stack.Children.Add(ErpUiFactory.Card(BuildGroupsGrid(parseResult, unit)));
 
         var rollRows = PackingListRollAnalysisRow.FromParseResult(parseResult).ToList();
         _stack.Children.Add(ErpUiFactory.SectionTitle($"تفاصيل الأثواب المحلّلة ({rollRows.Count:N0})"));
-        _stack.Children.Add(ErpUiFactory.Card(BuildRollsGrid(rollRows)));
+        _stack.Children.Add(ErpUiFactory.Card(BuildRollsGrid(rollRows, unit)));
 
         var issues = PackingListIssueRow.FromParseResult(parseResult).ToList();
         _stack.Children.Add(ErpUiFactory.SectionTitle("مشاكل التحليل وربط الأكواد"));
@@ -262,7 +270,8 @@ public sealed class PackingListAnalysisControl : UserControl
             _continueButton.ToolTip =
                 $"تحذير: تم تحليل {grand.ParsedTotalRolls} توب فقط من أصل {grand.DeclaredTotalRolls.Value} المعلن في الملف.";
         else if (!canContinue && !crossValidationOk)
-            _continueButton.ToolTip = "يوجد اختلاف بين مجموع DPL (بالمتر) وفاتورة/PL — أكّد يدوياً أو صحّح وحدة DPL.";
+            _continueButton.ToolTip =
+                $"يوجد اختلاف بين مجموع DPL ({ChinaImportLengthDisplay.UnitArabic(unit)}) وفاتورة/PL — أكّد يدوياً أو صحّح وحدة DPL.";
         else if (!canContinue && parseResult.HasUnresolvedGroups)
             _continueButton.ToolTip = "يوجد أكواد غير مربوطة في الكتالوج.";
         else
@@ -401,24 +410,42 @@ public sealed class PackingListAnalysisControl : UserControl
         return grid;
     }
 
-    private static DataGrid BuildGroupsGrid(ContainerExcelParseResultDto result)
+    private static DataGrid BuildGroupsGrid(ContainerExcelParseResultDto result, DplQuantityUnit unit)
     {
-        var rows = result.Groups.Select(PackingListGroupAnalysisRow.FromDto).ToList();
+        var rows = result.Groups.Select(g =>
+        {
+            var row = PackingListGroupAnalysisRow.FromDto(g);
+            return new
+            {
+                row.GroupIndex,
+                row.FabricCode,
+                row.Color,
+                row.DeclaredRolls,
+                row.ParsedRolls,
+                row.RollsIndicator,
+                DeclaredLength = ChinaImportLengthDisplay.FromStoredLength(row.DeclaredMeters, unit),
+                ParsedLength = ChinaImportLengthDisplay.FromStoredLength(row.ParsedMeters, unit),
+                row.MetersIndicator,
+                row.CatalogStatus
+            };
+        }).ToList();
+
+        var lengthHeader = ChinaImportLengthDisplay.UnitArabic(unit);
         var g = ErpUiFactory.BuildGrid(rows, false);
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
         foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
-            ("#", nameof(PackingListGroupAnalysisRow.GroupIndex), 40, null),
-            ("كود القماش", nameof(PackingListGroupAnalysisRow.FabricCode), 110, null),
-            ("اللون", nameof(PackingListGroupAnalysisRow.Color), 90, null),
-            ("أثواب معلنة", nameof(PackingListGroupAnalysisRow.DeclaredRolls), 90, null),
-            ("أثواب محللة", nameof(PackingListGroupAnalysisRow.ParsedRolls), 90, null),
-            ("تطابق الأثواب", nameof(PackingListGroupAnalysisRow.RollsIndicator), 90, null),
-            ("أطوال معلنة", nameof(PackingListGroupAnalysisRow.DeclaredMeters), 100, "N2"),
-            ("أطوال محللة", nameof(PackingListGroupAnalysisRow.ParsedMeters), 100, "N2"),
-            ("تطابق الأطوال", nameof(PackingListGroupAnalysisRow.MetersIndicator), 90, null),
-            ("الربط", nameof(PackingListGroupAnalysisRow.CatalogStatus), 140, null)
+            ("#", "GroupIndex", 40, null),
+            ("كود القماش", "FabricCode", 110, null),
+            ("اللون", "Color", 90, null),
+            ("أثواب معلنة", "DeclaredRolls", 90, null),
+            ("أثواب محللة", "ParsedRolls", 90, null),
+            ("تطابق الأثواب", "RollsIndicator", 90, null),
+            ($"أطوال معلنة ({lengthHeader})", "DeclaredLength", 100, "N2"),
+            ($"أطوال محللة ({lengthHeader})", "ParsedLength", 100, "N2"),
+            ("تطابق الأطوال", "MetersIndicator", 90, null),
+            ("الربط", "CatalogStatus", 140, null)
         })
         {
             ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
@@ -426,7 +453,7 @@ public sealed class PackingListAnalysisControl : UserControl
         return g;
     }
 
-    private static DataGrid BuildRollsGrid(IReadOnlyList<PackingListRollAnalysisRow> rolls)
+    private static DataGrid BuildRollsGrid(IReadOnlyList<PackingListRollAnalysisRow> rolls, DplQuantityUnit unit)
     {
         if (rolls.Count == 0)
         {
@@ -438,21 +465,33 @@ public sealed class PackingListAnalysisControl : UserControl
             };
         }
 
-        var g = ErpUiFactory.BuildGrid(rolls, false);
+        var displayRows = rolls.Select(r => new
+        {
+            r.GroupIndex,
+            r.FabricCode,
+            r.Color,
+            r.RollNumber,
+            r.QuantityDisplay,
+            DisplayLength = r.DisplayLength(unit),
+            r.LotCode,
+            r.StatusDisplay
+        }).ToList();
+
+        var g = ErpUiFactory.BuildGrid(displayRows, false);
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
         g.MaxHeight = 420;
         g.CanUserSortColumns = true;
         foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
-            ("المجموعة", nameof(PackingListRollAnalysisRow.GroupIndex), 70, null),
-            ("كود القماش", nameof(PackingListRollAnalysisRow.FabricCode), 100, null),
-            ("اللون", nameof(PackingListRollAnalysisRow.Color), 90, null),
-            ("رقم التوب", nameof(PackingListRollAnalysisRow.RollNumber), 80, null),
-            ("الكمية (DPL)", nameof(PackingListRollAnalysisRow.QuantityDisplay), 150, null),
-            ("المتر (M)", nameof(PackingListRollAnalysisRow.Meters), 90, "N2"),
-            ("اللوت", nameof(PackingListRollAnalysisRow.LotCode), 70, null),
-            ("الحالة", nameof(PackingListRollAnalysisRow.StatusDisplay), 120, null)
+            ("المجموعة", "GroupIndex", 70, null),
+            ("كود القماش", "FabricCode", 100, null),
+            ("اللون", "Color", 90, null),
+            ("رقم التوب", "RollNumber", 80, null),
+            ("الكمية (DPL)", "QuantityDisplay", 150, null),
+            (ChinaImportLengthDisplay.LengthColumnHeader(unit), "DisplayLength", 90, "N2"),
+            ("اللوت", "LotCode", 70, null),
+            ("الحالة", "StatusDisplay", 120, null)
         })
         {
             ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
@@ -480,23 +519,36 @@ public sealed class PackingListAnalysisControl : UserControl
         return g;
     }
 
-    private static DataGrid BuildTypeLinesGrid(IReadOnlyList<ChinaImportTypeLineDto> lines)
+    private static DataGrid BuildTypeLinesGrid(IReadOnlyList<ChinaImportTypeLineDto> lines, DplQuantityUnit unit)
     {
-        var g = ErpUiFactory.BuildGrid(lines, false);
+        var displayRows = lines.Select(l => new
+        {
+            l.TypeDisplayName,
+            l.HasInvoice,
+            l.HasPackingSummary,
+            l.HasDpl,
+            l.MatchStatusDisplay,
+            Length = ChinaImportLengthDisplay.FromStoredLength(l.LengthMeters, unit),
+            l.NetWeightKg,
+            ChinaUnitPrice = ChinaImportLengthDisplay.FromStoredRate(l.ChinaUnitPriceUsd, unit),
+            l.RollCount
+        }).ToList();
+
+        var g = ErpUiFactory.BuildGrid(displayRows, false);
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
         g.MaxHeight = 360;
         foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
-            ("النوع / اللون", nameof(ChinaImportTypeLineDto.TypeDisplayName), 180, null),
-            ("فاتورة", nameof(ChinaImportTypeLineDto.HasInvoice), 55, null),
-            ("PL", nameof(ChinaImportTypeLineDto.HasPackingSummary), 45, null),
-            ("DPL", nameof(ChinaImportTypeLineDto.HasDpl), 45, null),
-            ("الحالة", nameof(ChinaImportTypeLineDto.MatchStatusDisplay), 220, null),
-            ("الأمتار", nameof(ChinaImportTypeLineDto.LengthMeters), 90, "N0"),
-            ("الوزن (كغ)", nameof(ChinaImportTypeLineDto.NetWeightKg), 90, "N0"),
-            ("سعر/م ($)", nameof(ChinaImportTypeLineDto.ChinaUnitPriceUsd), 90, "N4"),
-            ("الأثواب", nameof(ChinaImportTypeLineDto.RollCount), 70, null)
+            ("النوع / اللون", "TypeDisplayName", 180, null),
+            ("فاتورة", "HasInvoice", 55, null),
+            ("PL", "HasPackingSummary", 45, null),
+            ("DPL", "HasDpl", 45, null),
+            ("الحالة", "MatchStatusDisplay", 220, null),
+            (ChinaImportLengthDisplay.LengthColumnHeader(unit), "Length", 90, "N0"),
+            ("الوزن (كغ)", "NetWeightKg", 90, "N0"),
+            ($"سعر/{ChinaImportLengthDisplay.LengthAbbrev(unit)} ($)", "ChinaUnitPrice", 90, "N4"),
+            ("الأثواب", "RollCount", 70, null)
         })
         {
             ErpUiFactory.AddGridColumn(g, h, p, w, fmt);

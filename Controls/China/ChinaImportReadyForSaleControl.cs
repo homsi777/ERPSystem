@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
@@ -93,6 +94,7 @@ public sealed class ChinaImportReadyForSaleControl : UserControl
     {
         var c = ops.Container;
         var lc = c.LandingCost;
+        var unit = c.DplQuantityUnit;
 
         if (c.Status == ChinaContainerStatus.InWarehouse && ops.IsReadyForSale)
         {
@@ -123,18 +125,22 @@ public sealed class ChinaImportReadyForSaleControl : UserControl
         if (lc is not null)
         {
             host.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-                ("إجمالي الأمتار", ErpUiFactory.FormField($"{c.TotalMeters:N2} م")),
+                (ChinaImportLengthDisplay.TotalLengthLabel(unit),
+                    ErpUiFactory.FormField(ChinaImportLengthDisplay.FormatLength(c.TotalMeters, unit))),
                 ("إجمالي الأثواب", ErpUiFactory.FormField($"{c.TotalRolls}")),
                 ("فاتورة الصين ($)", ErpUiFactory.FormField($"{c.ChinaInvoiceAmountUsd:N2}")),
-                ("تكلفة الوصول/م ($)", ErpUiFactory.FormField($"{lc.ExpenseCostPerMeter:N4}")),
+                ($"{ChinaImportLengthDisplay.ExpenseCostPerUnitLabel(unit)} ($)",
+                    ErpUiFactory.FormField($"{ChinaImportLengthDisplay.FromStoredRate(lc.ExpenseCostPerMeter, unit):N4}")),
                 ("احتياطي 2% ($)", ErpUiFactory.FormField($"{c.FinancialTaxReserveUsd:N2}")),
                 ("الحالة", ErpUiFactory.FormField(c.Status.ToArabic())))));
         }
 
         host.Children.Add(ErpUxFactory.KpiStrip(
-            ("الأمتار", $"{c.TotalMeters:N0} م"),
+            (ChinaImportLengthDisplay.LengthColumnHeader(unit),
+                ChinaImportLengthDisplay.FormatLength(c.TotalMeters, unit, "N0")),
             ("الأثواب", $"{c.TotalRolls}"),
-            ("تكلفة/م", lc is null ? "—" : $"{lc.ExpenseCostPerMeter:N4} $"),
+            (ChinaImportLengthDisplay.CostPerUnitLabel(unit),
+                lc is null ? "—" : $"{ChinaImportLengthDisplay.FromStoredRate(lc.ExpenseCostPerMeter, unit):N4} $"),
             ("الحالة", c.Status.ToArabic())));
     }
 }

@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -51,14 +52,21 @@ public sealed class ContainerItemsWorkspaceControl : UserControl
         if (container.Items.Count == 0)
             return ErpUxFactory.InfoBanner("لا توجد بنود مسجّلة لهذه الحاوية.", "info");
 
-        var rows = container.Items.Select(i => new
+        var unit = container.DplQuantityUnit;
+        var displayRows = container.Items.Select(i => new
         {
-            السطر = i.LineNumber,
-            الأثواب = i.RollCount,
-            الأمتار = $"{i.LengthMeters:N2}",
-            الحالة = i.IsValid ? "صالح" : "خطأ"
-        }).Cast<object>().ToArray();
+            i.LineNumber,
+            i.RollCount,
+            LengthDisplay = ChinaImportLengthDisplay.FormatLength(i.LengthMeters, unit),
+            Status = i.IsValid ? "صالح" : "خطأ"
+        }).ToList();
 
-        return ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows));
+        var g = ErpUiFactory.BuildGrid(displayRows, false);
+        g.AutoGenerateColumns = false;
+        ErpUiFactory.AddGridColumn(g, "السطر", "LineNumber", 60, null);
+        ErpUiFactory.AddGridColumn(g, "الأثواب", "RollCount", 80, null);
+        ErpUiFactory.AddGridColumn(g, ChinaImportLengthDisplay.LengthColumnHeader(unit), "LengthDisplay", 100, null);
+        ErpUiFactory.AddGridColumn(g, "الحالة", "Status", 80, null);
+        return ErpUiFactory.Card(g);
     }
 }

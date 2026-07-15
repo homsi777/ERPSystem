@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
@@ -15,6 +16,7 @@ namespace ERPSystem.Controls.China;
 
 public sealed class ChinaImportLandingCostReviewControl : UserControl
 {
+    private readonly StackPanel _contextBannerHost = new();
     private readonly StackPanel _detailsHost = new();
     private readonly Button _approveButton;
     private readonly Button _salePriceButton;
@@ -36,10 +38,7 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ("تحويل للمخزن", false, false),
             ("جاهز للبيع", false, false)));
 
-        stack.Children.Add(ErpUxFactory.InfoBanner(
-            "تكاليف الوصول ($) تُوزَّع على الأمتار. احتياطي 2% ضريبة مالية يُرحَّل عند اعتماد الحاوية — لا يدخل سعر المتر.",
-            "info"));
-
+        stack.Children.Add(_contextBannerHost);
         stack.Children.Add(_detailsHost);
 
         _approveButton = new Button
@@ -131,6 +130,12 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
     {
         var c = ops.Container;
         var lc = c.LandingCost;
+        var unit = c.DplQuantityUnit;
+
+        _contextBannerHost.Children.Clear();
+        _contextBannerHost.Children.Add(ErpUxFactory.InfoBanner(
+            ChinaImportLengthDisplay.LandingCostDistributionHint(unit),
+            "info"));
 
         _detailsHost.Children.Add(new TextBlock
         {
@@ -184,7 +189,8 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
         }
 
         var form = ErpUiFactory.BuildAmountNoteFormGrid(
-            ("إجمالي الأمتار", ReadOnly(AppFormats.Text("{0} م", lc.TotalLengthMeters)), null),
+            (ChinaImportLengthDisplay.TotalLengthLabel(unit),
+                ReadOnly(ChinaImportLengthDisplay.FormatLength(lc.TotalLengthMeters, unit)), null),
             ("وزن الحاوية (كغ)", ReadOnly(AppFormats.Number(lc.ContainerWeightKg, 0)), null),
             ("فاتورة الصين ($)", ReadOnly(AppFormats.Amount(c.ChinaInvoiceAmountUsd)), ReadOnly(lc.ChinaInvoiceNote ?? "")),
             ("سعر الصرف", ReadOnly(AppFormats.Number(c.ExchangeRateToLocalCurrency, 4)), null),
@@ -197,7 +203,8 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             ("مصاريف أخرى 3 ($)", ReadOnly(AppFormats.Amount(lc.OtherExpense3)), ReadOnly(lc.OtherExpense3Note ?? "")),
             ("مصاريف أخرى 4 ($)", ReadOnly(AppFormats.Amount(lc.OtherExpense4)), ReadOnly(lc.OtherExpense4Note ?? "")),
             ("إجمالي المصاريف المشتركة ($)", ReadOnly(AppFormats.Amount(lc.TotalImportExpenses)), null),
-            ("تكلفة الوصول/م ($)", ReadOnly(AppFormats.Number(lc.ExpenseCostPerMeter, 4)), null),
+            ($"{ChinaImportLengthDisplay.ExpenseCostPerUnitLabel(unit)} ($)",
+                ReadOnly(AppFormats.Number(ChinaImportLengthDisplay.FromStoredRate(lc.ExpenseCostPerMeter, unit), 4)), null),
             ("احتياطي 2% ($)", ReadOnly(AppFormats.Amount(reserveUsd)), null),
             ("احتياطي 2% (محلي)", ReadOnly(AppFormats.Amount(reserveLocal)), null));
 
@@ -206,13 +213,16 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
         if (c.FabricTypeLines.Count > 0)
         {
             _detailsHost.Children.Add(ErpUiFactory.SectionTitle("تكلفة كل نوع قماش"));
-            _detailsHost.Children.Add(ErpUiFactory.Card(BuildTypeLinesGrid(c.FabricTypeLines)));
+            _detailsHost.Children.Add(ErpUiFactory.Card(BuildTypeLinesGrid(c.FabricTypeLines, unit)));
         }
 
         _detailsHost.Children.Add(ErpUxFactory.KpiStrip(
-            ("تكلفة الجمارك/م", $"{lc.CustomsCostPerMeter:N4} $"),
-            ("تكلفة الوصول/م", $"{lc.ExpenseCostPerMeter:N4} $"),
-            ("متوسط غ/م", $"{lc.AvgGramPerMeter:N2}"),
+            (ChinaImportLengthDisplay.CustomsCostPerUnitLabel(unit),
+                $"{ChinaImportLengthDisplay.FromStoredRate(lc.CustomsCostPerMeter, unit):N4} $"),
+            (ChinaImportLengthDisplay.ExpenseCostPerUnitLabel(unit),
+                $"{ChinaImportLengthDisplay.FromStoredRate(lc.ExpenseCostPerMeter, unit):N4} $"),
+            (ChinaImportLengthDisplay.AvgGramPerUnitLabel(unit),
+                $"{ChinaImportLengthDisplay.FromStoredRate(lc.AvgGramPerMeter, unit):N2}"),
             ("احتياطي 2%", $"{reserveUsd:N2} $")));
 
         _approveButton.IsEnabled = ops.CanApprove;
@@ -294,20 +304,31 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
         }
     }
 
-    private static DataGrid BuildTypeLinesGrid(IReadOnlyList<ContainerFabricTypeLineDto> lines)
+    private static DataGrid BuildTypeLinesGrid(IReadOnlyList<ContainerFabricTypeLineDto> lines, DplQuantityUnit? unit)
     {
-        var g = ErpUiFactory.BuildGrid(lines.OrderBy(l => l.LineNumber).ToList(), false);
+        var displayRows = lines.OrderBy(l => l.LineNumber).Select(l => new
+        {
+            l.TypeDisplayName,
+            Length = ChinaImportLengthDisplay.FromStoredLength(l.LengthMeters, unit),
+            l.NetWeightKg,
+            ChinaUnitPrice = ChinaImportLengthDisplay.FromStoredRate(l.ChinaUnitPriceUsd, unit),
+            l.ExpenseShareUsd,
+            LandedCost = ChinaImportLengthDisplay.FromStoredRate(l.LandedCostPerMeterUsd, unit),
+            SalePrice = ChinaImportLengthDisplay.FromStoredRate(l.SalePricePerMeterUsd, unit)
+        }).ToList();
+
+        var g = ErpUiFactory.BuildGrid(displayRows, false);
         g.AutoGenerateColumns = false;
         g.IsReadOnly = true;
         foreach (var (h, p, w, fmt) in new (string, string, object, string?)[]
         {
             ("النوع", nameof(ContainerFabricTypeLineDto.TypeDisplayName), 160, null),
-            ("أمتار", nameof(ContainerFabricTypeLineDto.LengthMeters), 80, "N0"),
-            ("وزن (كغ)", nameof(ContainerFabricTypeLineDto.NetWeightKg), 80, "N0"),
-            ("سعر الصين/م", nameof(ContainerFabricTypeLineDto.ChinaUnitPriceUsd), 90, "N4"),
-            ("حصة المصاريف", nameof(ContainerFabricTypeLineDto.ExpenseShareUsd), 90, "N2"),
-            ("تكلفة/م", nameof(ContainerFabricTypeLineDto.LandedCostPerMeterUsd), 90, "N4"),
-            ("سعر البيع/م", nameof(ContainerFabricTypeLineDto.SalePricePerMeterUsd), 90, "N4")
+            (ChinaImportLengthDisplay.LengthColumnHeader(unit), "Length", 80, "N0"),
+            ("وزن (كغ)", "NetWeightKg", 80, "N0"),
+            (ChinaImportLengthDisplay.ChinaPricePerUnitLabel(unit), "ChinaUnitPrice", 90, "N4"),
+            ("حصة المصاريف", "ExpenseShareUsd", 90, "N2"),
+            (ChinaImportLengthDisplay.CostPerUnitLabel(unit), "LandedCost", 90, "N4"),
+            (ChinaImportLengthDisplay.SalePricePerUnitLabel(unit), "SalePrice", 90, "N4")
         })
         {
             ErpUiFactory.AddGridColumn(g, h, p, w, fmt);

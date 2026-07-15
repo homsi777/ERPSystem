@@ -1,4 +1,5 @@
 using ERPSystem.Application.Commands.Containers;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
@@ -20,7 +21,11 @@ public sealed class SalePriceEntryRow : INotifyPropertyChanged
 {
     public Guid TypeLineId { get; init; }
     public string TypeDisplayName { get; init; } = "";
+    public DplQuantityUnit Unit { get; init; }
     public decimal LandedCostPerMeterUsd { get; init; }
+
+    public decimal LandedCostDisplay =>
+        ChinaImportLengthDisplay.FromStoredRate(LandedCostPerMeterUsd, Unit);
 
     private string _marginText = "";
     public string MarginText
@@ -40,13 +45,16 @@ public sealed class SalePriceEntryRow : INotifyPropertyChanged
         {
             if (!TryParseMargin(out var margin))
                 return "—";
-            return $"{LandedCostPerMeterUsd + margin:N4} $/م";
+            return ChinaImportLengthDisplay.FormatRate(LandedCostPerMeterUsd + ToStoredMargin(margin), Unit);
         }
     }
 
     public bool TryParseMargin(out decimal margin) =>
         decimal.TryParse(_marginText.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out margin) ||
         decimal.TryParse(_marginText.Trim(), out margin);
+
+    public decimal ToStoredMargin(decimal displayMargin) =>
+        ChinaImportLengthDisplay.ToStoredRate(displayMargin, Unit);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -57,9 +65,11 @@ public sealed class SalePriceEntryRow : INotifyPropertyChanged
 public sealed class ChinaImportSalePriceControl : UserControl
 {
     private readonly ObservableCollection<SalePriceEntryRow> _rows = [];
+    private readonly StackPanel _infoBannerHost = new();
     private readonly DataGrid _grid;
     private readonly Button _saveButton;
     private ContainerOperationsCenterDto? _loaded;
+    private DplQuantityUnit _unit = DplQuantityUnit.Meters;
 
     public ChinaImportSalePriceControl()
     {
@@ -76,9 +86,7 @@ public sealed class ChinaImportSalePriceControl : UserControl
             ("اعتماد", false, false),
             ("جاهز للبيع", false, false)));
 
-        stack.Children.Add(ErpUxFactory.InfoBanner(
-            "أدخل هامش الربح ($/م) لكل نوع. سعر البيع = تكلفة المتر المحسوبة + الهامش. الاعتماد يتطلب إدخال سعر لكل نوع.",
-            "info"));
+        stack.Children.Add(_infoBannerHost);
 
         _grid = new DataGrid
         {
@@ -88,39 +96,6 @@ public sealed class ChinaImportSalePriceControl : UserControl
             ItemsSource = _rows,
             MinHeight = 120
         };
-        _grid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "النوع / اللون",
-            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.TypeDisplayName)),
-            IsReadOnly = true,
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
-        });
-        _grid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "تكلفة/م ($)",
-            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.LandedCostPerMeterUsd))
-            {
-                StringFormat = "N4"
-            },
-            IsReadOnly = true,
-            Width = 100
-        });
-        _grid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "هامش الربح ($/م)",
-            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.MarginText))
-            {
-                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
-            },
-            Width = 120
-        });
-        _grid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "سعر البيع النهائي ($/م)",
-            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.SalePriceDisplay)),
-            IsReadOnly = true,
-            Width = 140
-        });
 
         stack.Children.Add(ErpUiFactory.Card(_grid));
 
@@ -150,6 +125,44 @@ public sealed class ChinaImportSalePriceControl : UserControl
         Loaded += async (_, _) => await LoadAsync();
     }
 
+    private void ConfigureGridColumns()
+    {
+        _grid.Columns.Clear();
+        _grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = "النوع / اللون",
+            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.TypeDisplayName)),
+            IsReadOnly = true,
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star)
+        });
+        _grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = $"{ChinaImportLengthDisplay.CostPerUnitLabel(_unit)} ($)",
+            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.LandedCostDisplay))
+            {
+                StringFormat = "N4"
+            },
+            IsReadOnly = true,
+            Width = 100
+        });
+        _grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = ChinaImportLengthDisplay.MarginPerUnitLabel(_unit),
+            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.MarginText))
+            {
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.PropertyChanged
+            },
+            Width = 120
+        });
+        _grid.Columns.Add(new DataGridTextColumn
+        {
+            Header = ChinaImportLengthDisplay.FinalSalePriceLabel(_unit),
+            Binding = new System.Windows.Data.Binding(nameof(SalePriceEntryRow.SalePriceDisplay)),
+            IsReadOnly = true,
+            Width = 140
+        });
+    }
+
     private async Task LoadAsync()
     {
         _rows.Clear();
@@ -165,14 +178,28 @@ public sealed class ChinaImportSalePriceControl : UserControl
             return;
 
         _loaded = result.Value;
+        _unit = ChinaImportLengthDisplay.Resolve(_loaded.Container.DplQuantityUnit);
+
+        _infoBannerHost.Children.Clear();
+        _infoBannerHost.Children.Add(ErpUxFactory.InfoBanner(
+            ChinaImportLengthDisplay.SalePriceBanner(_unit),
+            "info"));
+
+        ConfigureGridColumns();
+
         foreach (var line in _loaded.Container.FabricTypeLines.OrderBy(l => l.LineNumber))
         {
+            var marginDisplay = line.MarginPerMeterUsd > 0
+                ? ChinaImportLengthDisplay.FromStoredRate(line.MarginPerMeterUsd, _unit)
+                : 0m;
+
             _rows.Add(new SalePriceEntryRow
             {
                 TypeLineId = line.Id,
                 TypeDisplayName = line.TypeDisplayName,
+                Unit = _unit,
                 LandedCostPerMeterUsd = line.LandedCostPerMeterUsd,
-                MarginText = line.MarginPerMeterUsd > 0 ? line.MarginPerMeterUsd.ToString("N4", CultureInfo.InvariantCulture) : ""
+                MarginText = marginDisplay > 0 ? marginDisplay.ToString("N4", CultureInfo.InvariantCulture) : ""
             });
         }
 
@@ -200,7 +227,7 @@ public sealed class ChinaImportSalePriceControl : UserControl
             commands.Add(new ContainerTypeSalePriceCommand
             {
                 TypeLineId = row.TypeLineId,
-                MarginPerMeterUsd = margin
+                MarginPerMeterUsd = row.ToStoredMargin(margin)
             });
         }
 

@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
@@ -40,6 +41,7 @@ public sealed class ChinaImportCostEntryControl : UserControl
     private readonly string? _fileName;
     private readonly decimal _exchangeRate;
     private readonly decimal _totalMeters;
+    private readonly DplQuantityUnit _unit;
     private readonly bool _usesWeighted;
 
     public ChinaImportCostEntryControl()
@@ -63,6 +65,8 @@ public sealed class ChinaImportCostEntryControl : UserControl
         _fileName = ChinaImportNavigationContext.LastRollDetailFileName;
         _exchangeRate = _header?.ExchangeRateToLocalCurrency ?? 1m;
         _totalMeters = _parse?.GrandTotal.ParsedTotalMeters ?? 0m;
+        _unit = ChinaImportLengthDisplay.Resolve(
+            _parse?.SelectedQuantityUnit ?? ChinaImportNavigationContext.UserSelectedDplQuantityUnit);
         _usesWeighted = _session?.UsesWeightedAllocation == true;
 
         if (_parse is null || _header is null)
@@ -80,12 +84,15 @@ public sealed class ChinaImportCostEntryControl : UserControl
         stack.Children.Add(ErpUxFactory.InfoBanner(
             _usesWeighted
                 ? "وضع التكلفة حسب النوع: المصاريف المشتركة تُوزَّع بالوزن. جميع المبالغ بالدولار ($)."
-                : "وضع معدّل مسطح (DPL فقط): المصاريف تُوزَّع على إجمالي الأمتار. لإتاحة التكلفة حسب النوع ارفع الفاتورة + PL.",
+                : ChinaImportLengthDisplay.FlatCostEntryHint(_unit),
             _usesWeighted ? "success" : "warning"));
 
         stack.Children.Add(new TextBlock
         {
-            Text = AppFormats.Text("إجمالي الأمتار: {0} م | سعر الصرف: {1}", _totalMeters, _exchangeRate),
+            Text = AppFormats.Text("{0}: {1} | سعر الصرف: {2}",
+                ChinaImportLengthDisplay.TotalLengthLabel(_unit),
+                ChinaImportLengthDisplay.FormatLength(_totalMeters, _unit),
+                _exchangeRate),
             Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!,
             Margin = new Thickness(0, 0, 0, 12)
         });
@@ -169,13 +176,17 @@ public sealed class ChinaImportCostEntryControl : UserControl
             + input.OtherExpense1Usd + input.OtherExpense2Usd + input.OtherExpense3Usd + input.OtherExpense4Usd;
         var reserve = input.ChinaInvoiceAmountUsd * 0.02m;
 
+        var unitWord = ChinaImportLengthDisplay.UnitArabic(_unit);
         _preview.Text =
             AppFormats.Text("المكافئ المحلي للفاتورة: {0}", input.ChinaInvoiceAmountUsd * _exchangeRate) + "\n" +
-            AppFormats.Text("احتياطي ضريبة مالية (2%): {0} $ (لا يدخل سعر المتر)", reserve) + "\n" +
+            AppFormats.Text("احتياطي ضريبة مالية (2%): {0} $ (لا يدخل سعر ال{1})", reserve, unitWord) + "\n" +
             AppFormats.Text("إجمالي المصاريف المشتركة: {0} $", shared) + "\n" +
             (_usesWeighted
                 ? $"التخصيص: بالوزن عبر {_session?.TypeLines.Count ?? 0} نوع قماش"
-                : AppFormats.Text("تكلفة الوصول/م (مسطح): {0} $/م", _totalMeters > 0 ? shared / _totalMeters : 0));
+                : AppFormats.Text("{0} (مسطح): {1}",
+                    ChinaImportLengthDisplay.ExpenseCostPerUnitLabel(_unit),
+                    ChinaImportLengthDisplay.FormatRate(
+                        _totalMeters > 0 ? shared / _totalMeters : 0, _unit)));
     }
 
     private async Task SaveAsync()

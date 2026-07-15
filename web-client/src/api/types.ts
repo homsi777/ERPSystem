@@ -9,6 +9,9 @@ export type ValidationError = {
   message: string;
 };
 
+/** DPL roll length unit: 0 = meters, 1 = yards */
+export type DplQuantityUnit = 0 | 1;
+
 export type LookupItemDto = {
   id: string;
   name: string;
@@ -184,6 +187,8 @@ export type ContainerDetailsDto = {
   arrivalDate: string | null;
   totalRolls: number;
   totalMeters: number;
+  dplQuantityUnit?: DplQuantityUnit | null;
+  lengthUnitDisplay?: string;
   totalWeightKg: number | null;
   exchangeRateToLocalCurrency: number;
   chinaInvoiceAmountUsd: number;

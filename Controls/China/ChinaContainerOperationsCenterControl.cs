@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Core;
@@ -97,6 +98,7 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         string initialTab)
     {
         var c = data.Container;
+        var unit = c.DplQuantityUnit;
         var accent = new SolidColorBrush(Color.FromRgb(124, 58, 237));
         var cost = c.LandingCost;
         var inv = data.Inventory;
@@ -123,7 +125,7 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
                 ("تاريخ الشحن", c.ShipmentDate.ToString("yyyy/MM/dd")),
                 ("الوصول", c.ArrivalDate?.ToString("yyyy/MM/dd") ?? "—"),
                 ("الأثواب", AppFormats.Number(c.TotalRolls)),
-                ("الأطوال", $"{c.TotalMeters:N0} م"),
+                ("الأطوال", ChinaImportLengthDisplay.FormatLength(c.TotalMeters, unit, "N0")),
                 ("الوزن", c.TotalWeightKg.HasValue ? $"{c.TotalWeightKg:N0} كغ" : "—"),
                 ("سعر الصرف", AppFormats.Number(c.ExchangeRateToLocalCurrency, 4)),
             ],
@@ -132,20 +134,21 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
                 ("أنواع الأقمشة", row.CodeCount.ToString(), "\uECA5"),
                 ("الألوان", row.ColorCount.ToString(), "\uE790"),
                 ("الأثواب", AppFormats.Number(c.TotalRolls), "\uE7C3"),
-                ("الأطوال", $"{c.TotalMeters:N0} م", "\uE821"),
-                ("محجوز", $"{reservedRolls:N0} ({reservedMeters:N0} م)", "\uE823"),
-                ("مباع", $"{soldRolls:N0} ({soldMeters:N0} م)", "\uE8F1"),
-                ("متبقي", $"{remainingRolls:N0} ({availableMeters:N0} م)", "\uE8FD"),
-                ("تكلفة/م", costPerMeter > 0 ? $"{costPerMeter:N4}" : "—", "\uE8C1"),
+                ("الأطوال", ChinaImportLengthDisplay.FormatLength(c.TotalMeters, unit, "N0"), "\uE821"),
+                ("محجوز", $"{reservedRolls:N0} ({ChinaImportLengthDisplay.FormatLength(reservedMeters, unit, "N0")})", "\uE823"),
+                ("مباع", $"{soldRolls:N0} ({ChinaImportLengthDisplay.FormatLength(soldMeters, unit, "N0")})", "\uE8F1"),
+                ("متبقي", $"{remainingRolls:N0} ({ChinaImportLengthDisplay.FormatLength(availableMeters, unit, "N0")})", "\uE8FD"),
+                (ChinaImportLengthDisplay.CostPerUnitLabel(unit),
+                    costPerMeter > 0 ? $"{ChinaImportLengthDisplay.FromStoredRate(costPerMeter, unit):N4}" : "—", "\uE8C1"),
             ],
             Workflow = ChinaImportWorkflow.BuildStepper(c.Status)
                 .Select(s => (s.Label, s.Completed, s.Current))
                 .ToList(),
             Tabs =
             [
-                Tab("Overview", "نظرة عامة", () => OverviewTab(c, cost)),
-                Tab("Items", "أصناف الحاوية", () => ItemsTab(c)),
-                Tab("LandingCost", "Landing Cost", () => LandingCostTab(cost, data)),
+                Tab("Overview", "نظرة عامة", () => OverviewTab(c, cost, unit)),
+                Tab("Items", "أصناف الحاوية", () => ItemsTab(c, unit)),
+                Tab("LandingCost", "Landing Cost", () => LandingCostTab(cost, data, unit)),
                 Tab("Documentation", "التوثيق", () => new ContainerDocumentationControl(c.Id, c.ContainerNumber)),
                 Tab("Timeline", "الخط الزمني", () => TimelineTab(audit)),
             ],
@@ -192,60 +195,72 @@ public sealed class ChinaContainerOperationsCenterControl : UserControl
         return actions;
     }
 
-    private static UIElement OverviewTab(ContainerDetailsDto c, LandingCostDto? cost)
+    private static UIElement OverviewTab(ContainerDetailsDto c, LandingCostDto? cost, DplQuantityUnit? unit)
     {
         var stack = new StackPanel();
         if (cost is not null)
         {
             stack.Children.Add(ErpUxFactory.KpiStrip(
-                ("تكلفة الجمارك/م", $"{cost.CustomsCostPerMeter:N4}"),
-                ("تكلفة المصاريف/م", $"{cost.ExpenseCostPerMeter:N4}"),
-                ("غرام/م", $"{cost.AvgGramPerMeter:N2}"),
+                (ChinaImportLengthDisplay.CustomsCostPerUnitLabel(unit),
+                    $"{ChinaImportLengthDisplay.FromStoredRate(cost.CustomsCostPerMeter, unit):N4}"),
+                (ChinaImportLengthDisplay.ExpenseCostPerUnitShortLabel(unit),
+                    $"{ChinaImportLengthDisplay.FromStoredRate(cost.ExpenseCostPerMeter, unit):N4}"),
+                (ChinaImportLengthDisplay.GramPerUnitLabel(unit),
+                    $"{ChinaImportLengthDisplay.FromStoredRate(cost.AvgGramPerMeter, unit):N2}"),
                 ("إجمالي المصاريف", $"{cost.TotalImportExpenses:N0}")));
         }
 
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
             ("الحالة", ErpUiFactory.FormField(c.Status.ToArabic())),
             ("إجمالي الأثواب", ErpUiFactory.FormField(AppFormats.Number(c.TotalRolls))),
-            ("إجمالي الأطوال", ErpUiFactory.FormField($"{c.TotalMeters:N0} م")),
+            ("إجمالي الأطوال", ErpUiFactory.FormField(ChinaImportLengthDisplay.FormatLength(c.TotalMeters, unit, "N0"))),
             ("بنود الحاوية", ErpUiFactory.FormField(c.Items.Count.ToString())),
             ("Landing Cost", ErpUiFactory.FormField(cost is null ? "غير محسوب" : "محسوب")))));
         return stack;
     }
 
-    private static UIElement ItemsTab(ContainerDetailsDto c)
+    private static UIElement ItemsTab(ContainerDetailsDto c, DplQuantityUnit? unit)
     {
         if (c.Items.Count == 0)
             return ErpUxFactory.InfoBanner("لا توجد بنود مسجّلة لهذه الحاوية.", "info");
 
-        var rows = c.Items.Select(i => new
+        var displayRows = c.Items.Select(i => new
         {
-            السطر = i.LineNumber,
-            الأثواب = i.RollCount,
-            الأمتار = $"{i.LengthMeters:N2}",
-            الحالة = i.IsValid ? "صالح" : "خطأ"
-        }).Cast<object>().ToArray();
+            i.LineNumber,
+            i.RollCount,
+            LengthDisplay = ChinaImportLengthDisplay.FormatLength(i.LengthMeters, unit),
+            Status = i.IsValid ? "صالح" : "خطأ"
+        }).ToList();
 
-        return ErpUiFactory.Card(ErpUiFactory.BuildGrid(rows));
+        var g = ErpUiFactory.BuildGrid(displayRows, false);
+        g.AutoGenerateColumns = false;
+        ErpUiFactory.AddGridColumn(g, "السطر", "LineNumber", 60, null);
+        ErpUiFactory.AddGridColumn(g, "الأثواب", "RollCount", 80, null);
+        ErpUiFactory.AddGridColumn(g, ChinaImportLengthDisplay.LengthColumnHeader(unit), "LengthDisplay", 100, null);
+        ErpUiFactory.AddGridColumn(g, "الحالة", "Status", 80, null);
+        return ErpUiFactory.Card(g);
     }
 
-    private static UIElement LandingCostTab(LandingCostDto? cost, ContainerOperationsCenterDto? ops = null)
+    private static UIElement LandingCostTab(LandingCostDto? cost, ContainerOperationsCenterDto? ops, DplQuantityUnit? unit)
     {
         if (cost is null)
             return ErpUxFactory.InfoBanner("لم تُحسب تكاليف الوصول بعد.", "warning");
 
         var stack = new StackPanel();
         stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-            ("إجمالي الطول", ErpUiFactory.FormField($"{cost.TotalLengthMeters:N0} م")),
+            ("إجمالي الطول", ErpUiFactory.FormField(ChinaImportLengthDisplay.FormatLength(cost.TotalLengthMeters, unit, "N0"))),
             ("وزن الحاوية", ErpUiFactory.FormField($"{cost.ContainerWeightKg:N0} كغ")),
             ("الجمارك", ErpUiFactory.FormField($"{cost.CustomsAmount:N0}")),
-            ("تكلفة الجمارك/م", ErpUiFactory.FormField($"{cost.CustomsCostPerMeter:N4}")),
+            (ChinaImportLengthDisplay.CustomsCostPerUnitLabel(unit),
+                ErpUiFactory.FormField($"{ChinaImportLengthDisplay.FromStoredRate(cost.CustomsCostPerMeter, unit):N4}")),
             ("الشحن", ErpUiFactory.FormField($"{cost.Shipping:N0}")),
             ("التخليص", ErpUiFactory.FormField($"{cost.Clearance:N0}")),
             ("مصاريف أخرى", ErpUiFactory.FormField($"{cost.OtherExpenses:N0}")),
             ("إجمالي المصاريف", ErpUiFactory.FormField($"{cost.TotalImportExpenses:N0}")),
-            ("تكلفة المصاريف/م", ErpUiFactory.FormField($"{cost.ExpenseCostPerMeter:N4}")),
-            ("متوسط غرام/م", ErpUiFactory.FormField($"{cost.AvgGramPerMeter:N2}")))));
+            (ChinaImportLengthDisplay.ExpenseCostPerUnitShortLabel(unit),
+                ErpUiFactory.FormField($"{ChinaImportLengthDisplay.FromStoredRate(cost.ExpenseCostPerMeter, unit):N4}")),
+            (ChinaImportLengthDisplay.AvgGramPerUnitLabel(unit),
+                ErpUiFactory.FormField($"{ChinaImportLengthDisplay.FromStoredRate(cost.AvgGramPerMeter, unit):N2}")))));
 
         if (ops is { CanApprove: true } or { CanSetSalePrices: true })
         {

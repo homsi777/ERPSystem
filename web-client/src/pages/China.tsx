@@ -41,7 +41,7 @@ import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatCurrency, formatDate, formatMeters, formatNumber } from '../lib/format.ts';
+import { formatContainerLength, formatCurrency, formatDate, formatMeters, formatNumber, displayRateFromPerMeter, lengthColumnLabel, perUnitLabel, storedRateFromDisplay, totalLengthLabel } from '../lib/format.ts';
 import {
   chinaContainerStatusLabels,
   chinaContainerStatusOptions,
@@ -500,10 +500,12 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
   const data = operationsQuery.data;
   const container = data?.container;
 
+  const unit = container?.dplQuantityUnit ?? null;
+
   const headerSummary = container ? (
     <>
       <SummaryCard label="الأثواب" value={formatNumber(container.totalRolls)} />
-      <SummaryCard label="الأمتار" value={formatMeters(container.totalMeters)} tone="green" />
+      <SummaryCard label={lengthColumnLabel(unit)} value={formatContainerLength(container.totalMeters, unit)} tone="green" />
       <SummaryCard label="فاتورة الصين" value={formatCurrency(container.chinaInvoiceAmountUsd)} tone="amber" />
     </>
   ) : undefined;
@@ -556,7 +558,7 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
               title: `حاوية ${container.containerNumber}`,
               subtitle: container.supplierName || 'مورد غير محدد',
               fileName: `container-${container.containerNumber}.pdf`,
-              shareText: `حاوية: ${container.containerNumber}\nالمورد: ${container.supplierName || '—'}\nالأمتار: ${formatMeters(container.totalMeters)}\nالأثواب: ${formatNumber(container.totalRolls)}`,
+              shareText: `حاوية: ${container.containerNumber}\nالمورد: ${container.supplierName || '—'}\n${lengthColumnLabel(unit)}: ${formatContainerLength(container.totalMeters, unit)}\nالأثواب: ${formatNumber(container.totalRolls)}`,
               sections: [
                 {
                   heading: 'بيانات الحاوية',
@@ -564,7 +566,7 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
                     { label: 'رقم الحاوية', value: container.containerNumber },
                     { label: 'المورد', value: container.supplierName || '—' },
                     { label: 'تاريخ الشحن', value: formatDate(container.shipmentDate) },
-                    { label: 'الأمتار', value: formatMeters(container.totalMeters) },
+                    { label: lengthColumnLabel(unit), value: formatContainerLength(container.totalMeters, unit) },
                     { label: 'الأثواب', value: formatNumber(container.totalRolls) },
                     { label: 'فاتورة الصين', value: formatCurrency(container.chinaInvoiceAmountUsd) }
                   ]
@@ -597,9 +599,9 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
           {activePanel === 'move' ? <MoveToWarehouseForm containerId={containerId} onToast={setToast} onDone={(message) => void refreshAfterAction(message)} /> : null}
 
           <ContainerInfoSection container={container} />
-          <LandingCostSection landingCost={container.landingCost} />
+          <LandingCostSection landingCost={container.landingCost} unit={container.dplQuantityUnit} />
           <FabricTypeLinesSection container={container} />
-          <InventorySection inventory={data.inventory} />
+          <InventorySection inventory={data.inventory} unit={container.dplQuantityUnit} />
         </div>
       ) : null}
     </AppShell>
@@ -681,8 +683,14 @@ function LandingCostForm({ container, onDone, onToast }: { container: ContainerD
 }
 
 function SalePricesForm({ container, onDone, onToast }: { container: ContainerDetailsDto; onDone: (message: string) => void; onToast: (toast: ToastState) => void }) {
+  const unit = container.dplQuantityUnit ?? null;
   const [prices, setPrices] = useState<SalePriceFormState>(() =>
-    Object.fromEntries(container.fabricTypeLines.map((line) => [line.id, String(line.marginPerMeterUsd ?? 0)]))
+    Object.fromEntries(
+      container.fabricTypeLines.map((line) => [
+        line.id,
+        String(displayRateFromPerMeter(line.marginPerMeterUsd ?? 0, unit))
+      ])
+    )
   );
 
   const mutation = useMutation({
@@ -696,18 +704,24 @@ function SalePricesForm({ container, onDone, onToast }: { container: ContainerDe
     mutation.mutate({
       lines: container.fabricTypeLines.map((line) => ({
         typeLineId: line.id,
-        marginPerMeterUsd: toNumber(prices[line.id] ?? '0')
+        marginPerMeterUsd: storedRateFromDisplay(toNumber(prices[line.id] ?? '0'), unit)
       }))
     });
   }
 
   return (
     <section className="form-panel form-compact">
-      <h2>تحديد أسعار البيع</h2>
+      <h2>تحديد أسعار البيع ({perUnitLabel(unit, 'هامش')})</h2>
       <form className="line-list" onSubmit={submit}>
         {container.fabricTypeLines.map((line) => (
           <label className="price-row" key={line.id}>
-            <span>{line.typeDisplayName}</span>
+            <span>
+              {line.typeDisplayName}
+              <small className="muted-line">
+                {' '}
+                — تكلفة {formatCurrency(displayRateFromPerMeter(line.landedCostPerMeterUsd, unit))}/{lengthColumnLabel(unit)}
+              </small>
+            </span>
             <input
               inputMode="decimal"
               value={prices[line.id] ?? ''}
@@ -890,7 +904,7 @@ function ContainerInfoSection({ container }: { container: ContainerDetailsDto })
   );
 }
 
-function LandingCostSection({ landingCost }: { landingCost: LandingCostDto | null }) {
+function LandingCostSection({ landingCost, unit }: { landingCost: LandingCostDto | null; unit?: ContainerDetailsDto['dplQuantityUnit'] }) {
   if (!landingCost) {
     return (
       <section className="form-panel form-compact">
@@ -907,7 +921,7 @@ function LandingCostSection({ landingCost }: { landingCost: LandingCostDto | nul
         <span className="status-pill status-pill--blue">{landingCostStatusLabels[landingCost.status]}</span>
       </div>
       <dl className="detail-grid">
-        <DetailItem label="إجمالي الأمتار" value={formatMeters(landingCost.totalLengthMeters)} />
+        <DetailItem label={totalLengthLabel(unit)} value={formatContainerLength(landingCost.totalLengthMeters, unit)} />
         <DetailItem label="وزن الحاوية" value={`${formatNumber(landingCost.containerWeightKg)} كغ`} />
         <DetailItem label="الجمارك" value={formatCurrency(landingCost.customsAmount)} />
         <DetailItem label="الشحن" value={formatCurrency(landingCost.shipping)} />
@@ -915,9 +929,9 @@ function LandingCostSection({ landingCost }: { landingCost: LandingCostDto | nul
         <DetailItem label="التخليص" value={formatCurrency(landingCost.clearance)} />
         <DetailItem label="مصاريف أخرى" value={formatCurrency(landingCost.otherExpenses)} />
         <DetailItem label="إجمالي المصاريف" value={formatCurrency(landingCost.totalImportExpenses)} />
-        <DetailItem label="جمرك / متر" value={formatCurrency(landingCost.customsCostPerMeter)} />
-        <DetailItem label="مصروف / متر" value={formatCurrency(landingCost.expenseCostPerMeter)} />
-        <DetailItem label="متوسط غرام / متر" value={formatNumber(landingCost.avgGramPerMeter)} />
+        <DetailItem label={`جمرك ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(landingCost.customsCostPerMeter, unit))} />
+        <DetailItem label={`مصروف ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(landingCost.expenseCostPerMeter, unit))} />
+        <DetailItem label={`متوسط غرام ${perUnitLabel(unit)}`} value={formatNumber(displayRateFromPerMeter(landingCost.avgGramPerMeter, unit))} />
         <DetailItem label="توزيع وزني" value={landingCost.usesWeightedAllocation ? 'نعم' : 'لا'} />
       </dl>
     </section>
@@ -925,6 +939,7 @@ function LandingCostSection({ landingCost }: { landingCost: LandingCostDto | nul
 }
 
 function FabricTypeLinesSection({ container }: { container: ContainerDetailsDto }) {
+  const unit = container.dplQuantityUnit ?? null;
   return (
     <section className="form-panel form-compact">
       <h2>أنواع الأقمشة</h2>
@@ -941,12 +956,12 @@ function FabricTypeLinesSection({ container }: { container: ContainerDetailsDto 
                 </span>
               </div>
               <dl className="mini-grid">
-                <DetailItem label="الأمتار" value={formatMeters(line.lengthMeters)} />
+                <DetailItem label={lengthColumnLabel(unit)} value={formatContainerLength(line.lengthMeters, unit)} />
                 <DetailItem label="الأثواب" value={formatNumber(line.rollCount)} />
-                <DetailItem label="سعر الصين" value={formatCurrency(line.chinaUnitPriceUsd)} />
-                <DetailItem label="تكلفة / متر" value={formatCurrency(line.landedCostPerMeterUsd)} />
-                <DetailItem label="هامش / متر" value={formatCurrency(line.marginPerMeterUsd)} />
-                <DetailItem label="سعر البيع / متر" value={formatCurrency(line.salePricePerMeterUsd)} />
+                <DetailItem label={`سعر الصين ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(line.chinaUnitPriceUsd, unit))} />
+                <DetailItem label={`تكلفة ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(line.landedCostPerMeterUsd, unit))} />
+                <DetailItem label={`هامش ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(line.marginPerMeterUsd, unit))} />
+                <DetailItem label={`سعر البيع ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(line.salePricePerMeterUsd, unit))} />
               </dl>
             </article>
           ))}
@@ -956,7 +971,7 @@ function FabricTypeLinesSection({ container }: { container: ContainerDetailsDto 
   );
 }
 
-function InventorySection({ inventory }: { inventory: ContainerInventoryMetricsDto | null }) {
+function InventorySection({ inventory, unit }: { inventory: ContainerInventoryMetricsDto | null; unit?: ContainerDetailsDto['dplQuantityUnit'] }) {
   return (
     <section className="form-panel form-compact">
       <h2>مؤشرات المخزون</h2>
@@ -965,11 +980,11 @@ function InventorySection({ inventory }: { inventory: ContainerInventoryMetricsD
       ) : (
         <dl className="detail-grid">
           <DetailItem label="إجمالي الأثواب" value={formatNumber(inventory.totalRolls)} />
-          <DetailItem label="إجمالي الأمتار" value={formatMeters(inventory.totalMeters)} />
-          <DetailItem label="محجوز" value={formatMeters(inventory.reservedMeters)} />
-          <DetailItem label="مباع" value={formatMeters(inventory.soldMeters)} />
-          <DetailItem label="متاح" value={formatMeters(inventory.availableMeters)} />
-          <DetailItem label="تكلفة / متر" value={formatCurrency(inventory.costPerMeter)} />
+          <DetailItem label={totalLengthLabel(unit)} value={formatContainerLength(inventory.totalMeters, unit)} />
+          <DetailItem label="محجوز" value={formatContainerLength(inventory.reservedMeters, unit)} />
+          <DetailItem label="مباع" value={formatContainerLength(inventory.soldMeters, unit)} />
+          <DetailItem label="متاح" value={formatContainerLength(inventory.availableMeters, unit)} />
+          <DetailItem label={`تكلفة ${perUnitLabel(unit)}`} value={formatCurrency(displayRateFromPerMeter(inventory.costPerMeter, unit))} />
           <DetailItem label="قيمة المخزون" value={formatCurrency(inventory.inventoryValuation)} />
           <DetailItem label="مرحل للمخزون" value={inventory.isStockPosted ? 'نعم' : 'لا'} />
         </dl>
