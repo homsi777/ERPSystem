@@ -17,7 +17,7 @@ public static class AppCulture
     public static CultureInfo ArabicGregorianWithLatinDigits { get; } = CreateArabicGregorianWithLatinDigits();
 
     /// <summary>Culture for all user-visible numbers and numeric date parts.</summary>
-    public static CultureInfo FormatCulture => ArabicWithLatinDigits;
+    public static CultureInfo FormatCulture { get; } = CultureInfo.GetCultureInfo(LatinLanguageTag);
 
     static AppCulture()
     {
@@ -26,14 +26,13 @@ public static class AppCulture
 
     public static void Apply()
     {
-        Apply(ArabicWithLatinDigits);
+        Apply(FormatCulture);
     }
 
     public static void ApplyForLanguage(AppLanguage language)
     {
-        Apply(language == AppLanguage.Arabic
-            ? ArabicWithLatinDigits
-            : CultureInfo.GetCultureInfo(LatinLanguageTag));
+        _ = language;
+        Apply(FormatCulture);
     }
 
     public static void ConfigureWpfPresentation()

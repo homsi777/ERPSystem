@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace ERPSystem.Helpers
@@ -9,6 +11,7 @@ namespace ERPSystem.Helpers
     {
         public static void ApplyEnterpriseStyle(DataGrid grid)
         {
+            grid.Language = XmlLanguage.GetLanguage("en-US");
             grid.RowHeight = ErpDesignTokens.GridRowHeight;
             grid.FontSize = ErpDesignTokens.FontBody;
             grid.FontFamily = ErpDesignTokens.UiFont;
@@ -62,6 +65,8 @@ namespace ERPSystem.Helpers
             s.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(ErpDesignTokens.SpaceMd, 0, ErpDesignTokens.SpaceMd, 0)));
             s.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
             s.Setters.Add(new Setter(Control.FocusVisualStyleProperty, null));
+            s.Setters.Add(new Setter(FrameworkElement.LanguageProperty, XmlLanguage.GetLanguage("en-US")));
+            s.Setters.Add(new Setter(Typography.NumeralStyleProperty, FontNumeralStyle.Lining));
             var sel = new Trigger { Property = DataGridCell.IsSelectedProperty, Value = true };
             sel.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
             s.Triggers.Add(sel);

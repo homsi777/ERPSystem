@@ -1,3 +1,5 @@
+using ERPSystem.Application.Common;
+using ERPSystem.Core;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -59,7 +61,7 @@ namespace ERPSystem.Controls
         private void UpdateDisplay()
         {
             TxtTitle.Text = CardTitle;
-            TxtValue.Text = CardValue;
+            TxtValue.Text = LatinDigits.Normalize(CardValue);
             TxtIcon.Text = CardIcon;
             TxtDescription.Text = CardDescription;
 
@@ -73,7 +75,7 @@ namespace ERPSystem.Controls
             if (!string.IsNullOrEmpty(TrendValue))
             {
                 TrendBorder.Visibility = Visibility.Visible;
-                TxtTrend.Text = TrendValue;
+                TxtTrend.Text = LatinDigits.Normalize(TrendValue);
 
                 switch (TrendDirection)
                 {

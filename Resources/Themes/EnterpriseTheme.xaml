@@ -404,6 +404,7 @@
     <!-- Unified compact DataGrid -->
     <Style x:Key="EnterpriseDataGridStyle" TargetType="DataGrid">
         <Setter Property="AutoGenerateColumns" Value="False"/>
+        <Setter Property="Language" Value="en-US"/>
         <Setter Property="CanUserAddRows" Value="False"/>
         <Setter Property="CanUserDeleteRows" Value="False"/>
         <Setter Property="SelectionMode" Value="Single"/>
@@ -475,6 +476,8 @@
         <Setter Property="FontFamily" Value="Segoe UI, Tahoma, Arial"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Typography.NumeralStyle" Value="Lining"/>
+        <Setter Property="Language" Value="en-US"/>
     </Style>
 
     <!-- ═══════════════════════════════════════════════════ -->

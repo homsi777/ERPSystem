@@ -124,9 +124,11 @@ namespace ERPSystem.Helpers
         {
             var binding = new Binding(path)
             {
-                ConverterCulture = AppCulture.FormatCulture
+                Converter = LatinDisplayValueConverter.Instance,
+                ConverterParameter = format,
+                ConverterCulture = AppCulture.FormatCulture,
+                Mode = BindingMode.OneWay
             };
-            if (format != null) binding.StringFormat = format;
             grid.Columns.Add(new DataGridTextColumn
             {
                 Header = header,

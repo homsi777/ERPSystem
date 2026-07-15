@@ -35,6 +35,7 @@ public partial class App : System.Windows.Application
     {
         AppCulture.ConfigureWpfPresentation();
         AppCulture.Apply();
+        LatinDigitPresentationHook.EnableApplicationWide();
         LocalizationManager.Instance.LanguageChanged += (_, _) =>
             AppCulture.ApplyForLanguage(LocalizationManager.Instance.CurrentLanguage);
 

@@ -156,8 +156,8 @@ namespace ERPSystem.Controls
         {
             var count = MainGrid.Items?.Count ?? 0;
             TxtRecordCount.Text = shown.HasValue && total.HasValue
-                ? $"عرض {shown} من {total} سجل"
-                : $"عرض {count} سجل";
+                ? AppFormats.Text("عرض {0} من {1} سجل", shown.Value, total.Value)
+                : AppFormats.Text("عرض {0} سجل", count);
         }
 
         private void BtnPrimary_Click(object sender, RoutedEventArgs e) =>
