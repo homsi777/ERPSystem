@@ -45,6 +45,7 @@ public static class DatabaseSeeder
         await StartupPhaseRecorder.RunAsync("Seed.ChinaImport", () => EnsureChinaImportReferenceDataAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.AccountingAccounts", () => EnsureIntegratedAccountingAccountsAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.CashboxGlLinks", () => EnsureCashboxGlLinksAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.Phase3Finance", () => EnsurePhase3FinanceReferenceDataAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.SalesTax", () => EnsureSalesTaxConfigurationAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.JournalBooks", () => EnsureJournalBooksAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.AllPermissions", () => EnsureAllModulePermissionsAsync(context, cancellationToken));
@@ -334,6 +335,62 @@ public static class DatabaseSeeder
 
         foreach (var cashbox in unlinked)
             cashbox.AccountId = AccountingAccountIds.CashUsd;
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsurePhase3FinanceReferenceDataAsync(
+        ErpDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!await context.Companies.AnyAsync(cancellationToken))
+            return;
+
+        var companyIds = await context.Companies.Select(c => c.Id).ToListAsync(cancellationToken);
+        var methods = new (Guid Id, int Kind, string Code, string Name, bool Cashbox, bool Bank, bool Ref, bool Mixed)[]
+        {
+            (PaymentMethodIds.Cash, 0, "CASH", "نقدي", true, false, false, true),
+            (PaymentMethodIds.BankTransfer, 1, "BANK", "تحويل بنكي", false, true, true, true),
+            (PaymentMethodIds.Card, 2, "CARD", "بطاقة", false, true, true, true),
+            (PaymentMethodIds.Cheque, 3, "CHEQUE", "شيك", true, false, true, true),
+            (PaymentMethodIds.CustomerCredit, 4, "CREDIT", "رصيد عميل", false, false, false, false),
+            (PaymentMethodIds.Advance, 5, "ADVANCE", "دفعة مقدمة", true, true, false, true),
+            (PaymentMethodIds.Other, 99, "OTHER", "أخرى", true, true, false, true)
+        };
+
+        foreach (var companyId in companyIds)
+        {
+            foreach (var (id, kind, code, name, cashbox, bank, reference, mixed) in methods)
+            {
+                if (await context.PaymentMethods.AnyAsync(m => m.CompanyId == companyId && m.Id == id, cancellationToken))
+                    continue;
+
+                context.PaymentMethods.Add(new PaymentMethodEntity
+                {
+                    Id = id,
+                    CompanyId = companyId,
+                    Kind = kind,
+                    Code = code,
+                    Name = name,
+                    RequiresCashbox = cashbox,
+                    RequiresBankAccount = bank,
+                    RequiresReference = reference,
+                    AllowsMixedTender = mixed
+                });
+            }
+        }
+
+        var branchCompanies = await context.Branches
+            .Select(b => new { b.Id, b.CompanyId })
+            .ToDictionaryAsync(b => b.Id, b => b.CompanyId, cancellationToken);
+        var cashboxesMissingCompany = await context.Cashboxes
+            .Where(c => c.CompanyId == null || c.CompanyId == Guid.Empty)
+            .ToListAsync(cancellationToken);
+        foreach (var cashbox in cashboxesMissingCompany)
+        {
+            if (branchCompanies.TryGetValue(cashbox.BranchId, out var companyId))
+                cashbox.CompanyId = companyId;
+        }
 
         await context.SaveChangesAsync(cancellationToken);
     }

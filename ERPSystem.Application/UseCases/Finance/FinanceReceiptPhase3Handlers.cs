@@ -18,6 +18,7 @@ public sealed class CreateReceiptVoucherHandler(
     IReceiptInvoicePaymentRepository paymentRepository,
     ICashboxPostingValidator cashboxValidator,
     IBankAccountPostingValidator bankAccountValidator,
+    IPaymentMethodRepository paymentMethodRepository,
     IUnitOfWork unitOfWork,
     INumberingService numberingService,
     IPermissionService permissionService)
@@ -54,6 +55,13 @@ public sealed class CreateReceiptVoucherHandler(
         var allocationTotal = command.Allocations.Sum(a => a.Amount);
         if (allocationTotal > command.Amount)
             return ApplicationResult<Guid>.ValidationFailed("Allocations", "مجموع التخصيصات يتجاوز مبلغ السند.");
+
+        var paymentMethods = await paymentMethodRepository.GetActiveForCompanyAsync(
+            command.CompanyId, cancellationToken);
+        if (paymentMethods.All(m => m.Id != command.PaymentMethodId))
+            return ApplicationResult<Guid>.ValidationFailed(
+                "PaymentMethodId",
+                "وسيلة الدفع غير مهيأة. أعد تشغيل التطبيق أو تواصل مع الدعم لإصلاح إعدادات المالية.");
 
         try
         {
