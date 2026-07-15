@@ -212,21 +212,21 @@ public sealed class PostReceiptVoucherHandler(
         if (customer is null)
             return ApplicationResult.NotFound("Customer not found.");
 
-        var allocated = await voucherRepository.GetAllocatedTotalAsync(voucher.Id, cancellationToken);
-        if (allocated > voucher.Amount.Amount)
-            return ApplicationResult.ValidationFailed("Allocations", "التخصيصات تتجاوز مبلغ السند.");
+            var allocated = await voucherRepository.GetAllocatedTotalAsync(voucher.Id, cancellationToken);
+            if (allocated > voucher.Amount.Amount)
+                return ApplicationResult.ValidationFailed("Allocations", "التخصيصات تتجاوز مبلغ السند.");
 
-        try
-        {
-            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-            if (voucher.Status is VoucherStatus.Draft or VoucherStatus.Submitted)
-                voucher.Approve();
-            voucher.Post();
+                if (voucher.Status is VoucherStatus.Draft or VoucherStatus.Submitted)
+                    voucher.Approve();
+                voucher.Post();
 
-            if (customer.Customer.Type == CustomerType.Credit)
-                customer.RecordPostedReceipt(voucher.Amount.Amount);
-            cashbox.ApplyReceipt(voucher.Amount);
+                if (customer.Customer.Type == CustomerType.Credit && allocated > 0)
+                    customer.RecordPostedReceipt(allocated);
+                cashbox.ApplyReceipt(voucher.Amount);
 
             await voucherRepository.UpdateAsync(voucher, cancellationToken);
             await customerRepository.UpdateAsync(customer, cancellationToken);
@@ -348,6 +348,8 @@ public sealed class ReverseReceiptVoucherHandler(
         if (customer is null || cashbox is null)
             return ApplicationResult.NotFound("Customer or cashbox not found.");
 
+        var allocated = await voucherRepository.GetAllocatedTotalAsync(original.Id, cancellationToken);
+
         try
         {
             await unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -366,8 +368,8 @@ public sealed class ReverseReceiptVoucherHandler(
             reversal.Post();
             original.MarkReversed(command.Reason);
 
-            if (customer.Customer.Type == CustomerType.Credit)
-                customer.RecordPostedInvoice(original.Amount.Amount);
+            if (customer.Customer.Type == CustomerType.Credit && allocated > 0)
+                customer.RecordPostedInvoice(allocated);
             cashbox.ApplyPayment(original.Amount);
 
             await voucherRepository.AddAsync(reversal, cancellationToken);

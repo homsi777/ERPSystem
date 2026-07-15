@@ -58,8 +58,14 @@ public class Customer
             Balance = Balance.Add(invoiceTotal);
     }
 
-    public void ApplyPostedReceipt(Money amount) =>
-        Balance = Balance.Subtract(amount);
+    public void ApplyPostedReceipt(Money amount)
+    {
+        if (amount.Amount <= 0)
+            return;
+
+        var newBalance = Math.Max(0m, Balance.Amount - amount.Amount);
+        Balance = new Money(newBalance, Balance.Currency);
+    }
 
     public void MarkOpeningBalancePosted(decimal amount)
     {

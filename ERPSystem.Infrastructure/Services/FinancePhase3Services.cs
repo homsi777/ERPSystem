@@ -119,6 +119,18 @@ internal sealed class ReceiptTenderResolver(
             return (cashResult.ResolvedAccountId!.Value, method.Kind == (int)PaymentMethodKind.Advance);
         }
 
+        if (tender.CashboxId is Guid fallbackCashboxId)
+        {
+            var cashResult = await cashboxValidator.ValidateForReceiptAsync(
+                companyId, fallbackCashboxId, tender.Currency, cancellationToken);
+            if (cashResult.IsValid)
+                return (cashResult.ResolvedAccountId!.Value, method.Kind == (int)PaymentMethodKind.Advance);
+        }
+
+        if (method.Kind == (int)PaymentMethodKind.CustomerCredit)
+            throw new InvalidOperationException(
+                "وسيلة «رصيد عميل» للمبيعات فقط — اختر نقدي أو تحويل بنكي لسند القبض.");
+
         throw new InvalidOperationException($"Payment method '{method.Code}' is not configured for receipt posting.");
     }
 }

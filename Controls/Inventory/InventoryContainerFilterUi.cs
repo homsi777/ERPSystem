@@ -263,6 +263,11 @@ internal static class InventoryContainerFilterUi
             "\uE81E",
             new("#EFF6FF", "#BFDBFE", "#2563EB", "#1D4ED8", "#1E40AF")));
         panel.Children.Add(CreateMetricCard(
+            "اليارد",
+            AppFormats.Number(stock.Sum(s => s.TotalYards), 0),
+            "\uE81E",
+            new("#ECFEFF", "#A5F3FC", "#0891B2", "#0E7490", "#155E75")));
+        panel.Children.Add(CreateMetricCard(
             "المتاح",
             AppFormats.Number(stock.Sum(s => s.AvailableMeters), 0),
             "\uE73E",

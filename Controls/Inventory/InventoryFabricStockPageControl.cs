@@ -66,6 +66,7 @@ public sealed class InventoryFabricStockPageControl : UserControl
         ErpUiFactory.AddGridColumn(_grid, "الحاوية", nameof(FabricStockBalanceDto.ContainerNumber), 120, null);
         ErpUiFactory.AddGridColumn(_grid, "الأثواب", nameof(FabricStockBalanceDto.RollCount), 70, null);
         ErpUiFactory.AddGridColumn(_grid, "الإجمالي م", nameof(FabricStockBalanceDto.TotalMeters), 90, "N2");
+        ErpUiFactory.AddGridColumn(_grid, "الإجمالي ي", nameof(FabricStockBalanceDto.TotalYards), 90, "N2");
         ErpUiFactory.AddGridColumn(_grid, "المحجوز م", nameof(FabricStockBalanceDto.ReservedMeters), 90, "N2");
         ErpUiFactory.AddGridColumn(_grid, "المتاح م", nameof(FabricStockBalanceDto.AvailableMeters), 90, "N2");
         ErpUiFactory.AddGridColumn(_grid, "القيمة $", nameof(FabricStockBalanceDto.InventoryValue), 100, "N2");

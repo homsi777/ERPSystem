@@ -40,7 +40,7 @@ public static class FabricRollDetailsPopup
             BuildContent(rolls, WpfGeneralManagerAccess.CanViewSensitivePricing),
             "\uE7B8",
             760,
-            640);
+            720);
     }
 
     private static UIElement BuildContent(IReadOnlyList<FabricRollListDto> rolls, bool showPricing)
@@ -48,9 +48,10 @@ public static class FabricRollDetailsPopup
         var panel = new StackPanel { Margin = new Thickness(16) };
 
         var totalRemaining = rolls.Sum(r => r.RemainingLengthMeters);
+        var totalRemainingYards = rolls.Sum(r => r.RemainingLengthYards);
         var summary = showPricing
-            ? $"عدد الأتواب: {rolls.Count}  •  إجمالي المتبقي: {totalRemaining:N2} م  •  القيمة: {rolls.Sum(r => r.CurrentValue):N2} $"
-            : $"عدد الأتواب: {rolls.Count}  •  إجمالي المتبقي: {totalRemaining:N2} م";
+            ? $"عدد الأتواب: {rolls.Count}  •  إجمالي المتبقي: {totalRemaining:N2} م ({totalRemainingYards:N2} ي)  •  القيمة: {rolls.Sum(r => r.CurrentValue):N2} $"
+            : $"عدد الأتواب: {rolls.Count}  •  إجمالي المتبقي: {totalRemaining:N2} م ({totalRemainingYards:N2} ي)";
         panel.Children.Add(new TextBlock
         {
             Text = summary,
@@ -63,11 +64,14 @@ public static class FabricRollDetailsPopup
         ErpUiFactory.AddGridColumn(grid, "رقم التوب", nameof(FabricRollListDto.RollNumber), 90, null);
         ErpUiFactory.AddGridColumn(grid, "اللوت", nameof(FabricRollListDto.LotCode), 90, null);
         ErpUiFactory.AddGridColumn(grid, "الباركود", nameof(FabricRollListDto.Barcode), 120, null);
-        ErpUiFactory.AddGridColumn(grid, "الطول الأصلي", nameof(FabricRollListDto.LengthMeters), 100, "N2");
-        ErpUiFactory.AddGridColumn(grid, "المتبقي", nameof(FabricRollListDto.RemainingLengthMeters), 90, "N2");
+        ErpUiFactory.AddGridColumn(grid, "الطول الأصلي (م)", nameof(FabricRollListDto.LengthMeters), 100, "N2");
+        ErpUiFactory.AddGridColumn(grid, "الطول الأصلي (ي)", nameof(FabricRollListDto.LengthYards), 100, "N2");
+        ErpUiFactory.AddGridColumn(grid, "المتبقي (م)", nameof(FabricRollListDto.RemainingLengthMeters), 90, "N2");
+        ErpUiFactory.AddGridColumn(grid, "المتبقي (ي)", nameof(FabricRollListDto.RemainingLengthYards), 90, "N2");
         if (showPricing)
         {
             ErpUiFactory.AddGridColumn(grid, "التكلفة/م", nameof(FabricRollListDto.CostPerMeter), 90, "N2");
+            ErpUiFactory.AddGridColumn(grid, "التكلفة/ي", nameof(FabricRollListDto.CostPerYard), 90, "N2");
             ErpUiFactory.AddGridColumn(grid, "القيمة $", nameof(FabricRollListDto.CurrentValue), 100, "N2");
         }
         ErpUiFactory.AddGridColumn(grid, "الموقع", nameof(FabricRollListDto.LocationCode), 80, null);

@@ -3,6 +3,7 @@ using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Expenses;
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Controls.Finance;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
@@ -272,10 +273,15 @@ public sealed class ReceiptVoucherPageControl : UserControl
         var methods = await FinanceUiService.Instance.GetPaymentMethodsAsync();
         if (ApplicationResultPresenter.Present(methods) && methods.Value is { Count: > 0 })
         {
-            _paymentMethod.ItemsSource = methods.Value;
+            var receiptMethods = methods.Value
+                .Where(m => m.Kind is not PaymentMethodKind.CustomerCredit and not PaymentMethodKind.Advance)
+                .ToList();
+            _paymentMethod.ItemsSource = receiptMethods;
             _paymentMethod.DisplayMemberPath = nameof(PaymentMethodDto.Name);
             _paymentMethod.SelectedValuePath = nameof(PaymentMethodDto.Id);
-            _paymentMethod.SelectedIndex = 0;
+            _paymentMethod.SelectedIndex = receiptMethods.FindIndex(m => m.Kind == PaymentMethodKind.Cash);
+            if (_paymentMethod.SelectedIndex < 0)
+                _paymentMethod.SelectedIndex = 0;
         }
 
         var banks = await FinanceUiService.Instance.GetBankAccountsAsync();

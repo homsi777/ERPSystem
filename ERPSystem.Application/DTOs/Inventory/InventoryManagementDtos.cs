@@ -1,3 +1,6 @@
+using ERPSystem.Application.Common;
+using ERPSystem.Domain.Enums;
+
 namespace ERPSystem.Application.DTOs.Inventory;
 
 public sealed class WarehouseListExtendedDto
@@ -71,6 +74,15 @@ public sealed class FabricStockBalanceDto
     public decimal ReservedMeters { get; init; }
     public decimal AvailableMeters { get; init; }
     public decimal InventoryValue { get; init; }
+
+    public decimal TotalYards =>
+        ChinaImportLengthDisplay.FromStoredLength(TotalMeters, DplQuantityUnit.Yards);
+
+    public decimal ReservedYards =>
+        ChinaImportLengthDisplay.FromStoredLength(ReservedMeters, DplQuantityUnit.Yards);
+
+    public decimal AvailableYards =>
+        ChinaImportLengthDisplay.FromStoredLength(AvailableMeters, DplQuantityUnit.Yards);
 }
 
 public sealed class FabricRollListDto
@@ -84,6 +96,16 @@ public sealed class FabricRollListDto
     public decimal RemainingLengthMeters { get; init; }
     public decimal CostPerMeter { get; init; }
     public decimal CurrentValue { get; init; }
+
+    public decimal LengthYards =>
+        ChinaImportLengthDisplay.FromStoredLength(LengthMeters, DplQuantityUnit.Yards);
+
+    public decimal RemainingLengthYards =>
+        ChinaImportLengthDisplay.FromStoredLength(RemainingLengthMeters, DplQuantityUnit.Yards);
+
+    public decimal CostPerYard =>
+        ChinaImportLengthDisplay.FromStoredRate(CostPerMeter, DplQuantityUnit.Yards);
+
     public string Status { get; init; } = "";
     public string? BatchNumber { get; init; }
     public string? LocationCode { get; init; }

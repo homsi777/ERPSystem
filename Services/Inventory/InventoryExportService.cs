@@ -39,6 +39,7 @@ public static class InventoryExportService
             ("الحاوية", s => s.ContainerNumber),
             ("Rolls", s => s.RollCount),
             ("أمتار", s => s.TotalMeters),
+            ("يارد", s => s.TotalYards),
             ("محجوز", s => s.ReservedMeters),
             ("متاح", s => s.AvailableMeters),
             ("قيمة", s => s.InventoryValue));

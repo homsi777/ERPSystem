@@ -200,6 +200,11 @@ public sealed class InventoryDashboardControl : UserControl
             "\uE81E",
             new("#ECFEFF", "#A5F3FC", "#0891B2", "#0E7490", "#155E75")));
         kpis.Children.Add(InventoryContainerFilterUi.CreateMetricCard(
+            "اليارد",
+            $"{stock.Sum(s => s.TotalYards):N0}",
+            "\uE81E",
+            new("#F0FDFA", "#99F6E4", "#0D9488", "#0F766E", "#115E59")));
+        kpis.Children.Add(InventoryContainerFilterUi.CreateMetricCard(
             "محجوز",
             $"{stock.Sum(s => s.ReservedMeters):N0}",
             "\uE8F1",
@@ -304,6 +309,7 @@ public sealed class InventoryDashboardControl : UserControl
         ErpUiFactory.AddGridColumn(g, "اللون", nameof(FabricStockBalanceDto.ColorName), 90, null);
         ErpUiFactory.AddGridColumn(g, "الأثواب", nameof(FabricStockBalanceDto.RollCount), 70, null);
         ErpUiFactory.AddGridColumn(g, "الأمتار", nameof(FabricStockBalanceDto.TotalMeters), 90, "N2");
+        ErpUiFactory.AddGridColumn(g, "اليارد", nameof(FabricStockBalanceDto.TotalYards), 90, "N2");
         ErpUiFactory.AddGridColumn(g, "القيمة", nameof(FabricStockBalanceDto.InventoryValue), 100, "N2");
         g.MouseDoubleClick += (_, _) =>
         {

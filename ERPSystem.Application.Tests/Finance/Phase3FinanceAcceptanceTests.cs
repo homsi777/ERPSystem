@@ -66,6 +66,15 @@ public sealed class Phase3FinanceAcceptanceTests
         Assert.NotEqual(Guid.Empty, FinanceAccountIds.CustomerAdvances);
     }
 
+    [Fact]
+    public void Customer_apply_posted_receipt_with_zero_balance_does_not_go_negative()
+    {
+        var customer = Domain.Entities.Parties.Customer.Create(
+            Guid.NewGuid(), "C-001", "عميل", "Customer", CustomerType.Credit);
+        customer.ApplyPostedReceipt(new Money(5000));
+        Assert.Equal(0m, customer.Balance.Amount);
+    }
+
     [Theory]
     [InlineData(PostingKind.ReceiptVoucherCollection)]
     [InlineData(PostingKind.ReceiptVoucherReversal)]
