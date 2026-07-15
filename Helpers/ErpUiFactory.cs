@@ -304,6 +304,23 @@ namespace ERPSystem.Helpers
             ToolTip = "ملاحظة اختيارية"
         };
 
+        public static TextBox FormCostEntryAmountField(string? text = null) => new()
+        {
+            Text = text ?? "",
+            Height = ErpDesignTokens.ControlHeight,
+            Style = S("EnterpriseCostEntryAmountInputStyle"),
+            FontSize = ErpDesignTokens.FontBody - 1
+        };
+
+        public static TextBox FormCostEntryNoteField(string? text = null) => new()
+        {
+            Text = text ?? "",
+            Height = ErpDesignTokens.ControlHeight,
+            Style = S("EnterpriseCostEntryNoteInputStyle"),
+            FontSize = ErpDesignTokens.FontBody - 1,
+            ToolTip = "ملاحظة اختيارية"
+        };
+
         public static TextBox FormField(string? text = null) => new()
         {
             Text = text ?? "",

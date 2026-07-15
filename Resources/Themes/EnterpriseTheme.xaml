@@ -500,6 +500,31 @@
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
+    <!-- China import cost entry — clearer field borders for amount + note pairs -->
+    <Style x:Key="EnterpriseCostEntryAmountInputStyle" TargetType="TextBox" BasedOn="{StaticResource EnterpriseInputStyle}">
+        <Setter Property="Background" Value="{StaticResource AccentOrdersLightBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource AccentOrdersBrush}"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="EnterpriseCostEntryNoteInputStyle" TargetType="TextBox" BasedOn="{StaticResource EnterpriseInputStyle}">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="{StaticResource PrimaryLightBrush}"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource AccentOrdersBrush}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="EnterpriseSearchInputStyle" TargetType="TextBox">
         <Setter Property="Foreground" Value="{StaticResource InputTextBrush}"/>
         <Setter Property="CaretBrush" Value="{StaticResource InputTextBrush}"/>
