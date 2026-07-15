@@ -25,6 +25,14 @@ public static class CustomerMapper
         var opening = financials?.OpeningBalanceAmount ?? 0m;
         var invoiced = financials?.TotalInvoiced ?? 0m;
         var receipts = financials?.TotalReceipts ?? 0m;
+
+        if (opening <= 0 && aggregate.Customer.OpeningBalancePosted)
+        {
+            var implied = aggregate.Customer.Balance.Amount + receipts - invoiced;
+            if (implied > 0)
+                opening = implied;
+        }
+
         var computed = opening + invoiced - receipts;
 
         return new CustomerListDto
