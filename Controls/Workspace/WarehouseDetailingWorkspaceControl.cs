@@ -188,9 +188,9 @@ namespace ERPSystem.Controls.Workspace
                         ? roll.DraftRollNumber.Value.ToString(CultureInfo.InvariantCulture)
                         : "",
                     LengthText = roll.HasValidLength && roll.LengthMeters > 0
-                        ? roll.LengthMeters.ToString(CultureInfo.CurrentCulture)
+                        ? roll.LengthMeters.ToString(CultureInfo.InvariantCulture)
                         : (roll.DraftLengthMeters is > 0
-                            ? roll.DraftLengthMeters.Value.ToString(CultureInfo.CurrentCulture)
+                            ? roll.DraftLengthMeters.Value.ToString(CultureInfo.InvariantCulture)
                             : ""),
                     IsCurrent = roll.RollSequence == 1
                 });

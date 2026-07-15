@@ -157,7 +157,7 @@ namespace ERPSystem.Controls.Sales
             {
                 if (!SetField(ref _rollCount, value))
                     return;
-                var text = value.ToString(CultureInfo.CurrentCulture);
+                var text = AppFormats.Number(value);
                 if (_rollCountText != text)
                 {
                     _rollCountText = text;
@@ -234,7 +234,7 @@ namespace ERPSystem.Controls.Sales
         public bool HasDiscount => PerMeterDiscount > 0;
 
         public string DiscountHint =>
-            HasDiscount ? $"-{PerMeterDiscount.ToString("N2", CultureInfo.CurrentCulture)} $/م" : "—";
+            HasDiscount ? $"-{AppFormats.Number(PerMeterDiscount, 2)} $/م" : "—";
 
         public string DiscountReason
         {
@@ -321,7 +321,7 @@ namespace ERPSystem.Controls.Sales
         }
 
         internal static string FormatUnitPriceDisplay(decimal value) =>
-            value.ToString("N2", CultureInfo.CurrentCulture);
+            AppFormats.Number(value, 2);
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -1364,20 +1364,18 @@ namespace ERPSystem.Controls.Sales
 
             if (isDetailed)
             {
-                TxtTotalMeters.Text = _loadedTotalMeters.ToString("N2", CultureInfo.CurrentCulture);
-                TxtSubTotal.Text = _loadedSubTotal.ToString("N2", CultureInfo.CurrentCulture);
+                TxtTotalMeters.Text = AppFormats.Number(_loadedTotalMeters, 2);
+                TxtSubTotal.Text = AppFormats.Number(_loadedSubTotal, 2);
                 TxtDiscountApplied.Text = FormatDiscountSummaryText(_loadedDiscountTotal);
-                TxtGrandTotal.Text = _loadedGrandTotal.ToString("N2", CultureInfo.CurrentCulture);
+                TxtGrandTotal.Text = AppFormats.Number(_loadedGrandTotal, 2);
                 var currencyLabel = GetSelectedCurrencyLabel();
                 TxtSubTotalCurrency.Text = currencyLabel;
                 TxtGrandTotalCurrency.Text = currencyLabel;
             }
             else if (HasTaxSummaryToShow())
             {
-                TxtSubTotal.Text = (_previewTaxableAmount + _previewLineDiscountTotal)
-                    .ToString("N2", CultureInfo.CurrentCulture);
-                TxtGrandTotal.Text = (_previewGrandTotal > 0 ? _previewGrandTotal : _loadedGrandTotal)
-                    .ToString("N2", CultureInfo.CurrentCulture);
+                TxtSubTotal.Text = AppFormats.Number(_previewTaxableAmount + _previewLineDiscountTotal, 2);
+                TxtGrandTotal.Text = AppFormats.Number(_previewGrandTotal > 0 ? _previewGrandTotal : _loadedGrandTotal, 2);
             }
         }
 
@@ -1391,18 +1389,10 @@ namespace ERPSystem.Controls.Sales
             var lineDiscount = isDetailed ? _loadedLineDiscountTotal : _previewLineDiscountTotal;
             var rounding = isDetailed ? _loadedRoundingDifference : _previewRoundingDifference;
 
-            TxtTaxableAmount.Text = taxable > 0
-                ? taxable.ToString("N2", CultureInfo.CurrentCulture)
-                : "—";
-            TxtTaxTotal.Text = taxTotal > 0
-                ? taxTotal.ToString("N2", CultureInfo.CurrentCulture)
-                : "—";
-            TxtLineDiscountSummary.Text = lineDiscount > 0
-                ? lineDiscount.ToString("N2", CultureInfo.CurrentCulture)
-                : "—";
-            TxtRoundingDifference.Text = rounding != 0
-                ? rounding.ToString("N2", CultureInfo.CurrentCulture)
-                : "—";
+            TxtTaxableAmount.Text = taxable > 0 ? AppFormats.Number(taxable, 2) : "—";
+            TxtTaxTotal.Text = taxTotal > 0 ? AppFormats.Number(taxTotal, 2) : "—";
+            TxtLineDiscountSummary.Text = lineDiscount > 0 ? AppFormats.Number(lineDiscount, 2) : "—";
+            TxtRoundingDifference.Text = rounding != 0 ? AppFormats.Number(rounding, 2) : "—";
 
             TxtLegacyTaxBanner.Visibility = _isLegacyUntaxed ? Visibility.Visible : Visibility.Collapsed;
             if (_isLegacyUntaxed)
@@ -1527,10 +1517,10 @@ namespace ERPSystem.Controls.Sales
         private bool CanEditDiscount() => false;
 
         private static string FormatDiscountEntryText(decimal amount) =>
-            amount > 0 ? amount.ToString("N2", CultureInfo.CurrentCulture) : string.Empty;
+            amount > 0 ? AppFormats.Number(amount, 2) : string.Empty;
 
         private static string FormatDiscountSummaryText(decimal amount) =>
-            amount > 0 ? amount.ToString("N2", CultureInfo.CurrentCulture) : "—";
+            amount > 0 ? AppFormats.Number(amount, 2) : "—";
 
         private decimal GetDiscountAmount()
         {
@@ -2030,12 +2020,12 @@ namespace ERPSystem.Controls.Sales
                         e.Cancel = true;
                         _cellEditFailed = true;
                         MockInteractionService.ShowWarning("أدخل عدداً صحيحاً موجباً لعدد الأثواب.");
-                        row.RollCountText = row.RollCount.ToString(CultureInfo.CurrentCulture);
+                        row.RollCountText = AppFormats.Number(row.RollCount);
                         textBox.Text = row.RollCountText;
                         return;
                     }
                     row.RollCount = rolls;
-                    row.RollCountText = rolls.ToString(CultureInfo.CurrentCulture);
+                    row.RollCountText = AppFormats.Number(rolls);
                     break;
 
                 case "سعر الوحدة":

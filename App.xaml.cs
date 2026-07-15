@@ -24,6 +24,7 @@ using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace ERPSystem;
 
@@ -31,11 +32,16 @@ public partial class App : System.Windows.Application
 {
     private SshTunnelService? _sshTunnel;
 
+    static App()
+    {
+        // Must run before any FrameworkElement / XAML object is created.
+        AppCulture.ConfigureWpfPresentation();
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
-        AppCulture.ConfigureWpfPresentation();
         AppCulture.Apply();
-        LatinDigitPresentationHook.EnableApplicationWide();
+        LatinDigitPresentation.Enable();
         LocalizationManager.Instance.LanguageChanged += (_, _) =>
             AppCulture.ApplyForLanguage(LocalizationManager.Instance.CurrentLanguage);
 
@@ -180,7 +186,10 @@ public partial class App : System.Windows.Application
                 using (windowScope.MeasureMapping())
                     window = new MainWindow();
                 using (windowScope.MeasureRendering())
+                {
                     window.Show();
+                    MaybeRunDigitAudit(window);
+                }
                 MainWindow = window;
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
             }
@@ -249,6 +258,28 @@ public partial class App : System.Windows.Application
         {
             // Best-effort only.
         }
+    }
+
+    private static void MaybeRunDigitAudit(Window mainWindow)
+    {
+        if (!string.Equals(Environment.GetEnvironmentVariable("ERP_DIGIT_AUDIT"), "1", StringComparison.Ordinal))
+            return;
+
+        mainWindow.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
+        {
+            try
+            {
+                var dir = Path.Combine(Path.GetTempPath(), "erp-digit-audit");
+                Directory.CreateDirectory(dir);
+                var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                var path = Path.Combine(dir, $"main-after-{stamp}.txt");
+                LatinDigitVisualTreeDiagnostic.WriteReportToFile("MainWindow", mainWindow, path);
+            }
+            catch
+            {
+                // best-effort diagnostic only
+            }
+        });
     }
 
     private static Window CreateConnectionStatusWindow() => new()
