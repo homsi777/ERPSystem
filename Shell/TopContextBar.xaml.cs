@@ -4,6 +4,7 @@ using ERPSystem.Core;
 using ERPSystem.Services;
 using ERPSystem.Services.Search;
 using ERPSystem.Services.Settings;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -256,12 +257,8 @@ namespace ERPSystem.Shell
 
             if (loc.IsArabic)
             {
-                TxtCurrentDate.Text = now.ToString(
-                    "dddd، d MMMM yyyy",
-                    AppCulture.ArabicGregorianWithLatinDigits);
-                TxtCurrentTime.Text = now.ToString(
-                    "hh:mm:ss tt",
-                    AppCulture.ArabicGregorianWithLatinDigits);
+                TxtCurrentDate.Text = AppCulture.FormatArabicDateWithLatinDayNumbers(now);
+                TxtCurrentTime.Text = now.ToString("hh:mm:ss tt", CultureInfo.InvariantCulture);
             }
             else
             {

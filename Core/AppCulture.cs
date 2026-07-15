@@ -11,11 +11,13 @@ namespace ERPSystem.Core;
 public static class AppCulture
 {
     private const string LatinLanguageTag = "en-US";
+    private const string ArabicLatinDigitsTag = "ar-EG-u-nu-latn";
 
     public static CultureInfo ArabicWithLatinDigits { get; } = CreateArabicWithLatinDigits();
     public static CultureInfo ArabicGregorianWithLatinDigits { get; } = CreateArabicGregorianWithLatinDigits();
 
-    public static CultureInfo FormatCulture => Thread.CurrentThread.CurrentCulture;
+    /// <summary>Culture for all user-visible numbers and numeric date parts.</summary>
+    public static CultureInfo FormatCulture => ArabicWithLatinDigits;
 
     static AppCulture()
     {
@@ -52,26 +54,41 @@ public static class AppCulture
 
     private static CultureInfo CreateArabicWithLatinDigits()
     {
-        // ar-EG supports the Gregorian calendar while retaining Arabic date names.
-        // ar-SA may support only the Um Al-Qura calendar on some Windows installations.
-        var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
+        var culture = TryGetCulture(ArabicLatinDigitsTag)
+            ?? (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
         ApplyGregorianLatinDigits(culture);
         return culture;
     }
 
     private static CultureInfo CreateArabicGregorianWithLatinDigits()
     {
-        var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
+        var culture = TryGetCulture(ArabicLatinDigitsTag)
+            ?? (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
         ApplyGregorianLatinDigits(culture);
         return culture;
     }
 
+    private static CultureInfo? TryGetCulture(string name)
+    {
+        try
+        {
+            return (CultureInfo)CultureInfo.GetCultureInfo(name).Clone();
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
+    }
+
     private static void ApplyGregorianLatinDigits(CultureInfo culture)
     {
-        // NativeDigits is owned by NumberFormatInfo. Cloning en-US is more reliable than
-        // relying on each Arabic Windows locale's digit-shaping preference.
-        culture.NumberFormat = (NumberFormatInfo)CultureInfo.GetCultureInfo(LatinLanguageTag).NumberFormat.Clone();
-        culture.DateTimeFormat.Calendar = new GregorianCalendar();
+        var latin = CultureInfo.GetCultureInfo(LatinLanguageTag);
+        culture.NumberFormat = (NumberFormatInfo)latin.NumberFormat.Clone();
+        culture.NumberFormat.DigitSubstitution = DigitShapes.None;
+
+        var dateFormat = (DateTimeFormatInfo)culture.DateTimeFormat.Clone();
+        dateFormat.Calendar = new GregorianCalendar();
+        culture.DateTimeFormat = dateFormat;
     }
 
     private static void AssertLatinDigits(CultureInfo culture)
@@ -79,8 +96,19 @@ public static class AppCulture
         var rendered = string.Concat(
             1234.5m.ToString("N1", culture),
             " ",
-            new DateTime(2026, 7, 15).ToString("yyyy/MM/dd", culture));
+            new DateTime(2026, 7, 15).ToString("yyyy/MM/dd", culture),
+            " ",
+            FormatArabicDateWithLatinDayNumbers(new DateTime(2026, 7, 15), culture));
         if (rendered.Any(c => c is >= '٠' and <= '٩' or >= '۰' and <= '۹'))
             throw new InvalidOperationException("تهيئة ثقافة التطبيق يجب أن تعرض الأرقام بالأرقام الغربية.");
+    }
+
+    /// <summary>Arabic weekday/month names with Latin day/year numbers.</summary>
+    public static string FormatArabicDateWithLatinDayNumbers(DateTime value, CultureInfo? culture = null)
+    {
+        culture ??= ArabicGregorianWithLatinDigits;
+        var dayName = culture.DateTimeFormat.GetDayName(value.DayOfWeek);
+        var monthName = culture.DateTimeFormat.GetMonthName(value.Month);
+        return $"{dayName}، {value.Day.ToString(CultureInfo.InvariantCulture)} {monthName} {value.Year.ToString(CultureInfo.InvariantCulture)}";
     }
 }

@@ -603,6 +603,9 @@ namespace ERPSystem.Infrastructure.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("DplQuantityUnit")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("ExchangeRateToLocalCurrency")
                         .HasPrecision(18, 6)
                         .HasColumnType("numeric(18,6)");
@@ -677,6 +680,13 @@ namespace ERPSystem.Infrastructure.Migrations
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal?>("DplQuantityNative")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int?>("DplQuantityUnit")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("FabricColorId")
                         .HasColumnType("uuid");

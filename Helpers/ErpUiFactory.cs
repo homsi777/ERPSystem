@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ERPSystem.Core;
 using System.Windows.Data;
+using System.Windows.Markup;
 using System.Windows.Media;
 
 namespace ERPSystem.Helpers
@@ -253,13 +254,19 @@ namespace ERPSystem.Helpers
             FontSize = ErpDesignTokens.FontBody - 1
         };
 
-        public static DatePicker FormDate(DateTime? date = null) => new()
+        public static DatePicker FormDate(DateTime? date = null)
         {
-            SelectedDate = date ?? DateTime.Today,
-            Height = ErpDesignTokens.ControlHeight,
-            Width = 160,
-            Style = S("EnterpriseDatePickerStyle")
-        };
+            var picker = new DatePicker
+            {
+                SelectedDate = date ?? DateTime.Today,
+                Height = ErpDesignTokens.ControlHeight,
+                Width = 160,
+                Style = S("EnterpriseDatePickerStyle"),
+                Language = XmlLanguage.GetLanguage("en-US")
+            };
+            LatinDigitDatePickerHelper.SetIsEnabled(picker, true);
+            return picker;
+        }
 
         private static System.Windows.Media.Effects.Effect? CardEffect() =>
             System.Windows.Application.Current.Resources["CardShadow"] as System.Windows.Media.Effects.Effect;

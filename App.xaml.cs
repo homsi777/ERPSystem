@@ -16,12 +16,14 @@ using ERPSystem.Services.Capital;
 using ERPSystem.Services.Accounting;
 using ERPSystem.Services.Finance;
 using ERPSystem.Services.Reports;
+using ERPSystem.Helpers;
 using ERPSystem.Views.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace ERPSystem;
 
@@ -35,6 +37,15 @@ public partial class App : System.Windows.Application
         AppCulture.Apply();
         LocalizationManager.Instance.LanguageChanged += (_, _) =>
             AppCulture.ApplyForLanguage(LocalizationManager.Instance.CurrentLanguage);
+
+        EventManager.RegisterClassHandler(
+            typeof(DatePicker),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                if (sender is DatePicker picker)
+                    LatinDigitDatePickerHelper.Enable(picker);
+            }));
 
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
