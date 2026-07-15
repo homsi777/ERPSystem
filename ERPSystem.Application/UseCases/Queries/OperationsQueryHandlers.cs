@@ -56,6 +56,7 @@ public sealed class GetContainerOperationsCenterHandler(
     ISupplierRepository supplierRepository,
     IInventoryRepository inventoryRepository,
     IPurchaseInvoiceRepository purchaseInvoiceRepository,
+    IWarehouseRepository warehouseRepository,
     IPermissionService permissions)
     : IQueryHandler<GetContainerOperationsCenterQuery, ApplicationResult<ContainerOperationsCenterDto>>
 {
@@ -79,18 +80,43 @@ public sealed class GetContainerOperationsCenterHandler(
         var linkedInvoice = await purchaseInvoiceRepository.GetBySourceContainerIdAsync(
             query.ContainerId, cancellationToken);
 
+        var moveGate = await ResolveMoveToWarehouseGateAsync(aggregate, permissions, warehouseRepository, cancellationToken);
+
         return ApplicationResult<ContainerOperationsCenterDto>.Success(new ContainerOperationsCenterDto
         {
             Container = baseDto.Container,
             Inventory = inventory,
             CanApprove = baseDto.CanApprove,
             CanSetSalePrices = baseDto.CanSetSalePrices,
-            CanMoveToWarehouse = baseDto.CanMoveToWarehouse,
+            CanMoveToWarehouse = moveGate.CanMove,
+            MoveToWarehouseBlockReason = moveGate.BlockReason,
             CanCalculateLandingCost = baseDto.CanCalculateLandingCost,
             IsReadyForSale = baseDto.IsReadyForSale,
             LinkedPurchaseInvoiceId = linkedInvoice?.Id,
             LinkedPurchaseInvoiceNumber = linkedInvoice?.InvoiceNumber
         });
+    }
+
+    internal static async Task<(bool CanMove, string? BlockReason)> ResolveMoveToWarehouseGateAsync(
+        Domain.Aggregates.ContainerAggregate aggregate,
+        IPermissionService permissions,
+        IWarehouseRepository warehouseRepository,
+        CancellationToken cancellationToken)
+    {
+        if (aggregate.Status != Domain.Enums.ChinaContainerStatus.Approved)
+            return (false, null);
+
+        if (!await permissions.CanAsync("containers.move-to-warehouse", cancellationToken))
+            return (false, "لا تملك صلاحية «تحويل للمخزن». اطلب من مدير النظام منح صلاحية containers.move-to-warehouse.");
+
+        if (aggregate.LandingCost is null)
+            return (false, "لم تُحسب تكلفة الوصول بعد. أكمل إدخال التكلفة قبل الترحيل للمخزن.");
+
+        var warehouses = await warehouseRepository.GetListAsync(aggregate.BranchId, cancellationToken);
+        if (warehouses.Count == 0)
+            return (false, "لا توجد مستودعات نشطة في هذا الفرع. أضف مستودعاً من «المخزون › المستودعات» ثم أعد المحاولة.");
+
+        return (true, null);
     }
 }
 

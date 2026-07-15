@@ -92,6 +92,7 @@ public sealed class ContainerOperationsCenterDto
     public bool CanApprove { get; init; }
     public bool CanSetSalePrices { get; init; }
     public bool CanMoveToWarehouse { get; init; }
+    public string? MoveToWarehouseBlockReason { get; init; }
     public bool CanCalculateLandingCost { get; init; }
     public bool IsReadyForSale { get; init; }
     public Guid? LinkedPurchaseInvoiceId { get; init; }

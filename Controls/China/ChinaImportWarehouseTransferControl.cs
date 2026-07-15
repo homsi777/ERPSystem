@@ -114,6 +114,14 @@ public sealed class ChinaImportWarehouseTransferControl : UserControl
             _detailsHost.Children.Add(ErpUxFactory.InfoBanner(
                 $"الحاوية في حالة «{c.Status.ToArabic()}». يجب اعتمادها قبل الترحيل للمخزن.",
                 "warning"));
+            _transferButton.IsEnabled = false;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_loaded.MoveToWarehouseBlockReason))
+        {
+            _detailsHost.Children.Add(ErpUxFactory.InfoBanner(_loaded.MoveToWarehouseBlockReason, "warning"));
+            _transferButton.IsEnabled = false;
             return;
         }
 
@@ -136,6 +144,12 @@ public sealed class ChinaImportWarehouseTransferControl : UserControl
         }
 
         _transferButton.IsEnabled = _loaded.CanMoveToWarehouse && warehouses.Count > 0;
+        if (warehouses.Count == 0)
+        {
+            _detailsHost.Children.Add(ErpUxFactory.InfoBanner(
+                "لا توجد مستودعات نشطة. أضف مستودعاً من «المخزون › المستودعات» ثم أعد فتح هذه الشاشة.",
+                "warning"));
+        }
     }
 
     private async Task TransferAsync()

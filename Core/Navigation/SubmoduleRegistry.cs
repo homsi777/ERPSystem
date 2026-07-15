@@ -20,6 +20,9 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Distribution", "توزيع الكميات", "\uE8AB"),
                 new SubmoduleDef("Stocktake", "جرد الحاوية", "\uE7B3"),
                 new SubmoduleDef("LandingCost", "ملخص تكلفة الاستيراد", "\uE8C1"),
+                new SubmoduleDef("SalePrice", "أسعار البيع", "\uE8CB"),
+                new SubmoduleDef("MoveToWarehouse", "تحويل للمخزن", "\uE8AB"),
+                new SubmoduleDef("ReadyForSale", "جاهز للبيع", "\uE73E"),
                 new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },
             AppModule.Inventory => new[]

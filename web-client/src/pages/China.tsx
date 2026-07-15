@@ -519,7 +519,15 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
 
   const approveMutation = useMutation({
     mutationFn: () => approveContainer(containerId),
-    onSuccess: () => void refreshAfterAction('تم اعتماد الحاوية.'),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['china-container-operations', containerId] });
+      await queryClient.invalidateQueries({ queryKey: ['china-containers'] });
+      const refreshed = await getContainerOperations(containerId);
+      setToast({ tone: 'success', message: 'تم اعتماد الحاوية.' });
+      if (refreshed.canMoveToWarehouse && can('containers.move-to-warehouse')) {
+        setActivePanel('move');
+      }
+    },
     onError: (error) => setToast(errorToast(error))
   });
   const archiveMutation = useMutation({
@@ -581,6 +589,7 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
             canSetSalePrices={data.canSetSalePrices && can('containers.landing-cost')}
             canApprove={data.canApprove && can('containers.approve')}
             canMoveToWarehouse={data.canMoveToWarehouse && can('containers.move-to-warehouse')}
+            moveBlockReason={data.moveToWarehouseBlockReason}
             canArchive={can('containers.approve') && container.status !== 8}
             onLanding={() => setActivePanel((current) => (current === 'landing' ? null : 'landing'))}
             onPrices={() => setActivePanel((current) => (current === 'prices' ? null : 'prices'))}
@@ -597,6 +606,12 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
           {activePanel === 'landing' ? <LandingCostForm container={container} onToast={setToast} onDone={(message) => void refreshAfterAction(message)} /> : null}
           {activePanel === 'prices' ? <SalePricesForm container={container} onToast={setToast} onDone={(message) => void refreshAfterAction(message)} /> : null}
           {activePanel === 'move' ? <MoveToWarehouseForm containerId={containerId} onToast={setToast} onDone={(message) => void refreshAfterAction(message)} /> : null}
+
+          {container.status === 5 && !data.canMoveToWarehouse && data.moveToWarehouseBlockReason ? (
+            <section className="form-panel form-compact">
+              <p className="field-note">{data.moveToWarehouseBlockReason}</p>
+            </section>
+          ) : null}
 
           <ContainerInfoSection container={container} />
           <LandingCostSection landingCost={container.landingCost} unit={container.dplQuantityUnit} />
@@ -842,6 +857,7 @@ function ActionPanel({
   canSetSalePrices,
   canApprove,
   canMoveToWarehouse,
+  moveBlockReason,
   canArchive,
   onLanding,
   onPrices,
@@ -854,6 +870,7 @@ function ActionPanel({
   canSetSalePrices: boolean;
   canApprove: boolean;
   canMoveToWarehouse: boolean;
+  moveBlockReason?: string | null;
   canArchive: boolean;
   onLanding: () => void;
   onPrices: () => void;
@@ -882,6 +899,9 @@ function ActionPanel({
           {pending ? 'جار التنفيذ...' : action.label}
         </button>
       ))}
+      {!canMoveToWarehouse && moveBlockReason ? (
+        <p className="field-note">{moveBlockReason}</p>
+      ) : null}
     </section>
   );
 }

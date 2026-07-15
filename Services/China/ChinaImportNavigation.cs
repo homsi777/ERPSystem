@@ -7,6 +7,7 @@ using ERPSystem.Core.Workspace;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services.China;
+using System.Windows;
 
 namespace ERPSystem.Services;
 
@@ -27,6 +28,52 @@ public static class ChinaImportNavigation
         }
 
         NavigationStateManager.Instance.NavigateTo(AppModule.ChinaImport, subPage);
+    }
+
+    /// <summary>
+    /// Opens the warehouse-transfer step after approval. Closes overlay workspaces so navigation is visible.
+    /// </summary>
+    public static void OpenMoveToWarehouseWorkflow(Guid containerId, ChinaContainerStatus? status = null)
+    {
+        ChinaImportNavigationContext.SetActiveContainer(containerId);
+
+        CloseContainerOverlayWorkspaces(containerId);
+
+        var resolvedStatus = status;
+        var hasParse = ChinaImportNavigationContext.GetParseResult() is not null;
+        var unitConfirmed = ChinaImportNavigationContext.IsDplQuantityUnitConfirmed;
+
+        if (!ChinaImportWorkflow.CanAccessRoute(
+                "MoveToWarehouse", resolvedStatus, hasParse, containerId, unitConfirmed))
+        {
+            MockInteractionService.ShowWarning(
+                "لا يمكن فتح خطوة «تحويل للمخزن». تأكد أن الحاوية في حالة «معتمدة».",
+                "سير عمل الاستيراد");
+            return;
+        }
+
+        NavigationStateManager.Instance.NavigateTo(AppModule.ChinaImport, "MoveToWarehouse");
+
+        if (System.Windows.Application.Current?.MainWindow is Window mainWindow)
+        {
+            if (mainWindow.WindowState == WindowState.Minimized)
+                mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Activate();
+        }
+    }
+
+    private static void CloseContainerOverlayWorkspaces(Guid containerId)
+    {
+        var manager = WorkspaceWindowManager.Instance;
+        var toClose = manager.OpenWorkspaces
+            .Where(w => w.EntityType == EntityType.ImportContainer &&
+                        w.EntityRow is ContainerListRow row &&
+                        row.Id == containerId &&
+                        w.ActionId is EntityActionId.ContainerApprove or EntityActionId.ContainerCosts)
+            .ToList();
+
+        foreach (var workspace in toClose)
+            manager.Close(workspace);
     }
 
     public static void OpenOperationsCenter(ContainerListRow row, string initialTab = "Overview")

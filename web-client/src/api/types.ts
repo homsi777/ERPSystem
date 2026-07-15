@@ -173,6 +173,7 @@ export type ContainerOperationsCenterDto = {
   canApprove: boolean;
   canSetSalePrices: boolean;
   canMoveToWarehouse: boolean;
+  moveToWarehouseBlockReason?: string | null;
   canCalculateLandingCost: boolean;
   isReadyForSale: boolean;
 };

@@ -70,13 +70,7 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
             Margin = new Thickness(8, 16, 0, 0),
             Visibility = Visibility.Collapsed
         };
-        _warehouseButton.Click += (_, _) =>
-        {
-            if (_loaded?.Container.Status == ChinaContainerStatus.InWarehouse)
-                ChinaImportNavigation.Navigate("ReadyForSale", _loaded.Container.Status);
-            else
-                ChinaImportNavigation.Navigate("MoveToWarehouse", _loaded?.Container.Status);
-        };
+        _warehouseButton.Click += (_, _) => NavigateToWarehouseStep();
 
         var backButton = new Button
         {
@@ -251,10 +245,49 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
         else
             _salePriceButton.Content = "إدخال أسعار البيع";
 
-        var showWarehouse = c.Status == ChinaContainerStatus.Approved && ops.CanMoveToWarehouse;
         var showReady = c.Status == ChinaContainerStatus.InWarehouse;
-        _warehouseButton.Visibility = showWarehouse || showReady ? Visibility.Visible : Visibility.Collapsed;
+        var canMove = c.Status == ChinaContainerStatus.Approved && ops.CanMoveToWarehouse;
+        _warehouseButton.Visibility = canMove || showReady ? Visibility.Visible : Visibility.Collapsed;
+        _warehouseButton.IsEnabled = canMove || showReady;
         _warehouseButton.Content = showReady ? "عرض — جاهز للبيع" : "التالي — تحويل للمخزن";
+
+        if (c.Status == ChinaContainerStatus.Approved && !ops.CanMoveToWarehouse
+            && !string.IsNullOrWhiteSpace(ops.MoveToWarehouseBlockReason))
+        {
+            _detailsHost.Children.Add(ErpUxFactory.InfoBanner(ops.MoveToWarehouseBlockReason, "warning"));
+        }
+        else if (canMove)
+        {
+            _detailsHost.Children.Add(ErpUxFactory.InfoBanner(
+                "الحاوية معتمدة — اضغط «التالي — تحويل للمخزن» لاختيار المستودع وترحيل الأرصدة.",
+                "success"));
+        }
+    }
+
+    private void NavigateToWarehouseStep()
+    {
+        if (_loaded is null)
+            return;
+
+        if (_loaded.Container.Status == ChinaContainerStatus.InWarehouse)
+        {
+            ChinaImportNavigation.Navigate("ReadyForSale", _loaded.Container.Status);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_loaded.MoveToWarehouseBlockReason))
+        {
+            MessageBox.Show(
+                _loaded.MoveToWarehouseBlockReason,
+                "تحويل للمخزن",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        ChinaImportNavigation.OpenMoveToWarehouseWorkflow(
+            _loaded.Container.Id,
+            _loaded.Container.Status);
     }
 
     private async Task ApproveAsync()
@@ -281,8 +314,8 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
 
             ChinaImportNavigationContext.SetActiveContainer(_loaded.Container.Id);
             await LoadAsync();
-            if (_loaded.Container.Status == ChinaContainerStatus.Approved)
-                ChinaImportNavigation.Navigate("MoveToWarehouse", _loaded?.Container.Status);
+            if (_loaded.Container.Status == ChinaContainerStatus.Approved && _loaded.CanMoveToWarehouse)
+                ChinaImportNavigation.OpenMoveToWarehouseWorkflow(_loaded.Container.Id, _loaded.Container.Status);
         }
         catch (Exception ex)
         {

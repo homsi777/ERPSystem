@@ -38,8 +38,7 @@ public static class ChinaContainerQuickActionRouter
                 _ = ArchiveAsync(row.Id);
                 return true;
             case "china:MoveToWarehouse":
-                ChinaImportNavigationContext.SetActiveContainer(row.Id);
-                ChinaImportNavigation.Navigate("MoveToWarehouse", row.Status);
+                ChinaImportNavigation.OpenMoveToWarehouseWorkflow(row.Id, row.Status);
                 return true;
             case "china:SalePrice":
                 ChinaImportNavigationContext.SetActiveContainer(row.Id);
@@ -121,6 +120,15 @@ public static class ChinaContainerQuickActionRouter
                 MockInteractionService.ShowSuccess(
                     "تم اعتماد الحاوية وإنشاء فاتورة الشراء في المشتريات.",
                     "اعتماد الحاوية");
+
+                var refreshed = await ContainerUiService.Instance.GetOperationsCenterAsync(containerId);
+                if (ApplicationResultPresenter.Present(refreshed)
+                    && refreshed.Value is { CanMoveToWarehouse: true } oc)
+                {
+                    ChinaImportNavigation.OpenMoveToWarehouseWorkflow(
+                        containerId,
+                        oc.Container.Status);
+                }
             }
         }
         catch (Exception ex)
