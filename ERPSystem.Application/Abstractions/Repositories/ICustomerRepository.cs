@@ -1,3 +1,4 @@
+using ERPSystem.Application.DTOs.Customers;
 using ERPSystem.Domain.Aggregates;
 
 namespace ERPSystem.Application.Abstractions.Repositories;
@@ -25,6 +26,12 @@ public interface ICustomerRepository
     Task<IReadOnlyList<CustomerAggregate>> GetWithPositiveBalanceAsync(
         Guid companyId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, CustomerListFinancialSummary>> GetFinancialSummariesAsync(
+        Guid companyId,
+        IReadOnlyList<Guid> customerIds,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default);
 

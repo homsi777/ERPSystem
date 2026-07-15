@@ -1,6 +1,7 @@
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Notifications;
 using ERPSystem.Dialogs;
+using ERPSystem.Services.Customers;
 using ERPSystem.Services.Sales;
 using System.Windows;
 
@@ -21,6 +22,13 @@ public sealed class WpfNotificationService : INotificationService
                 break;
             case CustomerDeactivatedNotification d:
                 ShowSuccess($"تم تعطيل العميل «{d.CustomerName}».", "تعطيل عميل");
+                CustomerListRefreshHub.RequestRefresh();
+                ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.Customers);
+                break;
+            case ReceiptVoucherPostedNotification:
+                CustomerListRefreshHub.RequestRefresh();
+                ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.Customers | ErpDataRefreshScope.Dashboard);
+                SalesListRefreshHub.RequestRefresh();
                 break;
             case SalesInvoiceDetailedNotification:
                 // Lists refresh only — success UI is shown by the detailing workspace

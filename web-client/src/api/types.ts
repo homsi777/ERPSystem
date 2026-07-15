@@ -447,6 +447,13 @@ export type CustomerListDto = {
   creditLimitEnabled: boolean;
   isActive: boolean;
   openingBalancePosted: boolean;
+  openingBalanceAmount: number;
+  totalInvoiced: number;
+  totalReceipts: number;
+  postedReceiptCount: number;
+  openInvoicesCount: number;
+  computedBalance: number;
+  lastReceiptDate?: string | null;
 };
 
 export type CustomerDetailsDto = {

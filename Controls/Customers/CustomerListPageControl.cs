@@ -33,8 +33,13 @@ public sealed class CustomerListPageControl : UserControl
         Content = _page;
         ConfigureList();
         Loaded += OnLoaded;
-        Unloaded += (_, _) => CustomerListRefreshHub.RefreshRequested -= OnRefreshRequested;
+        Unloaded += (_, _) =>
+        {
+            CustomerListRefreshHub.RefreshRequested -= OnRefreshRequested;
+            ErpDataRefreshHub.DataChanged -= OnDataChanged;
+        };
         CustomerListRefreshHub.RefreshRequested += OnRefreshRequested;
+        ErpDataRefreshHub.DataChanged += OnDataChanged;
         _searchTimer.Tick += async (_, _) =>
         {
             _searchTimer.Stop();
@@ -72,15 +77,19 @@ public sealed class CustomerListPageControl : UserControl
         g.CanUserAddRows = false;
         foreach (var (h, p, w) in new (string, string, object)[]
         {
-            ("الكود", "Code", 90),
+            ("الكود", "Code", 80),
             ("الاسم", "NameAr", "*"),
-            ("النوع", "TypeDisplay", 80),
-            ("الرصيد", "Balance", 100),
-            ("حد الائتمان", "CreditLimitDisplay", 110),
-            ("الحالة", "StatusDisplay", 80)
+            ("النوع", "TypeDisplay", 70),
+            ("افتتاحي", "OpeningBalanceAmount", 95),
+            ("مبيعات", "TotalInvoiced", 95),
+            ("قبض", "TotalReceipts", 95),
+            ("المتبقي", "ComputedBalance", 100),
+            ("سندات قبض", "PostedReceiptCount", 85),
+            ("حد الائتمان", "CreditLimitDisplay", 100),
+            ("الحالة", "StatusDisplay", 75)
         })
         {
-            AddCol(g, h, p, w, p is "Balance" ? "N2" : null);
+            AddCol(g, h, p, w, p is "OpeningBalanceAmount" or "TotalInvoiced" or "TotalReceipts" or "ComputedBalance" ? "N2" : null);
         }
     }
 
@@ -93,6 +102,13 @@ public sealed class CustomerListPageControl : UserControl
 
     private void OnRefreshRequested(object? sender, EventArgs e) =>
         _ = LoadCustomersAsync(_pendingSearch);
+
+    private void OnDataChanged(ErpDataRefreshScope scope)
+    {
+        if ((scope & (ErpDataRefreshScope.Customers | ErpDataRefreshScope.All)) == 0 || !IsLoaded)
+            return;
+        _ = LoadCustomersAsync(_pendingSearch);
+    }
 
     private async Task LoadCustomersAsync(string search)
     {
@@ -114,6 +130,7 @@ public sealed class CustomerListPageControl : UserControl
             var rows = result.Value.Items.Select(CustomerListRow.FromDto).Cast<object>().ToList();
             _page.BindData(rows);
             _page.UpdateRecordCount(rows.Count, _totalCount);
+            UpdateFinancialSummary(result.Value.Items);
             ApplyLocalFilters();
         }
         finally
@@ -121,6 +138,20 @@ public sealed class CustomerListPageControl : UserControl
             _page.SetLoadingState(false);
             _isLoading = false;
         }
+    }
+
+    private void UpdateFinancialSummary(IReadOnlyList<Application.DTOs.Customers.CustomerListDto> items)
+    {
+        if (items.Count == 0)
+        {
+            _page.SetFilterSummary(null);
+            return;
+        }
+
+        var totalOutstanding = items.Sum(i => i.ComputedBalance);
+        var totalReceipts = items.Sum(i => i.TotalReceipts);
+        _page.SetFilterSummary(
+            $"إجمالي الذمة: {totalOutstanding:N2} $  •  قبض مرحّل: {totalReceipts:N2} $  •  {items.Count} عميل في الصفحة");
     }
 
     private void ApplyLocalFilters()

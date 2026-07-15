@@ -10,7 +10,8 @@ public enum ErpDataRefreshScope
     Sales = 4,
     OperationsCenter = 8,
     Reports = 16,
-    All = Dashboard | Inventory | Sales | OperationsCenter | Reports
+    Customers = 32,
+    All = Dashboard | Inventory | Sales | OperationsCenter | Reports | Customers
 }
 
 public static class ErpDataRefreshHub

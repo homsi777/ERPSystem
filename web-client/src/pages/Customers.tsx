@@ -89,14 +89,16 @@ function CustomerListPage() {
     const rows = customersQuery.data?.items ?? [];
     return {
       count: customersQuery.data?.totalCount ?? rows.length,
-      outstanding: rows.reduce((sum, row) => sum + row.balance, 0)
+      outstanding: rows.reduce((sum, row) => sum + (row.computedBalance ?? row.balance), 0),
+      receipts: rows.reduce((sum, row) => sum + (row.totalReceipts ?? 0), 0)
     };
   }, [customersQuery.data?.items, customersQuery.data?.totalCount]);
 
   const headerSummary = (
     <>
       <SummaryCard label="عدد العملاء" value={formatNumber(listSummary.count)} />
-      <SummaryCard label="إجمالي الأرصدة" value={formatCurrency(listSummary.outstanding)} tone="amber" />
+      <SummaryCard label="إجمالي الذمة" value={formatCurrency(listSummary.outstanding)} tone="amber" />
+      <SummaryCard label="قبض مرحّل" value={formatCurrency(listSummary.receipts)} tone="success" />
     </>
   );
 
@@ -160,13 +162,18 @@ function CustomerListPage() {
 
 function CustomerListCard({ customer }: { customer: CustomerListDto }) {
   const subtitle = `${customer.code} • ${customerTypeLabels[customer.type as CustomerType]}`;
+  const financialMeta = [
+    customer.openingBalanceAmount > 0 ? `افتتاحي ${formatCurrency(customer.openingBalanceAmount)}` : null,
+    customer.totalReceipts > 0 ? `قبض ${formatCurrency(customer.totalReceipts)}` : null,
+    customer.postedReceiptCount > 0 ? `${customer.postedReceiptCount} سند` : null
+  ].filter(Boolean).join(' • ');
 
   return (
     <DataCard
       icon={<Icon name="customers" />}
       title={customer.nameAr}
       subtitle={subtitle}
-      meta={formatCurrency(customer.balance)}
+      meta={financialMeta || formatCurrency(customer.computedBalance ?? customer.balance)}
       value={<CustomerStatusPill status={customer.status} />}
       tone={customer.status === 0 ? 'available' : 'low'}
     />

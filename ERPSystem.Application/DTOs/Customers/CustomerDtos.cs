@@ -15,7 +15,34 @@ public sealed class CustomerListDto
     public bool CreditLimitEnabled { get; init; }
     public bool IsActive { get; init; }
     public bool OpeningBalancePosted { get; init; }
+
+    /// <summary>Posted customer-receivable opening balance (debit lines).</summary>
+    public decimal OpeningBalanceAmount { get; init; }
+
+    /// <summary>Sum of approved+ sales invoices.</summary>
+    public decimal TotalInvoiced { get; init; }
+
+    /// <summary>Sum of posted receipt vouchers.</summary>
+    public decimal TotalReceipts { get; init; }
+
+    public int PostedReceiptCount { get; init; }
+    public int OpenInvoicesCount { get; init; }
+
+    /// <summary>Opening + invoiced − receipts (matches account statement logic).</summary>
+    public decimal ComputedBalance { get; init; }
+
+    public DateTime? LastReceiptDate { get; init; }
 }
+
+/// <summary>Batch financial aggregates for customer list rows.</summary>
+public sealed record CustomerListFinancialSummary(
+    decimal OpeningBalanceAmount,
+    decimal TotalInvoiced,
+    int InvoiceCount,
+    decimal TotalReceipts,
+    int PostedReceiptCount,
+    int OpenInvoicesCount,
+    DateTime? LastReceiptDate);
 
 public sealed class CustomerOpeningBalanceResultDto
 {

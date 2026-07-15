@@ -224,8 +224,11 @@ public sealed class PostReceiptVoucherHandler(
                     voucher.Approve();
                 voucher.Post();
 
-                if (customer.Customer.Type == CustomerType.Credit && allocated > 0)
-                    customer.RecordPostedReceipt(allocated);
+            var balanceReduction = allocated;
+            if (balanceReduction <= 0 && customer.Customer.Balance.Amount > 0)
+                balanceReduction = Math.Min(voucher.Amount.Amount, customer.Customer.Balance.Amount);
+            if (balanceReduction > 0)
+                customer.RecordPostedReceipt(balanceReduction);
                 cashbox.ApplyReceipt(voucher.Amount);
 
             await voucherRepository.UpdateAsync(voucher, cancellationToken);
@@ -368,7 +371,7 @@ public sealed class ReverseReceiptVoucherHandler(
             reversal.Post();
             original.MarkReversed(command.Reason);
 
-            if (customer.Customer.Type == CustomerType.Credit && allocated > 0)
+            if (allocated > 0)
                 customer.RecordPostedInvoice(allocated);
             cashbox.ApplyPayment(original.Amount);
 

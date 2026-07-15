@@ -16,6 +16,14 @@ public sealed class CustomerListRow
     public string NameAr => Dto.NameAr;
     public string NameEn => Dto.NameEn;
     public decimal Balance => Dto.Balance;
+    public decimal OpeningBalanceAmount => Dto.OpeningBalanceAmount;
+    public decimal TotalInvoiced => Dto.TotalInvoiced;
+    public decimal TotalReceipts => Dto.TotalReceipts;
+    public decimal ComputedBalance => Dto.ComputedBalance;
+    public int PostedReceiptCount => Dto.PostedReceiptCount;
+    public int OpenInvoicesCount => Dto.OpenInvoicesCount;
+    public bool OpeningBalancePosted => Dto.OpeningBalancePosted;
+    public DateTime? LastReceiptDate => Dto.LastReceiptDate;
     public decimal CreditLimit => Dto.CreditLimit;
     public bool CreditLimitEnabled => Dto.CreditLimitEnabled;
     public DomainCustomerType Type => Dto.Type;
@@ -43,6 +51,17 @@ public sealed class CustomerListRow
         DomainCustomerType.Credit when !CreditLimitEnabled => "بدون حد",
         _ => AppFormats.Amount(CreditLimit)
     };
+
+    public string OpeningBalanceDisplay => OpeningBalancePosted || OpeningBalanceAmount > 0
+        ? AppFormats.Amount(OpeningBalanceAmount)
+        : "—";
+
+    public string LastReceiptDisplay => LastReceiptDate?.ToString("yyyy-MM-dd") ?? "—";
+
+    public string FinancialActivityDisplay =>
+        PostedReceiptCount > 0 || OpeningBalancePosted || TotalInvoiced > 0
+            ? $"{PostedReceiptCount} قبض"
+            : "—";
 
     public static CustomerListRow FromDto(CustomerListDto dto) => new(dto);
 

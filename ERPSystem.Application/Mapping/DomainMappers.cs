@@ -15,20 +15,40 @@ namespace ERPSystem.Application.Mapping;
 
 public static class CustomerMapper
 {
-    public static CustomerListDto ToListDto(CustomerAggregate aggregate) => new()
+    public static CustomerListDto ToListDto(CustomerAggregate aggregate) =>
+        ToListDto(aggregate, null);
+
+    public static CustomerListDto ToListDto(
+        CustomerAggregate aggregate,
+        CustomerListFinancialSummary? financials)
     {
-        Id = aggregate.Customer.Id,
-        Code = aggregate.Customer.Code,
-        NameAr = aggregate.Customer.NameAr,
-        NameEn = aggregate.Customer.NameEn,
-        Type = aggregate.Customer.Type,
-        Status = aggregate.Customer.Status,
-        Balance = aggregate.Customer.Balance.Amount,
-        CreditLimit = aggregate.Customer.CreditLimit.Amount,
-        CreditLimitEnabled = aggregate.Customer.CreditLimitEnabled,
-        IsActive = aggregate.Customer.IsActive,
-        OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted
-    };
+        var opening = financials?.OpeningBalanceAmount ?? 0m;
+        var invoiced = financials?.TotalInvoiced ?? 0m;
+        var receipts = financials?.TotalReceipts ?? 0m;
+        var computed = opening + invoiced - receipts;
+
+        return new CustomerListDto
+        {
+            Id = aggregate.Customer.Id,
+            Code = aggregate.Customer.Code,
+            NameAr = aggregate.Customer.NameAr,
+            NameEn = aggregate.Customer.NameEn,
+            Type = aggregate.Customer.Type,
+            Status = aggregate.Customer.Status,
+            Balance = aggregate.Customer.Balance.Amount,
+            CreditLimit = aggregate.Customer.CreditLimit.Amount,
+            CreditLimitEnabled = aggregate.Customer.CreditLimitEnabled,
+            IsActive = aggregate.Customer.IsActive,
+            OpeningBalancePosted = aggregate.Customer.OpeningBalancePosted,
+            OpeningBalanceAmount = opening,
+            TotalInvoiced = invoiced,
+            TotalReceipts = receipts,
+            PostedReceiptCount = financials?.PostedReceiptCount ?? 0,
+            OpenInvoicesCount = financials?.OpenInvoicesCount ?? 0,
+            ComputedBalance = computed,
+            LastReceiptDate = financials?.LastReceiptDate
+        };
+    }
 
     public static CustomerDetailsDto ToDetailsDto(CustomerAggregate aggregate) => new()
     {

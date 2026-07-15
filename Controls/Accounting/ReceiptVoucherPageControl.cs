@@ -407,6 +407,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
             _status.Text = "تم الترحيل بنجاح.";
             _amount.Text = "0";
             ERPSystem.Services.Sales.SalesListRefreshHub.RequestRefresh();
+            ERPSystem.Services.Customers.CustomerListRefreshHub.RequestRefresh();
+            ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.Customers | ErpDataRefreshScope.Dashboard);
             await LoadOpenInvoicesAsync();
         }
         finally

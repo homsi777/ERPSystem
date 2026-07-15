@@ -110,7 +110,15 @@ public sealed class GetCustomerListHandler(ICustomerRepository customerRepositor
         var (customers, totalCount) = await customerRepository.GetPagedAsync(
             query.CompanyId, query.Search, query.Page, query.PageSize, cancellationToken);
 
-        var items = customers.Select(CustomerMapper.ToListDto).ToList();
+        var ids = customers.Select(c => c.Customer.Id).ToList();
+        var financials = await customerRepository.GetFinancialSummariesAsync(
+            query.CompanyId, ids, cancellationToken);
+
+        var items = customers
+            .Select(c => CustomerMapper.ToListDto(
+                c,
+                financials.GetValueOrDefault(c.Customer.Id)))
+            .ToList();
 
         return ApplicationResult<PagedResult<CustomerListDto>>.Success(new PagedResult<CustomerListDto>
         {

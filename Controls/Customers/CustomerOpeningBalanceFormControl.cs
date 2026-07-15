@@ -287,6 +287,7 @@ public sealed class CustomerOpeningBalanceFormControl : UserControl
             return;
         NotifyRefresh();
         CustomerListRefreshHub.RequestRefresh();
+        ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.Customers | ErpDataRefreshScope.Dashboard);
         await LoadDocumentAsync(id);
         MockInteractionService.ShowSuccess(
             result.Value?.JournalEntryNumber is { Length: > 0 } num

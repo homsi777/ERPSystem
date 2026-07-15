@@ -1,6 +1,9 @@
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.DTOs.Customers;
 using ERPSystem.Domain.Aggregates;
+using ERPSystem.Domain.Entities.Finance;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Mapping;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +91,93 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
             .ToListAsync(cancellationToken);
 
         return entities.Select(CustomerMapper.ToAggregate).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, CustomerListFinancialSummary>> GetFinancialSummariesAsync(
+        Guid companyId,
+        IReadOnlyList<Guid> customerIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = customerIds.Where(id => id != Guid.Empty).Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, CustomerListFinancialSummary>();
+
+        var postedReceipt = (int)VoucherStatus.Posted;
+        var approvedInvoice = (int)SalesInvoiceStatus.Approved;
+        var deliveredInvoice = (int)SalesInvoiceStatus.Delivered;
+        var cancelledInvoice = (int)SalesInvoiceStatus.Cancelled;
+        var customerOpeningType = (int)OpeningBalanceType.CustomerReceivable;
+        var openingPosted = (int)OpeningBalanceStatus.Posted;
+
+        var receiptRows = await context.ReceiptVouchers.AsNoTracking()
+            .Where(v => v.CompanyId == companyId && ids.Contains(v.CustomerId) && v.Status == postedReceipt)
+            .GroupBy(v => v.CustomerId)
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                Total = g.Sum(v => v.Amount),
+                Count = g.Count(),
+                LastDate = g.Max(v => v.VoucherDate)
+            })
+            .ToListAsync(cancellationToken);
+
+        var invoiceRows = await context.SalesInvoices.AsNoTracking()
+            .Where(i => i.CompanyId == companyId && ids.Contains(i.CustomerId)
+                        && i.Status >= approvedInvoice && i.Status != cancelledInvoice)
+            .GroupBy(i => i.CustomerId)
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                Total = g.Sum(i => i.GrandTotal),
+                Count = g.Count(),
+                OpenCount = g.Count(i => i.Status != deliveredInvoice && i.Status != cancelledInvoice)
+            })
+            .ToListAsync(cancellationToken);
+
+        var openingRows = await context.OpeningBalanceLines.AsNoTracking()
+            .Where(l => l.PartyId.HasValue && ids.Contains(l.PartyId.Value))
+            .Join(
+                context.OpeningBalanceDocuments.AsNoTracking()
+                    .Where(d => d.CompanyId == companyId
+                                && d.Type == customerOpeningType
+                                && d.Status == openingPosted),
+                l => l.DocumentId,
+                d => d.Id,
+                (l, _) => l)
+            .GroupBy(l => l.PartyId!.Value)
+            .Select(g => new
+            {
+                CustomerId = g.Key,
+                Amount = g.Sum(l => l.Debit - l.Credit)
+            })
+            .ToListAsync(cancellationToken);
+
+        var receiptById = receiptRows.ToDictionary(r => r.CustomerId);
+        var invoiceById = invoiceRows.ToDictionary(r => r.CustomerId);
+        var openingById = openingRows.ToDictionary(r => r.CustomerId);
+
+        var result = new Dictionary<Guid, CustomerListFinancialSummary>();
+        foreach (var id in ids)
+        {
+            var opening = openingById.TryGetValue(id, out var ob) ? ob.Amount : 0m;
+            var invoiced = invoiceById.TryGetValue(id, out var inv) ? inv.Total : 0m;
+            var invoiceCount = invoiceById.TryGetValue(id, out inv) ? inv.Count : 0;
+            var openInvoices = invoiceById.TryGetValue(id, out inv) ? inv.OpenCount : 0;
+            var receipts = receiptById.TryGetValue(id, out var rc) ? rc.Total : 0m;
+            var receiptCount = receiptById.TryGetValue(id, out rc) ? rc.Count : 0;
+            var lastReceipt = receiptById.TryGetValue(id, out rc) ? rc.LastDate : (DateTime?)null;
+
+            result[id] = new CustomerListFinancialSummary(
+                opening,
+                invoiced,
+                invoiceCount,
+                receipts,
+                receiptCount,
+                openInvoices,
+                lastReceipt);
+        }
+
+        return result;
     }
 
     public async Task<(string CustomerName, string? CustomerPhone, string? WarehouseName, decimal CustomerBalance)?> GetInvoicePartyDisplayAsync(
