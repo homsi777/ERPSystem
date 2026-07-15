@@ -294,6 +294,7 @@ internal static class ContainerMapper
         ContainerEntity header,
         IReadOnlyList<ContainerItemEntity> items,
         LandingCostEntity? landingCost,
+        IReadOnlyList<LandingCostExpenseEntity> landingCostExpenses,
         IReadOnlyList<ContainerFabricTypeLineEntity> fabricTypeLines)
     {
         var aggregate = DomainHydrator.Create<ContainerAggregate>();
@@ -363,6 +364,8 @@ internal static class ContainerMapper
             DomainHydrator.Set(lc, nameof(LandingCost.Status), (LandingCostStatus)landingCost.Status);
             DomainHydrator.Set(lc, nameof(LandingCost.CalculatedAt), landingCost.CalculatedAt);
             DomainHydrator.Set(lc, nameof(LandingCost.CalculatedByUserId), landingCost.CalculatedByUserId);
+            DomainHydrator.Set(lc, nameof(LandingCost.Expenses), landingCostExpenses.Select(e =>
+                LandingCostExpense.Create(e.ExpenseType, new Money(e.Amount), e.Notes)).ToList());
             DomainHydrator.Set(aggregate, "LandingCost", lc);
         }
 

@@ -75,6 +75,14 @@ public sealed class LandingCostDto
     public decimal ExpenseCostPerMeter { get; init; }
     public decimal AvgGramPerMeter { get; init; }
     public LandingCostStatus Status { get; init; }
+    public string? ChinaInvoiceNote { get; init; }
+    public string? ShippingNote { get; init; }
+    public string? InsuranceNote { get; init; }
+    public string? CustomsClearanceNote { get; init; }
+    public string? OtherExpense1Note { get; init; }
+    public string? OtherExpense2Note { get; init; }
+    public string? OtherExpense3Note { get; init; }
+    public string? OtherExpense4Note { get; init; }
 }
 
 public sealed class ContainerOperationsCenterDto

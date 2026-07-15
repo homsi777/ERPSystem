@@ -466,6 +466,9 @@
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Typography.NumeralStyle" Value="Lining"/>
         <Setter Property="Language" Value="en-US"/>
+        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
+        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
+        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
     </Style>
 
     <Style TargetType="{x:Type DatePickerTextBox}">
@@ -748,10 +751,6 @@
         <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
         <Setter Property="NumberSubstitution.Substitution" Value="European"/>
     </Style>
-    <Style TargetType="{x:Type TextBox}">
-        <Setter Property="NumberSubstitution.CultureSource" Value="Override"/>
-        <Setter Property="NumberSubstitution.CultureOverride" Value="en-US"/>
-        <Setter Property="NumberSubstitution.Substitution" Value="European"/>
-    </Style>
+    <!-- Number substitution for text inputs moved into the main TextBox style above to avoid duplicate implicit styles. -->
 
 </ResourceDictionary>

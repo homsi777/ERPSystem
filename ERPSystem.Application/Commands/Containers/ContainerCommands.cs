@@ -48,6 +48,16 @@ public sealed class CalculateLandingCostCommand
     public bool UsesWeightedAllocation { get; init; }
     public IReadOnlyList<ContainerFabricTypeLineCommand> TypeLines { get; init; } = [];
 
+    public decimal ChinaInvoiceAmountUsd { get; init; }
+    public string? ChinaInvoiceNote { get; init; }
+    public string? ShippingNote { get; init; }
+    public string? InsuranceNote { get; init; }
+    public string? CustomsClearanceNote { get; init; }
+    public string? OtherExpense1Note { get; init; }
+    public string? OtherExpense2Note { get; init; }
+    public string? OtherExpense3Note { get; init; }
+    public string? OtherExpense4Note { get; init; }
+
     // Legacy flat-rate fields (DPL-only fallback)
     public decimal CustomsAmount { get; init; }
     public decimal Clearance { get; init; }

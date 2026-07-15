@@ -273,7 +273,16 @@ public sealed class ContainerUiService
                 TypeLines = typeLineCommands,
                 CustomsAmount = input.CustomsAmountUsd,
                 Clearance = input.ClearanceUsd,
-                OtherExpenses = input.OtherExpensesUsd
+                OtherExpenses = input.OtherExpensesUsd,
+                ChinaInvoiceAmountUsd = input.ChinaInvoiceAmountUsd,
+                ChinaInvoiceNote = input.ChinaInvoiceNote,
+                ShippingNote = input.ShippingNote,
+                InsuranceNote = input.InsuranceNote,
+                CustomsClearanceNote = input.CustomsClearanceNote,
+                OtherExpense1Note = input.OtherExpense1Note,
+                OtherExpense2Note = input.OtherExpense2Note,
+                OtherExpense3Note = input.OtherExpense3Note,
+                OtherExpense4Note = input.OtherExpense4Note
             }, cancellationToken);
 
             if (!landingResult.IsSuccess)

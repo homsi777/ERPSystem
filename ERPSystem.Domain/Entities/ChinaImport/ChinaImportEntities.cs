@@ -299,7 +299,8 @@ public class LandingCost
         Money otherExpense2,
         Money otherExpense3,
         Money otherExpense4,
-        bool usesWeightedAllocation) => new()
+        bool usesWeightedAllocation,
+        IReadOnlyList<LandingCostExpense>? expenseLedger = null) => new()
     {
         Id = Guid.NewGuid(),
         TotalLengthFromInvoice = totalLength,
@@ -314,6 +315,7 @@ public class LandingCost
         OtherExpense3 = otherExpense3,
         OtherExpense4 = otherExpense4,
         UsesWeightedAllocation = usesWeightedAllocation,
+        Expenses = expenseLedger?.ToList() ?? [],
         Status = LandingCostStatus.Draft
     };
 

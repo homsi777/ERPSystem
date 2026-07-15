@@ -16,14 +16,22 @@ namespace ERPSystem.Controls.China;
 public sealed class ChinaImportCostEntryControl : UserControl
 {
     private readonly TextBox _invoiceUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _invoiceNote = ErpUiFactory.FormNoteField();
     private readonly TextBox _weightKg = ErpUiFactory.FormField("");
     private readonly TextBox _shippingUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _shippingNote = ErpUiFactory.FormNoteField();
     private readonly TextBox _insuranceUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _insuranceNote = ErpUiFactory.FormNoteField();
     private readonly TextBox _customsClearanceUsd = ErpUiFactory.FormField("");
+    private readonly TextBox _customsClearanceNote = ErpUiFactory.FormNoteField();
     private readonly TextBox _other1Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other1Note = ErpUiFactory.FormNoteField();
     private readonly TextBox _other2Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other2Note = ErpUiFactory.FormNoteField();
     private readonly TextBox _other3Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other3Note = ErpUiFactory.FormNoteField();
     private readonly TextBox _other4Usd = ErpUiFactory.FormField("0");
+    private readonly TextBox _other4Note = ErpUiFactory.FormNoteField();
     private readonly TextBlock _preview = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
     private readonly Button? _saveButton;
     private readonly ContainerExcelParseResultDto? _parse;
@@ -77,21 +85,21 @@ public sealed class ChinaImportCostEntryControl : UserControl
 
         stack.Children.Add(new TextBlock
         {
-            Text = $"إجمالي الأمتار: {_totalMeters:N2} م | سعر الصرف: {_exchangeRate:N4}",
+            Text = AppFormats.Text("إجمالي الأمتار: {0} م | سعر الصرف: {1}", _totalMeters, _exchangeRate),
             Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!,
             Margin = new Thickness(0, 0, 0, 12)
         });
 
-        stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
-            ("إجمالي فاتورة الصين ($)", _invoiceUsd),
-            ("وزن الحاوية (كغ)", _weightKg),
-            ("الشحن ($) *", _shippingUsd),
-            ("التأمين ($) *", _insuranceUsd),
-            ("جمارك / تخليص جمركي ($) *", _customsClearanceUsd),
-            ("مصاريف أخرى 1 ($)", _other1Usd),
-            ("مصاريف أخرى 2 ($)", _other2Usd),
-            ("مصاريف أخرى 3 ($)", _other3Usd),
-            ("مصاريف أخرى 4 ($)", _other4Usd))));
+        stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildAmountNoteFormGrid(
+            ("إجمالي فاتورة الصين ($)", _invoiceUsd, _invoiceNote),
+            ("وزن الحاوية (كغ)", _weightKg, null),
+            ("الشحن ($) *", _shippingUsd, _shippingNote),
+            ("التأمين ($) *", _insuranceUsd, _insuranceNote),
+            ("جمارك / تخليص جمركي ($) *", _customsClearanceUsd, _customsClearanceNote),
+            ("مصاريف أخرى 1 ($)", _other1Usd, _other1Note),
+            ("مصاريف أخرى 2 ($)", _other2Usd, _other2Note),
+            ("مصاريف أخرى 3 ($)", _other3Usd, _other3Note),
+            ("مصاريف أخرى 4 ($)", _other4Usd, _other4Note))));
 
         _preview.Foreground = (Brush)WpfApplication.Current.Resources["TextSecondaryBrush"]!;
         stack.Children.Add(ErpUiFactory.Card(_preview));
@@ -162,12 +170,12 @@ public sealed class ChinaImportCostEntryControl : UserControl
         var reserve = input.ChinaInvoiceAmountUsd * 0.02m;
 
         _preview.Text =
-            $"المكافئ المحلي للفاتورة: {input.ChinaInvoiceAmountUsd * _exchangeRate:N2}\n" +
-            $"احتياطي ضريبة مالية (2%): {reserve:N2} $ (لا يدخل سعر المتر)\n" +
-            $"إجمالي المصاريف المشتركة: {shared:N2} $\n" +
+            AppFormats.Text("المكافئ المحلي للفاتورة: {0}", input.ChinaInvoiceAmountUsd * _exchangeRate) + "\n" +
+            AppFormats.Text("احتياطي ضريبة مالية (2%): {0} $ (لا يدخل سعر المتر)", reserve) + "\n" +
+            AppFormats.Text("إجمالي المصاريف المشتركة: {0} $", shared) + "\n" +
             (_usesWeighted
                 ? $"التخصيص: بالوزن عبر {_session?.TypeLines.Count ?? 0} نوع قماش"
-                : $"تكلفة الوصول/م (مسطح): {( _totalMeters > 0 ? shared / _totalMeters : 0):N4} $/م");
+                : AppFormats.Text("تكلفة الوصول/م (مسطح): {0} $/م", _totalMeters > 0 ? shared / _totalMeters : 0));
     }
 
     private async Task SaveAsync()
@@ -245,9 +253,23 @@ public sealed class ChinaImportCostEntryControl : UserControl
             OtherExpense2Usd = other2,
             OtherExpense3Usd = other3,
             OtherExpense4Usd = other4,
-            UsesWeightedAllocation = _usesWeighted
+            UsesWeightedAllocation = _usesWeighted,
+            ChinaInvoiceNote = ReadNote(_invoiceNote),
+            ShippingNote = ReadNote(_shippingNote),
+            InsuranceNote = ReadNote(_insuranceNote),
+            CustomsClearanceNote = ReadNote(_customsClearanceNote),
+            OtherExpense1Note = ReadNote(_other1Note),
+            OtherExpense2Note = ReadNote(_other2Note),
+            OtherExpense3Note = ReadNote(_other3Note),
+            OtherExpense4Note = ReadNote(_other4Note)
         };
         return true;
+    }
+
+    private static string? ReadNote(TextBox box)
+    {
+        var text = box.Text.Trim();
+        return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
     private static bool TryParseDecimal(string text, out decimal value)

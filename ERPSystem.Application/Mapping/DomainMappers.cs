@@ -162,7 +162,15 @@ public static class ContainerMapper
         CustomsCostPerMeter = landingCost.CustomsCostPerMeter,
         ExpenseCostPerMeter = landingCost.ExpenseCostPerMeter,
         AvgGramPerMeter = landingCost.AvgGramPerMeter,
-        Status = landingCost.Status
+        Status = landingCost.Status,
+        ChinaInvoiceNote = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.ChinaInvoice),
+        ShippingNote = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.Shipping),
+        InsuranceNote = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.Insurance),
+        CustomsClearanceNote = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.CustomsClearance),
+        OtherExpense1Note = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.OtherExpense1),
+        OtherExpense2Note = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.OtherExpense2),
+        OtherExpense3Note = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.OtherExpense3),
+        OtherExpense4Note = LandingCostExpenseNotes.GetNote(landingCost.Expenses, LandingCostExpenseTypes.OtherExpense4)
     };
 
     public static ContainerFabricTypeLineDto ToFabricTypeLineDto(ContainerFabricTypeLine line) => new()

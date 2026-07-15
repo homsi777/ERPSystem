@@ -248,6 +248,62 @@ namespace ERPSystem.Helpers
             return grid;
         }
 
+        public static Grid BuildAmountNoteFormGrid(params (string Label, TextBox Amount, TextBox? Note)[] fields)
+        {
+            var grid = new Grid { Margin = new Thickness(0, 0, 0, ErpDesignTokens.SpaceSm) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ErpDesignTokens.SpaceLg) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            for (var i = 0; i < fields.Length; i++)
+            {
+                var row = i / 2;
+                while (grid.RowDefinitions.Count <= row)
+                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                var sp = new StackPanel { Margin = new Thickness(0, 0, 0, ErpDesignTokens.SpaceSm) };
+                sp.Children.Add(new TextBlock
+                {
+                    Text = fields[i].Label,
+                    FontSize = ErpDesignTokens.FontCaption,
+                    Foreground = Br("TextSecondaryBrush"),
+                    Margin = new Thickness(0, 0, 0, ErpDesignTokens.SpaceXs),
+                    FontFamily = ErpDesignTokens.UiFont
+                });
+                sp.Children.Add(fields[i].Note is null
+                    ? fields[i].Amount
+                    : BuildAmountNoteRow(fields[i].Amount, fields[i].Note!));
+                Grid.SetRow(sp, row);
+                Grid.SetColumn(sp, i % 2 == 0 ? 0 : 2);
+                grid.Children.Add(sp);
+            }
+
+            return grid;
+        }
+
+        public static Grid BuildAmountNoteRow(TextBox amount, TextBox note)
+        {
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ErpDesignTokens.SpaceSm) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            Grid.SetColumn(amount, 0);
+            Grid.SetColumn(note, 2);
+            row.Children.Add(amount);
+            row.Children.Add(note);
+            return row;
+        }
+
+        public static TextBox FormNoteField(string? text = null) => new()
+        {
+            Text = text ?? "",
+            Height = ErpDesignTokens.ControlHeight,
+            Style = S("EnterpriseInputStyle"),
+            FontSize = ErpDesignTokens.FontBody - 1,
+            ToolTip = "ملاحظة اختيارية"
+        };
+
         public static TextBox FormField(string? text = null) => new()
         {
             Text = text ?? "",

@@ -176,23 +176,30 @@ public sealed class ChinaImportLandingCostReviewControl : UserControl
                 "success"));
         }
 
-        var form = ErpUiFactory.BuildFormGrid(
-            ("إجمالي الأمتار", ErpUiFactory.FormField($"{lc.TotalLengthMeters:N2} م")),
-            ("وزن الحاوية (كغ)", ErpUiFactory.FormField($"{lc.ContainerWeightKg:N0}")),
-            ("فاتورة الصين ($)", ErpUiFactory.FormField($"{c.ChinaInvoiceAmountUsd:N2}")),
-            ("سعر الصرف", ErpUiFactory.FormField($"{c.ExchangeRateToLocalCurrency:N4}")),
-            ("وضع التخصيص", ErpUiFactory.FormField(lc.UsesWeightedAllocation ? "بالوزن (حسب النوع)" : "مسطح (DPL)")),
-            ("جمارك / تخليص ($)", ErpUiFactory.FormField($"{lc.CustomsAmount:N2}")),
-            ("الشحن ($)", ErpUiFactory.FormField($"{lc.Shipping:N2}")),
-            ("التأمين ($)", ErpUiFactory.FormField($"{lc.Insurance:N2}")),
-            ("مصاريف أخرى 1 ($)", ErpUiFactory.FormField($"{lc.OtherExpense1:N2}")),
-            ("مصاريف أخرى 2 ($)", ErpUiFactory.FormField($"{lc.OtherExpense2:N2}")),
-            ("مصاريف أخرى 3 ($)", ErpUiFactory.FormField($"{lc.OtherExpense3:N2}")),
-            ("مصاريف أخرى 4 ($)", ErpUiFactory.FormField($"{lc.OtherExpense4:N2}")),
-            ("إجمالي المصاريف المشتركة ($)", ErpUiFactory.FormField($"{lc.TotalImportExpenses:N2}")),
-            ("تكلفة الوصول/م ($)", ErpUiFactory.FormField($"{lc.ExpenseCostPerMeter:N4}")),
-            ("احتياطي 2% ($)", ErpUiFactory.FormField($"{reserveUsd:N2}")),
-            ("احتياطي 2% (محلي)", ErpUiFactory.FormField($"{reserveLocal:N2}")));
+        static TextBox ReadOnly(string value)
+        {
+            var box = ErpUiFactory.FormField(value);
+            box.IsReadOnly = true;
+            return box;
+        }
+
+        var form = ErpUiFactory.BuildAmountNoteFormGrid(
+            ("إجمالي الأمتار", ReadOnly(AppFormats.Text("{0} م", lc.TotalLengthMeters)), null),
+            ("وزن الحاوية (كغ)", ReadOnly(AppFormats.Number(lc.ContainerWeightKg, 0)), null),
+            ("فاتورة الصين ($)", ReadOnly(AppFormats.Amount(c.ChinaInvoiceAmountUsd)), ReadOnly(lc.ChinaInvoiceNote ?? "")),
+            ("سعر الصرف", ReadOnly(AppFormats.Number(c.ExchangeRateToLocalCurrency, 4)), null),
+            ("وضع التخصيص", ReadOnly(lc.UsesWeightedAllocation ? "بالوزن (حسب النوع)" : "مسطح (DPL)"), null),
+            ("جمارك / تخليص ($)", ReadOnly(AppFormats.Amount(lc.CustomsAmount)), ReadOnly(lc.CustomsClearanceNote ?? "")),
+            ("الشحن ($)", ReadOnly(AppFormats.Amount(lc.Shipping)), ReadOnly(lc.ShippingNote ?? "")),
+            ("التأمين ($)", ReadOnly(AppFormats.Amount(lc.Insurance)), ReadOnly(lc.InsuranceNote ?? "")),
+            ("مصاريف أخرى 1 ($)", ReadOnly(AppFormats.Amount(lc.OtherExpense1)), ReadOnly(lc.OtherExpense1Note ?? "")),
+            ("مصاريف أخرى 2 ($)", ReadOnly(AppFormats.Amount(lc.OtherExpense2)), ReadOnly(lc.OtherExpense2Note ?? "")),
+            ("مصاريف أخرى 3 ($)", ReadOnly(AppFormats.Amount(lc.OtherExpense3)), ReadOnly(lc.OtherExpense3Note ?? "")),
+            ("مصاريف أخرى 4 ($)", ReadOnly(AppFormats.Amount(lc.OtherExpense4)), ReadOnly(lc.OtherExpense4Note ?? "")),
+            ("إجمالي المصاريف المشتركة ($)", ReadOnly(AppFormats.Amount(lc.TotalImportExpenses)), null),
+            ("تكلفة الوصول/م ($)", ReadOnly(AppFormats.Number(lc.ExpenseCostPerMeter, 4)), null),
+            ("احتياطي 2% ($)", ReadOnly(AppFormats.Amount(reserveUsd)), null),
+            ("احتياطي 2% (محلي)", ReadOnly(AppFormats.Amount(reserveLocal)), null));
 
         _detailsHost.Children.Add(ErpUiFactory.Card(form));
 

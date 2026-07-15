@@ -157,7 +157,24 @@ public sealed class CalculateLandingCostHandler(
                 new Money(command.OtherExpense2),
                 new Money(command.OtherExpense3),
                 new Money(command.OtherExpense4),
-                usesWeighted);
+                usesWeighted,
+                LandingCostExpenseNotes.BuildLedger(
+                    command.ChinaInvoiceAmountUsd,
+                    command.ChinaInvoiceNote,
+                    command.Shipping,
+                    command.ShippingNote,
+                    command.Insurance,
+                    command.InsuranceNote,
+                    customsClearance,
+                    command.CustomsClearanceNote,
+                    command.OtherExpense1,
+                    command.OtherExpense1Note,
+                    command.OtherExpense2,
+                    command.OtherExpense2Note,
+                    command.OtherExpense3,
+                    command.OtherExpense3Note,
+                    command.OtherExpense4,
+                    command.OtherExpense4Note));
 
             Domain.Validators.LandingCostValidator.Validate(landingCost);
             aggregate.SetLandingCost(landingCost);

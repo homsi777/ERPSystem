@@ -33,7 +33,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
 
         var headers = await query.OrderByDescending(c => c.ShipmentDate).ToListAsync(cancellationToken);
         return headers
-            .Select(h => ContainerMapper.ToAggregate(h, [], null, []))
+            .Select(h => ContainerMapper.ToAggregate(h, [], null, [], []))
             .ToList();
     }
 
@@ -57,6 +57,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
         await SyncItemsAsync(aggregate, cancellationToken);
         await SyncImportBatchesAsync(aggregate, cancellationToken);
         await SyncLandingCostAsync(aggregate, cancellationToken);
+        await SyncLandingCostExpensesAsync(aggregate, cancellationToken);
         await SyncFabricTypeLinesAsync(aggregate, cancellationToken);
     }
 
@@ -82,6 +83,7 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
 
         await SyncItemsAsync(aggregate, cancellationToken);
         await SyncLandingCostAsync(aggregate, cancellationToken);
+        await SyncLandingCostExpensesAsync(aggregate, cancellationToken);
         await SyncFabricTypeLinesAsync(aggregate, cancellationToken);
     }
 
@@ -99,9 +101,14 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             .Where(i => i.ContainerId == header.Id).OrderBy(i => i.LineNumber).ToListAsync(ct);
         var landingCost = await context.LandingCosts.AsNoTracking()
             .FirstOrDefaultAsync(l => l.ContainerId == header.Id, ct);
+        var landingCostExpenses = landingCost is null
+            ? []
+            : await context.LandingCostExpenses.AsNoTracking()
+                .Where(e => e.LandingCostId == landingCost.Id)
+                .ToListAsync(ct);
         var typeLines = await context.ContainerFabricTypeLines.AsNoTracking()
             .Where(t => t.ContainerId == header.Id).OrderBy(t => t.LineNumber).ToListAsync(ct);
-        return ContainerMapper.ToAggregate(header, items, landingCost, typeLines);
+        return ContainerMapper.ToAggregate(header, items, landingCost, landingCostExpenses, typeLines);
     }
 
     private async Task SyncItemsAsync(ContainerAggregate aggregate, CancellationToken ct)
@@ -194,6 +201,31 @@ internal sealed class ChinaContainerRepository(ErpDbContext context) : IChinaCon
             existing.CalculatedByUserId = lc.CalculatedByUserId;
             existing.UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    private async Task SyncLandingCostExpensesAsync(ContainerAggregate aggregate, CancellationToken ct)
+    {
+        if (aggregate.LandingCost is null)
+            return;
+
+        var landingCostId = aggregate.LandingCost.Id;
+        var existing = await context.LandingCostExpenses
+            .Where(e => e.LandingCostId == landingCostId)
+            .ToListAsync(ct);
+        context.LandingCostExpenses.RemoveRange(existing);
+
+        if (aggregate.LandingCost.Expenses.Count == 0)
+            return;
+
+        await context.LandingCostExpenses.AddRangeAsync(aggregate.LandingCost.Expenses.Select(e =>
+            new LandingCostExpenseEntity
+            {
+                Id = e.Id,
+                LandingCostId = landingCostId,
+                ExpenseType = e.ExpenseType,
+                Amount = e.Amount.Amount,
+                Notes = e.Notes
+            }), ct);
     }
 
     private async Task SyncFabricTypeLinesAsync(ContainerAggregate aggregate, CancellationToken ct)
