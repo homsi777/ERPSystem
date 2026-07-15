@@ -98,7 +98,7 @@ function CustomerListPage() {
     <>
       <SummaryCard label="عدد العملاء" value={formatNumber(listSummary.count)} />
       <SummaryCard label="إجمالي الذمة" value={formatCurrency(listSummary.outstanding)} tone="amber" />
-      <SummaryCard label="قبض مرحّل" value={formatCurrency(listSummary.receipts)} tone="success" />
+      <SummaryCard label="قبض مرحّل" value={formatCurrency(listSummary.receipts)} tone="green" />
     </>
   );
 
