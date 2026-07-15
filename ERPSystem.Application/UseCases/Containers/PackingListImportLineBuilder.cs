@@ -1,5 +1,6 @@
 using ERPSystem.Application.Commands.Containers;
 using ERPSystem.Application.DTOs.Containers;
+using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.UseCases.Containers;
 
@@ -9,7 +10,7 @@ public static class PackingListImportLineBuilder
     {
         var lines = new List<ImportContainerLineCommand>();
         var lineNumber = 0;
-        var fileUnit = parse.DetectedQuantityUnit;
+        var fileUnit = DplQuantityUnitApplicator.ResolveEffectiveUnit(parse);
 
         foreach (var group in parse.Groups.Where(g => g.FabricResolved && g.ColorResolved))
         {
@@ -47,7 +48,7 @@ public static class PackingListImportLineBuilder
                 RollCount = group.ParsedTotalRolls > 0 ? group.ParsedTotalRolls : 1,
                 LengthMeters = group.ParsedTotalMeters,
                 DplQuantityNative = group.ParsedTotalMeters,
-                DplQuantityUnit = fileUnit
+                DplQuantityUnit = DplQuantityUnit.Meters
             });
         }
 

@@ -15,6 +15,7 @@ public static class ChinaViews
     {
         "Containers",
         "NewImport",
+        "DplUnitSelection",
         "FileAnalysis",
         "CostEntry",
         "LandingCost",
@@ -31,6 +32,7 @@ public static class ChinaViews
     public static UserControl Create(string key) => key switch
     {
         "NewImport" => new NewChinaImportControl(),
+        "DplUnitSelection" => new ChinaImportDplUnitSelectionControl(),
         "FileAnalysis" => new PackingListAnalysisControl(),
         "CostEntry" => new ChinaImportCostEntryControl(),
         "LandingCost" => new ChinaImportLandingCostReviewControl(),

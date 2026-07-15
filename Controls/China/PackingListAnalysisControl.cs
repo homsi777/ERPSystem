@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Controls;
 using ERPSystem.Core;
@@ -142,6 +143,22 @@ public sealed class PackingListAnalysisControl : UserControl
             return;
         }
 
+        if (!ChinaImportNavigationContext.IsDplQuantityUnitConfirmed)
+        {
+            _stack.Children.Add(ErpUxFactory.InfoBanner(
+                "يجب تحديد وحدة DPL (متر أو يارد) قبل تحليل الملف.", "warning"));
+            var unitBtn = new Button
+            {
+                Content = "الانتقال — تحديد وحدة DPL",
+                Style = (Style)WpfApplication.Current.Resources["PrimaryButtonStyle"]!,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            unitBtn.Click += (_, _) => ChinaImportNavigation.Navigate("DplUnitSelection");
+            _stack.Children.Add(unitBtn);
+            return;
+        }
+
         if (AppServices.IsInitialized)
             await ContainerUiService.Instance.RefreshMultiFileSessionAsync();
 
@@ -155,8 +172,15 @@ public sealed class PackingListAnalysisControl : UserControl
         });
 
         _stack.Children.Add(ErpUxFactory.InfoBanner(
-            $"وحدة DPL المكتشفة: {parseResult.DetectedQuantityUnitDisplay} — البيع والتفصيل حسب قيم الملف (المخزون والتكلفة بالمتر المكافئ).",
-            parseResult.DetectedQuantityUnit == DplQuantityUnit.Yards ? "warning" : "info"));
+            $"وحدة DPL المختارة: {parseResult.SelectedQuantityUnitDisplay} (تحويل يارد → متر: × {DplQuantityConverter.YardsToMetersFactor}) — التخزين والتكلفة بالمتر؛ البيع حسب القيمة الأصلية + الوحدة.",
+            parseResult.SelectedQuantityUnit == DplQuantityUnit.Yards ? "warning" : "success"));
+
+        var crossValidation = ChinaImportNavigationContext.CrossValidationResults;
+        if (crossValidation.Count > 0)
+        {
+            _stack.Children.Add(ErpUiFactory.SectionTitle("التحقق من المطابقة — DPL مقابل فاتورة/PL (بالمتر)"));
+            _stack.Children.Add(ErpUiFactory.Card(BuildCrossValidationPanel(crossValidation)));
+        }
 
         if (!string.IsNullOrWhiteSpace(parseResult.SupplierNameFromFile))
         {
@@ -222,7 +246,8 @@ public sealed class PackingListAnalysisControl : UserControl
 
         var grand = parseResult.GrandTotal;
         var needsDplLink = session?.RequiresDplLinking == true;
-        var canContinue = grand.RollsMatch && grand.MetersMatch && !parseResult.HasUnresolvedGroups && !needsDplLink;
+        var crossValidationOk = ChinaImportNavigationContext.CanProceedFromAnalysis();
+        var canContinue = grand.RollsMatch && grand.MetersMatch && !parseResult.HasUnresolvedGroups && !needsDplLink && crossValidationOk;
 
         _continueButton = new Button
         {
@@ -236,6 +261,8 @@ public sealed class PackingListAnalysisControl : UserControl
         else if (!canContinue && grand.DeclaredTotalRolls.HasValue && !grand.RollsMatch)
             _continueButton.ToolTip =
                 $"تحذير: تم تحليل {grand.ParsedTotalRolls} توب فقط من أصل {grand.DeclaredTotalRolls.Value} المعلن في الملف.";
+        else if (!canContinue && !crossValidationOk)
+            _continueButton.ToolTip = "يوجد اختلاف بين مجموع DPL (بالمتر) وفاتورة/PL — أكّد يدوياً أو صحّح وحدة DPL.";
         else if (!canContinue && parseResult.HasUnresolvedGroups)
             _continueButton.ToolTip = "يوجد أكواد غير مربوطة في الكتالوج.";
         else
@@ -475,5 +502,51 @@ public sealed class PackingListAnalysisControl : UserControl
             ErpUiFactory.AddGridColumn(g, h, p, w, fmt);
         }
         return g;
+    }
+
+    private UIElement BuildCrossValidationPanel(IReadOnlyList<DplGroupCrossValidationResult> results)
+    {
+        var panel = new StackPanel();
+        foreach (var result in results)
+        {
+            var row = new Grid { Margin = new Thickness(0, 6, 0, 6) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var message = new TextBlock
+            {
+                Text = result.MessageArabic,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = (Brush)WpfApplication.Current.Resources[
+                    result.Passed || result.UserConfirmed ? "TextSecondaryBrush" : "WarningBrush"]!
+            };
+            Grid.SetColumn(message, 0);
+            row.Children.Add(message);
+
+            if (!result.Passed && !result.UserConfirmed)
+            {
+                var confirm = new Button
+                {
+                    Content = "تأكيد والمتابعة رغم الاختلاف",
+                    Style = (Style)WpfApplication.Current.Resources["SecondaryButtonStyle"]!,
+                    Margin = new Thickness(8, 0, 0, 0),
+                    Tag = result.GroupKey
+                };
+                confirm.Click += async (_, _) =>
+                {
+                    ChinaImportNavigationContext.ConfirmCrossValidationGroup(result.GroupKey);
+                    await RefreshAsync();
+                };
+                Grid.SetColumn(confirm, 1);
+                row.Children.Add(confirm);
+            }
+
+            panel.Children.Add(row);
+        }
+
+        if (results.All(r => r.Passed))
+            panel.Children.Insert(0, ErpUxFactory.InfoBanner("✅ جميع مجموعات DPL تطابق فاتورة/PL ضمن الحد المسموح.", "success"));
+
+        return panel;
     }
 }

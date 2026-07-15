@@ -103,8 +103,17 @@ public sealed class ContainerExcelParseResultDto
     public string FileName { get; init; } = "";
     public string? SupplierNameFromFile { get; init; }
     public DplQuantityUnit DetectedQuantityUnit { get; init; } = DplQuantityUnit.Meters;
+    /// <summary>User-confirmed unit for this import (required before analysis continues).</summary>
+    public DplQuantityUnit? SelectedQuantityUnit { get; init; }
     public string DetectedQuantityUnitDisplay =>
         DetectedQuantityUnit == DplQuantityUnit.Yards ? "يارد (YDS)" : "متر (M)";
+    public string SelectedQuantityUnitDisplay =>
+        SelectedQuantityUnit switch
+        {
+            DplQuantityUnit.Yards => "يارد (YDS)",
+            DplQuantityUnit.Meters => "متر (M)",
+            _ => "—"
+        };
     public PackingListGrandTotalDto GrandTotal { get; init; } = new();
     public IReadOnlyList<PackingListGroupDto> Groups { get; init; } = [];
     public bool HasUnresolvedGroups { get; init; }

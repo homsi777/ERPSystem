@@ -16,8 +16,9 @@ public static class ChinaImportNavigation
     {
         var containerId = ChinaImportNavigationContext.ResolveContainerId();
         var hasParse = ChinaImportNavigationContext.GetParseResult() is not null;
+        var unitConfirmed = ChinaImportNavigationContext.IsDplQuantityUnitConfirmed;
 
-        if (!ChinaImportWorkflow.CanAccessRoute(subPage, containerStatus, hasParse, containerId))
+        if (!ChinaImportWorkflow.CanAccessRoute(subPage, containerStatus, hasParse, containerId, unitConfirmed))
         {
             MockInteractionService.ShowWarning(
                 "لا يمكن الانتقال إلى هذه الخطوة قبل إكمال المراحل السابقة.",

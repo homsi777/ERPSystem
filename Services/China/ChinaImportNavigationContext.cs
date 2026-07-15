@@ -1,11 +1,13 @@
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Application.UseCases.Containers;
+using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Services.China;
 
 public static class ChinaImportNavigationContext
 {
     private static readonly Dictionary<string, string> SessionDplLinks = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> ConfirmedValidationGroupKeys = new(StringComparer.OrdinalIgnoreCase);
 
     public static ContainerExcelParseResultDto? LastParseResult { get; private set; }
     public static ChinaInvoiceParseResultDto? LastInvoiceParse { get; private set; }
@@ -17,6 +19,9 @@ public static class ChinaImportNavigationContext
     public static ChinaImportCostPreviewDto? CostPreview { get; private set; }
     public static Guid? ActiveContainerId { get; private set; }
     public static Guid? CreatedContainerId { get; private set; }
+    public static DplQuantityUnit? UserSelectedDplQuantityUnit { get; private set; }
+    public static bool IsDplQuantityUnitConfirmed { get; private set; }
+    public static IReadOnlyList<DplGroupCrossValidationResult> CrossValidationResults { get; private set; } = [];
 
     public static void SetParseSession(
         ContainerExcelParseResultDto parseResult,
@@ -27,6 +32,7 @@ public static class ChinaImportNavigationContext
         HeaderDraft = headerDraft;
         LastRollDetailFileName = rollDetailFileName;
         LastFileName = rollDetailFileName;
+        ResetDplUnitSelection();
         RebuildMultiFileSessionLocal();
     }
 
@@ -57,7 +63,48 @@ public static class ChinaImportNavigationContext
         RebuildMultiFileSessionLocal();
     }
 
-    private static void RebuildMultiFileSessionLocal() =>
+    public static void ConfirmDplQuantityUnit(DplQuantityUnit unit)
+    {
+        UserSelectedDplQuantityUnit = unit;
+        IsDplQuantityUnitConfirmed = true;
+        ConfirmedValidationGroupKeys.Clear();
+
+        if (LastParseResult is not null)
+            LastParseResult = DplQuantityUnitApplicator.Apply(LastParseResult, unit);
+
+        RebuildMultiFileSessionLocal();
+    }
+
+    public static void ConfirmCrossValidationGroup(string groupKey)
+    {
+        ConfirmedValidationGroupKeys.Add(groupKey);
+        RebuildCrossValidationOnly();
+    }
+
+    public static bool CanProceedFromAnalysis()
+    {
+        if (!IsDplQuantityUnitConfirmed || LastParseResult is null)
+            return false;
+
+        if (MultiFileSession is null)
+            return true;
+
+        if (!DplInvoicePlGroupValidator.HasInvoiceOrPlReference(MultiFileSession))
+            return true;
+
+        return DplInvoicePlGroupValidator.AllPassedOrConfirmed(CrossValidationResults);
+    }
+
+    private static void ResetDplUnitSelection()
+    {
+        UserSelectedDplQuantityUnit = null;
+        IsDplQuantityUnitConfirmed = false;
+        ConfirmedValidationGroupKeys.Clear();
+        CrossValidationResults = [];
+    }
+
+    private static void RebuildMultiFileSessionLocal()
+    {
         MultiFileSession = ChinaImportCrossFileMatcher.BuildSession(
             LastParseResult,
             LastInvoiceParse,
@@ -67,6 +114,17 @@ public static class ChinaImportNavigationContext
                 SupplierId = HeaderDraft?.SupplierId ?? Guid.Empty,
                 SessionDplToInvoiceKeys = SessionDplLinks
             });
+
+        RebuildCrossValidationOnly();
+    }
+
+    private static void RebuildCrossValidationOnly()
+    {
+        CrossValidationResults = MultiFileSession is not null &&
+                                 DplInvoicePlGroupValidator.HasInvoiceOrPlReference(MultiFileSession)
+            ? DplInvoicePlGroupValidator.Validate(MultiFileSession, ConfirmedValidationGroupKeys)
+            : [];
+    }
 
     public static ContainerExcelParseResultDto? GetParseResult() => LastParseResult;
 
@@ -93,5 +151,6 @@ public static class ChinaImportNavigationContext
         ActiveContainerId = null;
         CreatedContainerId = null;
         SessionDplLinks.Clear();
+        ResetDplUnitSelection();
     }
 }

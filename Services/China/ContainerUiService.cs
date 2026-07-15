@@ -237,7 +237,7 @@ public sealed class ContainerUiService
                     Notes = header.Notes,
                     ExchangeRateToLocalCurrency = header.ExchangeRateToLocalCurrency,
                     ChinaInvoiceAmountUsd = input.ChinaInvoiceAmountUsd,
-                    DplQuantityUnit = parse.DetectedQuantityUnit,
+                    DplQuantityUnit = parse.SelectedQuantityUnit ?? parse.DetectedQuantityUnit,
                     ImportFileName = fileName,
                     Lines = lines
                 }, cancellationToken);

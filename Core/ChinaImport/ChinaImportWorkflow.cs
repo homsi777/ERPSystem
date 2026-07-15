@@ -36,13 +36,14 @@ public static class ChinaImportWorkflow
         _ => "Containers"
     };
 
-    public static bool CanAccessRoute(string routeKey, ChinaContainerStatus? containerStatus, bool hasParseSession, Guid? containerId)
+    public static bool CanAccessRoute(string routeKey, ChinaContainerStatus? containerStatus, bool hasParseSession, Guid? containerId, bool isDplUnitConfirmed = false)
     {
         return routeKey switch
         {
             "Containers" or "NewImport" => true,
-            "FileAnalysis" => hasParseSession,
-            "CostEntry" => hasParseSession,
+            "DplUnitSelection" => hasParseSession && !isDplUnitConfirmed,
+            "FileAnalysis" => hasParseSession && isDplUnitConfirmed,
+            "CostEntry" => hasParseSession && isDplUnitConfirmed,
             "LandingCost" => containerId.HasValue && IsAllowedForLandingCost(containerStatus),
             "SalePrice" => containerId.HasValue && IsAllowedForSalePrice(containerStatus),
             "MoveToWarehouse" => containerId.HasValue && IsAllowedForWarehouseTransfer(containerStatus),

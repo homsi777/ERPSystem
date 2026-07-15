@@ -72,7 +72,7 @@ public sealed class NewChinaImportControl : UserControl
             Margin = new Thickness(0, 12, 0, 0),
             IsEnabled = false
         };
-        _continueButton.Click += (_, _) => ChinaImportNavigation.Navigate("FileAnalysis");
+        _continueButton.Click += (_, _) => ChinaImportNavigation.Navigate("DplUnitSelection");
         stack.Children.Add(_continueButton);
 
         root.Content = stack;
