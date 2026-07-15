@@ -6,7 +6,7 @@ namespace ERPSystem.Core;
 
 /// <summary>
 /// Arabic UI with Latin digits (0-9) everywhere in WPF.
-/// Thread culture uses en-US number formatting; WPF Language is en-US so RTL fonts do not swap digit glyphs.
+/// Arabic text and RTL are retained while numeric and date values use a Gregorian Latin-digit format.
 /// </summary>
 public static class AppCulture
 {
@@ -43,6 +43,7 @@ public static class AppCulture
 
     private static void Apply(CultureInfo culture)
     {
+        AssertLatinDigits(culture);
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         Thread.CurrentThread.CurrentCulture = culture;
@@ -51,16 +52,35 @@ public static class AppCulture
 
     private static CultureInfo CreateArabicWithLatinDigits()
     {
-        var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-SA").Clone();
-        culture.NumberFormat = (NumberFormatInfo)CultureInfo.GetCultureInfo(LatinLanguageTag).NumberFormat.Clone();
+        // ar-EG supports the Gregorian calendar while retaining Arabic date names.
+        // ar-SA may support only the Um Al-Qura calendar on some Windows installations.
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
+        ApplyGregorianLatinDigits(culture);
         return culture;
     }
 
     private static CultureInfo CreateArabicGregorianWithLatinDigits()
     {
         var culture = (CultureInfo)CultureInfo.GetCultureInfo("ar-EG").Clone();
-        culture.DateTimeFormat.Calendar = new GregorianCalendar();
-        culture.NumberFormat = (NumberFormatInfo)CultureInfo.GetCultureInfo(LatinLanguageTag).NumberFormat.Clone();
+        ApplyGregorianLatinDigits(culture);
         return culture;
+    }
+
+    private static void ApplyGregorianLatinDigits(CultureInfo culture)
+    {
+        // NativeDigits is owned by NumberFormatInfo. Cloning en-US is more reliable than
+        // relying on each Arabic Windows locale's digit-shaping preference.
+        culture.NumberFormat = (NumberFormatInfo)CultureInfo.GetCultureInfo(LatinLanguageTag).NumberFormat.Clone();
+        culture.DateTimeFormat.Calendar = new GregorianCalendar();
+    }
+
+    private static void AssertLatinDigits(CultureInfo culture)
+    {
+        var rendered = string.Concat(
+            1234.5m.ToString("N1", culture),
+            " ",
+            new DateTime(2026, 7, 15).ToString("yyyy/MM/dd", culture));
+        if (rendered.Any(c => c is >= '٠' and <= '٩' or >= '۰' and <= '۹'))
+            throw new InvalidOperationException("تهيئة ثقافة التطبيق يجب أن تعرض الأرقام بالأرقام الغربية.");
     }
 }

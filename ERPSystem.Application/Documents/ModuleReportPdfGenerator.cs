@@ -76,13 +76,13 @@ public sealed class ModuleReportPdfGenerator
                         line.AutoItem().PaddingRight(5).ContentFromLeftToRight()
                             .Text(FormatRange(report.FromDate, report.ToDate)).FontSize(9);
                     });
-                    meta.Item().PaddingTop(2).Text($"{report.Rows.Count} سجل").FontSize(8).FontColor(Muted);
+                    meta.Item().PaddingTop(2).Text($"{report.Rows.Count.ToString(WesternNumbers)} سجل").FontSize(8).FontColor(Muted);
                 });
                 row.RelativeItem().AlignLeft().Column(company =>
                 {
                     company.Item().Text("شركة الأمل").FontSize(11).Bold().FontColor(Gold);
                     company.Item().ContentFromLeftToRight().Text("ALAMAL.AB").FontSize(8).FontColor(Muted);
-                    company.Item().Text($"أُنشئ: {report.GeneratedAt.ToLocalTime():yyyy-MM-dd HH:mm}").FontSize(8).FontColor(Muted);
+                    company.Item().Text($"أُنشئ: {report.GeneratedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm", WesternNumbers)}").FontSize(8).FontColor(Muted);
                 });
             });
         });
@@ -96,7 +96,7 @@ public sealed class ModuleReportPdfGenerator
                 row.RelativeItem().Padding(2).Background(Paper).Border(1).BorderColor(Border).Padding(8).Column(col =>
                 {
                     col.Item().AlignCenter().Text(kpi.Label).FontSize(8).FontColor(Muted);
-                    col.Item().PaddingTop(2).AlignCenter().Text(kpi.Value).FontSize(12).Bold().FontColor(Navy);
+                    col.Item().PaddingTop(2).AlignCenter().Text(NormalizeDigits(kpi.Value)).FontSize(12).Bold().FontColor(Navy);
                 });
             }
         });
@@ -147,7 +147,7 @@ public sealed class ModuleReportPdfGenerator
             int i => i.ToString(WesternNumbers),
             long l => l.ToString(WesternNumbers),
             bool b => b ? "نعم" : "لا",
-            _ => value.ToString() ?? "—"
+            _ => NormalizeDigits(value.ToString() ?? "—")
         };
     }
 
@@ -173,8 +173,15 @@ public sealed class ModuleReportPdfGenerator
     private static string FormatRange(DateTime? from, DateTime? to)
     {
         if (from is null && to is null) return "كل الفترات";
-        if (from is null) return $"حتى {to:yyyy-MM-dd}";
-        if (to is null) return $"من {from:yyyy-MM-dd}";
-        return $"{from:yyyy-MM-dd} → {to:yyyy-MM-dd}";
+        if (from is null) return $"حتى {to!.Value.ToString("yyyy-MM-dd", WesternNumbers)}";
+        if (to is null) return $"من {from.Value.ToString("yyyy-MM-dd", WesternNumbers)}";
+        return $"{from.Value.ToString("yyyy-MM-dd", WesternNumbers)} → {to.Value.ToString("yyyy-MM-dd", WesternNumbers)}";
     }
+
+    private static string NormalizeDigits(string value) =>
+        value
+            .Replace('٠', '0').Replace('١', '1').Replace('٢', '2').Replace('٣', '3').Replace('٤', '4')
+            .Replace('٥', '5').Replace('٦', '6').Replace('٧', '7').Replace('٨', '8').Replace('٩', '9')
+            .Replace('۰', '0').Replace('۱', '1').Replace('۲', '2').Replace('۳', '3').Replace('۴', '4')
+            .Replace('۵', '5').Replace('۶', '6').Replace('۷', '7').Replace('۸', '8').Replace('۹', '9');
 }

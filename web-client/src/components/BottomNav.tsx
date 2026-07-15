@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getDashboardSummary } from '../api/dashboard.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { visibleWebModules } from '../auth/moduleAccess.ts';
+import { formatInteger } from '../lib/format.ts';
 import { Icon } from './Icon.tsx';
 
 export function BottomNav() {
@@ -27,8 +28,8 @@ export function BottomNav() {
           <span className="bottom-nav__icon-wrap">
             <Icon name={tab.icon} />
             {tab.route === '/delivery' && awaitingCount > 0 ? (
-              <span className="nav-badge" aria-label={`${awaitingCount} بانتظار التفنيد`}>
-                {awaitingCount > 99 ? '99+' : awaitingCount}
+              <span className="nav-badge" aria-label={`${formatInteger(awaitingCount)} بانتظار التفنيد`}>
+                {awaitingCount > 99 ? `${formatInteger(99)}+` : formatInteger(awaitingCount)}
               </span>
             ) : null}
           </span>

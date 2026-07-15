@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using ERPSystem.Core;
 
 namespace ERPSystem.Core.Customers
 {
@@ -218,7 +219,7 @@ namespace ERPSystem.Core.Customers
             if (days < 2) return ar ? "أمس" : "Yesterday";
             if (days < 7) return ar ? $"منذ {(int)days} أيام" : $"{(int)days} days ago";
             if (days < 30) return ar ? $"منذ {(int)(days / 7)} أسابيع" : $"{(int)(days / 7)} weeks ago";
-            return _lastInvoiceDate.Value.ToString("dd/MM/yyyy");
+            return AppFormats.Date(_lastInvoiceDate.Value, "dd/MM/yyyy");
         }
 
         // TODO: attach loyalty profile

@@ -265,13 +265,13 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             HeadersVisibility = DataGridHeadersVisibility.Column,
             ItemsSource = lines
         };
-        grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = new Binding(nameof(SalesInvoiceLineDto.LineNumber)), Width = 50 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "#", Binding = NumberBinding(nameof(SalesInvoiceLineDto.LineNumber)), Width = 50 });
         grid.Columns.Add(new DataGridTextColumn { Header = "الصنف", Binding = new Binding(nameof(SalesInvoiceLineDto.FabricDisplayName)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
         grid.Columns.Add(new DataGridTextColumn { Header = "الكود", Binding = new Binding(nameof(SalesInvoiceLineDto.FabricCode)), Width = 90 });
         grid.Columns.Add(new DataGridTextColumn { Header = "اللون", Binding = new Binding(nameof(SalesInvoiceLineDto.ColorDisplayName)), Width = 110 });
-        grid.Columns.Add(new DataGridTextColumn { Header = "الأطباق", Binding = new Binding(nameof(SalesInvoiceLineDto.RollCount)), Width = 80 });
-        grid.Columns.Add(new DataGridTextColumn { Header = "سعر المتر", Binding = new Binding(nameof(SalesInvoiceLineDto.UnitPrice)) { StringFormat = "N2" }, Width = 110 });
-        grid.Columns.Add(new DataGridTextColumn { Header = "الإجمالي", Binding = new Binding(nameof(SalesInvoiceLineDto.LineTotal)) { StringFormat = "N2" }, Width = 110 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "الأطباق", Binding = NumberBinding(nameof(SalesInvoiceLineDto.RollCount)), Width = 80 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "سعر المتر", Binding = NumberBinding(nameof(SalesInvoiceLineDto.UnitPrice), "N2"), Width = 110 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "الإجمالي", Binding = NumberBinding(nameof(SalesInvoiceLineDto.LineTotal), "N2"), Width = 110 });
         stack.Children.Add(ErpUiFactory.Card(grid));
         return stack;
     }
@@ -292,7 +292,7 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
             var card = new StackPanel();
             var header = new StackPanel { Orientation = Orientation.Horizontal };
             header.Children.Add(new TextBlock { Text = e.EntryNumber, FontWeight = FontWeights.SemiBold, FontSize = 13, Margin = new Thickness(0, 0, 12, 0) });
-            header.Children.Add(new TextBlock { Text = e.EntryDate.ToString("yyyy/MM/dd HH:mm"), FontSize = 11, Foreground = Br("TextMutedBrush"), VerticalAlignment = VerticalAlignment.Center });
+            header.Children.Add(new TextBlock { Text = AppFormats.DateTime(e.EntryDate), FontSize = 11, Foreground = Br("TextMutedBrush"), VerticalAlignment = VerticalAlignment.Center });
             header.Children.Add(new TextBlock { Text = $" • {e.Status}", FontSize = 11, Foreground = Br("TextMutedBrush"), VerticalAlignment = VerticalAlignment.Center });
             card.Children.Add(header);
             if (!string.IsNullOrWhiteSpace(e.Description))
@@ -558,6 +558,13 @@ public sealed class SalesInvoiceOperationsCenterControl : UserControl
         Background = Brushes.Transparent,
         FontSize = 12
     };
+
+    private static Binding NumberBinding(string path, string? format = null) =>
+        new(path)
+        {
+            ConverterCulture = AppCulture.FormatCulture,
+            StringFormat = format
+        };
 
     private static Border EmptyMessage(string text) => new()
     {

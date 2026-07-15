@@ -10,6 +10,7 @@ using ERPSystem.Infrastructure.Persistence.Models.Parties;
 using ERPSystem.Infrastructure.Persistence.Models.Purchasing;
 using ERPSystem.Infrastructure.Persistence.Models.Sales;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace ERPSystem.Infrastructure.Repositories;
 
@@ -414,7 +415,7 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
             ("Available", x.s.AvailableMeters),
             ("Rolls", x.s.RollCount))).ToList();
 
-        return Result(query, "تنبيه نقص المخزون", $"أصناف بمتاح ≤ {LowStockThreshold:N0} م",
+        return Result(query, "تنبيه نقص المخزون", $"أصناف بمتاح ≤ {LowStockThreshold.ToString("N0", CultureInfo.InvariantCulture)} م",
             Cols(
                 ("Warehouse", "المستودع", 120, null),
                 ("Fabric", "الصنف", "*", null),
@@ -1450,7 +1451,14 @@ internal sealed class ModuleReportRepository(ErpDbContext context) : IModuleRepo
     };
 
     private static ModuleReportKpiDto Kpi(string label, string value, string icon = "\uE9D2") =>
-        new() { Label = label, Value = value, IconGlyph = icon };
+        new() { Label = label, Value = NormalizeDigits(value), IconGlyph = icon };
+
+    private static string NormalizeDigits(string value) =>
+        value
+            .Replace('٠', '0').Replace('١', '1').Replace('٢', '2').Replace('٣', '3').Replace('٤', '4')
+            .Replace('٥', '5').Replace('٦', '6').Replace('٧', '7').Replace('٨', '8').Replace('٩', '9')
+            .Replace('۰', '0').Replace('۱', '1').Replace('۲', '2').Replace('۳', '3').Replace('۴', '4')
+            .Replace('۵', '5').Replace('۶', '6').Replace('۷', '7').Replace('۸', '8').Replace('۹', '9');
 
     private static Dictionary<string, object?> Row(params (string Key, object? Value)[] cells) =>
         cells.ToDictionary(c => c.Key, c => c.Value);

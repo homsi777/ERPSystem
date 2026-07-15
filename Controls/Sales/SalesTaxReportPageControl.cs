@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Sales;
+using ERPSystem.Core;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Reports;
@@ -158,7 +159,11 @@ public sealed class SalesTaxReportPageControl : UserControl
         var col = new DataGridTextColumn
         {
             Header = header,
-            Binding = new System.Windows.Data.Binding(path) { StringFormat = format }
+            Binding = new System.Windows.Data.Binding(path)
+            {
+                StringFormat = format,
+                ConverterCulture = AppCulture.FormatCulture
+            }
         };
         col.Width = star ? new DataGridLength(1, DataGridLengthUnitType.Star) : new DataGridLength(width);
         return col;
@@ -167,7 +172,7 @@ public sealed class SalesTaxReportPageControl : UserControl
     private sealed class ReportRow(SalesTaxReportRowDto r)
     {
         public string InvoiceNumber => r.InvoiceNumber;
-        public string InvoiceDateDisplay => r.InvoiceDate.ToLocalTime().ToString("yyyy/MM/dd");
+        public string InvoiceDateDisplay => AppFormats.Date(r.InvoiceDate.ToLocalTime());
         public string CustomerName => r.CustomerName;
         public string TaxCode => r.IsLegacyUntaxed ? "Legacy" : r.TaxCode ?? "—";
         public decimal TaxableAmount => r.TaxableAmount;

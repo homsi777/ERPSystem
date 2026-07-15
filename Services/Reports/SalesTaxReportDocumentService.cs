@@ -1,6 +1,7 @@
 using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Services;
+using System.Globalization;
 
 namespace ERPSystem.Services.Reports;
 
@@ -43,9 +44,9 @@ public static class SalesTaxReportDocumentService
             ToDate = to,
             Kpis =
             [
-                new ModuleReportKpiDto { Label = "المبلغ الخاضع", Value = $"{taxable:N2}" },
-                new ModuleReportKpiDto { Label = "ضريبة المخرجات", Value = $"{outputVat:N2}" },
-                new ModuleReportKpiDto { Label = "عدد السجلات", Value = report.Rows.Count.ToString() }
+                new ModuleReportKpiDto { Label = "المبلغ الخاضع", Value = taxable.ToString("N2", CultureInfo.InvariantCulture) },
+                new ModuleReportKpiDto { Label = "ضريبة المخرجات", Value = outputVat.ToString("N2", CultureInfo.InvariantCulture) },
+                new ModuleReportKpiDto { Label = "عدد السجلات", Value = report.Rows.Count.ToString(CultureInfo.InvariantCulture) }
             ],
             Columns =
             [

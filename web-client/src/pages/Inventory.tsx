@@ -27,7 +27,7 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatCurrency, formatDate, formatDateOnly, formatMeters, formatNumber, EMPTY_CELL } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatDateOnly, formatInteger, formatMeters, formatNumber, EMPTY_CELL } from '../lib/format.ts';
 import { inventoryStatusLabels } from '../lib/enums.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { canViewSensitivePricing } from '../auth/generalManagerAccess.ts';
@@ -641,7 +641,7 @@ function RollRow({
 }) {
   return (
     <tr>
-      <td>{roll.rollNumber}</td>
+      <td>{formatInteger(roll.rollNumber)}</td>
       <td>{roll.lotCode ?? EMPTY_CELL}</td>
       <td dir="ltr">{roll.barcode ?? EMPTY_CELL}</td>
       <td>{formatMeters(roll.lengthMeters)}</td>

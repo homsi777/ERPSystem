@@ -36,7 +36,7 @@ import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import type { DocumentExportPayload } from '../lib/documentExport.ts';
-import { formatCurrency, formatDateOnly, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDateOnly, formatInteger, formatNumber, formatPercent } from '../lib/format.ts';
 import { expenseCategoryKindLabel, expenseStatusLabel, getExpenseStatusTone } from '../lib/enums.ts';
 
 const LIST_PAGE_SIZE = 100;
@@ -183,7 +183,7 @@ function DefinitionsListPage() {
         ) : null}
 
         {rows.length > 0 ? (
-          <p className="form-hint">عرض {rows.length} تعريف</p>
+          <p className="form-hint">عرض {formatInteger(rows.length)} تعريف</p>
         ) : null}
       </div>
     </AppShell>
@@ -571,7 +571,7 @@ function EntriesListPage() {
           </section>
         ) : null}
 
-        {rows.length > 0 ? <p className="form-hint">عرض {rows.length} قيد</p> : null}
+        {rows.length > 0 ? <p className="form-hint">عرض {formatInteger(rows.length)} قيد</p> : null}
       </div>
     </AppShell>
   );
@@ -652,7 +652,7 @@ function DashboardPage() {
                   {d.categoryBreakdown.map((item) => (
                     <div className="price-row" key={item.label}>
                       <span>{item.label}</span>
-                      <strong>{formatCurrency(item.amountBase)} ({item.percentage.toFixed(1)}%)</strong>
+                      <strong>{formatCurrency(item.amountBase)} ({formatPercent(item.percentage)})</strong>
                     </div>
                   ))}
                 </div>
@@ -929,7 +929,7 @@ function OperationsCenterPage({ expenseId }: { expenseId: string }) {
           {
             heading: 'الدفعات',
             rows: (expense.payments ?? []).map((payment, index) => ({
-              label: `دفعة ${index + 1}`,
+              label: `دفعة ${formatInteger(index + 1)}`,
               value: `${formatDateOnly(payment.paymentDate)} · ${formatCurrency(payment.amountBase)} · ${payment.notes ?? '—'}`
             }))
           }

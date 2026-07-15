@@ -36,7 +36,7 @@ import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import type { DocumentExportPayload } from '../lib/documentExport.ts';
-import { formatCurrency, formatDate, formatMeters, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatLineIndex, formatMeters, formatNumber } from '../lib/format.ts';
 import {
   getJournalEntryStatusTone,
   getSalesInvoiceStatusTone,
@@ -237,7 +237,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
           {
             heading: 'الأصناف',
             rows: invoice.lines.map((line) => ({
-              label: `#${line.lineNumber} ${line.fabricDisplayName}/${line.colorDisplayName}`,
+              label: `${formatLineIndex(line.lineNumber)} ${line.fabricDisplayName}/${line.colorDisplayName}`,
               value: `${formatNumber(line.rollCount)} ثوب · ${formatMeters(line.totalLengthMeters)} · ${formatCurrency(line.lineTotal)}`
             }))
           }
@@ -318,7 +318,7 @@ function SalesDetailPage({ invoiceId }: { invoiceId: string }) {
                 {invoice.lines.map((line) => (
                   <article className="line-item" key={line.id}>
                     <div className="line-item__head">
-                      <span className="line-item__index">#{line.lineNumber}</span>
+                      <span className="line-item__index">{formatLineIndex(line.lineNumber)}</span>
                       <strong>{formatCurrency(line.lineTotal)}</strong>
                     </div>
                     <p className="line-item__meta">
@@ -747,7 +747,7 @@ function SalesCreatePage() {
               return (
                 <article className="line-item" key={line.key}>
                   <div className="line-item__head">
-                    <span className="line-item__index">#{index + 1}</span>
+                    <span className="line-item__index">{formatLineIndex(index + 1)}</span>
                     <button className="line-item__remove" type="button" onClick={() => removeLine(line.key)} aria-label="حذف الصنف">
                       حذف
                     </button>

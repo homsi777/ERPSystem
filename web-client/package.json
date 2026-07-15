@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/run-vite.mjs dev --host 0.0.0.0 --port 5174",
     "build": "tsc --noEmit && node scripts/run-vite.mjs build",
+    "test:digits": "node scripts/verify-western-digits.mjs",
     "preview": "node scripts/run-vite.mjs preview --host 0.0.0.0 --port 5174"
   },
   "dependencies": {

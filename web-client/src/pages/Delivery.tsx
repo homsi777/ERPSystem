@@ -18,7 +18,7 @@ import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatDate, formatMeters, formatNumber } from '../lib/format.ts';
+import { formatDate, formatInteger, formatLineIndex, formatMeters, formatNumber } from '../lib/format.ts';
 import { getWarehouseDetailingStatusTone, warehouseDetailingStatusLabels } from '../lib/enums.ts';
 
 type ToastState = {
@@ -319,7 +319,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                   {detailing.rolls.map((roll) => (
                     <article className="line-item" key={roll.rollDetailId}>
                       <div className="line-item__head">
-                        <span className="line-item__index">#{roll.rollSequence}</span>
+                        <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
                         <strong>{formatMeters(roll.lengthMeters)}</strong>
                       </div>
                       <p className="line-item__meta">
@@ -448,7 +448,7 @@ function RollCard({
   return (
     <article className="line-item">
       <div className="line-item__head">
-        <span className="line-item__index">#{roll.rollSequence}</span>
+        <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
       </div>
       <p className="line-item__meta">
         {roll.fabricDisplayName} / {roll.colorDisplayName}
@@ -463,7 +463,7 @@ function RollCard({
             placeholder="مثلاً 126"
             value={serialValue}
             onChange={(event) => onSerialChange(event.target.value)}
-            aria-label={`رقم سيريال الثوب ${roll.rollSequence}`}
+            aria-label={`رقم سيريال الثوب ${formatInteger(roll.rollSequence)}`}
           />
         </label>
         <label className="form-field">
@@ -473,7 +473,7 @@ function RollCard({
             placeholder="0"
             value={lengthValue}
             onChange={(event) => onLengthChange(event.target.value)}
-            aria-label={`طول الثوب رقم ${roll.rollSequence}`}
+            aria-label={`طول الثوب رقم ${formatInteger(roll.rollSequence)}`}
           />
         </label>
       </div>
@@ -549,7 +549,7 @@ function CandidateChip({
     >
       <span className="candidate-chip__dot" aria-hidden="true" />
       <span>
-        #{candidate.rollNumber} • {formatMeters(candidate.remainingLengthMeters)}
+        {formatLineIndex(candidate.rollNumber)} • {formatMeters(candidate.remainingLengthMeters)}
       </span>
     </button>
   );
