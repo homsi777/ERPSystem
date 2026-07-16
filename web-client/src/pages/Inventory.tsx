@@ -565,6 +565,7 @@ function RollDetailsModal({
     return map;
   }, [reservationsQuery.data]);
   const totalRemaining = rolls.reduce((sum, roll) => sum + roll.remainingLengthMeters, 0);
+  const totalRemainingYards = rolls.reduce((sum, roll) => sum + (roll.remainingLengthYards ?? 0), 0);
   const totalValue = rolls.reduce((sum, roll) => sum + roll.currentValue, 0);
 
   return (
@@ -589,7 +590,8 @@ function RollDetailsModal({
       {rollsQuery.isSuccess && rolls.length > 0 ? (
         <>
           <p className="roll-summary">
-            عدد الأتواب: {formatNumber(rolls.length)} • إجمالي المتبقي: {formatMeters(totalRemaining)}
+            عدد الأتواب: {formatNumber(rolls.length)} • إجمالي المتبقي:{' '}
+            {formatMeters(totalRemaining)} ({formatNumber(totalRemainingYards)} ي)
             {showPricing ? ` • القيمة: ${formatCurrency(totalValue)}` : ''}
           </p>
           <div className="roll-table-wrap">
@@ -599,11 +601,14 @@ function RollDetailsModal({
                   <th>رقم التوب</th>
                   <th>اللوت</th>
                   <th>الباركود</th>
-                  <th>الطول الأصلي</th>
-                  <th>المتبقي</th>
+                  <th>الطول الأصلي (م)</th>
+                  <th>الطول الأصلي (ي)</th>
+                  <th>المتبقي (م)</th>
+                  <th>المتبقي (ي)</th>
                   {showPricing ? (
                     <>
                       <th>التكلفة/م</th>
+                      <th>التكلفة/ي</th>
                       <th>القيمة $</th>
                     </>
                   ) : null}
@@ -645,10 +650,13 @@ function RollRow({
       <td>{roll.lotCode ?? EMPTY_CELL}</td>
       <td dir="ltr">{roll.barcode ?? EMPTY_CELL}</td>
       <td>{formatMeters(roll.lengthMeters)}</td>
+      <td>{formatNumber(roll.lengthYards ?? 0)} ي</td>
       <td>{formatMeters(roll.remainingLengthMeters)}</td>
+      <td>{formatNumber(roll.remainingLengthYards ?? 0)} ي</td>
       {showPricing ? (
         <>
           <td>{formatCurrency(roll.costPerMeter)}</td>
+          <td>{formatCurrency(roll.costPerYard ?? 0)}</td>
           <td>{formatCurrency(roll.currentValue)}</td>
         </>
       ) : null}

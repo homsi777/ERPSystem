@@ -631,6 +631,10 @@ export type FabricRollListDto = {
   remainingLengthMeters: number;
   costPerMeter: number;
   currentValue: number;
+  /** Computed from meters (API). */
+  lengthYards: number;
+  remainingLengthYards: number;
+  costPerYard: number;
   status: string;
   batchNumber: string | null;
   locationCode: string | null;
