@@ -49,6 +49,7 @@ public static class DatabaseSeeder
         await StartupPhaseRecorder.RunAsync("Seed.SalesTax", () => EnsureSalesTaxConfigurationAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.JournalBooks", () => EnsureJournalBooksAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.AllPermissions", () => EnsureAllModulePermissionsAsync(context, cancellationToken));
+        await StartupPhaseRecorder.RunAsync("Seed.DeliveryOfficerRoles", () => EnsureDeliveryOfficerRolesAsync(context, logger, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.DefaultCurrency", () => EnsureDefaultCurrencyAsync(context, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.ExpenseModule", () => ExpenseModuleSeeder.EnsureAsync(context, DefaultCompanyId, cancellationToken));
         await StartupPhaseRecorder.RunAsync("Seed.CapitalModule", () => CapitalModuleSeeder.EnsureAsync(context, cancellationToken));
@@ -691,6 +692,93 @@ public static class DatabaseSeeder
 
     private static async Task EnsureWarehousePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
         await EnsurePermissionsAsync(context, GetWarehousePermissionDefinitions(), cancellationToken);
+
+    /// <summary>
+    /// Ensures delivery/warehouse-officer roles have warehouse.detailing.
+    /// Covers the common case of creating a role named «التسليم» without checking the permission tree.
+    /// </summary>
+    private static async Task EnsureDeliveryOfficerRolesAsync(
+        ErpDbContext context,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var detailingPermissionId = await context.Permissions
+            .Where(p => p.Code == "warehouse.detailing")
+            .Select(p => p.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (detailingPermissionId == Guid.Empty)
+            return;
+
+        const string templateRoleName = "موظف التسليم";
+        var templateRole = await context.Roles
+            .FirstOrDefaultAsync(r => r.Name == templateRoleName, cancellationToken);
+
+        if (templateRole is null)
+        {
+            templateRole = new RoleEntity
+            {
+                Id = Guid.NewGuid(),
+                Name = templateRoleName,
+                Description = "تفصيل المستودع وشاشة التسليم في الويب",
+                IsSystem = false,
+                IsActive = true
+            };
+            context.Roles.Add(templateRole);
+            await context.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Created operational role '{Role}'.", templateRoleName);
+        }
+
+        // Roles that are clearly meant for warehouse delivery / detailing.
+        var deliveryRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            templateRoleName,
+            "التسليم",
+            "تسليم",
+            "تفصيل المستودع",
+            "موظف المستودع"
+        };
+
+        var roles = await context.Roles
+            .Where(r => r.IsActive && !r.IsSystem)
+            .ToListAsync(cancellationToken);
+
+        var targetRoles = roles
+            .Where(r => deliveryRoleNames.Contains(r.Name.Trim())
+                        || r.Name.Contains("تسليم", StringComparison.OrdinalIgnoreCase)
+                        || r.Name.Contains("تفصيل", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (targetRoles.Count == 0)
+            return;
+
+        var roleIds = targetRoles.Select(r => r.Id).ToList();
+        var existingLinks = await context.RolePermissions
+            .Where(rp => roleIds.Contains(rp.RoleId) && rp.PermissionId == detailingPermissionId)
+            .Select(rp => rp.RoleId)
+            .ToListAsync(cancellationToken);
+        var linked = existingLinks.ToHashSet();
+
+        var added = 0;
+        foreach (var role in targetRoles)
+        {
+            if (linked.Contains(role.Id))
+                continue;
+
+            context.RolePermissions.Add(new RolePermissionEntity
+            {
+                RoleId = role.Id,
+                PermissionId = detailingPermissionId
+            });
+            added++;
+            logger.LogInformation(
+                "Granted warehouse.detailing to role '{Role}' for web delivery access.",
+                role.Name);
+        }
+
+        if (added > 0)
+            await context.SaveChangesAsync(cancellationToken);
+    }
 
     private static async Task EnsurePurchasePermissionsAsync(ErpDbContext context, CancellationToken cancellationToken) =>
         await EnsurePermissionsAsync(context, GetPurchasePermissionDefinitions(), cancellationToken);

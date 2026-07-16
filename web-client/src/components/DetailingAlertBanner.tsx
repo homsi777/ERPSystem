@@ -6,7 +6,7 @@ import { formatNumber } from '../lib/format.ts';
 
 export function DetailingAlertBanner() {
   const { can } = useAuth();
-  const enabled = can('warehouse.detailing') || can('sales.view') || can('sales.approve');
+  const enabled = can('warehouse.detailing') || can('sales.approve') || can('sales.send-to-warehouse');
 
   const summaryQuery = useQuery({
     queryKey: ['dashboard', 'summary'],

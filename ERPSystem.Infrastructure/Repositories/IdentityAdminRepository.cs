@@ -197,8 +197,31 @@ internal sealed class IdentityAdminRepository(ErpDbContext context) : IIdentityA
             IsActive = true
         };
         context.Roles.Add(role);
+
+        // Delivery-oriented role names get warehouse.detailing immediately so web التسليم works.
+        if (IsDeliveryOrientedRoleName(trimmed))
+        {
+            var detailingId = await context.Permissions
+                .Where(p => p.Code == "warehouse.detailing")
+                .Select(p => p.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (detailingId != Guid.Empty)
+            {
+                context.RolePermissions.Add(new RolePermissionEntity
+                {
+                    RoleId = role.Id,
+                    PermissionId = detailingId
+                });
+            }
+        }
+
         return role.Id;
     }
+
+    private static bool IsDeliveryOrientedRoleName(string name) =>
+        name.Contains("تسليم", StringComparison.OrdinalIgnoreCase)
+        || name.Contains("تفصيل", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("موظف المستودع", StringComparison.OrdinalIgnoreCase);
 
     public async Task<Guid> CreateUserAsync(
         string username,

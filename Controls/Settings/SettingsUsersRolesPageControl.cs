@@ -67,6 +67,15 @@ public sealed class SettingsUsersRolesPageControl : UserControl
             FontFamily = Ff()
         });
         _rolesList.SelectionChanged += OnRoleSelected;
+        left.Children.Add(new TextBlock
+        {
+            Text = "تلميح: لشاشة التسليم في الويب فعّل «تفصيل المستودع — شاشة التسليم» تحت قسم المستودع.",
+            Margin = new Thickness(12, 0, 12, 8),
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Br("TextSecondaryBrush"),
+            FontFamily = Ff()
+        });
         left.Children.Add(_rolesList);
 
         var newRoleRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 0, 8, 12) };

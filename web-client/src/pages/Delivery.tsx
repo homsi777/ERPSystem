@@ -33,7 +33,10 @@ export function DeliveryPage() {
   if (!can('warehouse.detailing')) {
     return (
       <AppShell title="التسليم">
-        <EmptyState title="لا تملك صلاحية الوصول" description="شاشة تفصيل المستودع تتطلب صلاحية warehouse.detailing." />
+        <EmptyState
+          title="لا تملك صلاحية الوصول"
+          description="شاشة التسليم (تفصيل المستودع) تتطلب تفعيل صلاحية «تفصيل المستودع» في دور المستخدم من الإعدادات."
+        />
       </AppShell>
     );
   }
