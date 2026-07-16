@@ -67,15 +67,15 @@ public partial class LoginWindow : Window
         try
         {
             var result = await AuthUiService.Instance.LoginAsync(username, password);
-            if (!result.IsSuccess || result.Value is null)
+            if (!result.IsSuccess)
             {
                 ShowError(result.ErrorMessage ?? "اسم المستخدم أو كلمة المرور غير صحيحة.");
                 return;
             }
 
-            var user = result.Value;
+            var (user, sessionId) = result.Value!;
             var currentUser = AppServices.GetRequiredService<ICurrentUserService>() as WpfCurrentUserService;
-            currentUser?.SetSession(user.UserId, user.Username, user.FullNameAr, user.Permissions);
+            currentUser?.SetSession(user.UserId, sessionId, user.Username, user.FullNameAr, user.Permissions);
 
             ShowSecuritySplash();
         }

@@ -5,6 +5,7 @@ using ERPSystem.Application.Diagnostics;
 using ERPSystem.Diagnostics.Performance;
 using ERPSystem.Infrastructure.DependencyInjection;
 using ERPSystem.Services;
+using ERPSystem.Services.Identity;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Suppliers;
 using ERPSystem.Services.Purchases;
@@ -125,6 +126,9 @@ public partial class App : System.Windows.Application
             services.AddSingleton<ERPSystem.Services.Hr.HrUiService>();
             services.AddSingleton<ERPSystem.Services.Identity.IdentityUiService>();
             services.AddSingleton<ERPSystem.Services.Identity.AuthUiService>();
+            services.AddSingleton<ERPSystem.Services.Identity.UserSessionUiService>();
+            services.AddSingleton<WpfSessionMonitor>(sp =>
+                new WpfSessionMonitor((WpfCurrentUserService)sp.GetRequiredService<ICurrentUserService>()));
 
             var provider = services.BuildServiceProvider();
             AppServices.Initialize(provider);
@@ -188,6 +192,7 @@ public partial class App : System.Windows.Application
                 using (windowScope.MeasureRendering())
                 {
                     window.Show();
+                    AppServices.GetRequiredService<WpfSessionMonitor>().Start();
                     MaybeRunDigitAudit(window);
                 }
                 MainWindow = window;
@@ -205,8 +210,22 @@ public partial class App : System.Windows.Application
         }
     }
 
-    protected override void OnExit(ExitEventArgs e)
+    protected override async void OnExit(ExitEventArgs e)
     {
+        if (AppServices.IsInitialized)
+        {
+            try
+            {
+                var currentUser = (WpfCurrentUserService)AppServices.GetRequiredService<ICurrentUserService>();
+                if (currentUser.SessionId != Guid.Empty)
+                    await AuthUiService.Instance.EndSessionAsync(currentUser.SessionId);
+            }
+            catch
+            {
+                // Best-effort session cleanup.
+            }
+        }
+
         string? sessionLog = null;
         if (AppServices.IsInitialized)
         {

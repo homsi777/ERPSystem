@@ -11,7 +11,7 @@ internal sealed class JwtTokenService(IOptions<JwtSettings> options) : IJwtToken
 {
     private readonly JwtSettings _settings = options.Value;
 
-    public (string Token, DateTime ExpiresAt) CreateAccessToken(AuthenticatedUserDto user)
+    public (string Token, DateTime ExpiresAt) CreateAccessToken(AuthenticatedUserDto user, Guid? sessionId = null)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_settings.AccessTokenMinutes);
         var credentials = new SigningCredentials(GetSigningKey(), SecurityAlgorithms.HmacSha256);
@@ -22,6 +22,9 @@ internal sealed class JwtTokenService(IOptions<JwtSettings> options) : IJwtToken
             new(JwtRegisteredClaimNames.UniqueName, user.Username),
             new("full_name_ar", user.FullNameAr)
         };
+
+        if (sessionId.HasValue && sessionId.Value != Guid.Empty)
+            claims.Add(new Claim(SessionValidationMiddleware.SessionClaimType, sessionId.Value.ToString()));
 
         foreach (var role in user.Roles)
             claims.Add(new Claim(ClaimTypes.Role, role));

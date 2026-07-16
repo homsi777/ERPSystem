@@ -28,6 +28,23 @@ export type AuthenticatedUserDto = {
 export type LoginRequest = {
   username: string;
   password: string;
+  clientType?: string;
+};
+
+export type UserSessionStatusDto = {
+  id: string;
+  userId: string;
+  username: string;
+  fullNameAr: string;
+  clientType: 0 | 1;
+  clientTypeDisplay: string;
+  deviceInfo: string | null;
+  ipAddress: string | null;
+  loginAt: string;
+  logoutAt: string | null;
+  lastSeenAt: string | null;
+  isActive: boolean;
+  statusDisplay: string;
 };
 
 export type AuthTokenResponse = {

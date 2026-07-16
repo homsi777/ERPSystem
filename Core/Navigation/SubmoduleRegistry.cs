@@ -134,6 +134,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("Company", "هوية الشركة", "\uE8D7"),
                 new SubmoduleDef("Branches", "الفروع والمستودعات", "\uE909"),
                 new SubmoduleDef("Users", "المستخدمون والصلاحيات", "\uE716"),
+                new SubmoduleDef("UserSessions", "حالة المستخدمين", "\uE7C3"),
                 new SubmoduleDef("Locale", "اللغة والمنطقة", "\uE774"),
                 new SubmoduleDef("Currencies", "العملات وأسعار الصرف", "\uE8C1"),
                 new SubmoduleDef("Finance", "الإعدادات المالية", "\uE8C3"),

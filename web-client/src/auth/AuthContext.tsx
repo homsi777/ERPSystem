@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearAuth, navigate]);
 
   const login = useCallback(async (request: LoginRequest, redirectTo = '/home') => {
-    const response = await loginRequest(request);
+    const response = await loginRequest({ ...request, clientType: request.clientType ?? 'web' });
     setAccessToken(response.accessToken);
     setRefreshToken(response.refreshToken);
     setStoredUser(response.user);

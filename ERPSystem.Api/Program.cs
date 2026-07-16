@@ -125,6 +125,7 @@ if (app.Environment.IsDevelopment())
 app.UseResponseCompression();
 app.UseCors("WebClient");
 app.UseAuthentication();
+app.UseSessionValidation();
 app.UseAuthorization();
 
 app.MapGet("/health", () => "OK").AllowAnonymous();
@@ -141,5 +142,6 @@ app.MapFinanceEndpoints();
 app.MapSalesEndpoints();
 app.MapExpenseEndpoints();
 app.MapAccountingEndpoints();
+app.MapSettingsEndpoints();
 
 app.Run();

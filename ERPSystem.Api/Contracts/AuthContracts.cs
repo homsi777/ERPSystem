@@ -2,7 +2,7 @@ using ERPSystem.Application.DTOs.Identity;
 
 namespace ERPSystem.Api.Contracts;
 
-public sealed record LoginRequest(string Username, string Password);
+public sealed record LoginRequest(string Username, string Password, string? ClientType = null);
 
 public sealed record RefreshTokenRequest(string RefreshToken);
 

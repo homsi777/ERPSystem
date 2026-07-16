@@ -79,6 +79,24 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRoleE
     }
 }
 
+internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSessionEntity>
+{
+    public void Configure(EntityTypeBuilder<UserSessionEntity> builder)
+    {
+        builder.ToTable("user_sessions", Schemas.Identity);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Username).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.FullNameAr).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.RefreshTokenHash).HasMaxLength(128);
+        builder.Property(x => x.DeviceInfo).HasMaxLength(500);
+        builder.Property(x => x.IpAddress).HasMaxLength(64);
+        builder.Property(x => x.RevokedReason).HasMaxLength(100);
+        builder.HasIndex(x => x.UserId);
+        builder.HasIndex(x => x.RefreshTokenHash);
+        builder.HasIndex(x => x.LoginAt);
+    }
+}
+
 internal sealed class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissionEntity>
 {
     public void Configure(EntityTypeBuilder<RolePermissionEntity> builder)

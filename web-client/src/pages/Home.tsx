@@ -56,6 +56,10 @@ export function HomePage() {
             ) : null}
           </Link>
         ))}
+        <Link className="shortcut-card" to="/settings/user-sessions">
+          <Icon name="home" />
+          <span>حالة المستخدمين</span>
+        </Link>
       </section>
 
       {summary && summary.recentActivity.length > 0 ? (

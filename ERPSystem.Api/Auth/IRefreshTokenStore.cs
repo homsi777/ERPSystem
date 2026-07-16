@@ -1,6 +1,7 @@
 namespace ERPSystem.Api.Auth;
 
 public sealed record RefreshTokenRecord(
+    Guid SessionId,
     Guid UserId,
     string Username,
     string FullNameAr,

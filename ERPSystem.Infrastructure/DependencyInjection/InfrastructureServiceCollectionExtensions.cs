@@ -95,6 +95,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAccountingReportRepository, AccountingReportRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IIdentityAdminRepository, IdentityAdminRepository>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IInventoryManagementRepository, InventoryManagementRepository>();

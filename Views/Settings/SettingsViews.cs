@@ -19,6 +19,7 @@ namespace ERPSystem.Views.Settings
             ("Company", "هوية الشركة", "اسم الشركة، الشعار، السجل التجاري"),
             ("Branches", "الفروع والمستودعات", "إدارة الفروع والمستودعات"),
             ("Users", "المستخدمون والأدوار والصلاحيات", "حسابات وصلاحيات"),
+            ("UserSessions", "حالة المستخدمين", "تسجيل الدخول والخروج — متصفح أو سطح مكتب"),
             ("Locale", "اللغة والمنطقة", "العربية RTL والتنسيق"),
             ("Currencies", "العملات وأسعار الصرف", "$ والعملات الأخرى"),
             ("Finance", "الإعدادات المالية", "السنة المالية والحسابات"),
@@ -220,6 +221,9 @@ namespace ERPSystem.Views.Settings
                     break;
                 case "Users":
                     stack.Children.Add(new SettingsUsersRolesPageControl());
+                    break;
+                case "UserSessions":
+                    stack.Children.Add(new SettingsUserSessionsPageControl());
                     break;
                 default:
                     BuildUnsupportedSection(stack);

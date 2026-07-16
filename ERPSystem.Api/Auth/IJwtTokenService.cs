@@ -5,7 +5,7 @@ namespace ERPSystem.Api.Auth;
 
 public interface IJwtTokenService
 {
-    (string Token, DateTime ExpiresAt) CreateAccessToken(AuthenticatedUserDto user);
+    (string Token, DateTime ExpiresAt) CreateAccessToken(AuthenticatedUserDto user, Guid? sessionId = null);
     string CreateRefreshToken();
     ClaimsPrincipal? ValidateAccessToken(string token);
 }

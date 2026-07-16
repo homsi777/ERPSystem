@@ -19,7 +19,7 @@ public static class JwtAuthenticationExtensions
         services.PostConfigure<JwtSettings>(options => options.SecretKey = secretKey);
 
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
-        services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
+        services.AddScoped<IRefreshTokenStore, DbRefreshTokenStore>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>

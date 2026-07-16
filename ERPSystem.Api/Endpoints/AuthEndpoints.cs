@@ -6,6 +6,7 @@ using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.DTOs.Identity;
 using ERPSystem.Application.Queries.Identity;
 using ERPSystem.Application.UseCases.Identity;
+using ERPSystem.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -37,10 +38,11 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> LoginAsync(
+        HttpContext httpContext,
         [FromBody] LoginRequest request,
         AuthenticateUserHandler handler,
         IJwtTokenService jwtTokenService,
-        IRefreshTokenStore refreshTokenStore,
+        IUserSessionRepository userSessionRepository,
         IOptions<JwtSettings> jwtOptions,
         CancellationToken cancellationToken)
     {
@@ -54,15 +56,24 @@ public static class AuthEndpoints
             return ApplicationResultHttpMapper.ToUnauthorized(authResult);
 
         var user = authResult.Value!;
-        var (accessToken, accessExpiresAt) = jwtTokenService.CreateAccessToken(user);
         var refreshToken = jwtTokenService.CreateRefreshToken();
         var refreshExpiresAt = DateTime.UtcNow.AddDays(jwtOptions.Value.RefreshTokenDays);
+        var deviceInfo = httpContext.Request.Headers.UserAgent.ToString();
+        if (!string.IsNullOrWhiteSpace(request.ClientType))
+            deviceInfo = $"{request.ClientType} | {deviceInfo}";
 
-        await refreshTokenStore.StoreAsync(refreshToken, new RefreshTokenRecord(
+        var session = await userSessionRepository.StartSessionAsync(
             user.UserId,
             user.Username,
             user.FullNameAr,
-            refreshExpiresAt), cancellationToken);
+            UserSessionClientType.Web,
+            refreshToken,
+            string.IsNullOrWhiteSpace(deviceInfo) ? "متصفح ويب" : deviceInfo,
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            refreshExpiresAt,
+            cancellationToken);
+
+        var (accessToken, accessExpiresAt) = jwtTokenService.CreateAccessToken(user, session.SessionId);
 
         return Results.Ok(new AuthTokenResponse(
             accessToken,
@@ -102,7 +113,7 @@ public static class AuthEndpoints
             Permissions = permissions
         };
 
-        var (accessToken, accessExpiresAt) = jwtTokenService.CreateAccessToken(user);
+        var (accessToken, accessExpiresAt) = jwtTokenService.CreateAccessToken(user, stored.SessionId);
         return Results.Ok(new RefreshTokenResponse(accessToken, accessExpiresAt));
     }
 

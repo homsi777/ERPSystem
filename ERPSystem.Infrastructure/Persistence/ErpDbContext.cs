@@ -29,6 +29,7 @@ public sealed class ErpDbContext(DbContextOptions<ErpDbContext> options) : DbCon
     public DbSet<PermissionEntity> Permissions => Set<PermissionEntity>();
     public DbSet<UserRoleEntity> UserRoles => Set<UserRoleEntity>();
     public DbSet<RolePermissionEntity> RolePermissions => Set<RolePermissionEntity>();
+    public DbSet<UserSessionEntity> UserSessions => Set<UserSessionEntity>();
 
     // parties
     public DbSet<CustomerEntity> Customers => Set<CustomerEntity>();

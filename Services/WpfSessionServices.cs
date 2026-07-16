@@ -6,11 +6,13 @@ namespace ERPSystem.Services;
 public sealed class WpfCurrentUserService : ICurrentUserService
 {
     private Guid? _userId;
+    private Guid _sessionId;
     private string? _username;
     private string? _fullNameAr;
     private IReadOnlyList<string> _permissions = [];
 
     public Guid? UserId => _userId;
+    public Guid SessionId => _sessionId;
     public string? Username => _username;
     public string? FullNameAr => _fullNameAr;
     public IReadOnlyList<string> Permissions => _permissions;
@@ -18,11 +20,13 @@ public sealed class WpfCurrentUserService : ICurrentUserService
 
     public void SetSession(
         Guid userId,
+        Guid sessionId,
         string username,
         string fullNameAr,
         IReadOnlyList<string> permissions)
     {
         _userId = userId;
+        _sessionId = sessionId;
         _username = username;
         _fullNameAr = fullNameAr;
         _permissions = permissions;
@@ -31,6 +35,7 @@ public sealed class WpfCurrentUserService : ICurrentUserService
     public void ClearSession()
     {
         _userId = null;
+        _sessionId = Guid.Empty;
         _username = null;
         _fullNameAr = null;
         _permissions = [];
