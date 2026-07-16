@@ -60,6 +60,16 @@ export function formatMeters(value: number) {
   return `${numberFormatter.format(value)} م`;
 }
 
+export function formatYards(value: number) {
+  return `${numberFormatter.format(value)} ي`;
+}
+
+/** Desktop-parity length line: meters with yards in parentheses. */
+export function formatMetersAndYards(meters: number, yards?: number | null) {
+  const y = yards ?? displayLengthFromMeters(meters, 1);
+  return `${formatMeters(meters)} (${formatYards(y)})`;
+}
+
 /** DPL quantity unit from API: 0 = meters, 1 = yards */
 export type DplQuantityUnit = 0 | 1;
 

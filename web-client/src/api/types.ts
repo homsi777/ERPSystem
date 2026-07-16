@@ -81,6 +81,9 @@ export type FabricStockBalanceDto = {
   reservedMeters: number;
   availableMeters: number;
   inventoryValue: number;
+  totalYards?: number;
+  reservedYards?: number;
+  availableYards?: number;
 };
 
 export type FabricSearchProfileDto = {

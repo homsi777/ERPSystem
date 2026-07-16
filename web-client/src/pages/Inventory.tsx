@@ -27,7 +27,7 @@ import { LoadingState } from '../components/LoadingState.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { RecordField } from '../components/RecordField.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatCurrency, formatDate, formatDateOnly, formatInteger, formatMeters, formatNumber, EMPTY_CELL } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatDateOnly, formatInteger, formatMeters, formatMetersAndYards, formatNumber, EMPTY_CELL } from '../lib/format.ts';
 import { inventoryStatusLabels } from '../lib/enums.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { canViewSensitivePricing } from '../auth/generalManagerAccess.ts';
@@ -414,9 +414,9 @@ function FabricSearchProfileCard({
       </header>
 
       <dl className="fabric-profile-card__stats">
-        <RecordField label="إجمالي الأمتار" value={formatMeters(profile.totalMeters)} />
-        <RecordField label="متاح" value={formatMeters(profile.availableMeters)} />
-        <RecordField label="محجوز" value={formatMeters(profile.reservedMeters)} />
+        <RecordField label="إجمالي الكمية" value={formatMetersAndYards(profile.totalMeters)} />
+        <RecordField label="متاح" value={formatMetersAndYards(profile.availableMeters)} />
+        <RecordField label="محجوز" value={formatMetersAndYards(profile.reservedMeters)} />
         {showPricing ? (
           <RecordField label="قيمة المخزون" value={formatCurrency(profile.inventoryValue)} emphasis />
         ) : null}
@@ -436,8 +436,8 @@ function FabricSearchProfileCard({
             <li key={color.fabricColorId}>
               <strong>{color.colorName}</strong>
               <span>
-                {formatNumber(color.rollCount)} توب • {formatMeters(color.totalMeters)} • متاح{' '}
-                {formatMeters(color.availableMeters)} • {formatNumber(color.containerCount)} حاوية
+                {formatNumber(color.rollCount)} توب • {formatMetersAndYards(color.totalMeters)} • متاح{' '}
+                {formatMetersAndYards(color.availableMeters)} • {formatNumber(color.containerCount)} حاوية
               </span>
               <span>
                 بيع {formatPricePerMeter(color.avgSalePricePerMeter)}
@@ -459,9 +459,9 @@ function FabricSearchProfileCard({
                 {loc.warehouseName} — حاوية {loc.containerNumber} — {loc.colorName}
               </strong>
               <span>
-                {formatNumber(loc.rollCount)} توب • {formatMeters(loc.totalMeters)} • متاح{' '}
-                {formatMeters(loc.availableMeters)}
-                {loc.reservedMeters > 0 ? ` • محجوز ${formatMeters(loc.reservedMeters)}` : ''}
+                {formatNumber(loc.rollCount)} توب • {formatMetersAndYards(loc.totalMeters)} • متاح{' '}
+                {formatMetersAndYards(loc.availableMeters)}
+                {loc.reservedMeters > 0 ? ` • محجوز ${formatMetersAndYards(loc.reservedMeters)}` : ''}
               </span>
               <span>
                 بيع {formatPricePerMeter(loc.avgSalePricePerMeter)}
@@ -484,7 +484,7 @@ function FabricSearchProfileCard({
                   حاوية {leg.containerNumber} — {leg.statusLabel}
                 </strong>
                 <span>
-                  {formatNumber(leg.rollCount)} توب • {formatMeters(leg.totalMeters)} • المستودعات:{' '}
+                  {formatNumber(leg.rollCount)} توب • {formatMetersAndYards(leg.totalMeters)} • المستودعات:{' '}
                   {leg.warehouses.length > 0 ? leg.warehouses.join('، ') : EMPTY_CELL}
                 </span>
                 <span>
@@ -706,7 +706,7 @@ function StockBalanceCard({
       </p>
       <dl className="record-card__grid">
         <RecordField label="الأثواب" value={`${formatNumber(row.rollCount)} توب`} />
-        <RecordField label="الأمتار" value={formatMeters(row.totalMeters)} />
+        <RecordField label="الكمية" value={formatMetersAndYards(row.totalMeters, row.totalYards)} />
         {showPricing ? (
           <RecordField label="القيمة" value={formatCurrency(row.inventoryValue)} emphasis />
         ) : null}
@@ -717,16 +717,17 @@ function StockBalanceCard({
 
 function StockBalanceDataCard({ row, showPricing }: { row: FabricStockBalanceDto; showPricing: boolean }) {
   const isLow = row.availableMeters <= 0;
+  const lengthText = formatMetersAndYards(row.totalMeters, row.totalYards);
 
   return (
     <DataCard
       icon={<Icon name="inventory" />}
       title={`${row.fabricCode} - ${row.colorName}`}
       subtitle={row.fabricName}
-      meta={`${formatNumber(row.rollCount)} توب • ${formatMeters(row.totalMeters)} • ${
+      meta={`${formatNumber(row.rollCount)} توب • ${lengthText} • ${
         isLow ? inventoryStatusLabels.low : inventoryStatusLabels.available
       }`}
-      value={showPricing ? formatCurrency(row.inventoryValue) : formatMeters(row.totalMeters)}
+      value={showPricing ? formatCurrency(row.inventoryValue) : lengthText}
       tone={isLow ? 'low' : 'available'}
     />
   );
