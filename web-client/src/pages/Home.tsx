@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import { visibleWebModules } from '../auth/moduleAccess.ts';
-import { formatDate, formatNumber } from '../lib/format.ts';
+import { formatCurrency, formatDate, formatNumber } from '../lib/format.ts';
 
 export function HomePage() {
   const { user } = useAuth();
@@ -24,10 +24,10 @@ export function HomePage() {
 
   const headerSummary = summary ? (
     <>
-      <SummaryCard label="فواتير بانتظار تفصيل" value={formatNumber(summary.awaitingDetailingCount)} tone="amber" />
-      <SummaryCard label="حاويات صين قيد المراجعة" value={formatNumber(summary.pendingContainersCount)} />
+      <SummaryCard label="مبيعات اليوم" value={formatCurrency(summary.todaySalesTotal)} tone="green" />
+      <SummaryCard label="إجمالي الذمة" value={formatCurrency(summary.totalCustomerOutstanding)} tone="amber" />
+      <SummaryCard label="قبض الموردين" value={formatCurrency(summary.totalSupplierPayables)} />
       <SummaryCard label="عملاء نشطون" value={formatNumber(summary.activeCustomersCount)} tone="green" />
-      <SummaryCard label="تنبيهات مخزون منخفض" value={formatNumber(summary.lowStockItemsCount)} tone="amber" />
     </>
   ) : undefined;
 
