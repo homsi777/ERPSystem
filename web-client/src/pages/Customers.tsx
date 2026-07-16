@@ -157,62 +157,68 @@ function CustomerListPage() {
       ) : null}
 
       {customersQuery.isSuccess && customersQuery.data.items.length > 0 ? (
-        <>
-          <section className="card-list mobile-only" aria-label="قائمة العملاء">
-            {customersQuery.data.items.map((customer) => (
-              <Link className="card-link" key={customer.id} to={`/customers/${customer.id}`}>
-                <CustomerListCard customer={customer} />
-              </Link>
-            ))}
-          </section>
-          <div className="table-scroll desktop-only">
-            <table className="data-table" aria-label="قائمة العملاء">
-              <thead>
-                <tr>
-                  <th>الكود</th>
-                  <th>الاسم</th>
-                  <th>النوع</th>
-                  <th>افتتاحي</th>
-                  <th>مبيعات</th>
-                  <th>قبض</th>
-                  <th>المتبقي</th>
-                  <th>سندات قبض</th>
-                  <th>حد الائتمان</th>
-                  <th>الحالة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customersQuery.data.items.map((customer) => (
-                  <tr key={customer.id}>
-                    <td>
-                      <Link to={`/customers/${customer.id}`}>{customer.code}</Link>
-                    </td>
-                    <td>{customer.nameAr}</td>
-                    <td>{customerTypeLabels[customer.type as CustomerType]}</td>
-                    <td>{formatOpeningBalanceCell(customer)}</td>
-                    <td>{formatCurrency(customer.totalInvoiced ?? 0)}</td>
-                    <td>{formatCurrency(customer.totalReceipts ?? 0)}</td>
-                    <td>{formatCurrency(customer.computedBalance ?? customer.balance ?? 0)}</td>
-                    <td>{customer.postedReceiptCount ?? 0}</td>
-                    <td>
-                      {customer.type === 0
-                        ? '—'
-                        : customer.creditLimitEnabled
-                          ? formatCurrency(customer.creditLimit)
-                          : 'بدون حد'}
-                    </td>
-                    <td>
-                      <CustomerStatusPill status={customer.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+        <CustomerListContent customers={customersQuery.data.items} />
       ) : null}
       </div>
     </AppShell>
+  );
+}
+
+function CustomerListContent({ customers }: { customers: CustomerListDto[] }) {
+  return (
+    <>
+      <section className="card-list customer-list-cards" aria-label="قائمة العملاء">
+        {customers.map((customer) => (
+          <Link className="card-link" key={customer.id} to={`/customers/${customer.id}`}>
+            <CustomerListCard customer={customer} />
+          </Link>
+        ))}
+      </section>
+      <div className="table-scroll customer-list-table" aria-label="قائمة العملاء — جدول">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>الكود</th>
+              <th>الاسم</th>
+              <th>النوع</th>
+              <th>افتتاحي</th>
+              <th>مبيعات</th>
+              <th>قبض</th>
+              <th>المتبقي</th>
+              <th>سندات قبض</th>
+              <th>حد الائتمان</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {customers.map((customer) => (
+              <tr key={customer.id}>
+                <td>
+                  <Link to={`/customers/${customer.id}`}>{customer.code}</Link>
+                </td>
+                <td>{customer.nameAr}</td>
+                <td>{customerTypeLabels[customer.type as CustomerType]}</td>
+                <td>{formatOpeningBalanceCell(customer)}</td>
+                <td>{formatCurrency(customer.totalInvoiced ?? 0)}</td>
+                <td>{formatCurrency(customer.totalReceipts ?? 0)}</td>
+                <td>{formatCurrency(customer.computedBalance ?? customer.balance ?? 0)}</td>
+                <td>{customer.postedReceiptCount ?? 0}</td>
+                <td>
+                  {customer.type === 0
+                    ? '—'
+                    : customer.creditLimitEnabled
+                      ? formatCurrency(customer.creditLimit)
+                      : 'بدون حد'}
+                </td>
+                <td>
+                  <CustomerStatusPill status={customer.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
