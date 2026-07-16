@@ -14,13 +14,18 @@ public sealed class ReceiptVoucherDto
     public VoucherStatus Status { get; init; }
 }
 
-public sealed class PaymentVoucherDto
+public sealed record PaymentVoucherDto
 {
     public Guid Id { get; init; }
     public string VoucherNumber { get; init; } = "";
     public Guid SupplierId { get; init; }
     public string SupplierName { get; init; } = "";
-    public Guid CashboxId { get; init; }
+    public Guid? CashboxId { get; init; }
+    public Guid? BankAccountId { get; init; }
+    public Guid PaymentMethodId { get; init; }
+    public Guid? PurchaseInvoiceId { get; init; }
+    public string? Reference { get; init; }
+    public string PaymentSourceName { get; init; } = "";
     public decimal Amount { get; init; }
     public DateTime VoucherDate { get; init; }
     public VoucherStatus Status { get; init; }
@@ -57,6 +62,9 @@ public sealed class PaymentVoucherPrintDto
     public VoucherStatus Status { get; init; }
     public string SupplierName { get; init; } = "";
     public string CashboxName { get; init; } = "";
+    public string BankAccountName { get; init; } = "";
+    public string PaymentSourceName { get; init; } = "";
+    public string? Reference { get; init; }
     public string Currency { get; init; } = "USD";
     public decimal Amount { get; init; }
 }

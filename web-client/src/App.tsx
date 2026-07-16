@@ -12,6 +12,7 @@ import { SalesPage } from './pages/Sales.tsx';
 import { ExpensesPage } from './pages/Expenses.tsx';
 import { AccountingPage } from './pages/Accounting.tsx';
 import { SettingsUserSessionsPage } from './pages/SettingsUserSessions.tsx';
+import { PurchaseInvoicePage } from './pages/Purchases.tsx';
 
 export function App() {
   return (
@@ -29,6 +30,7 @@ export function App() {
         <Route path="/china" element={<ChinaPage />} />
         <Route path="/china/new" element={<ChinaPage />} />
         <Route path="/china/:containerId" element={<ChinaPage />} />
+        <Route path="/purchases/:invoiceId" element={<PurchaseInvoicePage />} />
         <Route path="/delivery" element={<DeliveryPage />} />
         <Route path="/delivery/:invoiceId" element={<DeliveryPage />} />
         <Route path="/sales" element={<SalesPage />} />

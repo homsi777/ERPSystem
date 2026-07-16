@@ -656,9 +656,16 @@ internal sealed class PaymentVoucherRepository(ErpDbContext context) : IPaymentV
         await context.PaymentVouchers.AddAsync(new PaymentVoucherEntity
         {
             Id = voucher.Id,
+            CompanyId = voucher.CompanyId,
+            BranchId = voucher.BranchId,
             VoucherNumber = voucher.VoucherNumber,
             SupplierId = voucher.SupplierId,
             CashboxId = voucher.CashboxId,
+            BankAccountId = voucher.BankAccountId,
+            PaymentMethodId = voucher.PaymentMethodId,
+            PurchaseInvoiceId = voucher.PurchaseInvoiceId,
+            Reference = voucher.Reference,
+            Currency = voucher.Amount.Currency,
             Amount = voucher.Amount.Amount,
             VoucherDate = voucher.VoucherDate,
             Status = (int)voucher.Status
@@ -669,6 +676,7 @@ internal sealed class PaymentVoucherRepository(ErpDbContext context) : IPaymentV
         var entity = await context.PaymentVouchers.FirstOrDefaultAsync(v => v.Id == voucher.Id, cancellationToken)
             ?? throw new InvalidOperationException("Payment voucher not found.");
         entity.Status = (int)voucher.Status;
+        entity.PostedAt = voucher.Status == VoucherStatus.Posted ? DateTime.UtcNow : entity.PostedAt;
         entity.UpdatedAt = DateTime.UtcNow;
     }
 }

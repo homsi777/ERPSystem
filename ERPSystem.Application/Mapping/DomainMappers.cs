@@ -404,6 +404,10 @@ public static class FinanceMapper
         SupplierId = voucher.SupplierId,
         SupplierName = supplierName,
         CashboxId = voucher.CashboxId,
+        BankAccountId = voucher.BankAccountId,
+        PaymentMethodId = voucher.PaymentMethodId,
+        PurchaseInvoiceId = voucher.PurchaseInvoiceId,
+        Reference = voucher.Reference,
         Amount = voucher.Amount.Amount,
         VoucherDate = voucher.VoucherDate,
         Status = voucher.Status

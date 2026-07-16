@@ -142,8 +142,12 @@ public static class ApplicationValidators
         var errors = new List<ValidationError>();
         if (command.SupplierId == Guid.Empty)
             errors.Add(new ValidationError(nameof(command.SupplierId), "Supplier is required."));
-        if (command.CashboxId == Guid.Empty)
-            errors.Add(new ValidationError(nameof(command.CashboxId), "Cashbox is required."));
+        var hasCashbox = command.CashboxId is Guid cashboxId && cashboxId != Guid.Empty;
+        var hasBank = command.BankAccountId is Guid bankAccountId && bankAccountId != Guid.Empty;
+        if (hasCashbox == hasBank)
+            errors.Add(new ValidationError("PaymentSource", "Choose exactly one payment source: cashbox or bank account."));
+        if (hasBank && string.IsNullOrWhiteSpace(command.Reference))
+            errors.Add(new ValidationError(nameof(command.Reference), "Bank transfer reference is required."));
         if (command.Amount <= 0)
             errors.Add(new ValidationError(nameof(command.Amount), "Amount must be greater than zero."));
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;

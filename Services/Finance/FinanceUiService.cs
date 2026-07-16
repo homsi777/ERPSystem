@@ -466,8 +466,13 @@ public sealed class FinanceUiService
 
     public async Task<ApplicationResult<Guid>> CreatePaymentVoucherAsync(
         Guid supplierId,
-        Guid cashboxId,
+        Guid? cashboxId,
         decimal amount,
+        Guid? bankAccountId = null,
+        Guid? paymentMethodId = null,
+        Guid? purchaseInvoiceId = null,
+        string? reference = null,
+        string currency = "USD",
         CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -478,6 +483,11 @@ public sealed class FinanceUiService
             BranchId = BranchId,
             SupplierId = supplierId,
             CashboxId = cashboxId,
+            BankAccountId = bankAccountId,
+            PaymentMethodId = paymentMethodId ?? PaymentMethodIds.Cash,
+            PurchaseInvoiceId = purchaseInvoiceId,
+            Reference = reference,
+            Currency = currency,
             Amount = amount
         }, cancellationToken);
     }

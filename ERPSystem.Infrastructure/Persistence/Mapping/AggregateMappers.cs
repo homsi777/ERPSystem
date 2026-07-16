@@ -569,10 +569,16 @@ internal static class FinanceMapper
     {
         var voucher = DomainHydrator.Create<PaymentVoucher>();
         DomainHydrator.Set(voucher, nameof(PaymentVoucher.Id), entity.Id);
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.CompanyId), entity.CompanyId);
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.BranchId), entity.BranchId);
         DomainHydrator.Set(voucher, nameof(PaymentVoucher.VoucherNumber), entity.VoucherNumber);
         DomainHydrator.Set(voucher, nameof(PaymentVoucher.SupplierId), entity.SupplierId);
         DomainHydrator.Set(voucher, nameof(PaymentVoucher.CashboxId), entity.CashboxId);
-        DomainHydrator.Set(voucher, nameof(PaymentVoucher.Amount), new Money(entity.Amount));
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.BankAccountId), entity.BankAccountId);
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.PaymentMethodId), entity.PaymentMethodId);
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.PurchaseInvoiceId), entity.PurchaseInvoiceId);
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.Reference), entity.Reference);
+        DomainHydrator.Set(voucher, nameof(PaymentVoucher.Amount), new Money(entity.Amount, entity.Currency));
         DomainHydrator.Set(voucher, nameof(PaymentVoucher.VoucherDate), entity.VoucherDate);
         DomainHydrator.Set(voucher, nameof(PaymentVoucher.Status), (VoucherStatus)entity.Status);
         return voucher;

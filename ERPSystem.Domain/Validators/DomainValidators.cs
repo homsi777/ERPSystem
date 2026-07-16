@@ -103,8 +103,10 @@ public static class PaymentVoucherValidator
     {
         if (voucher.SupplierId == Guid.Empty)
             throw new ValidationException("Supplier is required.");
-        if (voucher.CashboxId == Guid.Empty)
-            throw new ValidationException("Cashbox is required.");
+        var hasCashbox = voucher.CashboxId is Guid cashboxId && cashboxId != Guid.Empty;
+        var hasBank = voucher.BankAccountId is Guid bankAccountId && bankAccountId != Guid.Empty;
+        if (hasCashbox == hasBank)
+            throw new ValidationException("Exactly one payment source is required.");
         if (voucher.Amount.Amount <= 0)
             throw new ValidationException("Payment amount must be greater than zero.");
     }

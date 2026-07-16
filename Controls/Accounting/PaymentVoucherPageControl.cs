@@ -1,4 +1,5 @@
 using ERPSystem.Application.DTOs.Expenses;
+using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Controls.Finance;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
@@ -17,6 +18,8 @@ public sealed class PaymentVoucherPageControl : UserControl
 {
     private readonly ComboBox _supplier = new() { MinWidth = 280, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly ComboBox _cashbox = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
+    private readonly ComboBox _method = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
+    private readonly ComboBox _bank = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly TextBox _amount = ErpUiFactory.FormField("0");
     private readonly TextBox _reference = ErpUiFactory.FormField("");
     private readonly DatePicker _date = ErpUiFactory.FormDate(DateTime.Today);
@@ -47,6 +50,9 @@ public sealed class PaymentVoucherPageControl : UserControl
             ("المبلغ *", _amount),
             ("مرجع الفاتورة", _reference),
             ("التاريخ", _date))));
+        stack.Children.Add(ErpUiFactory.Card(ErpUiFactory.BuildFormGrid(
+            ("طريقة الدفع *", _method),
+            ("الحساب البنكي", _bank))));
         stack.Children.Add(_status);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 16, 0, 0) };
@@ -63,6 +69,7 @@ public sealed class PaymentVoucherPageControl : UserControl
         _post.Click += async (_, _) => await PostAsync();
         _print.Click += async (_, _) => await PrintAsync(exportPdf: false);
         _pdf.Click += async (_, _) => await PrintAsync(exportPdf: true);
+        _method.SelectionChanged += (_, _) => UpdatePaymentSourceState();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -76,6 +83,24 @@ public sealed class PaymentVoucherPageControl : UserControl
         }
 
         await CashboxDropdownBinder.LoadAsync(_cashbox);
+
+        var methods = await FinanceUiService.Instance.GetPaymentMethodsAsync();
+        if (methods.IsSuccess && methods.Value is { Count: > 0 })
+        {
+            _method.ItemsSource = methods.Value;
+            _method.DisplayMemberPath = nameof(PaymentMethodDto.Name);
+            _method.SelectedValuePath = nameof(PaymentMethodDto.Id);
+            _method.SelectedIndex = 0;
+        }
+        var banks = await FinanceUiService.Instance.GetBankAccountsAsync();
+        if (banks.IsSuccess && banks.Value is not null)
+        {
+            _bank.ItemsSource = banks.Value;
+            _bank.DisplayMemberPath = nameof(BankAccountListDto.Name);
+            _bank.SelectedValuePath = nameof(BankAccountListDto.Id);
+            if (banks.Value.Count > 0) _bank.SelectedIndex = 0;
+        }
+        UpdatePaymentSourceState();
 
         ApplyPurchasePaymentContext();
     }
@@ -104,14 +129,14 @@ public sealed class PaymentVoucherPageControl : UserControl
     private async Task CreateDraftAsync()
     {
         if (_busy) return;
-        if (!TryReadForm(out var supplierId, out var cashboxId, out var amount))
+        if (!TryReadForm(out var supplierId, out var cashboxId, out var bankId, out var methodId, out var amount))
             return;
 
         _busy = true;
         _createDraft.IsEnabled = false;
         try
         {
-            var result = await FinanceUiService.Instance.CreatePaymentVoucherAsync(supplierId, cashboxId, amount);
+            var result = await FinanceUiService.Instance.CreatePaymentVoucherAsync(supplierId, cashboxId, amount, bankId, methodId, _purchaseInvoiceId, _reference.Text);
             if (!ApplicationResultPresenter.Present(result))
                 return;
 
@@ -137,7 +162,7 @@ public sealed class PaymentVoucherPageControl : UserControl
 
         if (_draftId is not Guid voucherId)
         {
-            if (!TryReadForm(out var supplierId, out var cashboxId, out var amount))
+            if (!TryReadForm(out var supplierId, out var cashboxId, out var bankId, out var methodId, out var amount))
                 return;
 
             _busy = true;
@@ -145,7 +170,7 @@ public sealed class PaymentVoucherPageControl : UserControl
             _post.IsEnabled = false;
             try
             {
-                var create = await FinanceUiService.Instance.CreatePaymentVoucherAsync(supplierId, cashboxId, amount);
+                var create = await FinanceUiService.Instance.CreatePaymentVoucherAsync(supplierId, cashboxId, amount, bankId, methodId, _purchaseInvoiceId, _reference.Text);
                 if (!ApplicationResultPresenter.Present(create))
                     return;
                 voucherId = create.Value;
@@ -211,10 +236,12 @@ public sealed class PaymentVoucherPageControl : UserControl
         }
     }
 
-    private bool TryReadForm(out Guid supplierId, out Guid cashboxId, out decimal amount)
+    private bool TryReadForm(out Guid supplierId, out Guid? cashboxId, out Guid? bankId, out Guid methodId, out decimal amount)
     {
         supplierId = Guid.Empty;
-        cashboxId = Guid.Empty;
+        cashboxId = null;
+        bankId = null;
+        methodId = Guid.Empty;
         amount = 0;
 
         if (_supplier.SelectedValue is not Guid sid || sid == Guid.Empty)
@@ -223,11 +250,22 @@ public sealed class PaymentVoucherPageControl : UserControl
             return false;
         }
 
-        if (_cashbox.SelectedValue is not Guid boxId || boxId == Guid.Empty)
+        if (_method.SelectedItem is not PaymentMethodDto selectedMethod)
+            return false;
+        methodId = selectedMethod.Id;
+
+        if (selectedMethod.RequiresCashbox && (_cashbox.SelectedValue is not Guid boxId || boxId == Guid.Empty))
         {
             MessageBox.Show("اختر الصندوق.", "سند صرف", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
+        if (selectedMethod.RequiresCashbox) cashboxId = (Guid)_cashbox.SelectedValue;
+        if (selectedMethod.RequiresBankAccount && (_bank.SelectedValue is not Guid selectedBank || selectedBank == Guid.Empty))
+        {
+            MessageBox.Show("اختر الحساب البنكي.", "سند صرف", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        if (selectedMethod.RequiresBankAccount) bankId = (Guid)_bank.SelectedValue;
 
         if (!TryParseDecimal(_amount.Text, out amount) || amount <= 0)
         {
@@ -236,8 +274,14 @@ public sealed class PaymentVoucherPageControl : UserControl
         }
 
         supplierId = sid;
-        cashboxId = boxId;
         return true;
+    }
+
+    private void UpdatePaymentSourceState()
+    {
+        var method = _method.SelectedItem as PaymentMethodDto;
+        _cashbox.IsEnabled = method?.RequiresCashbox == true;
+        _bank.IsEnabled = method?.RequiresBankAccount == true;
     }
 
     private static bool TryParseDecimal(string text, out decimal value) =>

@@ -218,6 +218,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<CancelReceiptVoucherCommand, ApplicationResult>, CancelReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<ReverseReceiptVoucherCommand, ApplicationResult>, ReverseReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<CreatePaymentVoucherCommand, ApplicationResult<Guid>>, CreatePaymentVoucherHandler>();
+        services.AddScoped<ICommandHandler<ApprovePaymentVoucherCommand, ApplicationResult>, ApprovePaymentVoucherHandler>();
         services.AddScoped<ICommandHandler<PostPaymentVoucherCommand, ApplicationResult>, PostPaymentVoucherHandler>();
         services.AddScoped<ICommandHandler<CreateCashboxCommand, ApplicationResult<Guid>>, CreateCashboxHandler>();
         services.AddScoped<ICommandHandler<UpdateCashboxCommand, ApplicationResult>, UpdateCashboxHandler>();
@@ -232,6 +233,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCashboxOperationsCenterHandler>();
         services.AddScoped<GetReceiptVoucherPrintHandler>();
         services.AddScoped<GetPaymentVoucherPrintHandler>();
+        services.AddScoped<GetPaymentVoucherDetailsHandler>();
+        services.AddScoped<GetPaymentVoucherListHandler>();
     }
 
     private static void RegisterOpeningBalanceHandlers(IServiceCollection services)

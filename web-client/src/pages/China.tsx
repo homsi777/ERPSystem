@@ -584,6 +584,14 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
             onToast={(message, tone = 'success') => setToast({ tone, message })}
           />
 
+          {data.linkedPurchaseInvoiceId ? (
+            <section className="form-panel form-compact">
+              <Link className="primary-button" to={`/purchases/${data.linkedPurchaseInvoiceId}`}>
+                تسجيل دفعة للفاتورة {data.linkedPurchaseInvoiceNumber || ''}
+              </Link>
+            </section>
+          ) : null}
+
           <ActionPanel
             canCalculateLandingCost={data.canCalculateLandingCost && can('containers.landing-cost')}
             canSetSalePrices={data.canSetSalePrices && can('containers.landing-cost')}

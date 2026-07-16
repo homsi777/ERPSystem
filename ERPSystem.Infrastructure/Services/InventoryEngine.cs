@@ -35,7 +35,15 @@ internal sealed class InventoryEngine(
         if (validItems.Count == 0)
             throw new ValidationException("Container has no valid items to post.");
 
-        var costPerMeter = CalculateContainerCostPerMeter(container);
+        var linkedInvoice = await context.PurchaseInvoices.AsNoTracking()
+            .SingleOrDefaultAsync(p => p.SourceContainerId == container.Id && !p.IsArchived, cancellationToken)
+            ?? throw new ValidationException("A posted purchase invoice linked to the container is required before inventory activation.");
+        if (linkedInvoice.Status == (int)PurchaseInvoiceStatus.Draft || linkedInvoice.TotalAmount <= 0)
+            throw new ValidationException("The container purchase invoice must be posted with a positive value before inventory activation.");
+
+        var inventoryValue = linkedInvoice.TotalAmount;
+        var totalMeters = validItems.Sum(i => i.LengthMeters.Value);
+        var costPerMeter = inventoryValue / totalMeters;
         var typeLineCosts = container.FabricTypeLines
             .Where(t => t.FabricItemId.HasValue && t.FabricColorId.HasValue)
             .ToDictionary(t => (t.FabricItemId!.Value, t.FabricColorId!.Value));
@@ -77,6 +85,7 @@ internal sealed class InventoryEngine(
         var movementId = Guid.NewGuid();
         var movementNumber = BuildMovementNumber(container.ContainerNumber.Value, now);
         var movementLines = new List<StockMovementLineEntity>();
+        var rolls = new List<FabricRollEntity>();
 
         foreach (var item in validItems)
         {
@@ -102,7 +111,7 @@ internal sealed class InventoryEngine(
                     : (decimal?)null;
 
                 var rollId = Guid.NewGuid();
-                await context.FabricRolls.AddAsync(new FabricRollEntity
+                rolls.Add(new FabricRollEntity
                 {
                     Id = rollId,
                     ContainerId = container.Id,
@@ -127,9 +136,12 @@ internal sealed class InventoryEngine(
                     IsLegacyOpeningBalance = false,
                     LegacyLengthConfirmed = true,
                     CreatedAt = now
-                }, cancellationToken);
+                });
             }
         }
+
+        ReconcileRollCostsToInvoice(rolls, inventoryValue);
+        await context.FabricRolls.AddRangeAsync(rolls, cancellationToken);
 
         foreach (var group in stockGroups)
         {
@@ -147,6 +159,8 @@ internal sealed class InventoryEngine(
                 CreatedAt = now
             }, cancellationToken);
 
+            var groupRolls = rolls.Where(r => r.FabricItemId == group.FabricItemId && r.FabricColorId == group.FabricColorId).ToList();
+            var groupValue = groupRolls.Sum(r => r.LengthMeters * r.CostPerMeter);
             movementLines.Add(new StockMovementLineEntity
             {
                 Id = Guid.NewGuid(),
@@ -157,8 +171,8 @@ internal sealed class InventoryEngine(
                 ContainerId = container.Id,
                 RollCount = group.RollCount,
                 QuantityMeters = group.TotalMeters,
-                UnitCost = costPerMeter,
-                TotalValue = group.TotalMeters * costPerMeter,
+                UnitCost = groupValue / group.TotalMeters,
+                TotalValue = groupValue,
                 CurrencyCode = "USD",
                 CreatedAt = now
             });
@@ -167,7 +181,6 @@ internal sealed class InventoryEngine(
         await PostMovementAsync(movementId, movementNumber, MovementType.Import, warehouseId,
             DocumentType.ChinaContainer, container.Id, movementLines, now, cancellationToken);
 
-        var inventoryValue = stockGroups.Sum(g => g.TotalMeters) * costPerMeter;
         await accountingService.PostInventoryActivationAsync(container, warehouseId, inventoryValue, cancellationToken);
         await RecordValuationSnapshotAsync(warehouseId, movementId, ValuationMethod.LandingCost, cancellationToken);
     }
@@ -1477,6 +1490,30 @@ internal sealed class InventoryEngine(
             return 0m;
         var perMeter = container.LandingCost.TotalSharedExpenses.Amount / container.TotalMeters.Value;
         return perMeter * container.ExchangeRateToLocalCurrency;
+    }
+
+    internal static void ReconcileRollCostsToInvoice(IReadOnlyList<FabricRollEntity> rolls, decimal invoiceTotal)
+    {
+        if (rolls.Count == 0 || invoiceTotal <= 0)
+            throw new ValidationException("Roll valuation requires rolls and a positive invoice total.");
+
+        var rawTotal = rolls.Sum(r => r.LengthMeters * r.CostPerMeter);
+        if (rawTotal <= 0)
+        {
+            var meters = rolls.Sum(r => r.LengthMeters);
+            foreach (var roll in rolls)
+                roll.CostPerMeter = invoiceTotal / meters;
+        }
+        else
+        {
+            var factor = invoiceTotal / rawTotal;
+            foreach (var roll in rolls)
+                roll.CostPerMeter *= factor;
+        }
+
+        var residual = invoiceTotal - rolls.Sum(r => r.LengthMeters * r.CostPerMeter);
+        var last = rolls[^1];
+        last.CostPerMeter += residual / last.LengthMeters;
     }
 
     private static string BuildMovementNumber(string containerNumber, DateTime utcNow)

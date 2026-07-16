@@ -196,6 +196,8 @@ export type ContainerOperationsCenterDto = {
   moveToWarehouseBlockReason?: string | null;
   canCalculateLandingCost: boolean;
   isReadyForSale: boolean;
+  linkedPurchaseInvoiceId?: string | null;
+  linkedPurchaseInvoiceNumber?: string | null;
 };
 
 export type ContainerDetailsDto = {

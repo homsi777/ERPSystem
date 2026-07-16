@@ -41,3 +41,15 @@ public sealed class GetPaymentVoucherPrintQuery
 {
     public Guid VoucherId { get; init; }
 }
+
+public sealed class GetPaymentVoucherListQuery
+{
+    public Guid CompanyId { get; init; }
+    public VoucherStatus? Status { get; init; }
+    public Guid? SupplierId { get; init; }
+}
+
+public sealed class GetPaymentVoucherDetailsQuery
+{
+    public Guid VoucherId { get; init; }
+}

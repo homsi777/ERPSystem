@@ -46,7 +46,9 @@
       "Bash(awk 'NR==280,NR==360{print NR\": \"$0}' ERPSystem.Infrastructure/Services/OpeningBalanceEngine.cs)",
       "Bash(awk 'NR==190,NR==215{print NR\": \"$0}' ERPSystem.Infrastructure/Repositories/AccountingReportRepository.cs)",
       "Bash(awk 'NR==1,NR==45{print NR\": \"$0}' ERPSystem.Application/UseCases/Queries/GetCustomerAccountLedgerHandler.cs)",
-      "PowerShell(cd \"C:\\\\Users\\\\Homsi\\\\Desktop\\\\POS ERP C#\\\\ERPSystem\"; $env:ERP_LOCAL_DB_TESTS=\"1\"; dotnet test ERPSystem.Application.Tests/ERPSystem.Application.Tests.csproj --filter \"FullyQualifiedName~InventoryOpeningBalanceLocalDbVerificationTests|FullyQualifiedName~CustomerAccountLedgerLiveDbVerificationTests\" --no-restore 2>&1 | Select-Object -Last 60)"
+      "PowerShell(cd \"C:\\\\Users\\\\Homsi\\\\Desktop\\\\POS ERP C#\\\\ERPSystem\"; $env:ERP_LOCAL_DB_TESTS=\"1\"; dotnet test ERPSystem.Application.Tests/ERPSystem.Application.Tests.csproj --filter \"FullyQualifiedName~InventoryOpeningBalanceLocalDbVerificationTests|FullyQualifiedName~CustomerAccountLedgerLiveDbVerificationTests\" --no-restore 2>&1 | Select-Object -Last 60)",
+      "Bash(plink -ssh -batch -pw '700210ww' ubuntu@65.21.136.217 \"echo CONNECTED\")",
+      "Bash(plink -ssh -v -batch -pw '700210ww' ubuntu@65.21.136.217 \"echo CONNECTED\")"
     ],
     "additionalDirectories": [
       "\\tmp"

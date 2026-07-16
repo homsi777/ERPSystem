@@ -230,9 +230,15 @@ public class PaymentMethod
 public class PaymentVoucher
 {
     public Guid Id { get; private set; }
+    public Guid CompanyId { get; private set; }
+    public Guid BranchId { get; private set; }
     public string VoucherNumber { get; private set; } = "";
     public Guid SupplierId { get; private set; }
-    public Guid CashboxId { get; private set; }
+    public Guid? CashboxId { get; private set; }
+    public Guid? BankAccountId { get; private set; }
+    public Guid PaymentMethodId { get; private set; }
+    public Guid? PurchaseInvoiceId { get; private set; }
+    public string? Reference { get; private set; }
     public Money Amount { get; private set; } = Money.Zero();
     public DateTime VoucherDate { get; private set; }
     public VoucherStatus Status { get; private set; }
@@ -240,15 +246,27 @@ public class PaymentVoucher
     private PaymentVoucher() { }
 
     public static PaymentVoucher CreateDraft(
+        Guid companyId,
+        Guid branchId,
         string voucherNumber,
         Guid supplierId,
-        Guid cashboxId,
-        Money amount) => new()
+        Guid? cashboxId,
+        Guid? bankAccountId,
+        Guid paymentMethodId,
+        Money amount,
+        Guid? purchaseInvoiceId = null,
+        string? reference = null) => new()
     {
         Id = Guid.NewGuid(),
+        CompanyId = companyId,
+        BranchId = branchId,
         VoucherNumber = voucherNumber,
         SupplierId = supplierId,
         CashboxId = cashboxId,
+        BankAccountId = bankAccountId,
+        PaymentMethodId = paymentMethodId,
+        PurchaseInvoiceId = purchaseInvoiceId,
+        Reference = string.IsNullOrWhiteSpace(reference) ? null : reference.Trim(),
         Amount = amount,
         VoucherDate = DateTime.UtcNow,
         Status = VoucherStatus.Draft

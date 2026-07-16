@@ -254,7 +254,10 @@ internal sealed class PaymentVoucherConfiguration : IEntityTypeConfiguration<Pay
         builder.HasKey(x => x.Id);
         builder.Property(x => x.VoucherNumber).HasMaxLength(50).IsRequired();
         builder.Property(x => x.Amount).HasPrecision(18, 2);
+        builder.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        builder.Property(x => x.Reference).HasMaxLength(100);
         builder.HasIndex(x => new { x.CompanyId, x.VoucherNumber }).IsUnique();
+        builder.HasIndex(x => x.PurchaseInvoiceId);
     }
 }
 

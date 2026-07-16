@@ -54,8 +54,13 @@ public sealed class CreatePaymentVoucherCommand
     public Guid CompanyId { get; init; }
     public Guid BranchId { get; init; }
     public Guid SupplierId { get; init; }
-    public Guid CashboxId { get; init; }
+    public Guid? CashboxId { get; init; }
+    public Guid? BankAccountId { get; init; }
+    public Guid PaymentMethodId { get; init; } = PaymentMethodIds.Cash;
+    public Guid? PurchaseInvoiceId { get; init; }
     public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public string? Reference { get; init; }
 }
 
 public sealed class ApprovePaymentVoucherCommand

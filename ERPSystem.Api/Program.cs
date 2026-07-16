@@ -138,6 +138,7 @@ app.MapDetailingEndpoints();
 app.MapDashboardEndpoints();
 app.MapReceiptEndpoints();
 app.MapPaymentVoucherEndpoints();
+app.MapPurchaseInvoiceEndpoints();
 app.MapFinanceEndpoints();
 app.MapSalesEndpoints();
 app.MapExpenseEndpoints();

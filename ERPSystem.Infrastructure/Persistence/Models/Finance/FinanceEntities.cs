@@ -69,7 +69,12 @@ public class PaymentVoucherEntity : CancellablePersistenceEntity
     public Guid BranchId { get; set; }
     public string VoucherNumber { get; set; } = "";
     public Guid SupplierId { get; set; }
-    public Guid CashboxId { get; set; }
+    public Guid? CashboxId { get; set; }
+    public Guid? BankAccountId { get; set; }
+    public Guid PaymentMethodId { get; set; }
+    public Guid? PurchaseInvoiceId { get; set; }
+    public string? Reference { get; set; }
+    public string Currency { get; set; } = "USD";
     public decimal Amount { get; set; }
     public DateTime VoucherDate { get; set; }
     public int Status { get; set; }
