@@ -92,8 +92,13 @@ public sealed class AccountingAggregate : AggregateRoot
                 $"Reversal: {line.Narrative}",
                 line.PartyId));
         reversal.Post(userId);
-        Status = JournalEntryStatus.Reversed;
         return reversal;
+    }
+
+    public void KeepPostedAfterReversal()
+    {
+        if (Status == JournalEntryStatus.Reversed)
+            Status = JournalEntryStatus.Posted;
     }
 
     public void Cancel()

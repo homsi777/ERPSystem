@@ -81,6 +81,8 @@ public sealed class ReversalRequest
 public sealed class ReversalResult
 {
     public required bool Success { get; init; }
+    public Guid? ReversalJournalEntryId { get; init; }
+    public string? ReversalEntryNumber { get; init; }
     public string? ErrorCode { get; init; }
     public string? ErrorMessage { get; init; }
 
@@ -91,6 +93,20 @@ public sealed class ReversalResult
             ErrorCode = "reversal_not_implemented",
             ErrorMessage = "Journal reversal is planned for a later stabilization phase."
         };
+
+    public static ReversalResult Succeeded(Guid id, string number) => new()
+    {
+        Success = true,
+        ReversalJournalEntryId = id,
+        ReversalEntryNumber = number
+    };
+
+    public static ReversalResult Failed(string code, string message) => new()
+    {
+        Success = false,
+        ErrorCode = code,
+        ErrorMessage = message
+    };
 }
 
 public sealed record JournalEntryPostMetadata(

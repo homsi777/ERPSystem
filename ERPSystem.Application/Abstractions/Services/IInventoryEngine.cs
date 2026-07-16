@@ -54,6 +54,10 @@ public interface IInventoryEngine
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default);
 
+    Task ReverseInvoiceIssueAsync(
+        SalesInvoiceAggregate invoice,
+        CancellationToken cancellationToken = default);
+
     Task AssignFabricRollsOnDetailingAsync(
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default);

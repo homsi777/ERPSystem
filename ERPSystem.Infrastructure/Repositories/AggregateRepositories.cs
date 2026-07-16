@@ -412,6 +412,7 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         header.DeliveryNotes = mapped.DeliveryNotes;
         header.CancelledAt = mapped.CancelledAt;
         header.CancelReason = mapped.CancelReason;
+        header.ReversedByJournalEntryId = mapped.ReversedByJournalEntryId;
         header.UpdatedAt = DateTime.UtcNow;
 
         await SyncChildrenAsync(aggregate, cancellationToken);
@@ -445,12 +446,18 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         var itemsByInvoice = allItems
             .GroupBy(i => i.SalesInvoiceId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<SalesInvoiceItemEntity>)g.ToList());
+        var allRolls = await context.SalesInvoiceRollDetails.AsNoTracking()
+            .Where(r => invoiceIds.Contains(r.SalesInvoiceId))
+            .ToListAsync(cancellationToken);
+        var rollsByInvoice = allRolls
+            .GroupBy(r => r.SalesInvoiceId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<SalesInvoiceRollDetailEntity>)g.ToList());
 
         return headers
             .Select(h => SalesInvoiceMapper.ToAggregate(
                 h,
                 itemsByInvoice.GetValueOrDefault(h.Id) ?? [],
-                [],
+                rollsByInvoice.GetValueOrDefault(h.Id) ?? [],
                 null,
                 []))
             .ToList();

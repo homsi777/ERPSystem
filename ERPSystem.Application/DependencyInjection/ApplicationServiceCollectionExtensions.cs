@@ -263,6 +263,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<SaveWarehouseDetailingDraftCommand, ApplicationResult>, SaveWarehouseDetailingDraftHandler>();
         services.AddScoped<ICommandHandler<ApproveSalesInvoiceCommand, ApplicationResult>, ApproveSalesInvoiceHandler>();
         services.AddScoped<ICommandHandler<CancelSalesInvoiceCommand, ApplicationResult>, CancelSalesInvoiceHandler>();
+        services.AddScoped<ICommandHandler<ReverseSalesInvoiceCommand, ApplicationResult>, ReverseSalesInvoiceHandler>();
         services.AddScoped<ICommandHandler<ConfirmSalesInvoiceDeliveryCommand, ApplicationResult>, ConfirmSalesInvoiceDeliveryHandler>();
         services.AddScoped<ICommandHandler<UpdateSalesInvoiceWarehouseCommand, ApplicationResult>, UpdateSalesInvoiceWarehouseHandler>();
         services.AddScoped<ICommandHandler<CreateSalesReturnCommand, ApplicationResult<Guid>>, CreateSalesReturnHandler>();

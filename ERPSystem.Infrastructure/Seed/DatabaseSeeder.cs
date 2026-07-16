@@ -116,6 +116,7 @@ public static class DatabaseSeeder
             ("sales.approve", "sales", "approve"),
             ("sales.send-to-warehouse", "sales", "send-to-warehouse"),
             ("sales.cancel", "sales", "cancel"),
+            ("sales.reverse", "sales", "reverse"),
             ("warehouse.detailing", "warehouse", "detailing"),
             ("finance.receipt.create", "finance", "receipt-create"),
             ("finance.receipt.post", "finance", "receipt-post"),
@@ -584,6 +585,7 @@ public static class DatabaseSeeder
         ("sales.approve", "sales", "approve"),
         ("sales.send-to-warehouse", "sales", "send-to-warehouse"),
         ("sales.cancel", "sales", "cancel"),
+        ("sales.reverse", "sales", "reverse"),
         ("sales.deliver", "sales", "deliver"),
         ("sales.return", "sales", "return")
     ];

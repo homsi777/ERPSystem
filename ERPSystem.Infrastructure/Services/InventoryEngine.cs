@@ -463,21 +463,22 @@ internal sealed class InventoryEngine(
             stock.ReservedMeters += reserveMeters;
             stock.AvailableMeters -= reserveMeters;
 
-            await context.InventoryReservations.AddAsync(new InventoryReservationEntity
+            var details = invoice.RollDetails.Where(d => d.SalesInvoiceItemId == item.Id).ToList();
+            for (var index = 0; index < rolls.Count; index++)
             {
-                Id = Guid.NewGuid(),
-                WarehouseId = invoice.WarehouseId,
-                FabricItemId = item.FabricItemId,
-                FabricColorId = item.FabricColorId,
-                ReservedMeters = reserveMeters,
-                RollCount = item.RollCount,
-                Status = (int)InventoryReservationStatus.Reserved,
-                Strategy = (int)AllocationStrategy.Fifo,
-                ReferenceType = (int)DocumentType.SalesInvoice,
-                ReferenceId = invoice.Id,
-                ReferenceLineId = item.Id,
-                CreatedAt = DateTime.UtcNow
-            }, cancellationToken);
+                var roll = rolls[index];
+                invoice.AssignFabricRollToDetail(details[index].Id, roll.Id);
+                await context.InventoryReservations.AddAsync(new InventoryReservationEntity
+                {
+                    Id = Guid.NewGuid(), WarehouseId = invoice.WarehouseId, FabricRollId = roll.Id,
+                    FabricItemId = item.FabricItemId, FabricColorId = item.FabricColorId,
+                    ReservedMeters = roll.RemainingLengthMeters, RollCount = 1,
+                    Status = (int)InventoryReservationStatus.Reserved,
+                    Strategy = (int)AllocationStrategy.SpecificRoll,
+                    ReferenceType = (int)DocumentType.SalesInvoice,
+                    ReferenceId = invoice.Id, ReferenceLineId = item.Id, CreatedAt = DateTime.UtcNow
+                }, cancellationToken);
+            }
         }
     }
 
@@ -526,6 +527,11 @@ internal sealed class InventoryEngine(
 
         foreach (var entry in entries)
         {
+            if (entry.RollNumber is not int || entry.RollNumber <= 0)
+                throw new WarehouseDetailingException("A specific fabric roll number is required; length-only sales are not allowed.");
+            if (entry.LengthMeters <= 0)
+                throw new WarehouseDetailingException("The measured whole-roll length must be greater than zero.");
+
             var detail = invoice.RollDetails.FirstOrDefault(d => d.Id == entry.RollDetailId)
                 ?? throw new WarehouseDetailingException("بند التوب غير موجود في الفاتورة.");
 
@@ -564,14 +570,40 @@ internal sealed class InventoryEngine(
                 if (roll.RemainingLengthMeters <= 0)
                     throw new InventoryException($"التوب رقم {serial} لا يحتوي أمتاراً متبقية.");
 
+                var previousRollId = detail.FabricRollId;
+                var stock = await context.WarehouseStocks.FirstAsync(s =>
+                    s.WarehouseId == invoice.WarehouseId && s.ContainerId == item.ChinaContainerId &&
+                    s.FabricItemId == item.FabricItemId && s.FabricColorId == item.FabricColorId,
+                    cancellationToken);
+                if (previousRollId.HasValue && previousRollId.Value != roll.Id)
+                {
+                    var previous = reservedRolls.First(r => r.Id == previousRollId.Value);
+                    previous.Status = (int)FabricRollStatus.Available;
+                    previous.ReservationStatus = (int)InventoryReservationStatus.Available;
+                    stock.ReservedMeters = Math.Max(0, stock.ReservedMeters - previous.RemainingLengthMeters);
+                    stock.AvailableMeters += previous.RemainingLengthMeters;
+                }
+
                 // Prefer reserved rolls; if still available, mark reserved for this invoice line.
                 if (roll.Status == (int)FabricRollStatus.Available)
                 {
                     roll.Status = (int)FabricRollStatus.Reserved;
                     roll.ReservationStatus = (int)InventoryReservationStatus.Reserved;
+                    stock.AvailableMeters -= roll.RemainingLengthMeters;
+                    stock.ReservedMeters += roll.RemainingLengthMeters;
                 }
 
                 invoice.AssignFabricRollToDetail(detail.Id, roll.Id);
+
+                var reservation = await context.InventoryReservations.FirstOrDefaultAsync(r =>
+                    r.ReferenceType == (int)DocumentType.SalesInvoice && r.ReferenceId == invoice.Id &&
+                    r.ReferenceLineId == item.Id && r.FabricRollId == previousRollId, cancellationToken);
+                if (reservation is not null)
+                {
+                    reservation.FabricRollId = roll.Id;
+                    reservation.ReservedMeters = entry.LengthMeters;
+                    reservation.Strategy = (int)AllocationStrategy.SpecificRoll;
+                }
 
                 // A legacy opening-balance roll carries only an even provisional length until its
                 // physical paper label is read for the first time. That first explicit length is
@@ -658,30 +690,15 @@ internal sealed class InventoryEngine(
             if (detail.FabricRollId.HasValue)
                 roll = await context.FabricRolls.FirstOrDefaultAsync(r => r.Id == detail.FabricRollId.Value, cancellationToken);
 
-            roll ??= await context.FabricRolls
-                .Where(r =>
-                    r.ContainerId == item.ChinaContainerId &&
-                    r.WarehouseId == invoice.WarehouseId &&
-                    r.FabricItemId == item.FabricItemId &&
-                    r.FabricColorId == item.FabricColorId &&
-                    (r.Status == (int)FabricRollStatus.Reserved || r.Status == (int)FabricRollStatus.Available))
-                .OrderBy(r => r.RollNumber)
-                .FirstOrDefaultAsync(cancellationToken);
-
             if (roll is null)
-                throw new InventoryException("Fabric roll not found for deduction.");
-
-            if (meters > roll.RemainingLengthMeters)
-                throw new InventoryException("Cannot sell more meters than remaining on roll.");
+                throw new InventoryException("Every sale detail must be pinned to a specific fabric roll.");
+            if (roll.Status != (int)FabricRollStatus.Reserved)
+                throw new InventoryException("The exact fabric roll is not reserved for this invoice.");
 
             cogsTotal += meters * roll.CostPerMeter;
-            roll.RemainingLengthMeters -= meters;
-            if (roll.RemainingLengthMeters <= 0)
-            {
-                roll.RemainingLengthMeters = 0;
-                roll.Status = (int)FabricRollStatus.Sold;
-                roll.ReservationStatus = (int)InventoryReservationStatus.Sold;
-            }
+            roll.RemainingLengthMeters = 0;
+            roll.Status = (int)FabricRollStatus.Sold;
+            roll.ReservationStatus = (int)InventoryReservationStatus.Sold;
 
             var stock = await context.WarehouseStocks
                 .FirstAsync(s =>
@@ -699,6 +716,13 @@ internal sealed class InventoryEngine(
 
             if (roll.Status == (int)FabricRollStatus.Sold && stock.RollCount > 0)
                 stock.RollCount -= 1;
+
+            var reservation = await context.InventoryReservations.FirstOrDefaultAsync(r =>
+                r.ReferenceType == (int)DocumentType.SalesInvoice && r.ReferenceId == invoice.Id &&
+                r.FabricRollId == roll.Id && r.Status == (int)InventoryReservationStatus.Reserved,
+                cancellationToken);
+            if (reservation is not null)
+                reservation.Status = (int)InventoryReservationStatus.Sold;
 
             movementLines.Add(new StockMovementLineEntity
             {
@@ -813,6 +837,113 @@ internal sealed class InventoryEngine(
             cancellationToken);
 
         return cogsReversal;
+    }
+
+    public async Task ReverseInvoiceIssueAsync(
+        SalesInvoiceAggregate invoice,
+        CancellationToken cancellationToken = default)
+    {
+        var existingReversal = await context.StockMovements.AsNoTracking().AnyAsync(m =>
+            m.ReferenceType == (int)DocumentType.SalesInvoice && m.ReferenceId == invoice.Id &&
+            m.Type == (int)MovementType.Correction && m.Status == (int)StockMovementStatus.Posted,
+            cancellationToken);
+        if (existingReversal)
+        {
+            await RepairLegacyInvoiceReservationsAsync(invoice, cancellationToken);
+            return;
+        }
+        var saleMovement = await context.StockMovements.AsNoTracking().FirstOrDefaultAsync(m =>
+            m.ReferenceType == (int)DocumentType.SalesInvoice && m.ReferenceId == invoice.Id &&
+            m.Type == (int)MovementType.Sale && m.Status == (int)StockMovementStatus.Posted,
+            cancellationToken) ?? throw new InventoryException("Posted sale inventory movement was not found.");
+        var originalLines = await context.StockMovementLines.AsNoTracking()
+            .Where(l => l.MovementId == saleMovement.Id).ToListAsync(cancellationToken);
+        var reversalLines = new List<StockMovementLineEntity>();
+        var now = DateTime.UtcNow;
+        foreach (var line in originalLines)
+        {
+            var meters = Math.Abs(line.QuantityMeters);
+            var roll = line.FabricRollId.HasValue
+                ? await context.FabricRolls.FirstAsync(r => r.Id == line.FabricRollId.Value, cancellationToken)
+                : throw new InventoryException("Sale movement is missing its exact fabric roll.");
+            var stock = await context.WarehouseStocks.FirstAsync(s =>
+                s.WarehouseId == invoice.WarehouseId && s.ContainerId == line.ContainerId &&
+                s.FabricItemId == line.FabricItemId && s.FabricColorId == line.FabricColorId,
+                cancellationToken);
+            roll.RemainingLengthMeters = meters;
+            roll.Status = (int)FabricRollStatus.Available;
+            roll.ReservationStatus = (int)InventoryReservationStatus.Available;
+            stock.TotalMeters += meters;
+            stock.AvailableMeters += meters;
+            stock.RollCount += 1;
+            reversalLines.Add(new StockMovementLineEntity
+            {
+                Id = Guid.NewGuid(), MovementId = Guid.Empty, FabricItemId = line.FabricItemId,
+                FabricColorId = line.FabricColorId, FabricRollId = line.FabricRollId,
+                FabricBatchId = line.FabricBatchId, ContainerId = line.ContainerId,
+                QuantityMeters = meters, UnitCost = line.UnitCost, TotalValue = Math.Abs(line.TotalValue),
+                CurrencyCode = line.CurrencyCode, CreatedAt = now
+            });
+        }
+        var movementId = Guid.NewGuid();
+        foreach (var line in reversalLines) line.MovementId = movementId;
+        await PostMovementAsync(movementId, $"SALREV-{invoice.InvoiceNumber.Value}-{now:yyyyMMddHHmmss}",
+            MovementType.Correction, invoice.WarehouseId, DocumentType.SalesInvoice, invoice.Id,
+            reversalLines, now, cancellationToken);
+        await RecordValuationSnapshotAsync(invoice.WarehouseId, movementId, ValuationMethod.SpecificCost, cancellationToken);
+        var reservations = await context.InventoryReservations.Where(r =>
+            r.ReferenceType == (int)DocumentType.SalesInvoice && r.ReferenceId == invoice.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var reservation in reservations)
+            reservation.Status = (int)InventoryReservationStatus.Returned;
+    }
+
+    private async Task RepairLegacyInvoiceReservationsAsync(
+        SalesInvoiceAggregate invoice,
+        CancellationToken cancellationToken)
+    {
+        var reservations = await context.InventoryReservations.Where(r =>
+            r.ReferenceType == (int)DocumentType.SalesInvoice && r.ReferenceId == invoice.Id &&
+            r.Status != (int)InventoryReservationStatus.Cancelled)
+            .ToListAsync(cancellationToken);
+        foreach (var item in invoice.Items)
+        {
+            var itemReservations = reservations.Where(r => r.ReferenceLineId == item.Id).ToList();
+            foreach (var exactReservation in itemReservations.Where(r => r.FabricRollId.HasValue))
+            {
+                var exactRoll = await context.FabricRolls.FirstAsync(r => r.Id == exactReservation.FabricRollId!.Value, cancellationToken);
+                exactRoll.RemainingLengthMeters = exactReservation.ReservedMeters;
+                exactRoll.Status = (int)FabricRollStatus.Available;
+                exactRoll.ReservationStatus = (int)InventoryReservationStatus.Available;
+            }
+            var generic = itemReservations.FirstOrDefault(r => !r.FabricRollId.HasValue);
+            var detailRollIds = invoice.RollDetails.Where(d => d.SalesInvoiceItemId == item.Id && d.FabricRollId.HasValue)
+                .Select(d => d.FabricRollId!.Value).ToHashSet();
+            if (generic is not null && detailRollIds.Count == 1)
+            {
+                var soldRoll = await context.FabricRolls.FirstAsync(r => detailRollIds.Contains(r.Id), cancellationToken);
+                if (soldRoll.Status == (int)FabricRollStatus.Available && soldRoll.RemainingLengthMeters < generic.ReservedMeters)
+                    soldRoll.RemainingLengthMeters = generic.ReservedMeters;
+            }
+            var legacyReservedRolls = await context.FabricRolls.Where(r =>
+                r.ContainerId == item.ChinaContainerId && r.WarehouseId == invoice.WarehouseId &&
+                r.FabricItemId == item.FabricItemId && r.FabricColorId == item.FabricColorId &&
+                r.Status == (int)FabricRollStatus.Reserved && !detailRollIds.Contains(r.Id))
+                .OrderBy(r => r.RollNumber).Take(generic?.RollCount ?? 0).ToListAsync(cancellationToken);
+            var stock = await context.WarehouseStocks.FirstAsync(s =>
+                s.WarehouseId == invoice.WarehouseId && s.ContainerId == item.ChinaContainerId &&
+                s.FabricItemId == item.FabricItemId && s.FabricColorId == item.FabricColorId,
+                cancellationToken);
+            foreach (var roll in legacyReservedRolls)
+            {
+                roll.Status = (int)FabricRollStatus.Available;
+                roll.ReservationStatus = (int)InventoryReservationStatus.Available;
+            }
+            stock.AvailableMeters += stock.ReservedMeters;
+            stock.ReservedMeters = 0;
+        }
+        foreach (var reservation in reservations)
+            reservation.Status = (int)InventoryReservationStatus.Returned;
     }
 
     public async Task ReleaseForInvoiceAsync(

@@ -85,7 +85,8 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             .ToDictionaryAsync(x => x.WarehouseId, cancellationToken);
 
         var rollValues = await context.FabricRolls.AsNoTracking()
-            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0)
+            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0 &&
+                        r.Status == (int)FabricRollStatus.Available)
             .GroupBy(r => r.WarehouseId)
             .Select(g => new
             {
@@ -221,7 +222,8 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         var hasSearch = !string.IsNullOrWhiteSpace(term);
 
         var rollCosts = context.FabricRolls.AsNoTracking()
-            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0)
+            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0 &&
+                        r.Status == (int)FabricRollStatus.Available)
             .GroupBy(r => new { r.WarehouseId, r.FabricItemId, r.FabricColorId, r.ContainerId })
             .Select(g => new
             {
@@ -229,7 +231,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 g.Key.FabricItemId,
                 g.Key.FabricColorId,
                 g.Key.ContainerId,
-                AverageCost = g.Average(r => r.CostPerMeter)
+                InventoryValue = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter)
             });
 
         var balances =
@@ -266,7 +268,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 TotalMeters = s.TotalMeters,
                 ReservedMeters = s.ReservedMeters,
                 AvailableMeters = s.AvailableMeters,
-                InventoryValue = s.AvailableMeters * (rc == null ? 0m : rc.AverageCost)
+                InventoryValue = rc == null ? 0m : rc.InventoryValue
             };
 
         return await balances.ToListAsync(cancellationToken);
@@ -301,7 +303,8 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             : [];
 
         var rolls = await context.FabricRolls.AsNoTracking()
-            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0)
+            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0 &&
+                        r.Status == (int)FabricRollStatus.Available)
             .ToListAsync(cancellationToken);
 
         return stocks.Select(s =>
@@ -310,7 +313,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 r.WarehouseId == s.WarehouseId &&
                 r.FabricItemId == s.FabricItemId &&
                 r.FabricColorId == s.FabricColorId).ToList();
-            var avgCost = itemRolls.Count > 0 ? itemRolls.Average(r => r.CostPerMeter) : 0m;
+            var inventoryValue = itemRolls.Sum(r => r.RemainingLengthMeters * r.CostPerMeter);
             return new FabricStockBalanceDto
             {
                 WarehouseId = s.WarehouseId,
@@ -327,7 +330,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 TotalMeters = s.TotalMeters,
                 ReservedMeters = s.ReservedMeters,
                 AvailableMeters = s.AvailableMeters,
-                InventoryValue = s.AvailableMeters * avgCost
+                InventoryValue = inventoryValue
             };
         }).OrderByDescending(s => s.TotalMeters).ToList();
     }

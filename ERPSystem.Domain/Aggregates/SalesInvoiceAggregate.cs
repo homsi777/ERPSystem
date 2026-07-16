@@ -355,6 +355,27 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
         CancelledAt = DateTime.UtcNow;
     }
 
+    public void Reverse(Guid reversalJournalEntryId, string reason)
+    {
+        if (Status is not (SalesInvoiceStatus.Approved or SalesInvoiceStatus.Printed or SalesInvoiceStatus.Delivered))
+            throw new InvalidInvoiceWorkflowException("Only posted sales invoices can be reversed.");
+        if (reversalJournalEntryId == Guid.Empty)
+            throw new ValidationException("Reversal journal entry is required.");
+        Status = SalesInvoiceStatus.Reversed;
+        ReversedByJournalEntryId = reversalJournalEntryId;
+        CancelReason = reason;
+        CancelledAt = DateTime.UtcNow;
+    }
+
+    public void ConfirmReversalJournal(Guid reversalJournalEntryId)
+    {
+        if (Status != SalesInvoiceStatus.Reversed)
+            throw new InvalidInvoiceWorkflowException("Invoice is not reversed.");
+        if (reversalJournalEntryId == Guid.Empty)
+            throw new ValidationException("Reversal journal entry is required.");
+        ReversedByJournalEntryId = reversalJournalEntryId;
+    }
+
     public LengthInMeters TotalSoldMeters() =>
         _rollDetails.Aggregate(LengthInMeters.Zero, (sum, d) => sum.Add(d.LengthMeters));
 

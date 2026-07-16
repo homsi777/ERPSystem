@@ -916,6 +916,7 @@ export type SalesInvoiceDto = {
   invoiceDate: string;
   paymentType: PaymentType;
   partialPaymentAmount?: number | null;
+  cashboxId?: string | null;
   subTotal: number;
   discountTotal: number;
   taxTotal: number;
@@ -1002,6 +1003,7 @@ export type CreateSalesInvoiceRequest = {
   paymentType: PaymentType;
   discountAmount: number;
   partialPaymentAmount?: number | null;
+  cashboxId?: string | null;
   invoiceNumber: string | null;
   lines: CreateSalesInvoiceLineRequest[];
 };

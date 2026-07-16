@@ -12,6 +12,7 @@ public interface IInventoryOperationsService
     Task ReserveForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task<decimal> DeductForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task ReleaseForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
+    Task ReverseInvoiceIssueAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task AssignFabricRollsOnDetailingAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
 
     /// <summary>

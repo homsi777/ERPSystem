@@ -20,6 +20,13 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
         return entity is null ? null : CustomerMapper.ToAggregate(entity);
     }
 
+    public async Task<CustomerAggregate?> GetByIdIncludingInactiveAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.Customers.AsNoTracking().IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        return entity is null ? null : CustomerMapper.ToAggregate(entity);
+    }
+
     public async Task<IReadOnlyList<CustomerAggregate>> GetListAsync(
         Guid companyId,
         string? search = null,
@@ -267,7 +274,7 @@ internal sealed class CustomerRepository(ErpDbContext context) : ICustomerReposi
 
     public async Task UpdateAsync(CustomerAggregate aggregate, CancellationToken cancellationToken = default)
     {
-        var entity = await context.Customers.FirstOrDefaultAsync(c => c.Id == aggregate.Id, cancellationToken)
+        var entity = await context.Customers.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Id == aggregate.Id, cancellationToken)
             ?? throw new InvalidOperationException("Customer not found.");
         CustomerMapper.UpdateEntity(entity, aggregate);
     }

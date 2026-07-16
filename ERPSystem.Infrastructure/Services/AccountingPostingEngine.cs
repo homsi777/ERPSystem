@@ -144,8 +144,42 @@ internal sealed class AccountingPostingEngine(
             alreadyPosted: true);
     }
 
-    public Task<ReversalResult> ReverseAsync(ReversalRequest request, CancellationToken cancellationToken = default) =>
-        Task.FromResult(ReversalResult.NotImplemented());
+    public async Task<ReversalResult> ReverseAsync(ReversalRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (request.CompanyId == Guid.Empty || request.BranchId == Guid.Empty ||
+                request.OriginalJournalEntryId == Guid.Empty || request.UserId == Guid.Empty)
+                throw new AccountingException("Company, branch, original entry and user are required for reversal.");
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                throw new AccountingException("Reversal reason is required.");
+
+            var existing = await context.JournalEntries.AsNoTracking()
+                .FirstOrDefaultAsync(j => j.ReversalOfEntryId == request.OriginalJournalEntryId, cancellationToken);
+            if (existing is not null)
+            {
+                var existingOriginal = await journalRepository.GetByIdAsync(request.OriginalJournalEntryId, cancellationToken);
+                if (existingOriginal is not null)
+                {
+                    existingOriginal.KeepPostedAfterReversal();
+                    await journalRepository.UpdateAsync(existingOriginal, cancellationToken);
+                }
+                return ReversalResult.Succeeded(existing.Id, existing.EntryNumber);
+            }
+
+            var original = await journalRepository.GetByIdAsync(request.OriginalJournalEntryId, cancellationToken)
+                ?? throw new AccountingException("Original journal entry was not found.");
+            var reversalNumber = await numberingService.NextJournalEntryNumberAsync(request.BranchId, cancellationToken);
+            var reversal = original.CreateReversal(reversalNumber, request.UserId);
+            await journalRepository.AddAsync(reversal, request.CompanyId, request.BranchId, null, cancellationToken);
+            await journalRepository.UpdateAsync(original, cancellationToken);
+            return ReversalResult.Succeeded(reversal.Id, reversal.EntryNumber);
+        }
+        catch (Exception ex)
+        {
+            return ReversalResult.Failed("reversal_failed", ex.Message);
+        }
+    }
 
     private async Task MarkLatestAttemptFailedAsync(
         PostingRequest request,

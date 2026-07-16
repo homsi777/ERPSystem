@@ -76,6 +76,9 @@ internal sealed class InventoryOperationsService(
     public Task ReleaseForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
         engine.ReleaseForInvoiceAsync(invoice, cancellationToken);
 
+    public Task ReverseInvoiceIssueAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
+        engine.ReverseInvoiceIssueAsync(invoice, cancellationToken);
+
     public Task<decimal> ReceiveSalesReturnAsync(
         SalesReturnAggregate salesReturn,
         SalesInvoiceAggregate originalInvoice,

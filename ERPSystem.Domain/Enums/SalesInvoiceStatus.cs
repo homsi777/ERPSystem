@@ -11,5 +11,6 @@ public enum SalesInvoiceStatus
     Delivered = 6,
     Cancelled = 7,
     PartiallyReturned = 8,
-    Returned = 9
+    Returned = 9,
+    Reversed = 10
 }

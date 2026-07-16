@@ -16,6 +16,7 @@ import {
 import { getCustomers } from '../api/customers.ts';
 import { getContainers } from '../api/containers.ts';
 import { getInventoryWarehouses } from '../api/inventory.ts';
+import { getCashboxLookups } from '../api/lookups.ts';
 import { ApiError } from '../api/client.ts';
 import type {
   CalculateSalesInvoiceTaxRequest,
@@ -397,6 +398,7 @@ function SalesCreatePage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [containerId, setContainerId] = useState('');
   const [paymentType, setPaymentType] = useState<'0' | '1'>('0');
+  const [cashboxId, setCashboxId] = useState('');
   const [discount, setDiscount] = useState('0');
   const [partialPayment, setPartialPayment] = useState('0');
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -420,6 +422,11 @@ function SalesCreatePage() {
   const taxCodesQuery = useQuery({
     queryKey: ['sales', 'tax-codes'],
     queryFn: () => getTaxCodes()
+  });
+
+  const cashboxesQuery = useQuery({
+    queryKey: ['lookups', 'cashboxes'],
+    queryFn: () => getCashboxLookups()
   });
 
   const taxCodes = taxCodesQuery.data ?? [];
@@ -596,6 +603,7 @@ function SalesCreatePage() {
         discountAmount: toNumber(discount),
         partialPaymentAmount:
           paymentType === '1' && toNumber(partialPayment) > 0 ? toNumber(partialPayment) : null,
+        cashboxId: paymentType === '0' || toNumber(partialPayment) > 0 ? cashboxId : null,
         invoiceNumber: null,
         lines: payloadLines
       });
@@ -625,6 +633,10 @@ function SalesCreatePage() {
     }
     if (previewValidationErrors.length > 0) {
       setToast({ tone: 'error', message: previewValidationErrors[0] ?? 'تعذّر التحقق من الضريبة.' });
+      return;
+    }
+    if ((paymentType === '0' || toNumber(partialPayment) > 0) && !cashboxId) {
+      setToast({ tone: 'error', message: 'اختر الصندوق أولاً.' });
       return;
     }
     if (paymentType === '1') {
@@ -715,6 +727,17 @@ function SalesCreatePage() {
                 onChange={(event) => setPartialPayment(event.target.value)}
                 placeholder="0"
               />
+            </label>
+          ) : null}
+          {(paymentType === '0' || toNumber(partialPayment) > 0) ? (
+            <label className="form-field form-field--wide">
+              <span className="form-field__label">الصندوق</span>
+              <select value={cashboxId} onChange={(event) => setCashboxId(event.target.value)} required>
+                <option value="">اختر الصندوق...</option>
+                {(cashboxesQuery.data ?? []).map((cashbox) => (
+                  <option key={cashbox.id} value={cashbox.id}>{cashbox.name}</option>
+                ))}
+              </select>
             </label>
           ) : null}
         </section>

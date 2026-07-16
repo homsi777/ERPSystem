@@ -105,6 +105,12 @@ public sealed class CancelSalesInvoiceCommand
     public string Reason { get; init; } = "";
 }
 
+public sealed class ReverseSalesInvoiceCommand
+{
+    public Guid InvoiceId { get; init; }
+    public string Reason { get; init; } = "";
+}
+
 public sealed class ConfirmSalesInvoiceDeliveryCommand
 {
     public Guid InvoiceId { get; init; }

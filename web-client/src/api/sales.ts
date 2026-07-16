@@ -69,6 +69,13 @@ export function cancelSalesInvoice(invoiceId: string, reason: string) {
   });
 }
 
+export function reverseSalesInvoice(invoiceId: string, reason: string) {
+  return apiRequest<void>(`/api/v1/sales/invoices/${invoiceId}/reverse`, {
+    method: 'POST',
+    body: { reason }
+  });
+}
+
 export function getSalesWarehouseStock(containerId: string, warehouseId: string) {
   const searchParams = new URLSearchParams({ containerId, warehouseId });
   return apiRequest<SalesWarehouseStockOptionDto[]>(`/api/v1/sales/warehouse-stock?${searchParams.toString()}`);

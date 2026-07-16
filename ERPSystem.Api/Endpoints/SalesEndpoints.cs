@@ -29,6 +29,7 @@ public static class SalesEndpoints
         group.MapPost("invoices/{invoiceId:guid}/send-to-warehouse", SendToWarehouseAsync).WithName("SendSalesInvoiceToWarehouse");
         group.MapPost("invoices/{invoiceId:guid}/approve", ApproveInvoiceAsync).WithName("ApproveSalesInvoice");
         group.MapPost("invoices/{invoiceId:guid}/cancel", CancelInvoiceAsync).WithName("CancelSalesInvoice");
+        group.MapPost("invoices/{invoiceId:guid}/reverse", ReverseInvoiceAsync).WithName("ReverseSalesInvoice");
         group.MapGet("invoices/{invoiceId:guid}/below-cost", GetBelowCostAsync).WithName("GetSalesInvoiceBelowCost");
         group.MapGet("warehouse-stock", GetWarehouseStockAsync).WithName("GetSalesWarehouseStock");
         group.MapGet("tax-codes", GetTaxCodesAsync).WithName("GetSalesTaxCodes");
@@ -127,6 +128,7 @@ public static class SalesEndpoints
             PaymentType = request.PaymentType,
             DiscountAmount = request.DiscountAmount,
             PartialPaymentAmount = request.PartialPaymentAmount,
+            CashboxId = request.CashboxId,
             Lines = request.Lines.Select(l => new SalesInvoiceLineCommand
             {
                 LineNumber = l.LineNumber,
@@ -175,6 +177,20 @@ public static class SalesEndpoints
             Reason = request.Reason ?? ""
         }, cancellationToken);
 
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> ReverseInvoiceAsync(
+        Guid invoiceId,
+        [FromBody] ReverseSalesInvoiceRequest request,
+        ICommandHandler<ReverseSalesInvoiceCommand, ApplicationResult> handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new ReverseSalesInvoiceCommand
+        {
+            InvoiceId = invoiceId,
+            Reason = request.Reason ?? ""
+        }, cancellationToken);
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 
@@ -276,6 +292,7 @@ public static class SalesEndpoints
         PaymentType PaymentType,
         decimal DiscountAmount,
         decimal? PartialPaymentAmount,
+        Guid? CashboxId,
         string? InvoiceNumber,
         IReadOnlyList<SalesInvoiceLineRequest> Lines);
 
@@ -304,4 +321,5 @@ public static class SalesEndpoints
         Guid? TaxCodeId);
 
     private sealed record CancelSalesInvoiceRequest(string? Reason);
+    private sealed record ReverseSalesInvoiceRequest(string? Reason);
 }

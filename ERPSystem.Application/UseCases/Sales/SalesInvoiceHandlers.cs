@@ -2,7 +2,10 @@ using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Sales;
+using ERPSystem.Application.Commands.Finance;
 using ERPSystem.Application.Common;
+using ERPSystem.Application.DTOs.Finance;
+using ERPSystem.Application.Posting;
 using ERPSystem.Application.Notifications;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.Services;
@@ -693,6 +696,136 @@ public sealed class CancelSalesInvoiceHandler(
         }
         catch (Exception ex)
         {
+            return ex.ToFailureResult();
+        }
+    }
+}
+
+public sealed class ReverseSalesInvoiceHandler(
+    ISalesInvoiceRepository invoiceRepository,
+    ICustomerRepository customerRepository,
+    ICashboxRepository cashboxRepository,
+    IReceiptVoucherRepository receiptVoucherRepository,
+    IReceiptInvoicePaymentRepository receiptInvoicePaymentRepository,
+    IJournalEntryRepository journalEntryRepository,
+    IInventoryOperationsService inventoryOperations,
+    IAccountingPostingEngine accountingPostingEngine,
+    IReceiptPostingService receiptPostingService,
+    IIntegratedAccountingService integratedAccounting,
+    IPostingSaveCoordinator postingSaveCoordinator,
+    INumberingService numberingService,
+    ICurrentUserService currentUserService,
+    IPermissionService permissionService,
+    IUnitOfWork unitOfWork)
+    : ICommandHandler<ReverseSalesInvoiceCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(ReverseSalesInvoiceCommand command, CancellationToken cancellationToken = default)
+    {
+        if (command.InvoiceId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.InvoiceId), "Invoice is required.");
+        if (string.IsNullOrWhiteSpace(command.Reason))
+            return ApplicationResult.ValidationFailed(nameof(command.Reason), "Reversal reason is required.");
+        if (!await permissionService.CanAsync("sales.reverse", cancellationToken))
+            return ApplicationResult.PermissionDenied("Manager permission is required to reverse a sales invoice.");
+
+        var invoice = await invoiceRepository.GetByIdAsync(command.InvoiceId, cancellationToken);
+        if (invoice is null) return ApplicationResult.NotFound("Invoice not found.");
+        var userId = currentUserService.UserId ?? Guid.Empty;
+        if (invoice.Status == Domain.Enums.SalesInvoiceStatus.Reversed)
+        {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await inventoryOperations.ReverseInvoiceIssueAsync(invoice, cancellationToken);
+                var originalEntry = (await journalEntryRepository.GetAggregatesBySourceIdAsync(invoice.Id, cancellationToken))
+                    .FirstOrDefault(j => j.ReversalOfEntryId is null);
+                if (originalEntry is not null)
+                {
+                    var repaired = await accountingPostingEngine.ReverseAsync(new ReversalRequest
+                    {
+                        CompanyId = invoice.CompanyId, BranchId = invoice.BranchId,
+                        OriginalJournalEntryId = originalEntry.Id, UserId = userId,
+                        ReversalDate = DateTime.UtcNow, Reason = command.Reason
+                    }, cancellationToken);
+                    if (repaired.ReversalJournalEntryId is Guid repairedId)
+                        invoice.ConfirmReversalJournal(repairedId);
+                    await invoiceRepository.UpdateAsync(invoice, cancellationToken);
+                }
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
+                return ApplicationResult.Success();
+            }
+            catch (Exception ex)
+            {
+                await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                return ex.ToFailureResult();
+            }
+        }
+        if (invoice.Status is not (Domain.Enums.SalesInvoiceStatus.Approved or Domain.Enums.SalesInvoiceStatus.Printed or Domain.Enums.SalesInvoiceStatus.Delivered))
+            return ApplicationResult.Conflict("Only posted sales invoices can be reversed.");
+        var customer = await customerRepository.GetByIdIncludingInactiveAsync(invoice.CustomerId, cancellationToken);
+        if (customer is null) return ApplicationResult.NotFound("Customer not found.");
+
+        try
+        {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            var payments = await receiptInvoicePaymentRepository.GetByInvoiceIdAsync(invoice.Id, cancellationToken);
+            foreach (var payment in payments)
+            {
+                var original = await receiptVoucherRepository.GetByIdAsync(payment.ReceiptVoucherId, cancellationToken);
+                if (original is null || original.Status != Domain.Enums.VoucherStatus.Posted) continue;
+                var cashbox = await cashboxRepository.GetByIdAsync(original.CashboxId, cancellationToken)
+                    ?? throw new ValidationException("Receipt cashbox was not found.");
+                var tenders = await receiptVoucherRepository.GetTenderLinesAsync(original.Id, cancellationToken);
+                var tenderDtos = tenders.Select(t => new ReceiptTenderLineDto
+                {
+                    PaymentMethodId = t.PaymentMethodId, CashboxId = t.CashboxId,
+                    BankAccountId = t.BankAccountId, Amount = t.Amount.Amount,
+                    Currency = t.Currency, ExchangeRate = t.ExchangeRate, Reference = t.Reference
+                }).ToList();
+                var reversal = ReceiptVoucher.CreateReversalDraft(original.CompanyId, original.BranchId,
+                    await numberingService.NextReceiptNumberAsync(original.BranchId, cancellationToken),
+                    original.CustomerId, original.CashboxId, original.PaymentMethodId, original.Amount, original.Id);
+                reversal.Approve();
+                reversal.Post();
+                original.MarkReversed(command.Reason);
+                customer.RecordPostedInvoice(payment.Amount.Amount);
+                cashbox.ApplyPayment(original.Amount);
+                await receiptVoucherRepository.AddAsync(reversal, cancellationToken);
+                await receiptVoucherRepository.UpdateAsync(original, cancellationToken);
+                await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+                await receiptPostingService.PostReceiptReversalAsync(reversal.Id, reversal.VoucherNumber,
+                    original.CompanyId, original.CustomerId, original.Id, tenderDtos, cancellationToken);
+            }
+
+            await inventoryOperations.ReverseInvoiceIssueAsync(invoice, cancellationToken);
+            customer.RecordPostedReceipt(invoice.GrandTotal.Amount);
+
+            var originalEntry = (await journalEntryRepository.GetAggregatesBySourceIdAsync(invoice.Id, cancellationToken))
+                .FirstOrDefault(j => j.Status == Domain.Enums.JournalEntryStatus.Posted)
+                ?? throw new ValidationException("Posted sales journal entry was not found.");
+            var reversalResult = await accountingPostingEngine.ReverseAsync(new ReversalRequest
+            {
+                CompanyId = invoice.CompanyId, BranchId = invoice.BranchId,
+                OriginalJournalEntryId = originalEntry.Id, UserId = userId,
+                ReversalDate = DateTime.UtcNow, Reason = command.Reason,
+                IdempotencyKey = $"sales-reversal:{invoice.Id:N}"
+            }, cancellationToken);
+            if (!reversalResult.Success || reversalResult.ReversalJournalEntryId is not Guid reversalJournalId)
+                throw new ValidationException(reversalResult.ErrorMessage ?? "Sales journal reversal failed.");
+
+            invoice.Reverse(reversalJournalId, command.Reason);
+            await invoiceRepository.UpdateAsync(invoice, cancellationToken);
+            await customerRepository.UpdateAsync(customer, cancellationToken);
+            await postingSaveCoordinator.SaveChangesWithPostingRecoveryAsync(
+                integratedAccounting.ConsumePendingPostingRequests(), cancellationToken);
+            await unitOfWork.CommitTransactionAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            await unitOfWork.RollbackTransactionAsync(cancellationToken);
             return ex.ToFailureResult();
         }
     }
