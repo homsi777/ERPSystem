@@ -750,6 +750,7 @@ export type DashboardSummaryDto = {
   readyForApprovalInvoicesCount: number;
   openReceiptsCount: number;
   totalCustomerOutstanding: number;
+  totalPostedReceipts: number;
   totalSupplierPayables: number;
   activeCustomersCount: number;
   todaySalesTotal: number;

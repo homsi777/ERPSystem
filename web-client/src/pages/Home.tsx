@@ -24,10 +24,10 @@ export function HomePage() {
 
   const headerSummary = summary ? (
     <>
-      <SummaryCard label="مبيعات اليوم" value={formatCurrency(summary.todaySalesTotal)} tone="green" />
-      <SummaryCard label="إجمالي الذمة" value={formatCurrency(summary.totalCustomerOutstanding)} tone="amber" />
-      <SummaryCard label="قبض الموردين" value={formatCurrency(summary.totalSupplierPayables)} />
       <SummaryCard label="عدد العملاء" value={formatNumber(summary.activeCustomersCount)} tone="green" />
+      <SummaryCard label="إجمالي الذمة" value={formatCurrency(summary.totalCustomerOutstanding)} tone="amber" />
+      <SummaryCard label="قبض مرحّل" value={formatCurrency(summary.totalPostedReceipts)} tone="green" />
+      <SummaryCard label="مبيعات اليوم" value={formatCurrency(summary.todaySalesTotal)} />
     </>
   ) : undefined;
 

@@ -37,6 +37,18 @@ public sealed class GetDashboardSummaryHandler(
         var customers = await customerRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
         var suppliers = await supplierRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
 
+        var activeCustomerIds = customers
+            .Where(c => c.Customer.IsActive)
+            .Select(c => c.Customer.Id)
+            .ToList();
+        var financials = await customerRepository.GetFinancialSummariesAsync(
+            query.CompanyId,
+            activeCustomerIds,
+            cancellationToken);
+        var (totalOutstanding, totalPostedReceipts) = CustomerListFinancialsCalculator.SumActiveCustomers(
+            customers,
+            financials);
+
         var recent = await auditLogRepository.GetRecentAsync(10, cancellationToken);
 
         var dto = new DashboardSummaryDto
@@ -49,9 +61,10 @@ public sealed class GetDashboardSummaryHandler(
             ReadyForApprovalInvoicesCount = invoices.Count(i =>
                 i.Status is SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval),
             OpenReceiptsCount = 0,
-            TotalCustomerOutstanding = customers.Sum(c => c.Customer.Balance.Amount),
+            TotalCustomerOutstanding = totalOutstanding,
+            TotalPostedReceipts = totalPostedReceipts,
             TotalSupplierPayables = suppliers.Sum(s => s.Supplier.Balance.Amount),
-            ActiveCustomersCount = customers.Count(c => c.Customer.IsActive),
+            ActiveCustomersCount = activeCustomerIds.Count,
             TodaySalesTotal = invoices
                 .Where(i => i.InvoiceDate.Date == DateTime.UtcNow.Date && i.Status >= SalesInvoiceStatus.Approved)
                 .Sum(i => i.GrandTotal.Amount),
