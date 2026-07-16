@@ -1,4 +1,5 @@
 using ERPSystem.DocumentEngine.Models;
+using ERPSystem.DocumentEngine.Services;
 using ERPSystem.DocumentEngine.Templates.Shared;
 
 namespace ERPSystem.DocumentEngine.Templates.ReceiptVoucher;

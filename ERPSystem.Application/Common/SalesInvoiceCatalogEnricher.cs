@@ -203,6 +203,7 @@ public static class SalesInvoiceCatalogEnricher
             InvoiceId = detailing.InvoiceId,
             InvoiceNumber = detailing.InvoiceNumber,
             CustomerName = detailing.CustomerName,
+            WarehouseId = detailing.WarehouseId,
             ChinaContainerId = detailing.ChinaContainerId,
             SentToWarehouseAt = detailing.SentToWarehouseAt,
             RepresentativeUnitPrice = detailing.RepresentativeUnitPrice,
