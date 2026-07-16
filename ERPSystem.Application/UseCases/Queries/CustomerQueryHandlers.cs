@@ -37,13 +37,6 @@ public sealed class GetDashboardSummaryHandler(
         var customers = await customerRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
         var suppliers = await supplierRepository.GetListAsync(query.CompanyId, cancellationToken: cancellationToken);
 
-        var activeCutoff = DateTime.UtcNow.Date.AddDays(-90);
-        var activeCustomers = invoices
-            .Where(i => i.InvoiceDate.Date >= activeCutoff && i.Status >= SalesInvoiceStatus.AwaitingDetailing)
-            .Select(i => i.CustomerId)
-            .Distinct()
-            .Count();
-
         var recent = await auditLogRepository.GetRecentAsync(10, cancellationToken);
 
         var dto = new DashboardSummaryDto
@@ -58,7 +51,7 @@ public sealed class GetDashboardSummaryHandler(
             OpenReceiptsCount = 0,
             TotalCustomerOutstanding = customers.Sum(c => c.Customer.Balance.Amount),
             TotalSupplierPayables = suppliers.Sum(s => s.Supplier.Balance.Amount),
-            ActiveCustomersCount = activeCustomers,
+            ActiveCustomersCount = customers.Count(c => c.Customer.IsActive),
             TodaySalesTotal = invoices
                 .Where(i => i.InvoiceDate.Date == DateTime.UtcNow.Date && i.Status >= SalesInvoiceStatus.Approved)
                 .Sum(i => i.GrandTotal.Amount),

@@ -27,7 +27,7 @@ export function HomePage() {
       <SummaryCard label="مبيعات اليوم" value={formatCurrency(summary.todaySalesTotal)} tone="green" />
       <SummaryCard label="إجمالي الذمة" value={formatCurrency(summary.totalCustomerOutstanding)} tone="amber" />
       <SummaryCard label="قبض الموردين" value={formatCurrency(summary.totalSupplierPayables)} />
-      <SummaryCard label="عملاء نشطون" value={formatNumber(summary.activeCustomersCount)} tone="green" />
+      <SummaryCard label="عدد العملاء" value={formatNumber(summary.activeCustomersCount)} tone="green" />
     </>
   ) : undefined;
 

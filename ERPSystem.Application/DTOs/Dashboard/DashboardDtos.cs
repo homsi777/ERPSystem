@@ -8,6 +8,7 @@ public sealed class DashboardSummaryDto
     public int OpenReceiptsCount { get; init; }
     public decimal TotalCustomerOutstanding { get; init; }
     public decimal TotalSupplierPayables { get; init; }
+    /// <summary>Active registered customers (matches customer list count).</summary>
     public int ActiveCustomersCount { get; init; }
     public decimal TodaySalesTotal { get; init; }
     public int LowStockItemsCount { get; init; }
