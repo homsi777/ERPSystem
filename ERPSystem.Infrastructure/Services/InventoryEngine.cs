@@ -598,11 +598,25 @@ internal sealed class InventoryEngine(
                     cancellationToken);
                 if (previousRollId.HasValue && previousRollId.Value != roll.Id)
                 {
-                    var previous = reservedRolls.First(r => r.Id == previousRollId.Value);
-                    previous.Status = (int)FabricRollStatus.Available;
-                    previous.ReservationStatus = (int)InventoryReservationStatus.Available;
-                    stock.ReservedMeters = Math.Max(0, stock.ReservedMeters - previous.RemainingLengthMeters);
-                    stock.AvailableMeters += previous.RemainingLengthMeters;
+                    // Do NOT release a roll that another line on this same invoice still needs.
+                    // Otherwise swap order (A→B then C→A' leaving B) incorrectly marks B Available
+                    // while the invoice still points at B → approve fails with "not reserved".
+                    var stillRequiredByInvoice = invoice.RollDetails.Any(d =>
+                        d.Id != detail.Id && d.FabricRollId == previousRollId.Value)
+                        || claimedRollIds.Contains(previousRollId.Value);
+
+                    if (!stillRequiredByInvoice)
+                    {
+                        var previous = reservedRolls.FirstOrDefault(r => r.Id == previousRollId.Value)
+                            ?? await context.FabricRolls.FirstAsync(r => r.Id == previousRollId.Value, cancellationToken);
+                        if (previous.Status == (int)FabricRollStatus.Reserved)
+                        {
+                            previous.Status = (int)FabricRollStatus.Available;
+                            previous.ReservationStatus = (int)InventoryReservationStatus.Available;
+                            stock.ReservedMeters = Math.Max(0, stock.ReservedMeters - previous.RemainingLengthMeters);
+                            stock.AvailableMeters += previous.RemainingLengthMeters;
+                        }
+                    }
                 }
 
                 // Prefer reserved rolls; if still available, mark reserved for this invoice line.
@@ -624,6 +638,30 @@ internal sealed class InventoryEngine(
                     reservation.FabricRollId = roll.Id;
                     reservation.ReservedMeters = entry.LengthMeters;
                     reservation.Strategy = (int)AllocationStrategy.SpecificRoll;
+                }
+                else if (!await context.InventoryReservations.AnyAsync(r =>
+                             r.ReferenceType == (int)DocumentType.SalesInvoice &&
+                             r.ReferenceId == invoice.Id &&
+                             r.FabricRollId == roll.Id &&
+                             r.Status == (int)InventoryReservationStatus.Reserved,
+                             cancellationToken))
+                {
+                    await context.InventoryReservations.AddAsync(new InventoryReservationEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        WarehouseId = invoice.WarehouseId,
+                        FabricRollId = roll.Id,
+                        FabricItemId = item.FabricItemId,
+                        FabricColorId = item.FabricColorId,
+                        ReservedMeters = entry.LengthMeters,
+                        RollCount = 1,
+                        Status = (int)InventoryReservationStatus.Reserved,
+                        Strategy = (int)AllocationStrategy.SpecificRoll,
+                        ReferenceType = (int)DocumentType.SalesInvoice,
+                        ReferenceId = invoice.Id,
+                        ReferenceLineId = item.Id,
+                        CreatedAt = DateTime.UtcNow
+                    }, cancellationToken);
                 }
 
                 // A legacy opening-balance roll carries only an even provisional length until its
@@ -690,7 +728,49 @@ internal sealed class InventoryEngine(
             }
         }
 
+        // Final reconcile: every pinned detail roll must be Reserved before approval can succeed.
+        await EnsurePinnedRollsReservedAsync(invoice, reservedRolls, cancellationToken);
+
         return resolved;
+    }
+
+    private async Task EnsurePinnedRollsReservedAsync(
+        SalesInvoiceAggregate invoice,
+        List<FabricRollEntity> trackedRolls,
+        CancellationToken cancellationToken)
+    {
+        foreach (var detail in invoice.RollDetails.Where(d => d.FabricRollId.HasValue))
+        {
+            var rollId = detail.FabricRollId!.Value;
+            var roll = trackedRolls.FirstOrDefault(r => r.Id == rollId);
+            if (roll is null)
+            {
+                roll = await context.FabricRolls.FirstOrDefaultAsync(r => r.Id == rollId, cancellationToken)
+                    ?? throw new InventoryException("تعذّر العثور على التوب المرتبط ببند التفصيل.");
+                trackedRolls.Add(roll);
+            }
+
+            if (roll.Status == (int)FabricRollStatus.Reserved)
+                continue;
+
+            if (roll.Status != (int)FabricRollStatus.Available || roll.RemainingLengthMeters <= 0)
+            {
+                throw new InventoryException(
+                    $"التوب رقم {roll.RollNumber} غير قابل للحجز (الحالة الحالية لا تسمح بالاعتماد).");
+            }
+
+            var item = invoice.Items.First(i => i.Id == detail.SalesInvoiceItemId);
+            var stock = await context.WarehouseStocks.FirstAsync(s =>
+                s.WarehouseId == invoice.WarehouseId &&
+                s.ContainerId == item.ChinaContainerId &&
+                s.FabricItemId == item.FabricItemId &&
+                s.FabricColorId == item.FabricColorId, cancellationToken);
+
+            roll.Status = (int)FabricRollStatus.Reserved;
+            roll.ReservationStatus = (int)InventoryReservationStatus.Reserved;
+            stock.AvailableMeters = Math.Max(0, stock.AvailableMeters - roll.RemainingLengthMeters);
+            stock.ReservedMeters += roll.RemainingLengthMeters;
+        }
     }
 
     public async Task<decimal> IssueForInvoiceAsync(
@@ -712,9 +792,35 @@ internal sealed class InventoryEngine(
                 roll = await context.FabricRolls.FirstOrDefaultAsync(r => r.Id == detail.FabricRollId.Value, cancellationToken);
 
             if (roll is null)
-                throw new InventoryException("Every sale detail must be pinned to a specific fabric roll.");
+                throw new InventoryException("كل بنود التفصيل يجب أن تكون مربوطة بتوب محدد قبل الاعتماد.");
             if (roll.Status != (int)FabricRollStatus.Reserved)
-                throw new InventoryException("The exact fabric roll is not reserved for this invoice.");
+            {
+                // Heal reservation/status drift from older detailing swaps, then continue.
+                var hasActiveReservation = await context.InventoryReservations.AnyAsync(r =>
+                    r.ReferenceType == (int)DocumentType.SalesInvoice &&
+                    r.ReferenceId == invoice.Id &&
+                    r.FabricRollId == roll.Id &&
+                    r.Status == (int)InventoryReservationStatus.Reserved,
+                    cancellationToken);
+
+                if (hasActiveReservation && roll.Status == (int)FabricRollStatus.Available)
+                {
+                    var healStock = await context.WarehouseStocks.FirstAsync(s =>
+                        s.WarehouseId == invoice.WarehouseId &&
+                        s.ContainerId == item.ChinaContainerId &&
+                        s.FabricItemId == item.FabricItemId &&
+                        s.FabricColorId == item.FabricColorId, cancellationToken);
+                    roll.Status = (int)FabricRollStatus.Reserved;
+                    roll.ReservationStatus = (int)InventoryReservationStatus.Reserved;
+                    healStock.AvailableMeters = Math.Max(0, healStock.AvailableMeters - roll.RemainingLengthMeters);
+                    healStock.ReservedMeters += roll.RemainingLengthMeters;
+                }
+                else
+                {
+                    throw new InventoryException(
+                        $"التوب رقم {roll.RollNumber} غير محجوز لهذه الفاتورة. أعد إكمال التفصيل ثم حاول الاعتماد مجدداً.");
+                }
+            }
 
             cogsTotal += meters * roll.CostPerMeter;
             roll.RemainingLengthMeters = 0;

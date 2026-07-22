@@ -12,19 +12,19 @@ public sealed class InvoiceCanBeApprovedSpecification : ISpecification<SalesInvo
     {
         if (candidate.Status is not (SalesInvoiceStatus.Detailed or SalesInvoiceStatus.ReadyForApproval))
         {
-            FailureReason = "Invoice must be detailed or ready for approval.";
+            FailureReason = "الفاتورة يجب أن تكون بعد اكتمال التفصيل قبل الاعتماد.";
             return false;
         }
 
         if (candidate.RollDetails.Any(d => !d.HasValidLength))
         {
-            FailureReason = "All roll lengths must be valid.";
+            FailureReason = "يجب إدخال أطوال صحيحة لجميع الأثواب قبل الاعتماد.";
             return false;
         }
 
         if (candidate.GrandTotal.Amount <= 0)
         {
-            FailureReason = "Invoice total must be greater than zero.";
+            FailureReason = "إجمالي الفاتورة يجب أن يكون أكبر من صفر.";
             return false;
         }
 
