@@ -196,7 +196,23 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
   let errorBody = fallback;
   try {
-    errorBody = (await response.json()) as ApiErrorResponse;
+    const parsed = (await response.json()) as Record<string, unknown>;
+    const code = typeof parsed.code === 'string'
+      ? parsed.code
+      : typeof parsed.Code === 'string'
+        ? parsed.Code
+        : fallback.code;
+    const message = typeof parsed.message === 'string'
+      ? parsed.message
+      : typeof parsed.Message === 'string'
+        ? parsed.Message
+        : fallback.message;
+    const validationErrors = Array.isArray(parsed.validationErrors)
+      ? (parsed.validationErrors as ApiErrorResponse['validationErrors'])
+      : Array.isArray(parsed.ValidationErrors)
+        ? (parsed.ValidationErrors as ApiErrorResponse['validationErrors'])
+        : [];
+    errorBody = { code, message, validationErrors };
   } catch {
     // Keep the fallback body for non-JSON failures.
   }

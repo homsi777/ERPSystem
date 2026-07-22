@@ -68,13 +68,13 @@ public sealed class WarehouseCanDetailSpecification : ISpecification<SalesInvoic
     {
         if (candidate.Status != SalesInvoiceStatus.AwaitingDetailing)
         {
-            FailureReason = "Invoice must be awaiting detailing.";
+            FailureReason = "الفاتورة ليست بانتظار التفصيل — حدّث الصفحة للتحقق من الحالة.";
             return false;
         }
 
         if (candidate.Items.Count == 0)
         {
-            FailureReason = "Invoice must have line items.";
+            FailureReason = "الفاتورة لا تحتوي أصنافاً.";
             return false;
         }
 

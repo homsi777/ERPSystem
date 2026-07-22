@@ -395,6 +395,7 @@ namespace ERPSystem.Controls.Workspace
         private bool ValidateAllRolls(out string message)
         {
             message = "";
+            var seenSerials = new HashSet<int>();
             for (int i = 0; i < _rows.Count; i++)
             {
                 var r = _rows[i];
@@ -405,9 +406,16 @@ namespace ERPSystem.Controls.Workspace
                     return false;
                 }
 
-                if (!string.IsNullOrWhiteSpace(r.SerialText) && !TryParseSerial(r.SerialText, out _))
+                if (!string.IsNullOrWhiteSpace(r.SerialText) && !TryParseSerial(r.SerialText, out var serial))
                 {
                     message = $"رقم التوب للتوب رقم {r.RollIndex} غير صالح.";
+                    FocusSerialBox(i);
+                    return false;
+                }
+
+                if (TryParseSerial(r.SerialText, out serial) && !seenSerials.Add(serial))
+                {
+                    message = $"رقم السيريال {serial} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً.";
                     FocusSerialBox(i);
                     return false;
                 }

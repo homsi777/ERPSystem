@@ -194,8 +194,13 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     {
         EnsureStatus(SalesInvoiceStatus.AwaitingDetailing);
 
+        var seenSerials = new HashSet<int>();
         foreach (var entry in entries)
         {
+            if (entry.RollNumber is int serial and > 0 && !seenSerials.Add(serial))
+                throw new WarehouseDetailingException(
+                    $"رقم السيريال {serial} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً.");
+
             var detail = _rollDetails.FirstOrDefault(d => d.Id == entry.RollDetailId)
                 ?? throw new WarehouseDetailingException("Roll detail not found.");
             detail.SaveDraft(entry.RollNumber, entry.LengthMeters);

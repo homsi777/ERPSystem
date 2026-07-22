@@ -761,6 +761,9 @@ svg {
 }
 
 .toast {
+  position: sticky;
+  top: 8px;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -771,6 +774,7 @@ svg {
   font-size: 0.9rem;
   font-weight: 800;
   line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
 .toast--success {

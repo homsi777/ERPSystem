@@ -89,6 +89,7 @@ public static class ApplicationValidators
             return ApplicationResult.ValidationFailed(nameof(command.RollEntries), "Roll entries are required.");
 
         var errors = new List<ValidationError>();
+        var seenSerials = new HashSet<int>();
         for (var i = 0; i < command.RollEntries.Count; i++)
         {
             var entry = command.RollEntries[i];
@@ -103,6 +104,13 @@ public static class ApplicationValidators
                     $"RollEntries[{i}]",
                     "أدخل رقم التوب (سيريال) أو الطول بالمتر."));
             }
+
+            if (entry.RollNumber is int serial and > 0 && !seenSerials.Add(serial))
+            {
+                errors.Add(new ValidationError(
+                    $"RollEntries[{i}].RollNumber",
+                    $"رقم السيريال {serial} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً."));
+            }
         }
 
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;
@@ -116,10 +124,18 @@ public static class ApplicationValidators
             return ApplicationResult.ValidationFailed(nameof(command.RollEntries), "Roll entries are required.");
 
         var errors = new List<ValidationError>();
+        var seenSerials = new HashSet<int>();
         for (var i = 0; i < command.RollEntries.Count; i++)
         {
             if (command.RollEntries[i].RollDetailId == Guid.Empty)
                 errors.Add(new ValidationError($"RollEntries[{i}].RollDetailId", "Roll detail is required."));
+
+            if (command.RollEntries[i].RollNumber is int serial and > 0 && !seenSerials.Add(serial))
+            {
+                errors.Add(new ValidationError(
+                    $"RollEntries[{i}].RollNumber",
+                    $"رقم السيريال {serial} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً."));
+            }
         }
 
         return errors.Count > 0 ? ApplicationResult.ValidationFailed(errors) : null;

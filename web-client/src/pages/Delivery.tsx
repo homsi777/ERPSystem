@@ -342,6 +342,19 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       return;
     }
 
+    const duplicate = sortedRolls.find((roll) => {
+      if (roll.rollDetailId === activeRoll.rollDetailId) {
+        return false;
+      }
+      return toRollNumber(serials[roll.rollDetailId] ?? '') === serialNum;
+    });
+    if (duplicate) {
+      setQuickError(
+        `رقم السيريال ${serialNum} مستخدم مسبقاً في ثوب آخر بهذه الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً.`
+      );
+      return;
+    }
+
     setSerials((current) => ({ ...current, [activeRoll.rollDetailId]: quickSerial.trim() }));
     setLengths((current) => ({ ...current, [activeRoll.rollDetailId]: quickLength.trim() }));
 
@@ -374,14 +387,23 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   }
 
   const completeMutation = useMutation({
-    mutationFn: () =>
-      completeDetailing(invoiceId, {
+    mutationFn: () => {
+      const duplicate = findDuplicateSerial(detailingQuery.data?.rolls ?? [], serials);
+      if (duplicate != null) {
+        throw new ApiError(400, {
+          code: 'ValidationFailed',
+          message: `رقم السيريال ${duplicate} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً.`,
+          validationErrors: []
+        });
+      }
+      return completeDetailing(invoiceId, {
         rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => ({
           rollDetailId: roll.rollDetailId,
           rollNumber: toRollNumber(serials[roll.rollDetailId] ?? ''),
           lengthMeters: storedLengthFromDisplay(toNumber(lengths[roll.rollDetailId] ?? ''), unitStorageToDpl(roll.unit))
         }))
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['detailing'] });
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -394,8 +416,16 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   });
 
   const saveDraftMutation = useMutation({
-    mutationFn: () =>
-      saveDetailingDraft(invoiceId, {
+    mutationFn: () => {
+      const duplicate = findDuplicateSerial(detailingQuery.data?.rolls ?? [], serials);
+      if (duplicate != null) {
+        throw new ApiError(400, {
+          code: 'ValidationFailed',
+          message: `رقم السيريال ${duplicate} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً.`,
+          validationErrors: []
+        });
+      }
+      return saveDetailingDraft(invoiceId, {
         rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => {
           const displayValue = toOptionalNumber(lengths[roll.rollDetailId] ?? '');
           return {
@@ -404,9 +434,15 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             lengthMeters: displayValue == null ? null : storedLengthFromDisplay(displayValue, unitStorageToDpl(roll.unit))
           };
         })
-      }),
-    onSuccess: () => {
-      setToast({ tone: 'success', message: 'تم حفظ التقدم الحالي. يمكنك إكمال الأثواب المتبقية لاحقاً.' });
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['detailing', invoiceId] });
+      await queryClient.invalidateQueries({ queryKey: ['detailing'] });
+      setToast({
+        tone: 'success',
+        message: 'تم حفظ التقدم على الفاتورة. سيظهر في سطح المكتب والمتصفح عند فتح نفس الفاتورة.'
+      });
     },
     onError: (error) => setToast({ tone: 'error', message: getErrorMessage(error) })
   });
@@ -694,10 +730,32 @@ function getErrorMessage(error: unknown) {
     if (error.status === 404) {
       return 'الفاتورة غير موجودة أو ليست بانتظار التفصيل.';
     }
-    if (error.status === 409) {
-      return 'تعذّر إكمال التفصيل — يبدو أن الفاتورة لم تعد بانتظار التفصيل (ربما تم تفصيلها مسبقًا). حدّث الصفحة للتحقق من الحالة.';
+    // Prefer the real server message (duplicate serial, missing roll, wrong warehouse, …).
+    if (error.message?.trim()) {
+      return error.message;
     }
-    return error.message;
+    if (error.status === 409) {
+      return 'تعذّر إكمال التفصيل بسبب تعارض في الحالة. حدّث الصفحة ثم أعد المحاولة.';
+    }
+    return 'تعذر تنفيذ الطلب.';
   }
   return 'حدث خطأ غير متوقع.';
+}
+
+function findDuplicateSerial(
+  rolls: WarehouseDetailingRollDto[],
+  serials: Record<string, string>
+): number | null {
+  const seen = new Set<number>();
+  for (const roll of rolls) {
+    const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
+    if (serial == null) {
+      continue;
+    }
+    if (seen.has(serial)) {
+      return serial;
+    }
+    seen.add(serial);
+  }
+  return null;
 }
