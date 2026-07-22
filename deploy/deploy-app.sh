@@ -23,6 +23,9 @@ log "سحب آخر شيفرة (${REPO_BRANCH})"
 git -C "$SRC_DIR" fetch --all --prune
 git -C "$SRC_DIR" reset --hard "origin/${REPO_BRANCH}"
 
+log "إيقاف الـ API مؤقتاً قبل النشر (تحرير ملفات DLL/PDB)"
+systemctl stop erpsystem-api || true
+
 log "نشر الـ API"
 dotnet publish "${SRC_DIR}/ERPSystem.Api/ERPSystem.Api.csproj" -c Release -o "$API_DIR" /p:UseAppHost=false
 chown -R "$SERVICE_USER":"$SERVICE_USER" "$API_DIR"
