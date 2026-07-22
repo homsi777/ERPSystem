@@ -92,7 +92,11 @@ namespace ERPSystem.Controls.Sales
             set
             {
                 if (_selectedContainer?.Id == value?.Id)
+                {
+                    // Keep ComboBox SelectedItem identity when ContainerOptions is rebuilt.
+                    _selectedContainer = value;
                     return;
+                }
 
                 if (_selectedContainer is not null && FabricItemId != Guid.Empty &&
                     !MockInteractionService.Confirm(
@@ -100,13 +104,25 @@ namespace ERPSystem.Controls.Sales
                         "تغيير حاوية السطر"))
                     return;
 
-                _selectedContainer = value;
-                ClearStockSelection();
-                Unit = SaleLengthUnitHelper.DisplayArabic(value?.DplQuantityUnit);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedContainer)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChinaContainerId)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerDisplay)));
+                ApplyContainerSelection(value);
             }
+        }
+
+        internal void ClearContainerWithoutConfirm()
+        {
+            if (_selectedContainer is null)
+                return;
+            ApplyContainerSelection(null);
+        }
+
+        private void ApplyContainerSelection(ContainerPickItem? value)
+        {
+            _selectedContainer = value;
+            ClearStockSelection();
+            Unit = SaleLengthUnitHelper.DisplayArabic(value?.DplQuantityUnit);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedContainer)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChinaContainerId)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerDisplay)));
         }
 
         public string ContainerDisplay => SelectedContainer?.Display ?? "اختر الحاوية...";
@@ -454,7 +470,11 @@ namespace ERPSystem.Controls.Sales
                 SalesListRefreshHub.RefreshRequested -= OnSalesListRefreshRequested;
             };
             CmbContainer.SelectionChanged += async (_, _) => await SyncWarehouseForContainerAsync();
-            CmbWarehouse.SelectionChanged += async (_, _) => await ReloadAllLineStockOptionsAsync();
+            CmbWarehouse.SelectionChanged += async (_, _) =>
+            {
+                await LoadContainersAsync();
+                await ReloadAllLineStockOptionsAsync();
+            };
             _lines.CollectionChanged += OnLinesCollectionChanged;
             CashboxDropdownBinder.WireRefresh(CmbCashbox);
             Loaded += (_, _) => UnsavedWorkGuard.Register(this, "فاتورة بيع جديدة", HasUnsavedWork);
@@ -511,7 +531,42 @@ namespace ERPSystem.Controls.Sales
             if (sender is SalesInvoiceLineRow row &&
                 e.PropertyName is nameof(SalesInvoiceLineRow.SelectedContainer))
             {
-                _ = ReloadStockOptionsForRowAsync(row);
+                _ = OnLineContainerChangedAsync(row);
+            }
+        }
+
+        private async Task OnLineContainerChangedAsync(SalesInvoiceLineRow row)
+        {
+            await SyncWarehouseForLineContainerAsync(row);
+            await ReloadStockOptionsForRowAsync(row);
+        }
+
+        /// <summary>
+        /// If the line container has no stock in the header warehouse, switch the header
+        /// warehouse to one that does (same behavior as the header container combo).
+        /// </summary>
+        private async Task SyncWarehouseForLineContainerAsync(SalesInvoiceLineRow row)
+        {
+            if (!AppServices.IsInitialized || row.SelectedContainer is not ContainerPickItem container)
+                return;
+
+            try
+            {
+                using var scope = AppServices.CreateScope();
+                var inventoryRepo = scope.ServiceProvider.GetRequiredService<IInventoryRepository>();
+                var warehouseIds = await inventoryRepo.GetWarehousesWithContainerStockAsync(container.Id);
+                if (warehouseIds.Count == 0)
+                    return;
+
+                if (CmbWarehouse.SelectedItem is WarehousePickItem current &&
+                    warehouseIds.Contains(current.Id))
+                    return;
+
+                SelectWarehouse(warehouseIds[0]);
+            }
+            catch
+            {
+                // Keep current warehouse selection.
             }
         }
 
@@ -789,6 +844,8 @@ namespace ERPSystem.Controls.Sales
         {
             var items = new List<ContainerPickItem>();
             var seenIds = new HashSet<Guid>();
+            var previousHeaderId = (CmbContainer.SelectedItem as ContainerPickItem)?.Id;
+            var warehouseId = (CmbWarehouse.SelectedItem as WarehousePickItem)?.Id;
 
             if (AppServices.IsInitialized)
             {
@@ -797,8 +854,8 @@ namespace ERPSystem.Controls.Sales
                     using var scope = AppServices.CreateScope();
                     var inventoryRepo = scope.ServiceProvider.GetRequiredService<IInventoryRepository>();
 
-                    // Sales must list containers from live stock — do NOT gate on China-import GM permission.
-                    var sellable = await inventoryRepo.GetSellableContainersAsync();
+                    // Only containers with available rolls in the selected warehouse (when set).
+                    var sellable = await inventoryRepo.GetSellableContainersAsync(warehouseId);
                     foreach (var c in sellable)
                     {
                         if (!seenIds.Add(c.Id))
@@ -817,40 +874,6 @@ namespace ERPSystem.Controls.Sales
                             DplQuantityUnit = c.DplQuantityUnit
                         });
                     }
-
-                    // Optional enrichment: China InWarehouse list when the user has GM access.
-                    try
-                    {
-                        var handler = scope.ServiceProvider.GetRequiredService<GetChinaContainerListHandler>();
-                        var result = await handler.HandleAsync(new GetChinaContainerListQuery
-                        {
-                            CompanyId = DatabaseSeeder.DefaultCompanyId,
-                            BranchId = DatabaseSeeder.DefaultBranchId,
-                            Status = ChinaContainerStatus.InWarehouse,
-                            Page = 1,
-                            PageSize = 100
-                        });
-
-                        if (result.IsSuccess && result.Value?.Items is { Count: > 0 })
-                        {
-                            foreach (var c in result.Value.Items)
-                            {
-                                if (!seenIds.Add(c.Id))
-                                    continue;
-
-                                items.Add(new ContainerPickItem
-                                {
-                                    Id = c.Id,
-                                    Display = c.ContainerNumber,
-                                    DplQuantityUnit = c.DplQuantityUnit
-                                });
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // China list is optional; sellable stock list above is authoritative.
-                    }
                 }
                 catch
                 {
@@ -863,7 +886,31 @@ namespace ERPSystem.Controls.Sales
                 ContainerOptions.Add(item);
 
             CmbContainer.ItemsSource = ContainerOptions;
-            CmbContainer.SelectedIndex = -1;
+
+            if (previousHeaderId is Guid keepId)
+            {
+                var match = ContainerOptions.FirstOrDefault(c => c.Id == keepId);
+                CmbContainer.SelectedItem = match;
+            }
+            else
+            {
+                CmbContainer.SelectedIndex = -1;
+            }
+
+            // Drop line containers that are no longer sellable in this warehouse.
+            foreach (var row in _lines)
+            {
+                if (row.SelectedContainer is ContainerPickItem selected &&
+                    ContainerOptions.All(c => c.Id != selected.Id))
+                {
+                    row.ClearContainerWithoutConfirm();
+                }
+                else if (row.SelectedContainer is ContainerPickItem stillValid)
+                {
+                    // Rebind to the instance currently in ContainerOptions (ComboBox identity).
+                    row.SelectedContainer = ContainerOptions.FirstOrDefault(c => c.Id == stillValid.Id);
+                }
+            }
         }
 
         private async Task SyncWarehouseForContainerAsync()
@@ -1063,15 +1110,49 @@ namespace ERPSystem.Controls.Sales
             if (result.Value.Count == 0)
             {
                 var warehouseName = warehouse.Display;
+                var hint = await BuildAlternateWarehouseHintAsync(container.Id, warehouse.Id);
                 UpdateStockEmptyBanner(true,
                     $"لا يوجد مخزون متاح للحاوية {container.Display} في {warehouseName}. " +
-                    "تأكد أن الحاوية رُحّلت لهذا المستودع.");
+                    (hint ?? "تأكد أن الحاوية رُحّلت لهذا المستودع."));
                 return;
             }
 
             UpdateStockEmptyBanner(false, null);
             foreach (var option in result.Value)
                 row.StockOptions.Add(option);
+        }
+
+        private async Task<string?> BuildAlternateWarehouseHintAsync(Guid containerId, Guid currentWarehouseId)
+        {
+            try
+            {
+                using var scope = AppServices.CreateScope();
+                var inventoryRepo = scope.ServiceProvider.GetRequiredService<IInventoryRepository>();
+                var warehouseIds = await inventoryRepo.GetWarehousesWithContainerStockAsync(containerId);
+                var otherIds = warehouseIds.Where(id => id != currentWarehouseId).ToList();
+                if (otherIds.Count == 0)
+                    return null;
+
+                var names = new List<string>();
+                if (CmbWarehouse.ItemsSource is IEnumerable<WarehousePickItem> items)
+                {
+                    foreach (var id in otherIds)
+                    {
+                        var match = items.FirstOrDefault(w => w.Id == id);
+                        if (match is not null)
+                            names.Add(match.Display);
+                    }
+                }
+
+                if (names.Count == 0)
+                    return "هذه الحاوية موجودة في مستودع آخر — غيّر المستودع أعلى الفاتورة.";
+
+                return $"المخزون موجود في: {string.Join("، ", names)}. غيّر المستودع أو اختر حاوية متوفرة هنا.";
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void UpdateStockEmptyBanner(bool visible, string? message)
@@ -1804,7 +1885,7 @@ namespace ERPSystem.Controls.Sales
             }
         }
 
-        private void ItemsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private async void ItemsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (_domainStatus != SalesInvoiceStatus.Draft)
                 return;
@@ -1830,12 +1911,27 @@ namespace ERPSystem.Controls.Sales
             if (cell.Column is DataGridComboBoxColumn ||
                 (cell.Column is DataGridTemplateColumn && header is "اختر التوب" or "كود الضريبة"))
             {
-                if (cell.DataContext is SalesInvoiceLineRow { StockOptions.Count: 0 })
+                if (cell.DataContext is SalesInvoiceLineRow lineRow)
                 {
-                    MockInteractionService.ShowWarning(
-                        "لا يوجد مخزون لهذه الحاوية في المستودع المختار.\nتأكد من اختيار الحاوية والمستودع أولاً.",
-                        "اختيار التوب");
-                    return;
+                    if (lineRow.SelectedContainer is null)
+                    {
+                        MockInteractionService.ShowWarning(
+                            "اختر الحاوية في السطر أولاً (فقط الحاويات المتوفرة في المستودع المختار تظهر في القائمة).",
+                            "اختيار التوب");
+                        return;
+                    }
+
+                    if (lineRow.StockOptions.Count == 0)
+                    {
+                        await ReloadStockOptionsForRowAsync(lineRow);
+                        if (lineRow.StockOptions.Count == 0)
+                        {
+                            MockInteractionService.ShowWarning(
+                                "لا يوجد مخزون لهذه الحاوية في المستودع المختار.\nتأكد من اختيار الحاوية والمستودع أولاً.",
+                                "اختيار التوب");
+                            return;
+                        }
+                    }
                 }
 
                 ItemsGrid.CurrentCell = new DataGridCellInfo(cell);

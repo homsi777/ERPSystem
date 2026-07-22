@@ -114,18 +114,26 @@ internal sealed class InventoryRepository(ErpDbContext context) : IInventoryRepo
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetSellableContainerIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        await context.FabricRolls.AsNoTracking()
+        Guid? warehouseId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.FabricRolls.AsNoTracking()
             .Where(r => r.Status == (int)FabricRollStatus.Available &&
-                        r.RemainingLengthMeters > 0)
+                        r.RemainingLengthMeters > 0);
+        if (warehouseId is { } wh && wh != Guid.Empty)
+            query = query.Where(r => r.WarehouseId == wh);
+
+        return await query
             .Select(r => r.ContainerId)
             .Distinct()
             .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<SellableContainerDto>> GetSellableContainersAsync(
+        Guid? warehouseId = null,
         CancellationToken cancellationToken = default)
     {
-        var sellableIds = await GetSellableContainerIdsAsync(cancellationToken);
+        var sellableIds = await GetSellableContainerIdsAsync(warehouseId, cancellationToken);
         if (sellableIds.Count == 0)
             return [];
 

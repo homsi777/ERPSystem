@@ -15,13 +15,17 @@ public interface IInventoryRepository
     Task<IReadOnlyList<Guid>> GetWarehousesWithContainerStockAsync(
         Guid containerId,
         CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Guid>> GetSellableContainerIdsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Guid>> GetSellableContainerIdsAsync(
+        Guid? warehouseId = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Containers that currently have available fabric rolls — used by sales invoice picking
     /// without requiring China-import general-manager permissions.
+    /// When <paramref name="warehouseId"/> is set, only containers with stock in that warehouse.
     /// </summary>
     Task<IReadOnlyList<SellableContainerDto>> GetSellableContainersAsync(
+        Guid? warehouseId = null,
         CancellationToken cancellationToken = default);
 
     Task<int> CountLowStockItemsAsync(Guid branchId, decimal thresholdMeters = 50m, CancellationToken cancellationToken = default);
