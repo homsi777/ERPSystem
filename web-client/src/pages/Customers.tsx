@@ -22,7 +22,7 @@ import {
   getReceiptVoucherPdf,
   postReceiptVoucher
 } from '../api/receipts.ts';
-import { ApiError } from '../api/client.ts';
+import { getApiErrorMessage } from '../lib/apiError.ts';
 import { downloadPdfBlob } from '../lib/documentExport.ts';
 import type {
   CustomerAccountLedgerDto,
@@ -1187,14 +1187,5 @@ function errorToast(error: unknown): ToastState {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 403) {
-      return 'لا تملك صلاحية لهذا الإجراء.';
-    }
-    if (error.status === 404) {
-      return 'العميل غير موجود.';
-    }
-    return error.message;
-  }
-  return 'حدث خطأ غير متوقع.';
+  return getApiErrorMessage(error);
 }

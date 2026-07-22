@@ -19,7 +19,7 @@ import {
   payExpense
 } from '../api/expenses.ts';
 import { getCashboxLookups } from '../api/lookups.ts';
-import { ApiError } from '../api/client.ts';
+import { getApiErrorMessage } from '../lib/apiError.ts';
 import type {
   ExpenseEntryListDto,
   ExpenseLifecycleStepDto,
@@ -1268,17 +1268,5 @@ function toIsoDate(value: string) {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 403) {
-      return 'لا تملك صلاحية لهذا الإجراء.';
-    }
-    if (error.status === 404) {
-      return 'المصروف غير موجود.';
-    }
-    if (error.status === 409) {
-      return `تعذّر تنفيذ الإجراء: ${error.message}`;
-    }
-    return error.message;
-  }
-  return 'حدث خطأ غير متوقع.';
+  return getApiErrorMessage(error);
 }

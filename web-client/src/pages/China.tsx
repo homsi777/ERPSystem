@@ -15,7 +15,7 @@ import {
   setContainerSalePrices
 } from '../api/containers.ts';
 import { getSupplierLookups, getWarehouseLookups } from '../api/lookups.ts';
-import { ApiError } from '../api/client.ts';
+import { getApiErrorMessage } from '../lib/apiError.ts';
 import type {
   CalculateLandingCostRequest,
   ChinaContainerStatus,
@@ -1226,13 +1226,7 @@ function toIsoDate(value: string) {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 403) {
-      return 'لا تملك صلاحية لهذا الإجراء.';
-    }
-    return error.message;
-  }
-  return 'حدث خطأ غير متوقع.';
+  return getApiErrorMessage(error);
 }
 
 function errorToast(error: unknown): ToastState {

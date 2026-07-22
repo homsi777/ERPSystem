@@ -207,15 +207,37 @@ async function parseResponse<T>(response: Response): Promise<T> {
       : typeof parsed.Message === 'string'
         ? parsed.Message
         : fallback.message;
-    const validationErrors = Array.isArray(parsed.validationErrors)
-      ? (parsed.validationErrors as ApiErrorResponse['validationErrors'])
+    const rawValidationErrors = Array.isArray(parsed.validationErrors)
+      ? parsed.validationErrors
       : Array.isArray(parsed.ValidationErrors)
-        ? (parsed.ValidationErrors as ApiErrorResponse['validationErrors'])
+        ? parsed.ValidationErrors
         : [];
-    errorBody = { code, message, validationErrors };
+    errorBody = {
+      code,
+      message,
+      validationErrors: normalizeValidationErrors(rawValidationErrors)
+    };
   } catch {
     // Keep the fallback body for non-JSON failures.
   }
 
   throw new ApiError(response.status, errorBody);
+}
+
+function normalizeValidationErrors(raw: unknown[]): ApiErrorResponse['validationErrors'] {
+  return raw
+    .map((item) => {
+      if (typeof item === 'string') {
+        const message = item.trim();
+        return message ? { field: '', message } : null;
+      }
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const record = item as Record<string, unknown>;
+      const field = String(record.field ?? record.Field ?? '').trim();
+      const message = String(record.message ?? record.Message ?? '').trim();
+      return message ? { field, message } : null;
+    })
+    .filter((item): item is ApiErrorResponse['validationErrors'][number] => item !== null);
 }

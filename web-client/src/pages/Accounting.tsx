@@ -8,7 +8,7 @@ import {
   getJournalEntryPdf,
   getTrialBalance
 } from '../api/accounting.ts';
-import { ApiError } from '../api/client.ts';
+import { getApiErrorMessage } from '../lib/apiError.ts';
 import type { JournalEntryStatus, TrialBalanceLineDto } from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
 import { DocumentActions } from '../components/DocumentActions.tsx';
@@ -465,11 +465,5 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 403) {
-      return 'لا تملك صلاحية للوصول إلى البيانات المحاسبية.';
-    }
-    return error.message;
-  }
-  return 'حدث خطأ غير متوقع.';
+  return getApiErrorMessage(error);
 }

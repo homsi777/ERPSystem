@@ -61,12 +61,16 @@ public class ApplicationResult
         ErrorMessage = message
     };
 
-    public static ApplicationResult ValidationFailed(IEnumerable<ValidationError> errors) => new()
+    public static ApplicationResult ValidationFailed(IEnumerable<ValidationError> errors)
     {
-        Status = ApplicationResultStatus.ValidationFailed,
-        ValidationErrors = errors.ToList(),
-        ErrorMessage = "Validation failed."
-    };
+        var list = errors.ToList();
+        return new()
+        {
+            Status = ApplicationResultStatus.ValidationFailed,
+            ValidationErrors = list,
+            ErrorMessage = FormatValidationMessage(list)
+        };
+    }
 
     public static ApplicationResult ValidationFailed(string field, string message) =>
         ValidationFailed([new ValidationError(field, message)]);
@@ -88,6 +92,22 @@ public class ApplicationResult
         Status = ApplicationResultStatus.PermissionDenied,
         ErrorMessage = message
     };
+
+    protected static string FormatValidationMessage(IReadOnlyList<ValidationError> errors)
+    {
+        var messages = errors
+            .Select(e => e.Message?.Trim())
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Distinct(StringComparer.Ordinal)
+            .Cast<string>()
+            .ToList();
+
+        if (messages.Count == 0)
+            return "فشل التحقق من البيانات.";
+        if (messages.Count == 1)
+            return messages[0];
+        return string.Join("\n", messages.Select(m => $"• {m}"));
+    }
 }
 
 public sealed class ApplicationResult<T> : ApplicationResult
@@ -107,12 +127,16 @@ public sealed class ApplicationResult<T> : ApplicationResult
         ErrorMessage = message
     };
 
-    public new static ApplicationResult<T> ValidationFailed(IEnumerable<ValidationError> errors) => new()
+    public new static ApplicationResult<T> ValidationFailed(IEnumerable<ValidationError> errors)
     {
-        Status = ApplicationResultStatus.ValidationFailed,
-        ValidationErrors = errors.ToList(),
-        ErrorMessage = "Validation failed."
-    };
+        var list = errors.ToList();
+        return new()
+        {
+            Status = ApplicationResultStatus.ValidationFailed,
+            ValidationErrors = list,
+            ErrorMessage = FormatValidationMessage(list)
+        };
+    }
 
     public new static ApplicationResult<T> ValidationFailed(string field, string message) =>
         ValidationFailed([new ValidationError(field, message)]);

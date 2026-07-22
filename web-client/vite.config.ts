@@ -13,15 +13,35 @@ export default defineConfig({
       includeAssets: ['icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/api\//],
+        // Network-first HTML so deploys are not stuck on a stale index.html → old hashed JS.
+        // SWR for static assets: hashed filenames change each build; avoid month-long CacheFirst.
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.origin === self.location.origin && !url.pathname.startsWith('/api/'),
-            handler: 'CacheFirst',
+            urlPattern: ({ request, url }) =>
+              url.origin === self.location.origin &&
+              !url.pathname.startsWith('/api/') &&
+              request.destination === 'document',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'alamal-ab-pages',
+              networkTimeoutSeconds: 4,
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24
+              }
+            }
+          },
+          {
+            urlPattern: ({ request, url }) =>
+              url.origin === self.location.origin &&
+              !url.pathname.startsWith('/api/') &&
+              request.destination !== 'document',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'alamal-ab-static',
               expiration: {
                 maxEntries: 80,
-                maxAgeSeconds: 60 * 60 * 24 * 30
+                maxAgeSeconds: 60 * 60 * 24 * 7
               }
             }
           }

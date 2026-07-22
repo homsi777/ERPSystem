@@ -13,6 +13,7 @@ import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
+import { getApiErrorMessage } from '../lib/apiError.ts';
 import {
   displayLengthFromMeters,
   formatContainerLength,
@@ -723,23 +724,7 @@ function toOptionalNumber(value: string): number | null {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 403) {
-      return 'لا تملك صلاحية لإكمال التفصيل.';
-    }
-    if (error.status === 404) {
-      return 'الفاتورة غير موجودة أو ليست بانتظار التفصيل.';
-    }
-    // Prefer the real server message (duplicate serial, missing roll, wrong warehouse, …).
-    if (error.message?.trim()) {
-      return error.message;
-    }
-    if (error.status === 409) {
-      return 'تعذّر إكمال التفصيل بسبب تعارض في الحالة. حدّث الصفحة ثم أعد المحاولة.';
-    }
-    return 'تعذر تنفيذ الطلب.';
-  }
-  return 'حدث خطأ غير متوقع.';
+  return getApiErrorMessage(error, 'حدث خطأ غير متوقع.');
 }
 
 function findDuplicateSerial(
