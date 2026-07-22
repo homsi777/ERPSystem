@@ -1,3 +1,6 @@
+using ERPSystem.Domain.Enums;
+using Enums = ERPSystem.Domain.Enums;
+
 namespace ERPSystem.Domain.Entities.Finance;
 
 /// <summary>
@@ -65,6 +68,8 @@ public class OpeningBalanceDocument
     public string? Reference { get; private set; }
     public string? Description { get; private set; }
     public string? Notes { get; private set; }
+    /// <summary>Opening stock only: meter/yard display unit stamped onto the container on post.</summary>
+    public DplQuantityUnit? DplQuantityUnit { get; private set; }
 
     public decimal TotalDebit { get; private set; }
     public decimal TotalCredit { get; private set; }
@@ -101,7 +106,8 @@ public class OpeningBalanceDocument
         string? reference,
         string? description,
         string? notes,
-        Guid? createdByUserId) => new()
+        Guid? createdByUserId,
+        DplQuantityUnit? dplQuantityUnit = null) => new()
     {
         Id = Guid.NewGuid(),
         CompanyId = companyId,
@@ -116,6 +122,9 @@ public class OpeningBalanceDocument
         Reference = reference,
         Description = description,
         Notes = notes,
+        DplQuantityUnit = type == OpeningBalanceType.OpeningStock
+            ? dplQuantityUnit ?? Enums.DplQuantityUnit.Meters
+            : null,
         CreatedAt = DateTime.UtcNow,
         CreatedByUserId = createdByUserId
     };
@@ -129,7 +138,8 @@ public class OpeningBalanceDocument
         decimal exchangeRate,
         string? reference,
         string? description,
-        string? notes)
+        string? notes,
+        DplQuantityUnit? dplQuantityUnit = null)
     {
         EnsureEditable();
         OpeningDate = openingDate;
@@ -138,6 +148,8 @@ public class OpeningBalanceDocument
         Reference = reference;
         Description = description;
         Notes = notes;
+        if (Type == OpeningBalanceType.OpeningStock && dplQuantityUnit.HasValue)
+            DplQuantityUnit = dplQuantityUnit;
         UpdatedAt = DateTime.UtcNow;
     }
 

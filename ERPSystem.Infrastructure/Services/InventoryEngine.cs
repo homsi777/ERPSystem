@@ -1170,6 +1170,9 @@ internal sealed class InventoryEngine(
                         line.ContainerNumber,
                         obDoc.CompanyId,
                         obDoc.BranchId,
+                        obDoc.DplQuantityUnit.HasValue
+                            ? (DplQuantityUnit)obDoc.DplQuantityUnit.Value
+                            : DplQuantityUnit.Meters,
                         cancellationToken);
 
                     await context.OpeningStockLines.AddAsync(new OpeningStockLineEntity
@@ -1539,6 +1542,7 @@ internal sealed class InventoryEngine(
         string? containerNumber,
         Guid companyId,
         Guid branchId,
+        DplQuantityUnit dplQuantityUnit,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(containerNumber))
@@ -1552,7 +1556,18 @@ internal sealed class InventoryEngine(
                 cancellationToken);
 
         if (existing is not null)
+        {
+            // Opening-stock stubs (and any container without a unit yet) adopt the document unit
+            // so sales/reports show meter vs yard correctly.
+            if (existing.DplQuantityUnit is null ||
+                string.Equals(existing.Notes, "حاوية مواد أول المدة", StringComparison.Ordinal))
+            {
+                existing.DplQuantityUnit = (int)dplQuantityUnit;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+
             return existing.Id;
+        }
 
         var supplierId = await context.Suppliers.AsNoTracking()
             .Where(s => s.Id == DatabaseSeeder.DefaultChinaSupplierId)
@@ -1588,6 +1603,7 @@ internal sealed class InventoryEngine(
             Notes = "حاوية مواد أول المدة",
             ExchangeRateToLocalCurrency = 1m,
             ChinaInvoiceAmountUsd = 0m,
+            DplQuantityUnit = (int)dplQuantityUnit,
             CreatedAt = now,
             IsActive = true,
             IsArchived = false

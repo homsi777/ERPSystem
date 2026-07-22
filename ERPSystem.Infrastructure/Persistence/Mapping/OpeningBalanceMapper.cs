@@ -1,5 +1,5 @@
 using ERPSystem.Domain.Entities.Finance;
-using ERPSystem.Infrastructure.Persistence.Mapping;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Infrastructure.Persistence.Models.Finance;
 
 namespace ERPSystem.Infrastructure.Persistence.Mapping;
@@ -22,6 +22,8 @@ internal static class OpeningBalanceMapper
         DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.Reference), entity.Reference);
         DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.Description), entity.Description);
         DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.Notes), entity.Notes);
+        DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.DplQuantityUnit),
+            entity.DplQuantityUnit.HasValue ? (DplQuantityUnit?)entity.DplQuantityUnit.Value : null);
         DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.TotalDebit), entity.TotalDebit);
         DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.TotalCredit), entity.TotalCredit);
         DomainHydrator.Set(doc, nameof(OpeningBalanceDocument.TotalBaseAmount), entity.TotalBaseAmount);
@@ -78,6 +80,7 @@ internal static class OpeningBalanceMapper
             Reference = doc.Reference,
             Description = doc.Description,
             Notes = doc.Notes,
+            DplQuantityUnit = doc.DplQuantityUnit.HasValue ? (int)doc.DplQuantityUnit.Value : null,
             TotalDebit = doc.TotalDebit,
             TotalCredit = doc.TotalCredit,
             TotalBaseAmount = doc.TotalBaseAmount,

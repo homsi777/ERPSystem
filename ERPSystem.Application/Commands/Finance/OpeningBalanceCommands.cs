@@ -1,4 +1,5 @@
 using ERPSystem.Domain.Entities.Finance;
+using ERPSystem.Domain.Enums;
 
 namespace ERPSystem.Application.Commands.Finance;
 
@@ -42,6 +43,8 @@ public sealed class CreateOpeningBalanceCommand
     public string? Reference { get; init; }
     public string? Description { get; init; }
     public string? Notes { get; init; }
+    /// <summary>Opening stock only: meter or yard (stored as meters; unit stamped on container).</summary>
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
     public IReadOnlyList<OpeningBalanceLineInput> Lines { get; init; } = [];
     /// <summary>Immediately submit for approval after creation.</summary>
     public bool SubmitForApproval { get; init; }
@@ -56,6 +59,7 @@ public sealed class UpdateOpeningBalanceCommand
     public string? Reference { get; init; }
     public string? Description { get; init; }
     public string? Notes { get; init; }
+    public DplQuantityUnit? DplQuantityUnit { get; init; }
     public IReadOnlyList<OpeningBalanceLineInput> Lines { get; init; } = [];
 }
 

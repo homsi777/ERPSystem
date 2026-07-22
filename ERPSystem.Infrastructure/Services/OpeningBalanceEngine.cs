@@ -132,7 +132,8 @@ internal sealed class OpeningBalanceEngine(
         var doc = OpeningBalanceDocument.Create(
             companyId, branchId, number, command.Type, command.Source,
             command.OpeningDate, command.CurrencyCode, command.ExchangeRate,
-            command.Reference, command.Description, command.Notes, user.UserId);
+            command.Reference, command.Description, command.Notes, user.UserId,
+            command.DplQuantityUnit);
         doc.ReplaceLines(resolved);
 
         if (command.SubmitForApproval)
@@ -183,7 +184,7 @@ internal sealed class OpeningBalanceEngine(
                 validation.Errors.Select(e => new ValidationError(e.Field, e.Message)));
 
         doc.UpdateHeader(command.OpeningDate, command.CurrencyCode, command.ExchangeRate,
-            command.Reference, command.Description, command.Notes);
+            command.Reference, command.Description, command.Notes, command.DplQuantityUnit);
         doc.ReplaceLines(await ResolveLinesAsync(doc.Type, command.Lines, cancellationToken));
 
         await repository.UpdateAsync(doc, cancellationToken);

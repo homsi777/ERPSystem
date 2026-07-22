@@ -14,6 +14,8 @@ public class OpeningBalanceDocumentEntity : PersistenceEntity
     public string? Reference { get; set; }
     public string? Description { get; set; }
     public string? Notes { get; set; }
+    /// <summary>Opening stock: meter/yard unit applied to the container on post.</summary>
+    public int? DplQuantityUnit { get; set; }
     public decimal TotalDebit { get; set; }
     public decimal TotalCredit { get; set; }
     public decimal TotalBaseAmount { get; set; }

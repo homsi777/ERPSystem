@@ -3,6 +3,7 @@ using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Core;
 using ERPSystem.Domain.Entities.Finance;
+using ERPSystem.Domain.Enums;
 using ERPSystem.Helpers;
 using ERPSystem.Services;
 using ERPSystem.Services.Finance;
@@ -21,6 +22,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 {
     private readonly ComboBox _warehouse = new() { MinWidth = 220, DisplayMemberPath = nameof(WarehouseListExtendedDto.NameAr) };
     private readonly TextBox _containerNumber = ErpUiFactory.FormField("");
+    private readonly ComboBox _lengthUnit = new() { MinWidth = 140 };
     private readonly DatePicker _date = new() { SelectedDate = DateTime.Today };
     private readonly TextBox _reference = ErpUiFactory.FormField("");
     private readonly TextBox _currency = ErpUiFactory.FormField("USD");
@@ -42,6 +44,10 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private readonly TextBox _rolls = ErpUiFactory.FormField("");
     private readonly TextBox _unitCost = ErpUiFactory.FormField("");
     private readonly TextBox _lineNote = ErpUiFactory.FormField("");
+    private readonly TextBlock _qtyEntryLabel = new() { Margin = new Thickness(0, 0, 0, 4) };
+    private readonly TextBlock _costEntryLabel = new() { Margin = new Thickness(0, 0, 0, 4) };
+    private DataGridTextColumn? _qtyColumn;
+    private DataGridTextColumn? _costColumn;
     private readonly Button _saveButton = new();
     private readonly Button _postButton = new();
     private bool _isSaving;
@@ -54,11 +60,21 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         var stack = new StackPanel();
         stack.Children.Add(ErpUiFactory.SectionTitle("مواد أول المدة"));
         stack.Children.Add(ErpUxFactory.InfoBanner(
-            "حدد المستودع ورقم الحاوية أولاً، ثم أضف الأسطر. انقر مرتين على أي خانة في الجدول لتعديلها (مثل التكلفة)."));
+            "حدد المستودع ورقم الحاوية ووحدة الطول (متر/يارد) أولاً، ثم أضف الأسطر. انقر مرتين على أي خانة لتعديلها."));
+
+        _lengthUnit.DisplayMemberPath = nameof(LengthUnitOption.Label);
+        _lengthUnit.ItemsSource = new LengthUnitOption[]
+        {
+            new(DplQuantityUnit.Meters, "متر"),
+            new(DplQuantityUnit.Yards, "يارد")
+        };
+        _lengthUnit.SelectedIndex = 0;
+        _lengthUnit.SelectionChanged += (_, _) => RefreshLengthLabels();
 
         stack.Children.Add(ErpUiFactory.BuildFormGrid(
             ("المستودع *", _warehouse),
             ("رقم الحاوية *", _containerNumber),
+            ("وحدة الطول *", _lengthUnit),
             ("تاريخ الافتتاح", Wrap(_date)),
             ("مرجع", _reference),
             ("العملة", _currency),
@@ -67,16 +83,19 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         _lines.Columns.Add(EditableColumn("اسم التوب", nameof(OpeningLineRow.FabricName), "*"));
         _lines.Columns.Add(EditableColumn("كود التوب", nameof(OpeningLineRow.FabricCode), 100));
         _lines.Columns.Add(EditableColumn("اللون", nameof(OpeningLineRow.ColorName), 100));
-        _lines.Columns.Add(EditableColumn("الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, "N2"));
+        _qtyColumn = EditableColumn("الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, "N2");
+        _lines.Columns.Add(_qtyColumn);
         _lines.Columns.Add(EditableColumn("عدد الأتواب", nameof(OpeningLineRow.RollCount), 80));
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
-            _lines.Columns.Add(EditableColumn("التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, "N4"));
+            _costColumn = EditableColumn("التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, "N4");
+            _lines.Columns.Add(_costColumn);
             _lines.Columns.Add(EditableColumn("القيمة", nameof(OpeningLineRow.TotalValue), 90, "N2", readOnly: true));
         }
         _lines.Columns.Add(EditableColumn("ملاحظة", nameof(OpeningLineRow.LineNote), 140));
         _lines.CellEditEnding += OnLineCellEditEnding;
         _lines.ItemsSource = _lineRows;
+        _lineRows.CollectionChanged += (_, _) => SyncLengthUnitEnabled();
         stack.Children.Add(_lines);
 
         var addRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
@@ -93,13 +112,13 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         AddEntryField(addRow, "اسم التوب *", _fabricName, 0);
         AddEntryField(addRow, "كود التوب *", _fabricCode, 1);
         AddEntryField(addRow, "اللون *", _colorName, 2);
-        AddEntryField(addRow, "الأمتار *", _meters, 3);
+        AddEntryField(addRow, _qtyEntryLabel, _meters, 3);
         AddEntryField(addRow, "عدد الأتواب *", _rolls, 4);
 
         var noteColumn = 5;
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
-            AddEntryField(addRow, "التكلفة/م", _unitCost, 5);
+            AddEntryField(addRow, _costEntryLabel, _unitCost, 5);
             noteColumn = 6;
         }
 
@@ -132,6 +151,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
         root.Content = stack;
         Content = root;
+        RefreshLengthLabels();
         WireEnterNavigation();
         Loaded += async (_, _) => await InitAsync();
     }
@@ -139,7 +159,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private void WireEnterNavigation()
     {
         EnterFocusNavigation.WireChain(
-            [_warehouse, _containerNumber, _date, _reference, _currency, _notes],
+            [_warehouse, _containerNumber, _lengthUnit, _date, _reference, _currency, _notes],
             onLastEnter: () => EnterFocusNavigation.FocusNext(_fabricName));
 
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
@@ -194,13 +214,16 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
         var header = e.Column.Header?.ToString() ?? "";
         var text = editor.Text.Trim();
+        var unit = SelectedLengthUnit();
+        var lengthHeader = ChinaImportLengthDisplay.LengthColumnHeader(unit);
+        var costHeader = ChinaImportLengthDisplay.CostPerUnitLabel(unit);
 
-        if (header is "الأمتار")
+        if (header == lengthHeader || header is "الأمتار" or "يارد")
         {
             if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var meters) || meters <= 0)
             {
                 e.Cancel = true;
-                MessageBox.Show("الأمتار يجب أن تكون أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"{lengthHeader} يجب أن تكون أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         else if (header is "عدد الأتواب")
@@ -211,7 +234,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
                 MessageBox.Show("عدد الأتواب يجب أن يكون أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
-        else if (header is "التكلفة/م")
+        else if (header == costHeader || header is "التكلفة/م" or "تكلفة/ي")
         {
             if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var cost) || cost < 0)
             {
@@ -234,17 +257,42 @@ public sealed class InventoryOpeningStockFormControl : UserControl
 
     private static void AddEntryField(Grid row, string label, FrameworkElement field, int column)
     {
-        field.HorizontalAlignment = HorizontalAlignment.Stretch;
-        var container = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
-        container.Children.Add(new TextBlock
+        var labelBlock = new TextBlock
         {
             Text = label,
             Margin = new Thickness(0, 0, 0, 4)
-        });
+        };
+        AddEntryField(row, labelBlock, field, column);
+    }
+
+    private static void AddEntryField(Grid row, TextBlock label, FrameworkElement field, int column)
+    {
+        field.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var container = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
+        container.Children.Add(label);
         container.Children.Add(field);
         Grid.SetColumn(container, column);
         row.Children.Add(container);
     }
+
+    private DplQuantityUnit SelectedLengthUnit() =>
+        _lengthUnit.SelectedItem is LengthUnitOption opt ? opt.Unit : DplQuantityUnit.Meters;
+
+    private void RefreshLengthLabels()
+    {
+        var unit = SelectedLengthUnit();
+        var lengthHeader = ChinaImportLengthDisplay.LengthColumnHeader(unit);
+        var costHeader = ChinaImportLengthDisplay.CostPerUnitLabel(unit);
+        _qtyEntryLabel.Text = $"{lengthHeader} *";
+        _costEntryLabel.Text = costHeader;
+        if (_qtyColumn is not null)
+            _qtyColumn.Header = lengthHeader;
+        if (_costColumn is not null)
+            _costColumn.Header = costHeader;
+    }
+
+    private void SyncLengthUnitEnabled() =>
+        _lengthUnit.IsEnabled = _lineRows.Count == 0;
 
     private async Task InitAsync()
     {
@@ -280,6 +328,15 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             return;
         }
 
+        if (_lengthUnit.SelectedItem is null)
+        {
+            MessageBox.Show("اختر وحدة الطول (متر أو يارد) أولاً.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var unit = SelectedLengthUnit();
+        var lengthHeader = ChinaImportLengthDisplay.LengthColumnHeader(unit);
+
         var fabricCode = _fabricCode.Text.Trim();
         var fabricName = _fabricName.Text.Trim();
         var colorName = _colorName.Text.Trim();
@@ -295,7 +352,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         }
         if (!decimal.TryParse(_meters.Text, out var m) || m <= 0)
         {
-            MessageBox.Show("اكتب إجمالي الأمتار بقيمة أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"اكتب إجمالي {lengthHeader} بقيمة أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (!int.TryParse(_rolls.Text, out var r) || r <= 0)
@@ -320,6 +377,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             UnitCost = cost,
             LineNote = _lineNote.Text.Trim()
         });
+        SyncLengthUnitEnabled();
 
         _fabricCode.Clear();
         _fabricName.Clear();
@@ -355,22 +413,28 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             return;
         }
 
-        var lines = _lineRows.Select(l => new OpeningBalanceLineInput
+        var unit = SelectedLengthUnit();
+        var lines = _lineRows.Select(l =>
         {
-            WarehouseId = wh.Id,
-            WarehouseName = wh.NameAr,
-            FabricItemId = l.FabricItemId,
-            FabricColorId = l.FabricColorId,
-            ItemCode = l.FabricCode,
-            ItemName = l.FabricName,
-            ColorName = l.ColorName,
-            ContainerNumber = containerNumber,
-            Quantity = l.QuantityMeters,
-            RollCount = l.RollCount,
-            UnitCost = l.UnitCost,
-            Debit = l.TotalValue,
-            Credit = 0m,
-            Notes = string.IsNullOrWhiteSpace(l.LineNote) ? null : l.LineNote
+            var qtyMeters = DplQuantityConverter.ToMeters(l.QuantityMeters, unit);
+            var unitCostPerMeter = ChinaImportLengthDisplay.ToStoredRate(l.UnitCost, unit);
+            return new OpeningBalanceLineInput
+            {
+                WarehouseId = wh.Id,
+                WarehouseName = wh.NameAr,
+                FabricItemId = l.FabricItemId,
+                FabricColorId = l.FabricColorId,
+                ItemCode = l.FabricCode,
+                ItemName = l.FabricName,
+                ColorName = l.ColorName,
+                ContainerNumber = containerNumber,
+                Quantity = qtyMeters,
+                RollCount = l.RollCount,
+                UnitCost = unitCostPerMeter,
+                Debit = Math.Round(qtyMeters * unitCostPerMeter, 4),
+                Credit = 0m,
+                Notes = string.IsNullOrWhiteSpace(l.LineNote) ? null : l.LineNote
+            };
         }).ToList();
 
         _isSaving = true;
@@ -386,6 +450,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
                 ExchangeRate = 1m,
                 Reference = _reference.Text.Trim(),
                 Notes = _notes.Text.Trim(),
+                DplQuantityUnit = unit,
                 Lines = lines
             });
 
@@ -453,6 +518,8 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             _postButton.IsEnabled = true;
         }
     }
+
+    private sealed record LengthUnitOption(DplQuantityUnit Unit, string Label);
 
     private sealed class OpeningLineRow : INotifyPropertyChanged
     {
