@@ -8,8 +8,12 @@ using ERPSystem.Services;
 using ERPSystem.Services.Finance;
 using ERPSystem.Services.Inventory;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace ERPSystem.Controls.Inventory;
 
@@ -21,7 +25,15 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private readonly TextBox _reference = ErpUiFactory.FormField("");
     private readonly TextBox _currency = ErpUiFactory.FormField("USD");
     private readonly TextBox _notes = ErpUiFactory.FormField("");
-    private readonly DataGrid _lines = new() { AutoGenerateColumns = false, CanUserAddRows = false, MinHeight = 200 };
+    private readonly DataGrid _lines = new()
+    {
+        AutoGenerateColumns = false,
+        CanUserAddRows = false,
+        CanUserDeleteRows = true,
+        IsReadOnly = false,
+        MinHeight = 200,
+        SelectionUnit = DataGridSelectionUnit.FullRow
+    };
     private readonly ObservableCollection<OpeningLineRow> _lineRows = [];
     private readonly TextBox _fabricCode = ErpUiFactory.FormField("");
     private readonly TextBox _fabricName = ErpUiFactory.FormField("");
@@ -42,7 +54,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         var stack = new StackPanel();
         stack.Children.Add(ErpUiFactory.SectionTitle("مواد أول المدة"));
         stack.Children.Add(ErpUxFactory.InfoBanner(
-            "حدد المستودع ورقم الحاوية للمستند أولاً، ثم أضف الأسطر. كل الأتواب تُرحَّل تحت نفس الحاوية في المخزون والبيع."));
+            "حدد المستودع ورقم الحاوية أولاً، ثم أضف الأسطر. انقر مرتين على أي خانة في الجدول لتعديلها (مثل التكلفة)."));
 
         stack.Children.Add(ErpUiFactory.BuildFormGrid(
             ("المستودع *", _warehouse),
@@ -52,17 +64,18 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             ("العملة", _currency),
             ("ملاحظات", _notes)));
 
-        ErpUiFactory.AddGridColumn(_lines, "اسم التوب", nameof(OpeningLineRow.FabricName), "*", null);
-        ErpUiFactory.AddGridColumn(_lines, "كود التوب", nameof(OpeningLineRow.FabricCode), 100, null);
-        ErpUiFactory.AddGridColumn(_lines, "اللون", nameof(OpeningLineRow.ColorName), 100, null);
-        ErpUiFactory.AddGridColumn(_lines, "الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, null);
-        ErpUiFactory.AddGridColumn(_lines, "عدد الأتواب", nameof(OpeningLineRow.RollCount), 80, null);
+        _lines.Columns.Add(EditableColumn("اسم التوب", nameof(OpeningLineRow.FabricName), "*"));
+        _lines.Columns.Add(EditableColumn("كود التوب", nameof(OpeningLineRow.FabricCode), 100));
+        _lines.Columns.Add(EditableColumn("اللون", nameof(OpeningLineRow.ColorName), 100));
+        _lines.Columns.Add(EditableColumn("الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, "N2"));
+        _lines.Columns.Add(EditableColumn("عدد الأتواب", nameof(OpeningLineRow.RollCount), 80));
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
-            ErpUiFactory.AddGridColumn(_lines, "التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, null);
-            ErpUiFactory.AddGridColumn(_lines, "القيمة", nameof(OpeningLineRow.TotalValue), 90, null);
+            _lines.Columns.Add(EditableColumn("التكلفة/م", nameof(OpeningLineRow.UnitCost), 80, "N4"));
+            _lines.Columns.Add(EditableColumn("القيمة", nameof(OpeningLineRow.TotalValue), 90, "N2", readOnly: true));
         }
-        ErpUiFactory.AddGridColumn(_lines, "ملاحظة", nameof(OpeningLineRow.LineNote), 140, null);
+        _lines.Columns.Add(EditableColumn("ملاحظة", nameof(OpeningLineRow.LineNote), 140));
+        _lines.CellEditEnding += OnLineCellEditEnding;
         _lines.ItemsSource = _lineRows;
         stack.Children.Add(_lines);
 
@@ -150,6 +163,74 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     }
 
     private static UIElement Wrap(UIElement c) => new Border { Child = c, Padding = new Thickness(0, 4, 0, 0) };
+
+    private static DataGridTextColumn EditableColumn(
+        string header, string path, object width, string? format = null, bool readOnly = false)
+    {
+        var binding = new Binding(path)
+        {
+            Mode = readOnly ? BindingMode.OneWay : BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.LostFocus,
+            StringFormat = format,
+            ConverterCulture = CultureInfo.CurrentCulture
+        };
+        return new DataGridTextColumn
+        {
+            Header = header,
+            Binding = binding,
+            IsReadOnly = readOnly,
+            Width = width is string
+                ? new DataGridLength(1, DataGridLengthUnitType.Star)
+                : new DataGridLength(Convert.ToDouble(width))
+        };
+    }
+
+    private void OnLineCellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction != DataGridEditAction.Commit || e.Row.Item is not OpeningLineRow row)
+            return;
+        if (e.EditingElement is not TextBox editor)
+            return;
+
+        var header = e.Column.Header?.ToString() ?? "";
+        var text = editor.Text.Trim();
+
+        if (header is "الأمتار")
+        {
+            if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var meters) || meters <= 0)
+            {
+                e.Cancel = true;
+                MessageBox.Show("الأمتار يجب أن تكون أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        else if (header is "عدد الأتواب")
+        {
+            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.CurrentCulture, out var rolls) || rolls <= 0)
+            {
+                e.Cancel = true;
+                MessageBox.Show("عدد الأتواب يجب أن يكون أكبر من صفر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        else if (header is "التكلفة/م")
+        {
+            if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var cost) || cost < 0)
+            {
+                e.Cancel = true;
+                MessageBox.Show("التكلفة يجب أن تكون صفراً أو أكبر.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        else if (header is "اسم التوب" or "كود التوب" or "اللون")
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                e.Cancel = true;
+                MessageBox.Show("لا يمكن ترك هذه الخانة فارغة.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // Refresh computed value after edit commits.
+        Dispatcher.BeginInvoke(() => row.NotifyTotalsChanged(), System.Windows.Threading.DispatcherPriority.Background);
+    }
 
     private static void AddEntryField(Grid row, string label, FrameworkElement field, int column)
     {
@@ -373,18 +454,86 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         }
     }
 
-    private sealed class OpeningLineRow
+    private sealed class OpeningLineRow : INotifyPropertyChanged
     {
+        private string _fabricCode = "";
+        private string _fabricName = "";
+        private string _colorName = "";
+        private decimal _quantityMeters;
+        private int _rollCount;
+        private decimal _unitCost;
+        private string _lineNote = "";
+
         public Guid? FabricItemId { get; init; }
         public Guid? FabricColorId { get; init; }
-        public string FabricCode { get; init; } = "";
-        public string FabricName { get; init; } = "";
-        public string ColorName { get; init; } = "";
-        public decimal QuantityMeters { get; init; }
-        public int RollCount { get; init; }
-        public decimal UnitCost { get; init; }
-        public string LineNote { get; init; } = "";
+
+        public string FabricCode
+        {
+            get => _fabricCode;
+            set => SetField(ref _fabricCode, value);
+        }
+
+        public string FabricName
+        {
+            get => _fabricName;
+            set => SetField(ref _fabricName, value);
+        }
+
+        public string ColorName
+        {
+            get => _colorName;
+            set => SetField(ref _colorName, value);
+        }
+
+        public decimal QuantityMeters
+        {
+            get => _quantityMeters;
+            set
+            {
+                if (SetField(ref _quantityMeters, value))
+                    OnPropertyChanged(nameof(TotalValue));
+            }
+        }
+
+        public int RollCount
+        {
+            get => _rollCount;
+            set => SetField(ref _rollCount, value);
+        }
+
+        public decimal UnitCost
+        {
+            get => _unitCost;
+            set
+            {
+                if (SetField(ref _unitCost, value))
+                    OnPropertyChanged(nameof(TotalValue));
+            }
+        }
+
+        public string LineNote
+        {
+            get => _lineNote;
+            set => SetField(ref _lineNote, value);
+        }
+
         public decimal TotalValue => QuantityMeters * UnitCost;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public void NotifyTotalsChanged() => OnPropertyChanged(nameof(TotalValue));
+
+        private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+                return false;
+            field = value;
+            OnPropertyChanged(name);
+            return true;
+        }
     }
 }
-
+
