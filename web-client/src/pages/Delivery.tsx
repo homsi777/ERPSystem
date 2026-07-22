@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { completeDetailing, getDetailing, getDetailingQueue, saveDetailingDraft } from '../api/detailing.ts';
 import { getDetailingCandidateRolls, getInventoryWarehouses } from '../api/inventory.ts';
 import { ApiError } from '../api/client.ts';
-import type {
-  DetailingCandidateRollDto,
-  WarehouseDetailingDto,
-  WarehouseDetailingRollDto,
-  WarehouseDetailingStatus
-} from '../api/types.ts';
+import type { WarehouseDetailingDto, WarehouseDetailingRollDto, WarehouseDetailingStatus } from '../api/types.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { AppShell } from '../components/AppShell.tsx';
 import { DataCard } from '../components/DataCard.tsx';
@@ -169,6 +164,19 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [lengths, setLengths] = useState<Record<string, string>>({});
   const [serials, setSerials] = useState<Record<string, string>>({});
+  const [quickSerial, setQuickSerial] = useState('');
+  const [quickLength, setQuickLength] = useState('');
+  const [quickError, setQuickError] = useState<string | null>(null);
+  const [editingRollDetailId, setEditingRollDetailId] = useState<string | null>(null);
+  const [checkedEntry, setCheckedEntry] = useState<{
+    rollDetailId: string;
+    rollNumber: number;
+    chinaContainerId: string;
+    fabricItemId: string;
+    fabricColorId: string;
+  } | null>(null);
+  const [dismissedWarningKey, setDismissedWarningKey] = useState<string | null>(null);
+  const serialInputRef = useRef<HTMLInputElement>(null);
 
   const detailingQuery = useQuery({
     queryKey: ['detailing', invoiceId],
@@ -226,6 +234,115 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       return serial != null || length > 0;
     });
   }, [detailingQuery.data, lengths, serials]);
+
+  const sortedRolls = useMemo(() => {
+    const rolls = detailingQuery.data?.rolls ?? [];
+    return [...rolls].sort((a, b) => a.rollSequence - b.rollSequence);
+  }, [detailingQuery.data]);
+
+  function isRollFilled(roll: WarehouseDetailingRollDto) {
+    const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
+    const length = toNumber(lengths[roll.rollDetailId] ?? '');
+    return serial != null || length > 0;
+  }
+
+  const pendingRolls = useMemo(() => sortedRolls.filter((roll) => !isRollFilled(roll)), [sortedRolls, lengths, serials]);
+  const filledRolls = useMemo(() => sortedRolls.filter((roll) => isRollFilled(roll)), [sortedRolls, lengths, serials]);
+
+  const activeRoll = useMemo(() => {
+    if (editingRollDetailId) {
+      return sortedRolls.find((roll) => roll.rollDetailId === editingRollDetailId) ?? null;
+    }
+    return pendingRolls[0] ?? null;
+  }, [editingRollDetailId, sortedRolls, pendingRolls]);
+
+  const reservationCandidatesQuery = useQuery({
+    queryKey: [
+      'detailing',
+      'candidate-rolls',
+      detailingQuery.data?.warehouseId,
+      checkedEntry?.chinaContainerId,
+      checkedEntry?.fabricItemId,
+      checkedEntry?.fabricColorId,
+      invoiceId
+    ],
+    queryFn: () =>
+      getDetailingCandidateRolls({
+        warehouseId: detailingQuery.data!.warehouseId,
+        containerId: checkedEntry!.chinaContainerId,
+        fabricItemId: checkedEntry!.fabricItemId,
+        fabricColorId: checkedEntry!.fabricColorId,
+        excludeSalesInvoiceId: invoiceId
+      }),
+    enabled: Boolean(checkedEntry && detailingQuery.data?.warehouseId)
+  });
+
+  const matchedReservedCandidate = useMemo(() => {
+    if (!checkedEntry) {
+      return null;
+    }
+    const candidates = reservationCandidatesQuery.data ?? [];
+    return candidates.find((candidate) => candidate.rollNumber === checkedEntry.rollNumber) ?? null;
+  }, [checkedEntry, reservationCandidatesQuery.data]);
+
+  const reservationWarningKey = checkedEntry ? `${checkedEntry.rollDetailId}:${checkedEntry.rollNumber}` : null;
+  const showReservationWarning =
+    Boolean(matchedReservedCandidate?.reservedInSalesInvoiceId) && reservationWarningKey !== dismissedWarningKey;
+
+  function focusSerialInput() {
+    requestAnimationFrame(() => serialInputRef.current?.focus());
+  }
+
+  function handleQuickAdd() {
+    if (!activeRoll) {
+      return;
+    }
+    const serialNum = toRollNumber(quickSerial);
+    const lengthNum = toNumber(quickLength);
+    if (serialNum == null && lengthNum <= 0) {
+      setQuickError('أدخل رقم السيريال أو الطول.');
+      return;
+    }
+
+    setSerials((current) => ({ ...current, [activeRoll.rollDetailId]: quickSerial.trim() }));
+    setLengths((current) => ({ ...current, [activeRoll.rollDetailId]: quickLength.trim() }));
+
+    if (serialNum != null && activeRoll.chinaContainerId && activeRoll.fabricItemId && activeRoll.fabricColorId) {
+      setCheckedEntry({
+        rollDetailId: activeRoll.rollDetailId,
+        rollNumber: serialNum,
+        chinaContainerId: activeRoll.chinaContainerId,
+        fabricItemId: activeRoll.fabricItemId,
+        fabricColorId: activeRoll.fabricColorId
+      });
+    } else {
+      setCheckedEntry(null);
+    }
+
+    setQuickSerial('');
+    setQuickLength('');
+    setQuickError(null);
+    setEditingRollDetailId(null);
+    focusSerialInput();
+  }
+
+  function startEditRoll(roll: WarehouseDetailingRollDto) {
+    setEditingRollDetailId(roll.rollDetailId);
+    setQuickSerial(serials[roll.rollDetailId] ?? '');
+    setQuickLength(lengths[roll.rollDetailId] ?? '');
+    setQuickError(null);
+    focusSerialInput();
+  }
+
+  function clearRoll(roll: WarehouseDetailingRollDto) {
+    setSerials((current) => ({ ...current, [roll.rollDetailId]: '' }));
+    setLengths((current) => ({ ...current, [roll.rollDetailId]: '' }));
+    if (editingRollDetailId === roll.rollDetailId) {
+      setEditingRollDetailId(null);
+      setQuickSerial('');
+      setQuickLength('');
+    }
+  }
 
   const completeMutation = useMutation({
     mutationFn: () =>
@@ -310,7 +427,11 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
           <section className="form-panel form-compact" aria-label="تفصيل الأثواب">
             <div className="form-section-head">
               <h2>تفصيل الأثواب</h2>
-              {!isCompleted ? <span className="form-hint">{formatNumber(detailing.rolls.length)} ثوب</span> : null}
+              {!isCompleted ? (
+                <span className="form-hint">
+                  {formatNumber(filledRolls.length)} / {formatNumber(detailing.rolls.length)} تم تفنيدها
+                </span>
+              ) : null}
             </div>
 
             {isCompleted ? (
@@ -338,27 +459,118 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             ) : (
               <>
                 <p className="form-hint" style={{ marginBottom: 8 }}>
-                  أدخل رقم التوب (سيريال DPL) أو الطول بالمتر — يكفي أحدهما، أو اختر من قائمة اللفافات المتاحة أدناه.
-                  السيريال أدق ويخصم من نفس التوب في المخزون.
+                  أدخلي رقم السيريال (DPL) أو الطول لكل ثوب حسب لصاقته، ثم اضغطي "+ تفنيد". يكفي أحدهما — السيريال أدق.
                 </p>
-                <div className="line-items">
-                  {detailing.rolls.map((roll) => (
-                    <RollCard
-                      key={roll.rollDetailId}
-                      roll={roll}
-                      warehouseId={detailing.warehouseId}
-                      invoiceId={invoiceId}
-                      serialValue={serials[roll.rollDetailId] ?? ''}
-                      lengthValue={lengths[roll.rollDetailId] ?? ''}
-                      onSerialChange={(value) =>
-                        setSerials((current) => ({ ...current, [roll.rollDetailId]: value }))
-                      }
-                      onLengthChange={(value) =>
-                        setLengths((current) => ({ ...current, [roll.rollDetailId]: value }))
-                      }
-                    />
-                  ))}
+
+                {activeRoll ? (
+                  <p className="form-hint" style={{ marginBottom: 4 }}>
+                    القادم: ثوب رقم {formatLineIndex(activeRoll.rollSequence)} — {activeRoll.fabricDisplayName} /{' '}
+                    {activeRoll.colorDisplayName}
+                  </p>
+                ) : (
+                  <div className="banner banner--success" role="status">
+                    تم تفنيد كل الأثواب ({formatNumber(filledRolls.length)}/{formatNumber(detailing.rolls.length)}).
+                  </div>
+                )}
+
+                <div className="quick-entry">
+                  <div className="form-row form-row--2">
+                    <label className="form-field">
+                      <span className="form-field__label">رقم التوب (سيريال)</span>
+                      <input
+                        ref={serialInputRef}
+                        inputMode="numeric"
+                        placeholder="مثلاً 126"
+                        value={quickSerial}
+                        onChange={(event) => setQuickSerial(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            handleQuickAdd();
+                          }
+                        }}
+                        disabled={!activeRoll}
+                        aria-label="رقم سيريال الثوب"
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span className="form-field__label">أو الطول (م)</span>
+                      <input
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={quickLength}
+                        onChange={(event) => setQuickLength(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            handleQuickAdd();
+                          }
+                        }}
+                        disabled={!activeRoll}
+                        aria-label="طول الثوب"
+                      />
+                    </label>
+                  </div>
+
+                  {quickError ? <p className="form-hint form-hint--warn">{quickError}</p> : null}
+
+                  <button className="primary-button" type="button" onClick={handleQuickAdd} disabled={!activeRoll}>
+                    {editingRollDetailId ? 'تحديث' : '+ تفنيد'}
+                  </button>
                 </div>
+
+                {showReservationWarning && matchedReservedCandidate ? (
+                  <div className="reservation-warning" role="status">
+                    <span>
+                      هذا التوب موجود بالفعل في فاتورة رقم{' '}
+                      <Link to={`/sales/${matchedReservedCandidate.reservedInSalesInvoiceId}`}>
+                        {matchedReservedCandidate.reservedInSalesInvoiceNumber}
+                      </Link>
+                      . يمكنك المتابعة إذا كنت متأكداً.
+                    </span>
+                    <button
+                      type="button"
+                      className="reservation-warning__dismiss"
+                      onClick={() => setDismissedWarningKey(reservationWarningKey)}
+                      aria-label="إغلاق التنبيه"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+
+                {filledRolls.length > 0 ? (
+                  <div className="line-items">
+                    {filledRolls.map((roll) => (
+                      <article className="line-item" key={roll.rollDetailId}>
+                        <div className="line-item__head">
+                          <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
+                          <strong>
+                            {serials[roll.rollDetailId]
+                              ? `سيريال ${serials[roll.rollDetailId]}`
+                              : `${lengths[roll.rollDetailId]} م`}
+                          </strong>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button type="button" className="chip-button" onClick={() => startEditRoll(roll)}>
+                              تعديل
+                            </button>
+                            <button
+                              type="button"
+                              className="line-item__remove"
+                              onClick={() => clearRoll(roll)}
+                              aria-label={`حذف تفنيد الثوب رقم ${formatInteger(roll.rollSequence)}`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                        <p className="line-item__meta">
+                          {roll.fabricDisplayName} / {roll.colorDisplayName}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
               </>
             )}
           </section>
@@ -393,168 +605,6 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
         </form>
       ) : null}
     </AppShell>
-  );
-}
-
-type RollCardProps = {
-  roll: WarehouseDetailingRollDto;
-  warehouseId: string;
-  invoiceId: string;
-  serialValue: string;
-  lengthValue: string;
-  onSerialChange: (value: string) => void;
-  onLengthChange: (value: string) => void;
-};
-
-function RollCard({
-  roll,
-  warehouseId,
-  invoiceId,
-  serialValue,
-  lengthValue,
-  onSerialChange,
-  onLengthChange
-}: RollCardProps) {
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
-
-  const canLookup = Boolean(warehouseId) && Boolean(roll.chinaContainerId) && Boolean(roll.fabricItemId) && Boolean(roll.fabricColorId);
-
-  const candidatesQuery = useQuery({
-    queryKey: [
-      'detailing',
-      'candidate-rolls',
-      warehouseId,
-      roll.chinaContainerId,
-      roll.fabricItemId,
-      roll.fabricColorId,
-      invoiceId
-    ],
-    queryFn: () =>
-      getDetailingCandidateRolls({
-        warehouseId,
-        containerId: roll.chinaContainerId,
-        fabricItemId: roll.fabricItemId,
-        fabricColorId: roll.fabricColorId,
-        excludeSalesInvoiceId: invoiceId
-      }),
-    enabled: canLookup
-  });
-
-  const candidates = candidatesQuery.data ?? [];
-  const selectedSerial = toRollNumber(serialValue);
-  const matchedCandidate = selectedSerial != null
-    ? candidates.find((candidate) => candidate.rollNumber === selectedSerial)
-    : undefined;
-  const warningKey = matchedCandidate ? `${roll.rollDetailId}:${matchedCandidate.fabricRollId}` : null;
-  const showReservationWarning = Boolean(matchedCandidate?.reservedInSalesInvoiceId) && warningKey !== dismissedKey;
-
-  return (
-    <article className="line-item">
-      <div className="line-item__head">
-        <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
-      </div>
-      <p className="line-item__meta">
-        {roll.fabricDisplayName} / {roll.colorDisplayName}
-        {roll.containerDisplay && roll.containerDisplay !== '—' ? ` — حاوية ${roll.containerDisplay}` : ''}
-      </p>
-
-      <div className="form-row form-row--2">
-        <label className="form-field">
-          <span className="form-field__label">رقم التوب (سيريال)</span>
-          <input
-            inputMode="numeric"
-            placeholder="مثلاً 126"
-            value={serialValue}
-            onChange={(event) => onSerialChange(event.target.value)}
-            aria-label={`رقم سيريال الثوب ${formatInteger(roll.rollSequence)}`}
-          />
-        </label>
-        <label className="form-field">
-          <span className="form-field__label">أو الطول (م)</span>
-          <input
-            inputMode="decimal"
-            placeholder="0"
-            value={lengthValue}
-            onChange={(event) => onLengthChange(event.target.value)}
-            aria-label={`طول الثوب رقم ${formatInteger(roll.rollSequence)}`}
-          />
-        </label>
-      </div>
-
-      {canLookup ? (
-        <div className="candidate-rolls">
-          <p className="candidate-rolls__label">لفافات متاحة في هذه الحاوية</p>
-
-          {candidatesQuery.isLoading ? <p className="form-hint">جار تحميل اللفافات المتاحة...</p> : null}
-
-          {candidatesQuery.isError ? (
-            <p className="form-hint form-hint--warn">تعذّر تحميل اللفافات المتاحة لهذا الصنف.</p>
-          ) : null}
-
-          {candidatesQuery.isSuccess && candidates.length === 0 ? (
-            <p className="form-hint">لا توجد لفافات متاحة في هذه الحاوية.</p>
-          ) : null}
-
-          {candidates.length > 0 ? (
-            <div className="candidate-rolls__list">
-              {candidates.map((candidate) => (
-                <CandidateChip
-                  key={candidate.fabricRollId}
-                  candidate={candidate}
-                  isSelected={selectedSerial === candidate.rollNumber}
-                  onSelect={() => onSerialChange(String(candidate.rollNumber))}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {showReservationWarning && matchedCandidate ? (
-        <div className="reservation-warning" role="status">
-          <span>
-            هذا التوب موجود بالفعل في فاتورة رقم{' '}
-            <Link to={`/sales/${matchedCandidate.reservedInSalesInvoiceId}`}>
-              {matchedCandidate.reservedInSalesInvoiceNumber}
-            </Link>
-            . يمكنك المتابعة إذا كنت متأكداً.
-          </span>
-          <button
-            type="button"
-            className="reservation-warning__dismiss"
-            onClick={() => setDismissedKey(warningKey)}
-            aria-label="إغلاق التنبيه"
-          >
-            ×
-          </button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function CandidateChip({
-  candidate,
-  isSelected,
-  onSelect
-}: {
-  candidate: DetailingCandidateRollDto;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const isReserved = Boolean(candidate.reservedInSalesInvoiceId);
-  return (
-    <button
-      type="button"
-      className={`candidate-chip${isSelected ? ' candidate-chip--selected' : ''}${isReserved ? ' candidate-chip--reserved' : ''}`}
-      onClick={onSelect}
-      title={isReserved ? `محجوز أيضاً في فاتورة ${candidate.reservedInSalesInvoiceNumber}` : undefined}
-    >
-      <span className="candidate-chip__dot" aria-hidden="true" />
-      <span>
-        {formatLineIndex(candidate.rollNumber)} • {formatMeters(candidate.remainingLengthMeters)}
-      </span>
-    </button>
   );
 }
 

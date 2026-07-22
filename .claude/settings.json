@@ -48,7 +48,16 @@
       "Bash(awk 'NR==1,NR==45{print NR\": \"$0}' ERPSystem.Application/UseCases/Queries/GetCustomerAccountLedgerHandler.cs)",
       "PowerShell(cd \"C:\\\\Users\\\\Homsi\\\\Desktop\\\\POS ERP C#\\\\ERPSystem\"; $env:ERP_LOCAL_DB_TESTS=\"1\"; dotnet test ERPSystem.Application.Tests/ERPSystem.Application.Tests.csproj --filter \"FullyQualifiedName~InventoryOpeningBalanceLocalDbVerificationTests|FullyQualifiedName~CustomerAccountLedgerLiveDbVerificationTests\" --no-restore 2>&1 | Select-Object -Last 60)",
       "Bash(plink -ssh -batch -pw '700210ww' ubuntu@65.21.136.217 \"echo CONNECTED\")",
-      "Bash(plink -ssh -v -batch -pw '700210ww' ubuntu@65.21.136.217 \"echo CONNECTED\")"
+      "Bash(plink -ssh -v -batch -pw '700210ww' ubuntu@65.21.136.217 \"echo CONNECTED\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(netstat -ano)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5174/ --max-time 5)",
+      "Bash(curl -s -o /tmp/root.html -w \"HTTP:%{http_code}\\\\n\" http://localhost:5174/ --max-time 5)",
+      "Bash(curl -s -o /tmp/delivery.js -w \"HTTP:%{http_code}\\\\n\" \"http://localhost:5174/src/pages/Delivery.tsx\" --max-time 5)",
+      "Bash(powershell -Command 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '\\\\''*run-vite.mjs*'\\\\'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }')",
+      "Bash(awk '{print $5}')",
+      "Bash(rm -f /tmp/vite-dev.log /tmp/root.html /tmp/delivery.js)"
     ],
     "additionalDirectories": [
       "\\tmp"

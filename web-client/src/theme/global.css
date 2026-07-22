@@ -2230,6 +2230,11 @@ svg {
   overflow-wrap: anywhere;
 }
 
+.quick-entry {
+  display: grid;
+  gap: 8px;
+}
+
 .candidate-rolls {
   display: grid;
   gap: 6px;
