@@ -122,6 +122,49 @@ internal sealed class InventoryRepository(ErpDbContext context) : IInventoryRepo
             .Distinct()
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<SellableContainerDto>> GetSellableContainersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var sellableIds = await GetSellableContainerIdsAsync(cancellationToken);
+        if (sellableIds.Count == 0)
+            return [];
+
+        var result = new List<SellableContainerDto>();
+        if (sellableIds.Contains(Guid.Empty))
+        {
+            result.Add(new SellableContainerDto
+            {
+                Id = Guid.Empty,
+                ContainerNumber = "مخزون أول المدة",
+                Notes = "حاوية مواد أول المدة",
+                DplQuantityUnit = DplQuantityUnit.Meters
+            });
+        }
+
+        var realIds = sellableIds.Where(id => id != Guid.Empty).ToList();
+        if (realIds.Count == 0)
+            return result;
+
+        // Ignore soft-delete filter so sellable opening-stock stubs always resolve by Id.
+        var containers = await context.Containers.AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(c => realIds.Contains(c.Id) && !c.IsArchived)
+            .Select(c => new SellableContainerDto
+            {
+                Id = c.Id,
+                ContainerNumber = c.ContainerNumber,
+                Notes = c.Notes,
+                DplQuantityUnit = c.DplQuantityUnit.HasValue
+                    ? (DplQuantityUnit)c.DplQuantityUnit.Value
+                    : null
+            })
+            .OrderBy(c => c.ContainerNumber)
+            .ToListAsync(cancellationToken);
+
+        result.AddRange(containers);
+        return result;
+    }
+
     public async Task<int> CountLowStockItemsAsync(
         Guid branchId,
         decimal thresholdMeters = 50m,

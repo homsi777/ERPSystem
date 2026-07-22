@@ -42,3 +42,12 @@ public sealed class ContainerInventoryReportDto
     public decimal AverageCostPerMeter { get; init; }
     public decimal SoldRevenuePotential { get; init; }
 }
+
+/// <summary>Container that currently has available rolls for sales picking.</summary>
+public sealed class SellableContainerDto
+{
+    public Guid Id { get; init; }
+    public string ContainerNumber { get; init; } = "";
+    public string? Notes { get; init; }
+    public Domain.Enums.DplQuantityUnit? DplQuantityUnit { get; init; }
+}

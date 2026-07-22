@@ -795,61 +795,45 @@ namespace ERPSystem.Controls.Sales
                 try
                 {
                     using var scope = AppServices.CreateScope();
-                    var handler = scope.ServiceProvider.GetRequiredService<GetChinaContainerListHandler>();
                     var inventoryRepo = scope.ServiceProvider.GetRequiredService<IInventoryRepository>();
 
-                    var sellableIds = (await inventoryRepo.GetSellableContainerIdsAsync()).ToHashSet();
-
-                    if (sellableIds.Remove(Guid.Empty))
+                    // Sales must list containers from live stock — do NOT gate on China-import GM permission.
+                    var sellable = await inventoryRepo.GetSellableContainersAsync();
+                    foreach (var c in sellable)
                     {
-                        seenIds.Add(Guid.Empty);
+                        if (!seenIds.Add(c.Id))
+                            continue;
+
+                        var isOpeningStub = c.Id == Guid.Empty
+                            || (!string.IsNullOrWhiteSpace(c.Notes)
+                                && c.Notes.Contains("أول المدة", StringComparison.Ordinal));
+
                         items.Add(new ContainerPickItem
                         {
-                            Id = Guid.Empty,
-                            Display = "مخزون أول المدة",
-                            DplQuantityUnit = DplQuantityUnit.Meters
+                            Id = c.Id,
+                            Display = isOpeningStub && c.Id != Guid.Empty
+                                ? $"{c.ContainerNumber} (أول المدة)"
+                                : c.ContainerNumber,
+                            DplQuantityUnit = c.DplQuantityUnit
                         });
                     }
 
-                    var result = await handler.HandleAsync(new GetChinaContainerListQuery
+                    // Optional enrichment: China InWarehouse list when the user has GM access.
+                    try
                     {
-                        CompanyId = DatabaseSeeder.DefaultCompanyId,
-                        BranchId = DatabaseSeeder.DefaultBranchId,
-                        Status = ChinaContainerStatus.InWarehouse,
-                        Page = 1,
-                        PageSize = 100
-                    });
-
-                    if (result.IsSuccess && result.Value?.Items.Count > 0)
-                    {
-                        foreach (var c in result.Value.Items)
-                        {
-                            if (!seenIds.Add(c.Id))
-                                continue;
-
-                            items.Add(new ContainerPickItem
-                            {
-                                Id = c.Id,
-                                Display = c.ContainerNumber,
-                                DplQuantityUnit = c.DplQuantityUnit
-                            });
-                        }
-                    }
-
-                    // Include any container with available rolls even if status filter missed it.
-                    if (sellableIds.Count > 0)
-                    {
-                        var allContainers = await handler.HandleAsync(new GetChinaContainerListQuery
+                        var handler = scope.ServiceProvider.GetRequiredService<GetChinaContainerListHandler>();
+                        var result = await handler.HandleAsync(new GetChinaContainerListQuery
                         {
                             CompanyId = DatabaseSeeder.DefaultCompanyId,
                             BranchId = DatabaseSeeder.DefaultBranchId,
+                            Status = ChinaContainerStatus.InWarehouse,
                             Page = 1,
-                            PageSize = 500
+                            PageSize = 100
                         });
 
-                        if (allContainers.IsSuccess && allContainers.Value?.Items is not null)
+                        if (result.IsSuccess && result.Value?.Items is { Count: > 0 })
                         {
-                            foreach (var c in allContainers.Value.Items.Where(c => sellableIds.Contains(c.Id)))
+                            foreach (var c in result.Value.Items)
                             {
                                 if (!seenIds.Add(c.Id))
                                     continue;
@@ -863,6 +847,10 @@ namespace ERPSystem.Controls.Sales
                             }
                         }
                     }
+                    catch
+                    {
+                        // China list is optional; sellable stock list above is authoritative.
+                    }
                 }
                 catch
                 {
@@ -871,7 +859,7 @@ namespace ERPSystem.Controls.Sales
             }
 
             ContainerOptions.Clear();
-            foreach (var item in items)
+            foreach (var item in items.OrderBy(i => i.Display, StringComparer.OrdinalIgnoreCase))
                 ContainerOptions.Add(item);
 
             CmbContainer.ItemsSource = ContainerOptions;
