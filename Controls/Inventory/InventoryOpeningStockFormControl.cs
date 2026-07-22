@@ -16,6 +16,7 @@ namespace ERPSystem.Controls.Inventory;
 public sealed class InventoryOpeningStockFormControl : UserControl
 {
     private readonly ComboBox _warehouse = new() { MinWidth = 220, DisplayMemberPath = nameof(WarehouseListExtendedDto.NameAr) };
+    private readonly TextBox _containerNumber = ErpUiFactory.FormField("");
     private readonly DatePicker _date = new() { SelectedDate = DateTime.Today };
     private readonly TextBox _reference = ErpUiFactory.FormField("");
     private readonly TextBox _currency = ErpUiFactory.FormField("USD");
@@ -25,7 +26,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private readonly TextBox _fabricCode = ErpUiFactory.FormField("");
     private readonly TextBox _fabricName = ErpUiFactory.FormField("");
     private readonly TextBox _colorName = ErpUiFactory.FormField("");
-    private readonly TextBox _containerNumber = ErpUiFactory.FormField("");
     private readonly TextBox _meters = ErpUiFactory.FormField("");
     private readonly TextBox _rolls = ErpUiFactory.FormField("");
     private readonly TextBox _unitCost = ErpUiFactory.FormField("");
@@ -42,10 +42,11 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         var stack = new StackPanel();
         stack.Children.Add(ErpUiFactory.SectionTitle("مواد أول المدة"));
         stack.Children.Add(ErpUxFactory.InfoBanner(
-            "أدخل أرصدة الافتتاح مع رقم الحاوية (أرقام أو أحرف) — تظهر الأتواب تحت هذه الحاوية في المخزون والبيع."));
+            "حدد المستودع ورقم الحاوية للمستند أولاً، ثم أضف الأسطر. كل الأتواب تُرحَّل تحت نفس الحاوية في المخزون والبيع."));
 
         stack.Children.Add(ErpUiFactory.BuildFormGrid(
             ("المستودع *", _warehouse),
+            ("رقم الحاوية *", _containerNumber),
             ("تاريخ الافتتاح", Wrap(_date)),
             ("مرجع", _reference),
             ("العملة", _currency),
@@ -54,7 +55,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         ErpUiFactory.AddGridColumn(_lines, "اسم التوب", nameof(OpeningLineRow.FabricName), "*", null);
         ErpUiFactory.AddGridColumn(_lines, "كود التوب", nameof(OpeningLineRow.FabricCode), 100, null);
         ErpUiFactory.AddGridColumn(_lines, "اللون", nameof(OpeningLineRow.ColorName), 100, null);
-        ErpUiFactory.AddGridColumn(_lines, "رقم الحاوية", nameof(OpeningLineRow.ContainerNumber), 110, null);
         ErpUiFactory.AddGridColumn(_lines, "الأمتار", nameof(OpeningLineRow.QuantityMeters), 80, null);
         ErpUiFactory.AddGridColumn(_lines, "عدد الأتواب", nameof(OpeningLineRow.RollCount), 80, null);
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
@@ -70,7 +70,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 140 });
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
-        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
@@ -81,15 +80,14 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         AddEntryField(addRow, "اسم التوب *", _fabricName, 0);
         AddEntryField(addRow, "كود التوب *", _fabricCode, 1);
         AddEntryField(addRow, "اللون *", _colorName, 2);
-        AddEntryField(addRow, "رقم الحاوية *", _containerNumber, 3);
-        AddEntryField(addRow, "الأمتار *", _meters, 4);
-        AddEntryField(addRow, "عدد الأتواب *", _rolls, 5);
+        AddEntryField(addRow, "الأمتار *", _meters, 3);
+        AddEntryField(addRow, "عدد الأتواب *", _rolls, 4);
 
-        var noteColumn = 6;
+        var noteColumn = 5;
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
-            AddEntryField(addRow, "التكلفة/م", _unitCost, 6);
-            noteColumn = 7;
+            AddEntryField(addRow, "التكلفة/م", _unitCost, 5);
+            noteColumn = 6;
         }
 
         AddEntryField(addRow, "ملاحظة", _lineNote, noteColumn);
@@ -128,19 +126,19 @@ public sealed class InventoryOpeningStockFormControl : UserControl
     private void WireEnterNavigation()
     {
         EnterFocusNavigation.WireChain(
-            [_warehouse, _date, _reference, _currency, _notes],
+            [_warehouse, _containerNumber, _date, _reference, _currency, _notes],
             onLastEnter: () => EnterFocusNavigation.FocusNext(_fabricName));
 
         if (WpfGeneralManagerAccess.CanViewSensitivePricing)
         {
             EnterFocusNavigation.WireChain(
-                [_fabricName, _fabricCode, _colorName, _containerNumber, _meters, _rolls, _unitCost, _lineNote],
+                [_fabricName, _fabricCode, _colorName, _meters, _rolls, _unitCost, _lineNote],
                 onLastEnter: AddLineAndRefocusFabric);
         }
         else
         {
             EnterFocusNavigation.WireChain(
-                [_fabricName, _fabricCode, _colorName, _containerNumber, _meters, _rolls, _lineNote],
+                [_fabricName, _fabricCode, _colorName, _meters, _rolls, _lineNote],
                 onLastEnter: AddLineAndRefocusFabric);
         }
     }
@@ -180,12 +178,30 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         }
     }
 
+    private string? TryGetDocumentContainerNumber()
+    {
+        var containerNumber = _containerNumber.Text.Trim();
+        return string.IsNullOrWhiteSpace(containerNumber) ? null : containerNumber;
+    }
+
     private void AddLine()
     {
+        if (_warehouse.SelectedItem is not WarehouseListExtendedDto)
+        {
+            MessageBox.Show("اختر المستودع أولاً من أعلى المستند.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var containerNumber = TryGetDocumentContainerNumber();
+        if (containerNumber is null)
+        {
+            MessageBox.Show("اكتب رقم الحاوية في أعلى المستند أولاً (أرقام أو أحرف).", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         var fabricCode = _fabricCode.Text.Trim();
         var fabricName = _fabricName.Text.Trim();
         var colorName = _colorName.Text.Trim();
-        var containerNumber = _containerNumber.Text.Trim();
         if (string.IsNullOrWhiteSpace(fabricCode))
         {
             MessageBox.Show("اكتب كود التوب.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -194,11 +210,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         if (string.IsNullOrWhiteSpace(fabricName) || string.IsNullOrWhiteSpace(colorName))
         {
             MessageBox.Show("اكتب اسم التوب ولون التوب.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(containerNumber))
-        {
-            MessageBox.Show("اكتب رقم الحاوية (أرقام أو أحرف).", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (!decimal.TryParse(_meters.Text, out var m) || m <= 0)
@@ -223,7 +234,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             FabricCode = fabricCode,
             FabricName = fabricName,
             ColorName = colorName,
-            ContainerNumber = containerNumber,
             QuantityMeters = m,
             RollCount = r,
             UnitCost = cost,
@@ -233,7 +243,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         _fabricCode.Clear();
         _fabricName.Clear();
         _colorName.Clear();
-        // Keep container number for consecutive lines of the same container.
         _meters.Clear();
         _rolls.Clear();
         _unitCost.Clear();
@@ -251,6 +260,14 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             MessageBox.Show("اختر المستودع.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+
+        var containerNumber = TryGetDocumentContainerNumber();
+        if (containerNumber is null)
+        {
+            MessageBox.Show("اكتب رقم الحاوية في أعلى المستند.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         if (_lineRows.Count == 0)
         {
             MessageBox.Show("أضف سطراً واحداً على الأقل.", "تحقق", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -266,7 +283,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
             ItemCode = l.FabricCode,
             ItemName = l.FabricName,
             ColorName = l.ColorName,
-            ContainerNumber = l.ContainerNumber,
+            ContainerNumber = containerNumber,
             Quantity = l.QuantityMeters,
             RollCount = l.RollCount,
             UnitCost = l.UnitCost,
@@ -363,7 +380,6 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         public string FabricCode { get; init; } = "";
         public string FabricName { get; init; } = "";
         public string ColorName { get; init; } = "";
-        public string ContainerNumber { get; init; } = "";
         public decimal QuantityMeters { get; init; }
         public int RollCount { get; init; }
         public decimal UnitCost { get; init; }
@@ -371,3 +387,4 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         public decimal TotalValue => QuantityMeters * UnitCost;
     }
 }
+
