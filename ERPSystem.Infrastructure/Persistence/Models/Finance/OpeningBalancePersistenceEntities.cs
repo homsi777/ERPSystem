@@ -49,6 +49,7 @@ public class OpeningBalanceLineEntity
     public string? ColorName { get; set; }
     public string? BatchNumber { get; set; }
     public string? LocationCode { get; set; }
+    public string? ContainerNumber { get; set; }
     public decimal? RollCount { get; set; }
     public decimal? Quantity { get; set; }
     public decimal? UnitCost { get; set; }

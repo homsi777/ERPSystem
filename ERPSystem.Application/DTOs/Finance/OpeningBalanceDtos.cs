@@ -64,6 +64,7 @@ public sealed class OpeningBalanceLineDto
     public string? ColorName { get; init; }
     public string? BatchNumber { get; init; }
     public string? LocationCode { get; init; }
+    public string? ContainerNumber { get; init; }
     public decimal? RollCount { get; init; }
     public decimal? Quantity { get; init; }
     public decimal? UnitCost { get; init; }

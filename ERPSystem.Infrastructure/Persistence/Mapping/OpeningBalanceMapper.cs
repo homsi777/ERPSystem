@@ -52,7 +52,7 @@ internal static class OpeningBalanceMapper
             entity.WarehouseId, entity.WarehouseName,
             entity.FabricItemId, entity.FabricColorId,
             entity.ItemCode, entity.ItemName, entity.ColorName, entity.BatchNumber, entity.LocationCode,
-            entity.RollCount, entity.Quantity, entity.UnitCost,
+            entity.ContainerNumber, entity.RollCount, entity.Quantity, entity.UnitCost,
             entity.BankName, entity.BankAccountNumber, entity.InvestmentScope,
             entity.Reference, entity.Description, entity.Notes);
         DomainHydrator.Set(line, nameof(OpeningBalanceLine.Id), entity.Id);
@@ -115,6 +115,7 @@ internal static class OpeningBalanceMapper
             ColorName = l.ColorName,
             BatchNumber = l.BatchNumber,
             LocationCode = l.LocationCode,
+            ContainerNumber = l.ContainerNumber,
             RollCount = l.RollCount,
             Quantity = l.Quantity,
             UnitCost = l.UnitCost,
@@ -146,7 +147,7 @@ internal static class OpeningBalanceMapper
         OpeningBalanceType.Cash or OpeningBalanceType.Bank or OpeningBalanceType.GeneralLedger
             => line.AccountId?.ToString() ?? line.BankAccountNumber ?? line.AccountName ?? "",
         OpeningBalanceType.OpeningStock
-            => $"{line.WarehouseId}:{line.FabricItemId}:{line.FabricColorId}:{line.BatchNumber}",
+            => $"{line.WarehouseId}:{line.FabricItemId}:{line.FabricColorId}:{line.ContainerNumber}:{line.BatchNumber}",
         _ => $"{line.PartyId}:{line.AccountId}:{line.Debit}:{line.Credit}"
     };
 }

@@ -102,6 +102,7 @@ public class OpeningStockLineEntity : PersistenceEntity
     public Guid? FabricRollId { get; set; }
     public Guid? FabricBatchId { get; set; }
     public Guid? StorageLocationId { get; set; }
+    public Guid? ContainerId { get; set; }
     public decimal QuantityMeters { get; set; }
     public int RollCount { get; set; }
     public decimal UnitCost { get; set; }

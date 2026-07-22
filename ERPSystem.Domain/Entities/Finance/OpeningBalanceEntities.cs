@@ -269,6 +269,8 @@ public class OpeningBalanceLine
     public string? ColorName { get; private set; }
     public string? BatchNumber { get; private set; }
     public string? LocationCode { get; private set; }
+    /// <summary>Free-text container number for opening-stock rolls (alphanumeric).</summary>
+    public string? ContainerNumber { get; private set; }
     public decimal? RollCount { get; private set; }
     public decimal? Quantity { get; private set; }
     public decimal? UnitCost { get; private set; }
@@ -309,6 +311,7 @@ public class OpeningBalanceLine
         string? colorName = null,
         string? batchNumber = null,
         string? locationCode = null,
+        string? containerNumber = null,
         decimal? rollCount = null,
         decimal? quantity = null,
         decimal? unitCost = null,
@@ -335,6 +338,7 @@ public class OpeningBalanceLine
         ColorName = colorName,
         BatchNumber = batchNumber,
         LocationCode = locationCode,
+        ContainerNumber = string.IsNullOrWhiteSpace(containerNumber) ? null : containerNumber.Trim(),
         RollCount = rollCount,
         Quantity = quantity,
         UnitCost = unitCost,

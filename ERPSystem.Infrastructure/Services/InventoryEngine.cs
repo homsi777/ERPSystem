@@ -6,7 +6,9 @@ using ERPSystem.Domain.Enums;
 using ERPSystem.Domain.Exceptions;
 using ERPSystem.Infrastructure.Persistence;
 using ERPSystem.Infrastructure.Persistence.Models.Catalog;
+using ERPSystem.Infrastructure.Persistence.Models.ChinaImport;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
+using ERPSystem.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace ERPSystem.Infrastructure.Services;
@@ -1055,7 +1057,7 @@ internal sealed class InventoryEngine(
                 rollsToInsert.Add(new FabricRollEntity
                 {
                     Id = rollId,
-                    ContainerId = Guid.Empty,
+                    ContainerId = line.ContainerId ?? Guid.Empty,
                     FabricBatchId = line.FabricBatchId,
                     FabricItemId = line.FabricItemId,
                     FabricColorId = line.FabricColorId,
@@ -1076,7 +1078,7 @@ internal sealed class InventoryEngine(
             }
 
             await UpsertWarehouseStockAsync(doc.WarehouseId, line.FabricItemId, line.FabricColorId,
-                Guid.Empty, rollsToCreate, line.QuantityMeters, now, cancellationToken);
+                line.ContainerId ?? Guid.Empty, rollsToCreate, line.QuantityMeters, now, cancellationToken);
 
             movementLines.Add(new StockMovementLineEntity
             {
@@ -1164,6 +1166,11 @@ internal sealed class InventoryEngine(
                     var qty = line.Quantity ?? 0;
                     var unitCost = line.UnitCost ?? (qty > 0 ? line.Debit / qty : 0);
                     var rolls = Math.Max(1, (int)(line.RollCount ?? 1));
+                    var containerId = await ResolveOrCreateOpeningStockContainerAsync(
+                        line.ContainerNumber,
+                        obDoc.CompanyId,
+                        obDoc.BranchId,
+                        cancellationToken);
 
                     await context.OpeningStockLines.AddAsync(new OpeningStockLineEntity
                     {
@@ -1171,6 +1178,7 @@ internal sealed class InventoryEngine(
                         DocumentId = stockDocId,
                         FabricItemId = fabricItemId,
                         FabricColorId = fabricColorId,
+                        ContainerId = containerId == Guid.Empty ? null : containerId,
                         QuantityMeters = qty,
                         RollCount = rolls,
                         UnitCost = unitCost,
@@ -1521,5 +1529,70 @@ internal sealed class InventoryEngine(
         var safe = new string(containerNumber.Where(char.IsLetterOrDigit).ToArray());
         if (string.IsNullOrWhiteSpace(safe)) safe = "CONT";
         return $"IMP-{safe}-{utcNow:yyyyMMddHHmmss}";
+    }
+
+    /// <summary>
+    /// Resolves an existing container by number, or creates a lightweight InWarehouse stub
+    /// so opening-stock rolls appear under that container in inventory and sales.
+    /// </summary>
+    private async Task<Guid> ResolveOrCreateOpeningStockContainerAsync(
+        string? containerNumber,
+        Guid companyId,
+        Guid branchId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(containerNumber))
+            return Guid.Empty;
+
+        var trimmed = containerNumber.Trim();
+        var existing = await context.Containers
+            .FirstOrDefaultAsync(c =>
+                c.CompanyId == companyId &&
+                c.ContainerNumber.ToLower() == trimmed.ToLower(),
+                cancellationToken);
+
+        if (existing is not null)
+            return existing.Id;
+
+        var supplierId = await context.Suppliers.AsNoTracking()
+            .Where(s => s.Id == DatabaseSeeder.DefaultChinaSupplierId)
+            .Select(s => s.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (supplierId == Guid.Empty)
+        {
+            supplierId = await context.Suppliers.AsNoTracking()
+                .Where(s => s.CompanyId == companyId && !s.IsArchived)
+                .OrderBy(s => s.Code)
+                .Select(s => s.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        if (supplierId == Guid.Empty)
+            throw new ValidationException(
+                "لا يمكن إنشاء رقم الحاوية لمواد أول المدة بدون مورد مسجّل في النظام.");
+
+        var id = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await context.Containers.AddAsync(new ContainerEntity
+        {
+            Id = id,
+            CompanyId = companyId,
+            BranchId = branchId,
+            SupplierId = supplierId,
+            ContainerNumber = trimmed,
+            Status = (int)ChinaContainerStatus.InWarehouse,
+            ShipmentDate = now.Date,
+            ArrivalDate = now.Date,
+            ApprovedAt = now,
+            Notes = "حاوية مواد أول المدة",
+            ExchangeRateToLocalCurrency = 1m,
+            ChinaInvoiceAmountUsd = 0m,
+            CreatedAt = now,
+            IsActive = true,
+            IsArchived = false
+        }, cancellationToken);
+
+        return id;
     }
 }

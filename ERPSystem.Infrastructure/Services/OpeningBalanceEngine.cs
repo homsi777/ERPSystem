@@ -394,7 +394,8 @@ internal sealed class OpeningBalanceEngine(
             WarehouseId = l.WarehouseId, WarehouseName = l.WarehouseName,
             FabricItemId = l.FabricItemId, FabricColorId = l.FabricColorId,
             ItemCode = l.ItemCode, ItemName = l.ItemName, ColorName = l.ColorName, BatchNumber = l.BatchNumber,
-            LocationCode = l.LocationCode, RollCount = l.RollCount, Quantity = l.Quantity,
+            LocationCode = l.LocationCode, ContainerNumber = l.ContainerNumber,
+            RollCount = l.RollCount, Quantity = l.Quantity,
             UnitCost = l.UnitCost, BankName = l.BankName, BankAccountNumber = l.BankAccountNumber,
             InvestmentScope = l.InvestmentScope, Debit = l.Debit, Credit = l.Credit,
             Reference = l.Reference, Description = l.Description, Notes = l.Notes
@@ -636,7 +637,7 @@ internal sealed class OpeningBalanceEngine(
                 debit, credit, partyId, partyName, accountId, accountName,
                 warehouseId, warehouseName, fabricItemId, fabricColorId,
                 itemCode, itemName, colorName, input.BatchNumber,
-                input.LocationCode, input.RollCount, input.Quantity, input.UnitCost,
+                input.LocationCode, input.ContainerNumber, input.RollCount, input.Quantity, input.UnitCost,
                 input.BankName, input.BankAccountNumber, input.InvestmentScope,
                 input.Reference, input.Description, input.Notes));
         }
@@ -818,6 +819,8 @@ internal sealed class OpeningBalanceEngine(
                     errors.Add(new() { RowNumber = row, Field = "Fabric", Message = "اسم التوب مطلوب." });
                 if (string.IsNullOrWhiteSpace(input.ColorName))
                     errors.Add(new() { RowNumber = row, Field = "FabricColor", Message = "لون التوب مطلوب." });
+                if (string.IsNullOrWhiteSpace(input.ContainerNumber))
+                    errors.Add(new() { RowNumber = row, Field = "ContainerNumber", Message = "رقم الحاوية مطلوب." });
                 if ((input.Quantity ?? 0) <= 0)
                     warnings.Add(new() { RowNumber = row, Field = "Meters", Message = "الكمية صفر أو غير محددة.", IsWarning = true });
                 break;
