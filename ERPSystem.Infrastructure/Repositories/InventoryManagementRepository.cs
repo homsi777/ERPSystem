@@ -80,7 +80,8 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             {
                 WarehouseId = g.Key,
                 RollCount = g.Sum(s => s.RollCount),
-                TotalMeters = g.Sum(s => s.TotalMeters)
+                // Round keeps PG numeric scale within System.Decimal limits.
+                TotalMeters = Math.Round(g.Sum(s => s.TotalMeters), 4)
             })
             .ToDictionaryAsync(x => x.WarehouseId, cancellationToken);
 
@@ -92,7 +93,8 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             {
                 WarehouseId = g.Key,
                 RollCount = g.Count(),
-                InventoryValue = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter)
+                // Unconstrained numeric * SUM can exceed Decimal scale (e.g. 0 with scale 30).
+                InventoryValue = Math.Round(g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter), 4)
             })
             .ToDictionaryAsync(x => x.WarehouseId, cancellationToken);
 
@@ -231,7 +233,7 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 g.Key.FabricItemId,
                 g.Key.FabricColorId,
                 g.Key.ContainerId,
-                InventoryValue = g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter)
+                InventoryValue = Math.Round(g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter), 4)
             });
 
         var balances =

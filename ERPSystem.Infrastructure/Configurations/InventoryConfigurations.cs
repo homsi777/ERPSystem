@@ -73,6 +73,8 @@ internal sealed class FabricRollConfiguration : IEntityTypeConfiguration<FabricR
         builder.Property(x => x.LengthMeters).HasPrecision(18, 4);
         builder.Property(x => x.RemainingLengthMeters).HasPrecision(18, 4);
         builder.Property(x => x.CostPerMeter).HasPrecision(18, 4);
+        builder.Property(x => x.SalePricePerMeter).HasPrecision(18, 4);
+        builder.Property(x => x.WeightKg).HasPrecision(18, 4);
         builder.HasIndex(x => x.Barcode);
         builder.HasIndex(x => x.FabricBatchId);
         builder.HasIndex(x => new { x.WarehouseId, x.Status, x.RemainingLengthMeters, x.RollNumber })
