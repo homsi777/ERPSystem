@@ -1257,6 +1257,27 @@ internal sealed class InventoryEngine(
                     };
                     await context.OpeningStockDocuments.AddAsync(stockDoc, cancellationToken);
 
+                    // One document header container number is stamped on every line. Resolve each
+                    // distinct number once (cache + change-tracker) so multi-line posts never
+                    // INSERT the same CompanyId+ContainerNumber twice before SaveChanges.
+                    var dplUnit = obDoc.DplQuantityUnit.HasValue
+                        ? (DplQuantityUnit)obDoc.DplQuantityUnit.Value
+                        : DplQuantityUnit.Meters;
+                    var containerByNumber = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var containerNumber in warehouseGroup
+                                 .Select(l => l.ContainerNumber?.Trim())
+                                 .Where(n => !string.IsNullOrWhiteSpace(n))
+                                 .Distinct(StringComparer.OrdinalIgnoreCase))
+                    {
+                        containerByNumber[containerNumber!] = await ResolveOrCreateOpeningStockContainerAsync(
+                            containerNumber,
+                            obDoc.CompanyId,
+                            obDoc.BranchId,
+                            dplUnit,
+                            containerByNumber,
+                            cancellationToken);
+                    }
+
                     foreach (var line in warehouseGroup)
                     {
                         if (line.FabricItemId is not Guid fabricItemId || fabricItemId == Guid.Empty ||
@@ -1267,14 +1288,13 @@ internal sealed class InventoryEngine(
                         var qty = line.Quantity ?? 0;
                         var unitCost = line.UnitCost ?? (qty > 0 ? line.Debit / qty : 0);
                         var rolls = Math.Max(1, (int)(line.RollCount ?? 1));
-                        var containerId = await ResolveOrCreateOpeningStockContainerAsync(
-                            line.ContainerNumber,
-                            obDoc.CompanyId,
-                            obDoc.BranchId,
-                            obDoc.DplQuantityUnit.HasValue
-                                ? (DplQuantityUnit)obDoc.DplQuantityUnit.Value
-                                : DplQuantityUnit.Meters,
-                            cancellationToken);
+                        var containerId = Guid.Empty;
+                        var lineContainer = line.ContainerNumber?.Trim();
+                        if (!string.IsNullOrWhiteSpace(lineContainer) &&
+                            containerByNumber.TryGetValue(lineContainer, out var resolvedContainerId))
+                        {
+                            containerId = resolvedContainerId;
+                        }
 
                         await context.OpeningStockLines.AddAsync(new OpeningStockLineEntity
                         {
@@ -1292,7 +1312,8 @@ internal sealed class InventoryEngine(
                     }
 
                     // Persist header/lines/container before COPY so FKs exist.
-                    await context.SaveChangesAsync(cancellationToken);
+                    await SaveOpeningStockGraphWithContainerRetryAsync(
+                        obDoc.CompanyId, containerByNumber, cancellationToken);
                 }
 
                 movementIds.Add(await PostOpeningStockAsync(stockDoc.Id, cancellationToken));
@@ -1650,18 +1671,34 @@ internal sealed class InventoryEngine(
     /// <summary>
     /// Resolves an existing container by number, or creates a lightweight InWarehouse stub
     /// so opening-stock rolls appear under that container in inventory and sales.
+    /// Checks call-site cache, EF Local tracker, then the database — never double-inserts
+    /// the same CompanyId+ContainerNumber within one posting transaction.
     /// </summary>
     private async Task<Guid> ResolveOrCreateOpeningStockContainerAsync(
         string? containerNumber,
         Guid companyId,
         Guid branchId,
         DplQuantityUnit dplQuantityUnit,
+        IDictionary<string, Guid> resolvedByNumber,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(containerNumber))
             return Guid.Empty;
 
         var trimmed = containerNumber.Trim();
+        if (resolvedByNumber.TryGetValue(trimmed, out var cachedId))
+            return cachedId;
+
+        var local = context.Containers.Local.FirstOrDefault(c =>
+            c.CompanyId == companyId &&
+            string.Equals(c.ContainerNumber, trimmed, StringComparison.OrdinalIgnoreCase));
+        if (local is not null)
+        {
+            ApplyOpeningStockContainerUnit(local, dplQuantityUnit);
+            resolvedByNumber[trimmed] = local.Id;
+            return local.Id;
+        }
+
         var existing = await context.Containers
             .FirstOrDefaultAsync(c =>
                 c.CompanyId == companyId &&
@@ -1670,15 +1707,8 @@ internal sealed class InventoryEngine(
 
         if (existing is not null)
         {
-            // Opening-stock stubs (and any container without a unit yet) adopt the document unit
-            // so sales/reports show meter vs yard correctly.
-            if (existing.DplQuantityUnit is null ||
-                string.Equals(existing.Notes, "حاوية مواد أول المدة", StringComparison.Ordinal))
-            {
-                existing.DplQuantityUnit = (int)dplQuantityUnit;
-                existing.UpdatedAt = DateTime.UtcNow;
-            }
-
+            ApplyOpeningStockContainerUnit(existing, dplQuantityUnit);
+            resolvedByNumber[trimmed] = existing.Id;
             return existing.Id;
         }
 
@@ -1722,6 +1752,85 @@ internal sealed class InventoryEngine(
             IsArchived = false
         }, cancellationToken);
 
+        resolvedByNumber[trimmed] = id;
         return id;
+    }
+
+    private static void ApplyOpeningStockContainerUnit(ContainerEntity container, DplQuantityUnit dplQuantityUnit)
+    {
+        // Opening-stock stubs (and any container without a unit yet) adopt the document unit
+        // so sales/reports show meter vs yard correctly.
+        if (container.DplQuantityUnit is null ||
+            string.Equals(container.Notes, "حاوية مواد أول المدة", StringComparison.Ordinal))
+        {
+            container.DplQuantityUnit = (int)dplQuantityUnit;
+            container.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    /// <summary>
+    /// Saves the opening-stock graph; if a concurrent session already created the same
+    /// container number, drop our pending insert, attach the existing row, and retry once.
+    /// </summary>
+    private async Task SaveOpeningStockGraphWithContainerRetryAsync(
+        Guid companyId,
+        IDictionary<string, Guid> containerByNumber,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+        catch (DbUpdateException ex) when (IsDuplicateContainerNumberViolation(ex))
+        {
+            foreach (var entry in context.ChangeTracker.Entries<ContainerEntity>()
+                         .Where(e => e.State == EntityState.Added)
+                         .ToList())
+            {
+                var number = entry.Entity.ContainerNumber?.Trim() ?? "";
+                entry.State = EntityState.Detached;
+                if (string.IsNullOrWhiteSpace(number))
+                    continue;
+
+                var existing = await context.Containers
+                    .FirstOrDefaultAsync(c =>
+                        c.CompanyId == companyId &&
+                        c.ContainerNumber.ToLower() == number.ToLower(),
+                        cancellationToken)
+                    ?? throw new ValidationException(
+                        $"رقم الحاوية «{number}» مستخدم مسبقاً وتعذّر ربطه. أعد المحاولة.");
+
+                containerByNumber[number] = existing.Id;
+
+                foreach (var lineEntry in context.ChangeTracker.Entries<OpeningStockLineEntity>()
+                             .Where(e => e.State is EntityState.Added or EntityState.Modified))
+                {
+                    if (lineEntry.Entity.ContainerId == entry.Entity.Id)
+                        lineEntry.Entity.ContainerId = existing.Id;
+                }
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private static bool IsDuplicateContainerNumberViolation(DbUpdateException exception)
+    {
+        for (var current = (Exception?)exception; current is not null; current = current.InnerException)
+        {
+            var message = current.Message;
+            if (message.Contains("IX_containers_CompanyId_ContainerNumber", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (message.Contains("23505", StringComparison.Ordinal) &&
+                message.Contains("ContainerNumber", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (current is PostgresException pg &&
+                pg.SqlState == PostgresErrorCodes.UniqueViolation &&
+                string.Equals(pg.ConstraintName, "IX_containers_CompanyId_ContainerNumber", StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 }
