@@ -57,7 +57,8 @@
       "Bash(curl -s -o /tmp/delivery.js -w \"HTTP:%{http_code}\\\\n\" \"http://localhost:5174/src/pages/Delivery.tsx\" --max-time 5)",
       "Bash(powershell -Command 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '\\\\''*run-vite.mjs*'\\\\'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }')",
       "Bash(awk '{print $5}')",
-      "Bash(rm -f /tmp/vite-dev.log /tmp/root.html /tmp/delivery.js)"
+      "Bash(rm -f /tmp/vite-dev.log /tmp/root.html /tmp/delivery.js)",
+      "Bash(git fetch *)"
     ],
     "additionalDirectories": [
       "\\tmp"
