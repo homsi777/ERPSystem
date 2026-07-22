@@ -1100,26 +1100,33 @@ namespace ERPSystem.Controls.Sales
                 CmbWarehouse.SelectedItem is not WarehousePickItem warehouse)
                 return;
 
-            var result = await SalesUiService.Instance.GetWarehouseStockAsync(container.Id, warehouse.Id);
-            if (!result.IsSuccess || result.Value is null)
+            try
             {
-                UpdateStockEmptyBanner(true, result.ErrorMessage ?? "تعذّر تحميل مخزون الحاوية.");
-                return;
-            }
+                var result = await SalesUiService.Instance.GetWarehouseStockAsync(container.Id, warehouse.Id);
+                if (!result.IsSuccess || result.Value is null)
+                {
+                    UpdateStockEmptyBanner(true, result.ErrorMessage ?? "تعذّر تحميل مخزون الحاوية.");
+                    return;
+                }
 
-            if (result.Value.Count == 0)
+                if (result.Value.Count == 0)
+                {
+                    var warehouseName = warehouse.Display;
+                    var hint = await BuildAlternateWarehouseHintAsync(container.Id, warehouse.Id);
+                    UpdateStockEmptyBanner(true,
+                        $"لا يوجد مخزون متاح للحاوية {container.Display} في {warehouseName}. " +
+                        (hint ?? "تأكد أن الحاوية رُحّلت لهذا المستودع."));
+                    return;
+                }
+
+                UpdateStockEmptyBanner(false, null);
+                foreach (var option in result.Value)
+                    row.StockOptions.Add(option);
+            }
+            catch (Exception ex)
             {
-                var warehouseName = warehouse.Display;
-                var hint = await BuildAlternateWarehouseHintAsync(container.Id, warehouse.Id);
-                UpdateStockEmptyBanner(true,
-                    $"لا يوجد مخزون متاح للحاوية {container.Display} في {warehouseName}. " +
-                    (hint ?? "تأكد أن الحاوية رُحّلت لهذا المستودع."));
-                return;
+                UpdateStockEmptyBanner(true, $"تعذّر تحميل مخزون الحاوية: {ex.Message}");
             }
-
-            UpdateStockEmptyBanner(false, null);
-            foreach (var option in result.Value)
-                row.StockOptions.Add(option);
         }
 
         private async Task<string?> BuildAlternateWarehouseHintAsync(Guid containerId, Guid currentWarehouseId)

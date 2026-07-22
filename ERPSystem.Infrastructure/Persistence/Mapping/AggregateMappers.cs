@@ -309,7 +309,7 @@ internal static class ContainerMapper
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ExpectedArrival), header.ExpectedArrival);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.ArrivalDate), header.ArrivalDate);
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.TotalRolls), header.TotalRolls);
-        DomainHydrator.Set(aggregate, nameof(ContainerAggregate.TotalMeters), new LengthInMeters(header.TotalMeters));
+        DomainHydrator.Set(aggregate, nameof(ContainerAggregate.TotalMeters), LengthInMeters.FromDecimal(header.TotalMeters));
         if (header.TotalWeightKg.HasValue)
             DomainHydrator.Set(aggregate, nameof(ContainerAggregate.TotalWeight), new WeightInKg(header.TotalWeightKg.Value));
         DomainHydrator.Set(aggregate, nameof(ContainerAggregate.Port), header.Port);
