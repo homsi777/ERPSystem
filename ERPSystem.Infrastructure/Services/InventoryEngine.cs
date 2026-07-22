@@ -10,6 +10,7 @@ using ERPSystem.Infrastructure.Persistence.Models.ChinaImport;
 using ERPSystem.Infrastructure.Persistence.Models.Inventory;
 using ERPSystem.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ERPSystem.Infrastructure.Services;
 
@@ -1096,9 +1097,9 @@ internal sealed class InventoryEngine(
             });
         }
 
-        // Track the complete batch once. SaveChanges uses the provider's command batching instead
-        // of invoking EF AddAsync for each of the potentially 10,000 legacy rolls.
-        context.FabricRolls.AddRange(rollsToInsert);
+        // Totals-only opening stock: create provisional roll stubs (equal split) for sales counts.
+        // Insert via COPY — EF AddRange of hundreds of rolls was timing out over the SSH tunnel.
+        await BulkInsertLegacyOpeningRollsAsync(rollsToInsert, cancellationToken);
 
         await PostMovementAsync(movementId, doc.DocumentNumber, MovementType.OpeningBalance,
             doc.WarehouseId, DocumentType.OpeningBalance, doc.Id, movementLines, now, cancellationToken);
@@ -1107,6 +1108,103 @@ internal sealed class InventoryEngine(
         doc.PostedAt = now;
         await RecordValuationSnapshotAsync(doc.WarehouseId, movementId, ValuationMethod.AverageCost, cancellationToken);
         return movementId;
+    }
+
+    /// <summary>
+    /// Fast path for opening-stock roll stubs. Sales still needs one FabricRoll row per roll count,
+    /// but the manager only entered totals — lengths are provisional until detailing confirms them.
+    /// </summary>
+    private async Task BulkInsertLegacyOpeningRollsAsync(
+        IReadOnlyList<FabricRollEntity> rolls,
+        CancellationToken cancellationToken)
+    {
+        if (rolls.Count == 0)
+            return;
+
+        await context.Database.OpenConnectionAsync(cancellationToken);
+        var connection = (NpgsqlConnection)context.Database.GetDbConnection();
+
+        await using var writer = await connection.BeginBinaryImportAsync("""
+            COPY "FabricRolls" (
+                "Id", "Barcode", "ContainerId", "ContainerItemId", "CostPerMeter", "CreatedAt", "CreatedByUserId",
+                "FabricBatchId", "FabricColorId", "FabricItemId", "IsActive", "IsArchived",
+                "IsLegacyOpeningBalance", "LegacyLengthConfirmed", "LengthMeters", "LotCode", "QrCode",
+                "QualityStatus", "RemainingLengthMeters", "ReservationStatus", "RollNumber",
+                "SalePricePerMeter", "Status", "StorageLocationId", "UpdatedAt", "UpdatedByUserId",
+                "WarehouseId", "WeightKg"
+            ) FROM STDIN (FORMAT BINARY)
+            """, cancellationToken);
+
+        foreach (var roll in rolls)
+        {
+            await writer.StartRowAsync(cancellationToken);
+            await writer.WriteAsync(roll.Id, NpgsqlTypes.NpgsqlDbType.Uuid, cancellationToken);
+            await WriteNullableStringAsync(writer, roll.Barcode, cancellationToken);
+            await writer.WriteAsync(roll.ContainerId, NpgsqlTypes.NpgsqlDbType.Uuid, cancellationToken);
+            await WriteNullableGuidAsync(writer, roll.ContainerItemId, cancellationToken);
+            await writer.WriteAsync(roll.CostPerMeter, NpgsqlTypes.NpgsqlDbType.Numeric, cancellationToken);
+            await writer.WriteAsync(roll.CreatedAt, NpgsqlTypes.NpgsqlDbType.TimestampTz, cancellationToken);
+            await WriteNullableGuidAsync(writer, roll.CreatedByUserId, cancellationToken);
+            await WriteNullableGuidAsync(writer, roll.FabricBatchId, cancellationToken);
+            await writer.WriteAsync(roll.FabricColorId, NpgsqlTypes.NpgsqlDbType.Uuid, cancellationToken);
+            await writer.WriteAsync(roll.FabricItemId, NpgsqlTypes.NpgsqlDbType.Uuid, cancellationToken);
+            await writer.WriteAsync(true, NpgsqlTypes.NpgsqlDbType.Boolean, cancellationToken);
+            await writer.WriteAsync(false, NpgsqlTypes.NpgsqlDbType.Boolean, cancellationToken);
+            await writer.WriteAsync(true, NpgsqlTypes.NpgsqlDbType.Boolean, cancellationToken);
+            await writer.WriteAsync(false, NpgsqlTypes.NpgsqlDbType.Boolean, cancellationToken);
+            await writer.WriteAsync(roll.LengthMeters, NpgsqlTypes.NpgsqlDbType.Numeric, cancellationToken);
+            await WriteNullableStringAsync(writer, roll.LotCode, cancellationToken);
+            await WriteNullableStringAsync(writer, roll.QrCode, cancellationToken);
+            await writer.WriteAsync(roll.QualityStatus, NpgsqlTypes.NpgsqlDbType.Integer, cancellationToken);
+            await writer.WriteAsync(roll.RemainingLengthMeters, NpgsqlTypes.NpgsqlDbType.Numeric, cancellationToken);
+            await writer.WriteAsync(roll.ReservationStatus, NpgsqlTypes.NpgsqlDbType.Integer, cancellationToken);
+            await writer.WriteAsync(roll.RollNumber, NpgsqlTypes.NpgsqlDbType.Integer, cancellationToken);
+            await WriteNullableDecimalAsync(writer, roll.SalePricePerMeter, cancellationToken);
+            await writer.WriteAsync(roll.Status, NpgsqlTypes.NpgsqlDbType.Integer, cancellationToken);
+            await WriteNullableGuidAsync(writer, roll.StorageLocationId, cancellationToken);
+            await WriteNullableDateTimeAsync(writer, roll.UpdatedAt, cancellationToken);
+            await WriteNullableGuidAsync(writer, roll.UpdatedByUserId, cancellationToken);
+            await writer.WriteAsync(roll.WarehouseId, NpgsqlTypes.NpgsqlDbType.Uuid, cancellationToken);
+            await WriteNullableDecimalAsync(writer, roll.WeightKg, cancellationToken);
+        }
+
+        await writer.CompleteAsync(cancellationToken);
+    }
+
+    private static async Task WriteNullableGuidAsync(
+        NpgsqlBinaryImporter writer, Guid? value, CancellationToken cancellationToken)
+    {
+        if (value.HasValue)
+            await writer.WriteAsync(value.Value, NpgsqlTypes.NpgsqlDbType.Uuid, cancellationToken);
+        else
+            await writer.WriteNullAsync(cancellationToken);
+    }
+
+    private static async Task WriteNullableDecimalAsync(
+        NpgsqlBinaryImporter writer, decimal? value, CancellationToken cancellationToken)
+    {
+        if (value.HasValue)
+            await writer.WriteAsync(value.Value, NpgsqlTypes.NpgsqlDbType.Numeric, cancellationToken);
+        else
+            await writer.WriteNullAsync(cancellationToken);
+    }
+
+    private static async Task WriteNullableDateTimeAsync(
+        NpgsqlBinaryImporter writer, DateTime? value, CancellationToken cancellationToken)
+    {
+        if (value.HasValue)
+            await writer.WriteAsync(value.Value, NpgsqlTypes.NpgsqlDbType.TimestampTz, cancellationToken);
+        else
+            await writer.WriteNullAsync(cancellationToken);
+    }
+
+    private static async Task WriteNullableStringAsync(
+        NpgsqlBinaryImporter writer, string? value, CancellationToken cancellationToken)
+    {
+        if (value is null)
+            await writer.WriteNullAsync(cancellationToken);
+        else
+            await writer.WriteAsync(value, NpgsqlTypes.NpgsqlDbType.Text, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> PostFinanceOpeningBalanceStockAsync(
@@ -1128,70 +1226,85 @@ internal sealed class InventoryEngine(
             throw new ValidationException("Opening balance has no stock lines.");
 
         var movementIds = new List<Guid>();
-        foreach (var warehouseGroup in obLines.GroupBy(l => l.WarehouseId ?? Guid.Empty))
+        await using var tx = await context.Database.BeginTransactionAsync(cancellationToken);
+        try
         {
-            if (warehouseGroup.Key == Guid.Empty)
-                throw new ValidationException("Warehouse is required on every opening stock line.");
-
-            var warehouseId = warehouseGroup.Key;
-            var stockRef = $"OB-FIN-{openingBalanceDocumentId:N}-{warehouseId:N}";
-            var stockDoc = await context.OpeningStockDocuments
-                .FirstOrDefaultAsync(d => d.Reference == stockRef, cancellationToken);
-
-            if (stockDoc is null)
+            foreach (var warehouseGroup in obLines.GroupBy(l => l.WarehouseId ?? Guid.Empty))
             {
-                var stockDocId = Guid.NewGuid();
-                var stockNumber = await numberingService.NextOpeningStockNumberAsync(obDoc.BranchId, cancellationToken);
-                stockDoc = new OpeningStockDocumentEntity
-                {
-                    Id = stockDocId,
-                    DocumentNumber = stockNumber,
-                    WarehouseId = warehouseId,
-                    OpeningDate = obDoc.OpeningDate,
-                    Reference = stockRef,
-                    CurrencyCode = obDoc.CurrencyCode,
-                    Status = (int)InventoryDocumentStatus.Draft,
-                    Notes = $"من رصيد افتتاحي {obDoc.Number}",
-                    CreatedAt = DateTime.UtcNow
-                };
-                await context.OpeningStockDocuments.AddAsync(stockDoc, cancellationToken);
+                if (warehouseGroup.Key == Guid.Empty)
+                    throw new ValidationException("Warehouse is required on every opening stock line.");
 
-                foreach (var line in warehouseGroup)
-                {
-                    if (line.FabricItemId is not Guid fabricItemId || fabricItemId == Guid.Empty ||
-                        line.FabricColorId is not Guid fabricColorId || fabricColorId == Guid.Empty)
-                    {
-                        throw new ValidationException("Fabric item and color IDs are required on every opening stock line.");
-                    }
-                    var qty = line.Quantity ?? 0;
-                    var unitCost = line.UnitCost ?? (qty > 0 ? line.Debit / qty : 0);
-                    var rolls = Math.Max(1, (int)(line.RollCount ?? 1));
-                    var containerId = await ResolveOrCreateOpeningStockContainerAsync(
-                        line.ContainerNumber,
-                        obDoc.CompanyId,
-                        obDoc.BranchId,
-                        obDoc.DplQuantityUnit.HasValue
-                            ? (DplQuantityUnit)obDoc.DplQuantityUnit.Value
-                            : DplQuantityUnit.Meters,
-                        cancellationToken);
+                var warehouseId = warehouseGroup.Key;
+                var stockRef = $"OB-FIN-{openingBalanceDocumentId:N}-{warehouseId:N}";
+                var stockDoc = await context.OpeningStockDocuments
+                    .FirstOrDefaultAsync(d => d.Reference == stockRef, cancellationToken);
 
-                    await context.OpeningStockLines.AddAsync(new OpeningStockLineEntity
+                if (stockDoc is null)
+                {
+                    var stockDocId = Guid.NewGuid();
+                    var stockNumber = await numberingService.NextOpeningStockNumberAsync(obDoc.BranchId, cancellationToken);
+                    stockDoc = new OpeningStockDocumentEntity
                     {
-                        Id = Guid.NewGuid(),
-                        DocumentId = stockDocId,
-                        FabricItemId = fabricItemId,
-                        FabricColorId = fabricColorId,
-                        ContainerId = containerId == Guid.Empty ? null : containerId,
-                        QuantityMeters = qty,
-                        RollCount = rolls,
-                        UnitCost = unitCost,
-                        TotalValue = qty * unitCost,
+                        Id = stockDocId,
+                        DocumentNumber = stockNumber,
+                        WarehouseId = warehouseId,
+                        OpeningDate = obDoc.OpeningDate,
+                        Reference = stockRef,
+                        CurrencyCode = obDoc.CurrencyCode,
+                        Status = (int)InventoryDocumentStatus.Draft,
+                        Notes = $"من رصيد افتتاحي {obDoc.Number}",
                         CreatedAt = DateTime.UtcNow
-                    }, cancellationToken);
+                    };
+                    await context.OpeningStockDocuments.AddAsync(stockDoc, cancellationToken);
+
+                    foreach (var line in warehouseGroup)
+                    {
+                        if (line.FabricItemId is not Guid fabricItemId || fabricItemId == Guid.Empty ||
+                            line.FabricColorId is not Guid fabricColorId || fabricColorId == Guid.Empty)
+                        {
+                            throw new ValidationException("Fabric item and color IDs are required on every opening stock line.");
+                        }
+                        var qty = line.Quantity ?? 0;
+                        var unitCost = line.UnitCost ?? (qty > 0 ? line.Debit / qty : 0);
+                        var rolls = Math.Max(1, (int)(line.RollCount ?? 1));
+                        var containerId = await ResolveOrCreateOpeningStockContainerAsync(
+                            line.ContainerNumber,
+                            obDoc.CompanyId,
+                            obDoc.BranchId,
+                            obDoc.DplQuantityUnit.HasValue
+                                ? (DplQuantityUnit)obDoc.DplQuantityUnit.Value
+                                : DplQuantityUnit.Meters,
+                            cancellationToken);
+
+                        await context.OpeningStockLines.AddAsync(new OpeningStockLineEntity
+                        {
+                            Id = Guid.NewGuid(),
+                            DocumentId = stockDocId,
+                            FabricItemId = fabricItemId,
+                            FabricColorId = fabricColorId,
+                            ContainerId = containerId == Guid.Empty ? null : containerId,
+                            QuantityMeters = qty,
+                            RollCount = rolls,
+                            UnitCost = unitCost,
+                            TotalValue = qty * unitCost,
+                            CreatedAt = DateTime.UtcNow
+                        }, cancellationToken);
+                    }
+
+                    // Persist header/lines/container before COPY so FKs exist.
+                    await context.SaveChangesAsync(cancellationToken);
                 }
+
+                movementIds.Add(await PostOpeningStockAsync(stockDoc.Id, cancellationToken));
             }
 
-            movementIds.Add(await PostOpeningStockAsync(stockDoc.Id, cancellationToken));
+            await context.SaveChangesAsync(cancellationToken);
+            await tx.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await tx.RollbackAsync(cancellationToken);
+            throw;
         }
 
         return movementIds;

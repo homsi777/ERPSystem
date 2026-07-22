@@ -60,7 +60,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         var stack = new StackPanel();
         stack.Children.Add(ErpUiFactory.SectionTitle("مواد أول المدة"));
         stack.Children.Add(ErpUxFactory.InfoBanner(
-            "حدد المستودع ورقم الحاوية ووحدة الطول (متر/يارد) أولاً، ثم أضف الأسطر. انقر مرتين على أي خانة لتعديلها."));
+            "حدد المستودع ورقم الحاوية ووحدة الطول (متر/يارد)، ثم أدخل الإجماليات فقط (الطول وعدد الأتواب). الترحيل سريع — الأطوال التفصيلية تُؤكَّد لاحقاً عند البيع."));
 
         _lengthUnit.DisplayMemberPath = nameof(LengthUnitOption.Label);
         _lengthUnit.ItemsSource = new LengthUnitOption[]
@@ -509,7 +509,7 @@ public sealed class InventoryOpeningStockFormControl : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"تعذّر ترحيل مستند مواد أول المدة.\n\n{ex.Message}",
+            MessageBox.Show($"تعذّر ترحيل مستند مواد أول المدة.\n\n{ex.GetBaseException().Message}",
                 "مواد أول المدة", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally

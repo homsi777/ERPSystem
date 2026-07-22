@@ -258,40 +258,61 @@ internal sealed class OpeningBalanceEngine(
         if (doc.Status != OpeningBalanceStatus.Approved)
             return ApplicationResult<OpeningBalancePostResultDto>.ValidationFailed("Status", "يجب اعتماد المستند قبل الترحيل.");
 
-        var journalLines = await BuildJournalLinesAsync(doc, cancellationToken);
-        var description = $"رصيد افتتاحي {OpeningBalanceDisplay.TypeName(doc.Type)} — {doc.Number}";
-        var journalNumber = await accounting.PostOpeningBalanceDocumentAsync(
-            doc.Id, doc.Number, description, doc.OpeningDate, journalLines, cancellationToken);
-
-        if (doc.Type == OpeningBalanceType.OpeningStock)
+        var previousTimeout = context.Database.GetCommandTimeout();
+        // Opening-stock posts insert hundreds of rolls over SSH; the default 30s timeout fails.
+        context.Database.SetCommandTimeout(300);
+        try
         {
-            var movementIds = await inventoryEngine.PostFinanceOpeningBalanceStockAsync(doc.Id, cancellationToken);
+            var journalLines = await BuildJournalLinesAsync(doc, cancellationToken);
+            var description = $"رصيد افتتاحي {OpeningBalanceDisplay.TypeName(doc.Type)} — {doc.Number}";
+            var journalNumber = await accounting.PostOpeningBalanceDocumentAsync(
+                doc.Id, doc.Number, description, doc.OpeningDate, journalLines, cancellationToken);
+
+            if (doc.Type == OpeningBalanceType.OpeningStock)
+            {
+                var movementIds = await inventoryEngine.PostFinanceOpeningBalanceStockAsync(doc.Id, cancellationToken);
+                await OpeningBalanceTrailRecorder.RecordAsync(
+                    repository, user, doc.Id, "InventoryPosted",
+                    newValues: string.Join(",", movementIds),
+                    cancellationToken: cancellationToken);
+            }
+
+            await ApplyPartyEffectsAsync(doc, cancellationToken);
+
+            doc.MarkPosted(user.UserId, journalNumber);
+            if (lockAfterPost)
+                doc.Lock();
+
+            await repository.UpdateAsync(doc, cancellationToken);
             await OpeningBalanceTrailRecorder.RecordAsync(
-                repository, user, doc.Id, "InventoryPosted",
-                newValues: string.Join(",", movementIds),
-                cancellationToken: cancellationToken);
+                repository, user, doc.Id, lockAfterPost ? "PostedAndLocked" : "Posted",
+                newValues: journalNumber, cancellationToken: cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return ApplicationResult<OpeningBalancePostResultDto>.Success(new OpeningBalancePostResultDto
+            {
+                DocumentId = doc.Id,
+                DocumentNumber = doc.Number,
+                JournalEntryNumber = journalNumber,
+                PostedAt = doc.PostedAt ?? DateTime.UtcNow,
+                TotalBaseAmount = doc.TotalBaseAmount
+            });
         }
-
-        await ApplyPartyEffectsAsync(doc, cancellationToken);
-
-        doc.MarkPosted(user.UserId, journalNumber);
-        if (lockAfterPost)
-            doc.Lock();
-
-        await repository.UpdateAsync(doc, cancellationToken);
-        await OpeningBalanceTrailRecorder.RecordAsync(
-            repository, user, doc.Id, lockAfterPost ? "PostedAndLocked" : "Posted",
-            newValues: journalNumber, cancellationToken: cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return ApplicationResult<OpeningBalancePostResultDto>.Success(new OpeningBalancePostResultDto
+        catch (DbUpdateException ex)
         {
-            DocumentId = doc.Id,
-            DocumentNumber = doc.Number,
-            JournalEntryNumber = journalNumber,
-            PostedAt = doc.PostedAt ?? DateTime.UtcNow,
-            TotalBaseAmount = doc.TotalBaseAmount
-        });
+            var detail = ex.GetBaseException().Message;
+            return ApplicationResult<OpeningBalancePostResultDto>.Failure(
+                $"تعذّر حفظ ترحيل المخزون: {detail}");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return ApplicationResult<OpeningBalancePostResultDto>.Failure(
+                $"تعذّر ترحيل المستند: {ex.GetBaseException().Message}");
+        }
+        finally
+        {
+            context.Database.SetCommandTimeout(previousTimeout);
+        }
     }
 
     public async Task<ApplicationResult<OpeningBalancePostResultDto>> PostPartyOpeningBalanceAsync(

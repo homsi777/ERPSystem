@@ -35,6 +35,9 @@ public static class InfrastructureServiceCollectionExtensions
             {
                 npgsql.MigrationsAssembly(typeof(ErpDbContext).Assembly.FullName);
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", Schemas.Settings);
+                // Keep batches small over SSH/tunnel; large opening-stock posts were timing out.
+                npgsql.MaxBatchSize(40);
+                npgsql.CommandTimeout(120);
             });
             options.ConfigureWarnings(w =>
                 w.Ignore(RelationalEventId.PendingModelChangesWarning));
@@ -49,6 +52,8 @@ public static class InfrastructureServiceCollectionExtensions
             {
                 npgsql.MigrationsAssembly(typeof(ErpDbContext).Assembly.FullName);
                 npgsql.MigrationsHistoryTable("__ef_migrations_history", Schemas.Settings);
+                npgsql.MaxBatchSize(40);
+                npgsql.CommandTimeout(120);
             });
             options.ConfigureWarnings(w =>
                 w.Ignore(RelationalEventId.PendingModelChangesWarning));
