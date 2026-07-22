@@ -91,6 +91,11 @@ export function storedRateFromDisplay(displayRate: number, unit?: number | null)
   return isYardsUnit(unit) ? displayRate / YARDS_TO_METERS : displayRate;
 }
 
+/** Inverse of displayLengthFromMeters: a length typed in the display unit → true meters for storage. */
+export function storedLengthFromDisplay(displayValue: number, unit?: number | null) {
+  return isYardsUnit(unit) ? displayValue * YARDS_TO_METERS : displayValue;
+}
+
 export function lengthAbbrev(unit?: number | null) {
   return isYardsUnit(unit) ? 'ي' : 'م';
 }

@@ -718,6 +718,9 @@ export type WarehouseDetailingRollDto = {
   colorDisplayName: string;
   lengthMeters: number;
   hasValidLength: boolean;
+  /** "meter" | "yard" — the sale unit for this roll's invoice line. */
+  unit: string;
+  lengthUnitDisplay: string;
   /** The invoice LINE's own container — may differ from the header container on multi-container invoices. */
   chinaContainerId: string;
   containerDisplay: string;

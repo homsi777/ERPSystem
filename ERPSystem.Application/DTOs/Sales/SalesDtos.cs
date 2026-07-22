@@ -114,6 +114,8 @@ public sealed class WarehouseDetailingRollDto
     public string ColorDisplayName { get; init; } = "";
     public decimal LengthMeters { get; init; }
     public bool HasValidLength { get; init; }
+    public string Unit { get; init; } = SaleLengthUnitHelper.MeterStorage;
+    public string LengthUnitDisplay => SaleLengthUnitHelper.DisplayArabic(Unit);
 
     /// <summary>
     /// The invoice LINE's own container (from the parent SalesInvoiceItem), which may differ from

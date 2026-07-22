@@ -346,6 +346,7 @@ public static class SalesInvoiceMapper
                 FabricColorId = item?.FabricColorId ?? Guid.Empty,
                 LengthMeters = r.LengthMeters.Value,
                 HasValidLength = r.HasValidLength,
+                Unit = item?.Unit ?? SaleLengthUnitHelper.MeterStorage,
                 ChinaContainerId = item?.ChinaContainerId ?? aggregate.ChinaContainerId,
                 DraftRollNumber = r.DraftRollNumber,
                 DraftLengthMeters = r.DraftLengthMeters

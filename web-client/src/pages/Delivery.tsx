@@ -13,7 +13,19 @@ import { ErrorState } from '../components/ErrorState.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
-import { formatDate, formatInteger, formatLineIndex, formatMeters, formatNumber } from '../lib/format.ts';
+import {
+  displayLengthFromMeters,
+  formatContainerLength,
+  formatDate,
+  formatInteger,
+  formatLineIndex,
+  formatNumber,
+  lengthAbbrev,
+  lengthUnitArabic,
+  storedLengthFromDisplay,
+  totalLengthLabel,
+  unitStorageToDpl
+} from '../lib/format.ts';
 import { getWarehouseDetailingStatusTone, warehouseDetailingStatusLabels } from '../lib/enums.ts';
 
 type ToastState = {
@@ -168,13 +180,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   const [quickLength, setQuickLength] = useState('');
   const [quickError, setQuickError] = useState<string | null>(null);
   const [editingRollDetailId, setEditingRollDetailId] = useState<string | null>(null);
-  const [checkedEntry, setCheckedEntry] = useState<{
-    rollDetailId: string;
-    rollNumber: number;
-    chinaContainerId: string;
-    fabricItemId: string;
-    fabricColorId: string;
-  } | null>(null);
+  const [lengthTouched, setLengthTouched] = useState(false);
   const [dismissedWarningKey, setDismissedWarningKey] = useState<string | null>(null);
   const serialInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,10 +201,11 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       }
       const initial: Record<string, string> = {};
       for (const roll of detailingQuery.data.rolls) {
+        const unit = unitStorageToDpl(roll.unit);
         initial[roll.rollDetailId] = roll.hasValidLength
-          ? String(roll.lengthMeters)
+          ? displayLengthFromMeters(roll.lengthMeters, unit).toFixed(2)
           : roll.draftLengthMeters != null && roll.draftLengthMeters > 0
-            ? String(roll.draftLengthMeters)
+            ? displayLengthFromMeters(roll.draftLengthMeters, unit).toFixed(2)
             : '';
       }
       return initial;
@@ -216,10 +223,22 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     });
   }, [detailingQuery.data]);
 
-  const totalEnteredMeters = useMemo(() => {
-    // مجموع تقريبي: يُحسب من الأطوال اليدوية فقط؛ عند السيريال يُحل الطول في الـ API من المخزون.
-    return Object.values(lengths).reduce((sum, value) => sum + (toNumber(value) || 0), 0);
-  }, [lengths]);
+  const representativeUnit = detailingQuery.data?.rolls[0]?.unit ?? null;
+  const representativeDpl = unitStorageToDpl(representativeUnit);
+  const totalLabel = totalLengthLabel(representativeDpl);
+
+  const totalEnteredMetersTrue = useMemo(() => {
+    const rolls = detailingQuery.data?.rolls ?? [];
+    return rolls.reduce((sum, roll) => {
+      const displayValue = toNumber(lengths[roll.rollDetailId] ?? '');
+      if (displayValue <= 0) {
+        return sum;
+      }
+      return sum + storedLengthFromDisplay(displayValue, unitStorageToDpl(roll.unit));
+    }, 0);
+  }, [detailingQuery.data, lengths]);
+
+  const totalEnteredDisplay = formatContainerLength(totalEnteredMetersTrue, representativeDpl);
 
   const isCompleted = detailingQuery.data?.status === 2;
 
@@ -231,7 +250,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     return rolls.every((roll) => {
       const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
       const length = toNumber(lengths[roll.rollDetailId] ?? '');
-      return serial != null || length > 0;
+      return serial != null && length > 0;
     });
   }, [detailingQuery.data, lengths, serials]);
 
@@ -243,7 +262,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   function isRollFilled(roll: WarehouseDetailingRollDto) {
     const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
     const length = toNumber(lengths[roll.rollDetailId] ?? '');
-    return serial != null || length > 0;
+    return serial != null && length > 0;
   }
 
   const pendingRolls = useMemo(() => sortedRolls.filter((roll) => !isRollFilled(roll)), [sortedRolls, lengths, serials]);
@@ -256,38 +275,57 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     return pendingRolls[0] ?? null;
   }, [editingRollDetailId, sortedRolls, pendingRolls]);
 
-  const reservationCandidatesQuery = useQuery({
+  const activeRollUnit = unitStorageToDpl(activeRoll?.unit);
+
+  const activeRollCandidatesQuery = useQuery({
     queryKey: [
       'detailing',
       'candidate-rolls',
       detailingQuery.data?.warehouseId,
-      checkedEntry?.chinaContainerId,
-      checkedEntry?.fabricItemId,
-      checkedEntry?.fabricColorId,
+      activeRoll?.chinaContainerId,
+      activeRoll?.fabricItemId,
+      activeRoll?.fabricColorId,
       invoiceId
     ],
     queryFn: () =>
       getDetailingCandidateRolls({
         warehouseId: detailingQuery.data!.warehouseId,
-        containerId: checkedEntry!.chinaContainerId,
-        fabricItemId: checkedEntry!.fabricItemId,
-        fabricColorId: checkedEntry!.fabricColorId,
+        containerId: activeRoll!.chinaContainerId,
+        fabricItemId: activeRoll!.fabricItemId,
+        fabricColorId: activeRoll!.fabricColorId,
         excludeSalesInvoiceId: invoiceId
       }),
-    enabled: Boolean(checkedEntry && detailingQuery.data?.warehouseId)
+    enabled: Boolean(
+      activeRoll?.chinaContainerId &&
+        activeRoll.fabricItemId &&
+        activeRoll.fabricColorId &&
+        detailingQuery.data?.warehouseId
+    )
   });
 
-  const matchedReservedCandidate = useMemo(() => {
-    if (!checkedEntry) {
+  const matchedCandidate = useMemo(() => {
+    const serialNum = toRollNumber(quickSerial);
+    if (serialNum == null) {
       return null;
     }
-    const candidates = reservationCandidatesQuery.data ?? [];
-    return candidates.find((candidate) => candidate.rollNumber === checkedEntry.rollNumber) ?? null;
-  }, [checkedEntry, reservationCandidatesQuery.data]);
+    const candidates = activeRollCandidatesQuery.data ?? [];
+    return candidates.find((candidate) => candidate.rollNumber === serialNum) ?? null;
+  }, [quickSerial, activeRollCandidatesQuery.data]);
 
-  const reservationWarningKey = checkedEntry ? `${checkedEntry.rollDetailId}:${checkedEntry.rollNumber}` : null;
+  useEffect(() => {
+    setLengthTouched(false);
+  }, [activeRoll?.rollDetailId]);
+
+  useEffect(() => {
+    if (matchedCandidate && !lengthTouched) {
+      setQuickLength(displayLengthFromMeters(matchedCandidate.remainingLengthMeters, activeRollUnit).toFixed(2));
+    }
+  }, [matchedCandidate, activeRollUnit, lengthTouched]);
+
+  const reservationWarningKey =
+    activeRoll && matchedCandidate ? `${activeRoll.rollDetailId}:${matchedCandidate.rollNumber}` : null;
   const showReservationWarning =
-    Boolean(matchedReservedCandidate?.reservedInSalesInvoiceId) && reservationWarningKey !== dismissedWarningKey;
+    Boolean(matchedCandidate?.reservedInSalesInvoiceId) && reservationWarningKey !== dismissedWarningKey;
 
   function focusSerialInput() {
     requestAnimationFrame(() => serialInputRef.current?.focus());
@@ -299,29 +337,18 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     }
     const serialNum = toRollNumber(quickSerial);
     const lengthNum = toNumber(quickLength);
-    if (serialNum == null && lengthNum <= 0) {
-      setQuickError('أدخل رقم السيريال أو الطول.');
+    if (serialNum == null || lengthNum <= 0) {
+      setQuickError('أدخلي رقم السيريال والطول معًا لهذا الثوب.');
       return;
     }
 
     setSerials((current) => ({ ...current, [activeRoll.rollDetailId]: quickSerial.trim() }));
     setLengths((current) => ({ ...current, [activeRoll.rollDetailId]: quickLength.trim() }));
 
-    if (serialNum != null && activeRoll.chinaContainerId && activeRoll.fabricItemId && activeRoll.fabricColorId) {
-      setCheckedEntry({
-        rollDetailId: activeRoll.rollDetailId,
-        rollNumber: serialNum,
-        chinaContainerId: activeRoll.chinaContainerId,
-        fabricItemId: activeRoll.fabricItemId,
-        fabricColorId: activeRoll.fabricColorId
-      });
-    } else {
-      setCheckedEntry(null);
-    }
-
     setQuickSerial('');
     setQuickLength('');
     setQuickError(null);
+    setLengthTouched(false);
     setEditingRollDetailId(null);
     focusSerialInput();
   }
@@ -331,6 +358,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     setQuickSerial(serials[roll.rollDetailId] ?? '');
     setQuickLength(lengths[roll.rollDetailId] ?? '');
     setQuickError(null);
+    setLengthTouched(true);
     focusSerialInput();
   }
 
@@ -341,6 +369,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
       setEditingRollDetailId(null);
       setQuickSerial('');
       setQuickLength('');
+      setLengthTouched(false);
     }
   }
 
@@ -350,7 +379,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
         rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => ({
           rollDetailId: roll.rollDetailId,
           rollNumber: toRollNumber(serials[roll.rollDetailId] ?? ''),
-          lengthMeters: toNumber(lengths[roll.rollDetailId] ?? '')
+          lengthMeters: storedLengthFromDisplay(toNumber(lengths[roll.rollDetailId] ?? ''), unitStorageToDpl(roll.unit))
         }))
       }),
     onSuccess: async () => {
@@ -367,11 +396,14 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   const saveDraftMutation = useMutation({
     mutationFn: () =>
       saveDetailingDraft(invoiceId, {
-        rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => ({
-          rollDetailId: roll.rollDetailId,
-          rollNumber: toRollNumber(serials[roll.rollDetailId] ?? ''),
-          lengthMeters: toOptionalNumber(lengths[roll.rollDetailId] ?? '')
-        }))
+        rollEntries: (detailingQuery.data?.rolls ?? []).map((roll) => {
+          const displayValue = toOptionalNumber(lengths[roll.rollDetailId] ?? '');
+          return {
+            rollDetailId: roll.rollDetailId,
+            rollNumber: toRollNumber(serials[roll.rollDetailId] ?? ''),
+            lengthMeters: displayValue == null ? null : storedLengthFromDisplay(displayValue, unitStorageToDpl(roll.unit))
+          };
+        })
       }),
     onSuccess: () => {
       setToast({ tone: 'success', message: 'تم حفظ التقدم الحالي. يمكنك إكمال الأثواب المتبقية لاحقاً.' });
@@ -390,7 +422,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   const detailing = detailingQuery.data;
 
   const headerSummary = detailing ? (
-    <SummaryCard label="الأمتار المُدخلة" value={formatMeters(totalEnteredMeters)} tone="amber" />
+    <SummaryCard label={totalLabel} value={totalEnteredDisplay} tone="amber" />
   ) : undefined;
 
   return (
@@ -420,7 +452,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                 value={detailing.representativeUnitPrice != null ? formatNumber(detailing.representativeUnitPrice) : '—'}
               />
               <DetailItem label="عدد الأثواب" value={formatNumber(detailing.rolls.length)} />
-              <DetailItem label="الأمتار المُدخلة" value={formatMeters(totalEnteredMeters)} />
+              <DetailItem label={totalLabel} value={totalEnteredDisplay} />
             </dl>
           </section>
 
@@ -444,7 +476,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                     <article className="line-item" key={roll.rollDetailId}>
                       <div className="line-item__head">
                         <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
-                        <strong>{formatMeters(roll.lengthMeters)}</strong>
+                        <strong>{formatContainerLength(roll.lengthMeters, unitStorageToDpl(roll.unit))}</strong>
                       </div>
                       <p className="line-item__meta">
                         {roll.fabricDisplayName} / {roll.colorDisplayName}
@@ -459,13 +491,13 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             ) : (
               <>
                 <p className="form-hint" style={{ marginBottom: 8 }}>
-                  أدخلي رقم السيريال (DPL) أو الطول لكل ثوب حسب لصاقته، ثم اضغطي "+ تفنيد". يكفي أحدهما — السيريال أدق.
+                  أدخلي رقم السيريال — سيُملأ الطول تلقائيًا من المخزون ويمكنك تعديله عند الحاجة، ثم اضغطي "+ تفنيد".
                 </p>
 
                 {activeRoll ? (
                   <p className="form-hint" style={{ marginBottom: 4 }}>
                     القادم: ثوب رقم {formatLineIndex(activeRoll.rollSequence)} — {activeRoll.fabricDisplayName} /{' '}
-                    {activeRoll.colorDisplayName}
+                    {activeRoll.colorDisplayName} — الوحدة: {lengthUnitArabic(activeRollUnit)}
                   </p>
                 ) : (
                   <div className="banner banner--success" role="status">
@@ -494,12 +526,15 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                       />
                     </label>
                     <label className="form-field">
-                      <span className="form-field__label">أو الطول (م)</span>
+                      <span className="form-field__label">الطول ({lengthUnitArabic(activeRollUnit)})</span>
                       <input
                         inputMode="decimal"
                         placeholder="0"
                         value={quickLength}
-                        onChange={(event) => setQuickLength(event.target.value)}
+                        onChange={(event) => {
+                          setQuickLength(event.target.value);
+                          setLengthTouched(true);
+                        }}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter') {
                             event.preventDefault();
@@ -519,12 +554,12 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                   </button>
                 </div>
 
-                {showReservationWarning && matchedReservedCandidate ? (
+                {showReservationWarning && matchedCandidate ? (
                   <div className="reservation-warning" role="status">
                     <span>
                       هذا التوب موجود بالفعل في فاتورة رقم{' '}
-                      <Link to={`/sales/${matchedReservedCandidate.reservedInSalesInvoiceId}`}>
-                        {matchedReservedCandidate.reservedInSalesInvoiceNumber}
+                      <Link to={`/sales/${matchedCandidate.reservedInSalesInvoiceId}`}>
+                        {matchedCandidate.reservedInSalesInvoiceNumber}
                       </Link>
                       . يمكنك المتابعة إذا كنت متأكداً.
                     </span>
@@ -546,9 +581,8 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                         <div className="line-item__head">
                           <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
                           <strong>
-                            {serials[roll.rollDetailId]
-                              ? `سيريال ${serials[roll.rollDetailId]}`
-                              : `${lengths[roll.rollDetailId]} م`}
+                            سيريال {serials[roll.rollDetailId]} — {lengths[roll.rollDetailId]}{' '}
+                            {lengthAbbrev(unitStorageToDpl(roll.unit))}
                           </strong>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button type="button" className="chip-button" onClick={() => startEditRoll(roll)}>
@@ -578,8 +612,8 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
           {!isCompleted ? (
             <div className="sticky-form-footer">
               <div className="sticky-form-footer__total">
-                <span>إجمالي الأمتار (يدوي)</span>
-                <strong>{formatMeters(totalEnteredMeters)}</strong>
+                <span>{totalLabel}</span>
+                <strong>{totalEnteredDisplay}</strong>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
@@ -595,7 +629,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                   className="primary-button sticky-form-footer__submit"
                   type="submit"
                   disabled={!allRollsValid || completeMutation.isPending}
-                  title={!allRollsValid ? 'أدخل رقم التوب أو الطول لكل الأثواب قبل الإكمال.' : undefined}
+                  title={!allRollsValid ? 'أدخلي رقم السيريال والطول لكل الأثواب قبل الإكمال.' : undefined}
                 >
                   {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
                 </button>
