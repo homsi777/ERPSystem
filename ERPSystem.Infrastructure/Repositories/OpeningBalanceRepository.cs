@@ -145,6 +145,23 @@ internal sealed class OpeningBalanceRepository(ErpDbContext context) : IOpeningB
         return events.Select(OpeningBalanceMapper.ToEventAggregate).ToList();
     }
 
+    public async Task DeleteAsync(Guid documentId, CancellationToken cancellationToken = default)
+    {
+        var events = await context.OpeningBalanceEvents
+            .Where(e => e.DocumentId == documentId)
+            .ToListAsync(cancellationToken);
+        if (events.Count > 0)
+            context.OpeningBalanceEvents.RemoveRange(events);
+
+        var doc = await context.OpeningBalanceDocuments
+            .Include(d => d.Lines)
+            .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken)
+            ?? throw new InvalidOperationException("Opening balance document not found.");
+
+        context.OpeningBalanceLines.RemoveRange(doc.Lines);
+        context.OpeningBalanceDocuments.Remove(doc);
+    }
+
     public async Task<IReadOnlySet<string>> GetExistingLineKeysAsync(
         Guid companyId,
         OpeningBalanceType type,

@@ -1,3 +1,4 @@
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Finance;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Services.Documents;
@@ -15,11 +16,11 @@ public static class OpeningBalanceContextMenuService
 
     private static async Task ShowAsync(OpeningBalanceListDto row, UIElement placementTarget)
     {
-        var perms = await LoadPermissionsAsync();
+        var perms = await LoadPermissionsAsync(row.Type);
         var menu = new ContextMenu
         {
             FlowDirection = FlowDirection.RightToLeft,
-            MinWidth = 220,
+            MinWidth = 240,
             Padding = new Thickness(4),
             Background = (Brush)System.Windows.Application.Current.Resources["SurfaceBrush"]!,
             BorderBrush = (Brush)System.Windows.Application.Current.Resources["BorderBrush"]!,
@@ -62,6 +63,7 @@ public static class OpeningBalanceContextMenuService
 
     private static IReadOnlyList<MenuAction> BuildActions(OpeningBalanceListDto row, MenuPermissions perms)
     {
+        var isStock = row.Type == OpeningBalanceType.OpeningStock;
         var actions = new List<MenuAction>
         {
             new("فتح", "\uE8A7", "ob:open", true)
@@ -74,14 +76,38 @@ public static class OpeningBalanceContextMenuService
             actions.Add(new("اعتماد", "\uE73E", "ob:approve", perms.CanApprove));
 
         if (row.Status == OpeningBalanceStatus.Approved)
-            actions.Add(new("ترحيل", "\uE8C1", "ob:post", perms.CanPost));
+        {
+            actions.Add(new(
+                isStock ? "ترحيل إلى المخزون" : "ترحيل",
+                "\uE8C1",
+                "ob:post",
+                perms.CanPost));
+        }
 
         if (row.Status != OpeningBalanceStatus.Archived)
             actions.Add(new("أرشفة", "\uE7B8", "ob:archive", perms.CanArchive, Destructive: true, RequiresConfirmation: true));
 
+        if (CanDeleteBeforePost(row.Status))
+        {
+            actions.Add(new(
+                "حذف قبل الترحيل",
+                "\uE74D",
+                "ob:delete",
+                perms.CanEdit,
+                Destructive: true,
+                RequiresConfirmation: true));
+        }
+
         actions.Add(new("تصدير Excel", "\uEDE1", "ob:export", perms.CanExport));
+        actions.Add(new("تصدير إلى PDF", "\uE8A5", "ob:pdf", perms.CanPrint));
         return actions;
     }
+
+    private static bool CanDeleteBeforePost(OpeningBalanceStatus status) =>
+        status is OpeningBalanceStatus.Draft
+            or OpeningBalanceStatus.PendingApproval
+            or OpeningBalanceStatus.Approved
+            or OpeningBalanceStatus.Rejected;
 
     private static MenuItem BuildHeader(OpeningBalanceListDto row)
     {
@@ -126,18 +152,23 @@ public static class OpeningBalanceContextMenuService
         return sp;
     }
 
-    private static async Task<MenuPermissions> LoadPermissionsAsync()
+    private static async Task<MenuPermissions> LoadPermissionsAsync(OpeningBalanceType type)
     {
         if (!AppServices.IsInitialized)
-            return new MenuPermissions(false, false, false, false, false);
+            return new MenuPermissions(false, false, false, false, false, false);
 
         var svc = OpeningBalanceUiService.Instance;
+        var inventoryAccess = type == OpeningBalanceType.OpeningStock
+            && (await svc.CanAsync(OpeningBalanceAuthorization.InventoryOpeningStockPermission)
+                || await svc.CanAsync("warehouse.detailing"));
+
         return new MenuPermissions(
-            await svc.CanAsync("openingbalances.edit"),
-            await svc.CanAsync("openingbalances.approve"),
-            await svc.CanAsync("openingbalances.post"),
-            await svc.CanAsync("openingbalances.archive"),
-            await svc.CanAsync("openingbalances.export"));
+            await svc.CanAsync("openingbalances.edit") || inventoryAccess,
+            await svc.CanAsync("openingbalances.approve") || inventoryAccess,
+            await svc.CanAsync("openingbalances.post") || inventoryAccess,
+            await svc.CanAsync("openingbalances.archive") || inventoryAccess,
+            await svc.CanAsync("openingbalances.export") || inventoryAccess,
+            await svc.CanAsync("openingbalances.print") || inventoryAccess);
     }
 
     private sealed record MenuAction(
@@ -153,5 +184,6 @@ public static class OpeningBalanceContextMenuService
         bool CanApprove,
         bool CanPost,
         bool CanArchive,
-        bool CanExport);
+        bool CanExport,
+        bool CanPrint);
 }

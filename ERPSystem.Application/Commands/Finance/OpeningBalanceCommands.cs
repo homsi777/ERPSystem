@@ -92,6 +92,11 @@ public sealed class ArchiveOpeningBalanceCommand
     public Guid DocumentId { get; init; }
 }
 
+public sealed class DeleteOpeningBalanceBeforePostCommand
+{
+    public Guid DocumentId { get; init; }
+}
+
 public sealed class DuplicateOpeningBalanceCommand
 {
     public Guid DocumentId { get; init; }

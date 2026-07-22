@@ -401,6 +401,22 @@ internal sealed class OpeningBalanceEngine(
         return ApplicationResult.Success();
     }
 
+    public async Task<ApplicationResult> DeleteBeforePostAsync(Guid documentId, CancellationToken cancellationToken = default)
+    {
+        var doc = await repository.GetAsync(documentId, cancellationToken);
+        if (doc is null) return ApplicationResult.NotFound("المستند غير موجود.");
+
+        if (doc.Status is OpeningBalanceStatus.Posted or OpeningBalanceStatus.Locked or OpeningBalanceStatus.Archived)
+        {
+            return ApplicationResult.ValidationFailed("_",
+                "لا يمكن حذف مستند مرحّل أو مقفل أو مؤرشف. احذف فقط قبل الترحيل.");
+        }
+
+        await repository.DeleteAsync(documentId, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return ApplicationResult.Success();
+    }
+
     public async Task<ApplicationResult<OpeningBalanceListDto>> DuplicateAsync(
         Guid documentId,
         CancellationToken cancellationToken = default)

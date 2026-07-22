@@ -1,10 +1,12 @@
 using ERPSystem.Application.DTOs.Finance;
+using ERPSystem.Application.DTOs.Reports;
 using ERPSystem.Controls.Customers;
 using ERPSystem.Controls.OperationsCenter;
 using ERPSystem.Core;
 using ERPSystem.Dialogs;
 using ERPSystem.Domain.Entities.Finance;
 using ERPSystem.Services.Documents;
+using ERPSystem.Services.Reports;
 
 namespace ERPSystem.Services.Finance;
 
@@ -24,7 +26,9 @@ public static class OpeningBalanceQuickActionRouter
         "ob:approve" => Run(() => ApproveAsync(row)),
         "ob:post" => Run(() => PostAsync(row)),
         "ob:archive" => Run(() => ArchiveAsync(row)),
+        "ob:delete" => Run(() => DeleteAsync(row)),
         "ob:export" => Run(() => ExportAsync(row)),
+        "ob:pdf" => Run(() => ExportPdfAsync(row)),
         "ob:open" => Run(() => OpenAsync(row)),
         "ob:edit" => Run(() => EditAsync(row)),
         "ob:audit" => Run(() => AuditAsync(row)),
@@ -136,10 +140,11 @@ public static class OpeningBalanceQuickActionRouter
         {
             OpeningBalanceListRefreshHub.RequestRefresh();
             CustomerOpeningBalanceRefreshHub.RequestRefresh();
+            var isStock = row.Type == OpeningBalanceType.OpeningStock;
             MockInteractionService.ShowSuccess(
                 result.Value?.JournalEntryNumber is { Length: > 0 } num
-                    ? $"تم الترحيل — القيد {num}"
-                    : "تم ترحيل المستند.");
+                    ? (isStock ? $"تم الترحيل إلى المخزون — القيد {num}" : $"تم الترحيل — القيد {num}")
+                    : (isStock ? "تم الترحيل إلى المخزون." : "تم ترحيل المستند."));
         }
     }
 
@@ -160,6 +165,23 @@ public static class OpeningBalanceQuickActionRouter
         }
     }
 
+    private static async Task DeleteAsync(OpeningBalanceListDto row)
+    {
+        if (row.Status is OpeningBalanceStatus.Posted or OpeningBalanceStatus.Locked or OpeningBalanceStatus.Archived)
+        {
+            MockInteractionService.ShowWarning("لا يمكن حذف مستند مرحّل أو مؤرشف. استخدم الأرشفة للمستندات المقفلة.");
+            return;
+        }
+
+        var result = await OpeningBalanceUiService.Instance.DeleteBeforePostAsync(row.Id);
+        if (ApplicationResultPresenter.Present(result))
+        {
+            OpeningBalanceListRefreshHub.RequestRefresh();
+            CustomerOpeningBalanceRefreshHub.RequestRefresh();
+            MockInteractionService.ShowSuccess($"تم حذف المستند {row.Number}.");
+        }
+    }
+
     private static async Task ExportAsync(OpeningBalanceListDto row)
     {
         var result = await OpeningBalanceUiService.Instance.GetDetailsAsync(row.Id);
@@ -167,6 +189,23 @@ public static class OpeningBalanceQuickActionRouter
             return;
 
         var oc = result.Value;
+        if (row.Type == OpeningBalanceType.OpeningStock)
+        {
+            ListExportService.ExportRecords(
+                oc.Lines,
+                $"OpeningStock-{oc.Header.Number}",
+                ("السطر", l => l.LineNumber),
+                ("الصنف", l => l.ItemName),
+                ("اللون", l => l.ColorName),
+                ("الحاوية", l => l.ContainerNumber),
+                ("الكمية", l => l.Quantity),
+                ("الأثواب", l => l.RollCount),
+                ("التكلفة", l => l.UnitCost),
+                ("مدين", l => l.Debit),
+                ("الوصف", l => l.Description));
+            return;
+        }
+
         ListExportService.ExportRecords(
             oc.Lines,
             $"OpeningBalance-{oc.Header.Number}",
@@ -176,5 +215,70 @@ public static class OpeningBalanceQuickActionRouter
             ("مدين", l => l.Debit),
             ("دائن", l => l.Credit),
             ("الوصف", l => l.Description));
+    }
+
+    private static async Task ExportPdfAsync(OpeningBalanceListDto row)
+    {
+        var result = await OpeningBalanceUiService.Instance.GetDetailsAsync(row.Id);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        var oc = result.Value;
+        var isStock = row.Type == OpeningBalanceType.OpeningStock;
+        var report = new ModuleReportResultDto
+        {
+            ReportKey = isStock ? "opening-stock" : "opening-balance",
+            Title = isStock ? $"مواد أول المدة — {oc.Header.Number}" : $"رصيد افتتاحي — {oc.Header.Number}",
+            Description = $"{oc.Header.StatusDisplay} • {oc.Header.OpeningDate:yyyy/MM/dd} • {oc.Header.Reference}",
+            GeneratedAt = DateTime.Now,
+            Kpis =
+            [
+                new ModuleReportKpiDto { Label = "الحالة", Value = oc.Header.StatusDisplay, IconGlyph = "\uE8FB" },
+                new ModuleReportKpiDto { Label = "القيمة", Value = oc.Header.TotalBaseAmount.ToString("N2"), IconGlyph = "\uE8C1" },
+                new ModuleReportKpiDto { Label = "الأسطر", Value = oc.Lines.Count.ToString(), IconGlyph = "\uE8A5" }
+            ],
+            Columns = isStock
+                ?
+                [
+                    new ModuleReportColumnDto { Key = "line", HeaderAr = "سطر", Width = 50 },
+                    new ModuleReportColumnDto { Key = "item", HeaderAr = "المادة", Width = 160, IsStar = true },
+                    new ModuleReportColumnDto { Key = "color", HeaderAr = "اللون", Width = 100 },
+                    new ModuleReportColumnDto { Key = "container", HeaderAr = "الحاوية", Width = 90 },
+                    new ModuleReportColumnDto { Key = "qty", HeaderAr = "الكمية", Width = 90, Format = "N2" },
+                    new ModuleReportColumnDto { Key = "rolls", HeaderAr = "أثواب", Width = 70 },
+                    new ModuleReportColumnDto { Key = "cost", HeaderAr = "تكلفة", Width = 90, Format = "N2" },
+                    new ModuleReportColumnDto { Key = "debit", HeaderAr = "القيمة", Width = 100, Format = "N2" }
+                ]
+                :
+                [
+                    new ModuleReportColumnDto { Key = "line", HeaderAr = "سطر", Width = 50 },
+                    new ModuleReportColumnDto { Key = "party", HeaderAr = "الطرف", Width = 140, IsStar = true },
+                    new ModuleReportColumnDto { Key = "account", HeaderAr = "الحساب", Width = 140 },
+                    new ModuleReportColumnDto { Key = "debit", HeaderAr = "مدين", Width = 100, Format = "N2" },
+                    new ModuleReportColumnDto { Key = "credit", HeaderAr = "دائن", Width = 100, Format = "N2" }
+                ],
+            Rows = oc.Lines.Select(l => isStock
+                ? new Dictionary<string, object?>
+                {
+                    ["line"] = l.LineNumber,
+                    ["item"] = l.ItemName ?? l.ItemCode,
+                    ["color"] = l.ColorName,
+                    ["container"] = l.ContainerNumber,
+                    ["qty"] = l.Quantity,
+                    ["rolls"] = l.RollCount,
+                    ["cost"] = l.UnitCost,
+                    ["debit"] = l.Debit
+                }
+                : new Dictionary<string, object?>
+                {
+                    ["line"] = l.LineNumber,
+                    ["party"] = l.PartyName,
+                    ["account"] = l.AccountName,
+                    ["debit"] = l.Debit,
+                    ["credit"] = l.Credit
+                }).ToList()
+        };
+
+        ModuleReportDocumentService.ShowPreview(report, exportPdf: false);
     }
 }

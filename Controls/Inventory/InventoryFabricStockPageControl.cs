@@ -358,6 +358,12 @@ public sealed class InventoryOpeningStockPageControl : UserControl
         ErpUiFactory.AddGridColumn(_grid, "المرجع", nameof(OpeningBalanceListDto.Reference), 120, null);
         ErpUiFactory.AddGridColumn(_grid, "القيمة", nameof(OpeningBalanceListDto.TotalBaseAmount), 90, "N2");
         ErpUiFactory.AddGridColumn(_grid, "الحالة", nameof(OpeningBalanceListDto.StatusDisplay), 110, null);
+        _grid.MouseDoubleClick += (_, _) =>
+        {
+            if (_grid.SelectedItem is OpeningBalanceListDto row)
+                OpeningBalancePopupService.ShowOperationsCenter(row);
+        };
+        _grid.PreviewMouseRightButtonDown += OnGridRightClick;
         root.Children.Add(_grid);
         Content = root;
         Loaded += async (_, _) => await LoadAsync();
@@ -369,6 +375,27 @@ public sealed class InventoryOpeningStockPageControl : UserControl
         OpeningBalanceListRefreshHub.RefreshRequested -= OnRefreshRequested;
 
     private void OnRefreshRequested(object? sender, EventArgs e) => _ = LoadAsync();
+
+    private static void OnGridRightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (FindParent<DataGridRow>(e.OriginalSource as DependencyObject) is not { Item: OpeningBalanceListDto row } dgRow)
+            return;
+
+        e.Handled = true;
+        dgRow.IsSelected = true;
+        OpeningBalanceContextMenuService.Show(row, dgRow);
+    }
+
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child != null)
+        {
+            if (child is T match) return match;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
+    }
 
     private async Task LoadAsync()
     {

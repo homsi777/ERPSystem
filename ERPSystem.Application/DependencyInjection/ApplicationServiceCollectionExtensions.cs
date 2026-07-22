@@ -246,6 +246,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<RejectOpeningBalanceCommand, ApplicationResult>, RejectOpeningBalanceHandler>();
         services.AddScoped<ICommandHandler<PostOpeningBalanceCommand, ApplicationResult<OpeningBalancePostResultDto>>, PostOpeningBalanceHandler>();
         services.AddScoped<ICommandHandler<ArchiveOpeningBalanceCommand, ApplicationResult>, ArchiveOpeningBalanceHandler>();
+        services.AddScoped<ICommandHandler<DeleteOpeningBalanceBeforePostCommand, ApplicationResult>, DeleteOpeningBalanceBeforePostHandler>();
         services.AddScoped<ICommandHandler<DuplicateOpeningBalanceCommand, ApplicationResult<OpeningBalanceListDto>>, DuplicateOpeningBalanceHandler>();
         services.AddScoped<ICommandHandler<ValidateOpeningBalanceCommand, ApplicationResult<OpeningBalanceValidationReportDto>>, ValidateOpeningBalanceHandler>();
         services.AddScoped<ICommandHandler<ImportOpeningBalanceExcelCommand, ApplicationResult<OpeningBalanceImportResultDto>>, ImportOpeningBalanceExcelHandler>();

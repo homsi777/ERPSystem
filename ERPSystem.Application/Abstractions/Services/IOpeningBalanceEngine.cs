@@ -42,6 +42,12 @@ public interface IOpeningBalanceEngine
 
     Task<ApplicationResult> ArchiveAsync(Guid documentId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Hard-deletes a document that has not been posted yet (draft / pending / approved / rejected).
+    /// Posted, locked, or archived documents cannot be deleted this way.
+    /// </summary>
+    Task<ApplicationResult> DeleteBeforePostAsync(Guid documentId, CancellationToken cancellationToken = default);
+
     Task<ApplicationResult<OpeningBalanceListDto>> DuplicateAsync(
         Guid documentId,
         CancellationToken cancellationToken = default);

@@ -160,6 +160,10 @@ public sealed class OpeningBalanceUiService
         DispatchCommand<ArchiveOpeningBalanceCommand, ApplicationResult>(
             new ArchiveOpeningBalanceCommand { DocumentId = documentId }, cancellationToken);
 
+    public Task<ApplicationResult> DeleteBeforePostAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        DispatchCommand<DeleteOpeningBalanceBeforePostCommand, ApplicationResult>(
+            new DeleteOpeningBalanceBeforePostCommand { DocumentId = documentId }, cancellationToken);
+
     public Task<ApplicationResult<OpeningBalanceListDto>> DuplicateAsync(
         Guid documentId,
         CancellationToken cancellationToken = default) =>

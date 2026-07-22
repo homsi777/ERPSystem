@@ -107,15 +107,33 @@ public sealed class PostOpeningBalanceHandler(
 
 public sealed class ArchiveOpeningBalanceHandler(
     IOpeningBalanceEngine engine,
-    IPermissionService permissions)
+    IPermissionService permissions,
+    IOpeningBalanceRepository repository)
     : ICommandHandler<ArchiveOpeningBalanceCommand, ApplicationResult>
 {
     public async Task<ApplicationResult> HandleAsync(
         ArchiveOpeningBalanceCommand command, CancellationToken cancellationToken = default)
     {
-        if (!await permissions.CanAsync("openingbalances.archive", cancellationToken))
+        if (!await OpeningBalanceAuthorization.CanWorkflowAsync(
+                permissions, repository, command.DocumentId, "openingbalances.archive", cancellationToken))
             return ApplicationResult.PermissionDenied("غير مسموح بالأرشفة.");
         return await engine.ArchiveAsync(command.DocumentId, cancellationToken);
+    }
+}
+
+public sealed class DeleteOpeningBalanceBeforePostHandler(
+    IOpeningBalanceEngine engine,
+    IPermissionService permissions,
+    IOpeningBalanceRepository repository)
+    : ICommandHandler<DeleteOpeningBalanceBeforePostCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        DeleteOpeningBalanceBeforePostCommand command, CancellationToken cancellationToken = default)
+    {
+        if (!await OpeningBalanceAuthorization.CanWorkflowAsync(
+                permissions, repository, command.DocumentId, "openingbalances.edit", cancellationToken))
+            return ApplicationResult.PermissionDenied("غير مسموح بالحذف.");
+        return await engine.DeleteBeforePostAsync(command.DocumentId, cancellationToken);
     }
 }
 

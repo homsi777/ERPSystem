@@ -29,6 +29,9 @@ public interface IOpeningBalanceRepository
     Task AddEventAsync(OpeningBalanceEvent evt, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<OpeningBalanceEvent>> GetEventsAsync(Guid documentId, CancellationToken cancellationToken = default);
 
+    /// <summary>Permanently removes a document with its lines and events.</summary>
+    Task DeleteAsync(Guid documentId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Keys already used by other non-archived documents of the same type
     /// (party ids, account ids, or warehouse+item+color+batch composites) —
