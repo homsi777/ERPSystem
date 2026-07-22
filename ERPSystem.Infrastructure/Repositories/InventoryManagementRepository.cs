@@ -223,19 +223,9 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
         var term = search?.Trim();
         var hasSearch = !string.IsNullOrWhiteSpace(term);
 
-        var rollCosts = context.FabricRolls.AsNoTracking()
-            .Where(r => warehouseIds.Contains(r.WarehouseId) && r.RemainingLengthMeters > 0 &&
-                        r.Status == (int)FabricRollStatus.Available)
-            .GroupBy(r => new { r.WarehouseId, r.FabricItemId, r.FabricColorId, r.ContainerId })
-            .Select(g => new
-            {
-                g.Key.WarehouseId,
-                g.Key.FabricItemId,
-                g.Key.FabricColorId,
-                g.Key.ContainerId,
-                InventoryValue = Math.Round(g.Sum(r => r.RemainingLengthMeters * r.CostPerMeter), 4)
-            });
-
+        // Correlated SUM (not LEFT JOIN): EF Core materializes LEFT JOIN Guid keys as
+        // non-nullable and throws "Nullable object must have a value" when stock rows
+        // have no matching available rolls (common after opening-stock / sold stubs).
         var balances =
             from s in context.WarehouseStocks.AsNoTracking()
             join w in context.Warehouses.AsNoTracking() on s.WarehouseId equals w.Id
@@ -243,11 +233,6 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
             join c in context.FabricColors.AsNoTracking() on s.FabricColorId equals c.Id
             join container in context.Containers.AsNoTracking() on s.ContainerId equals container.Id into containerJoin
             from container in containerJoin.DefaultIfEmpty()
-            join rc in rollCosts
-                on new { s.WarehouseId, s.FabricItemId, s.FabricColorId, s.ContainerId }
-                equals new { rc.WarehouseId, rc.FabricItemId, rc.FabricColorId, rc.ContainerId }
-                into rollCostJoin
-            from rc in rollCostJoin.DefaultIfEmpty()
             where warehouseIds.Contains(s.WarehouseId) && s.TotalMeters > 0
                   && (!hasSearch
                       || f.Code.Contains(term!)
@@ -270,7 +255,17 @@ internal sealed class InventoryManagementRepository(ErpDbContext context) : IInv
                 TotalMeters = s.TotalMeters,
                 ReservedMeters = s.ReservedMeters,
                 AvailableMeters = s.AvailableMeters,
-                InventoryValue = rc == null ? 0m : rc.InventoryValue
+                InventoryValue = Math.Round(
+                    context.FabricRolls.AsNoTracking()
+                        .Where(r =>
+                            r.WarehouseId == s.WarehouseId &&
+                            r.FabricItemId == s.FabricItemId &&
+                            r.FabricColorId == s.FabricColorId &&
+                            r.ContainerId == s.ContainerId &&
+                            r.RemainingLengthMeters > 0 &&
+                            r.Status == (int)FabricRollStatus.Available)
+                        .Sum(r => (decimal?)(r.RemainingLengthMeters * r.CostPerMeter)) ?? 0m,
+                    4)
             };
 
         return await balances.ToListAsync(cancellationToken);
