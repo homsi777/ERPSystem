@@ -29,6 +29,20 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$API_DIR"
 
 if [[ "$BUILD_WEB_CLIENT" == "yes" ]]; then
   log "بناء web-client"
+  # Root shells often lack nvm/npm on PATH — load common Node installs.
+  if ! command -v npm >/dev/null 2>&1; then
+    export NVM_DIR="${NVM_DIR:-/home/ubuntu/.nvm}"
+    # shellcheck disable=SC1091
+    [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    for npm_bin in /home/ubuntu/.nvm/versions/node/*/bin; do
+      [[ -x "$npm_bin/npm" ]] || continue
+      export PATH="$npm_bin:$PATH"
+      break
+    done
+  fi
+  command -v npm >/dev/null 2>&1 || { err "npm غير موجود على PATH — ثبّت Node أو عطّل BUILD_WEB_CLIENT"; exit 1; }
   pushd "${SRC_DIR}/web-client" >/dev/null
   export VITE_API_BASE_URL="https://${DOMAIN}"
   npm ci
