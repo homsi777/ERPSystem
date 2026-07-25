@@ -266,19 +266,26 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
         var colors = await fabricCatalogRepository.GetColorsByIdsAsync(colorIds, cancellationToken);
 
         var enrichedLines = SalesInvoiceCatalogEnricher.EnrichLines(baseDto.Invoice.Lines, fabrics, colors);
+        var containerIds = aggregate.Items
+            .Select(i => i.ChinaContainerId)
+            .Append(aggregate.ChinaContainerId)
+            .Concat(baseDto.Detailing?.Rolls.Select(r => r.ChinaContainerId) ?? [])
+            .Where(id => id != Guid.Empty)
+            .Distinct();
+        var containerLookup = await containerRepository.GetNumberLookupAsync(
+            aggregate.CompanyId,
+            containerIds,
+            cancellationToken);
+        var invoiceWithContainer = baseDto.Invoice with
+        {
+            ContainerNumber = containerLookup.GetValueOrDefault(
+                aggregate.ChinaContainerId,
+                baseDto.Invoice.ContainerNumber)
+        };
 
         WarehouseDetailingDto? enrichedDetailing = null;
         if (baseDto.Detailing is not null)
         {
-            var containerIds = aggregate.Items
-                .Select(i => i.ChinaContainerId)
-                .Concat(baseDto.Detailing.Rolls.Select(r => r.ChinaContainerId))
-                .Where(id => id != Guid.Empty)
-                .Distinct();
-            var containerLookup = await containerRepository.GetNumberLookupAsync(
-                aggregate.CompanyId,
-                containerIds,
-                cancellationToken);
             var enrichedRolls = SalesInvoiceCatalogEnricher.EnrichRolls(
                 aggregate,
                 baseDto.Detailing.Rolls,
@@ -355,7 +362,7 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
 
         return ApplicationResult<SalesInvoiceOperationsCenterDto>.Success(new SalesInvoiceOperationsCenterDto
         {
-            Invoice = SalesInvoiceCatalogEnricher.WithEnrichedLines(baseDto.Invoice, enrichedLines, warehouseName),
+            Invoice = SalesInvoiceCatalogEnricher.WithEnrichedLines(invoiceWithContainer, enrichedLines, warehouseName),
             Detailing = enrichedDetailing,
             CanSendToWarehouse = baseDto.CanSendToWarehouse,
             CanCompleteDetailing = baseDto.CanCompleteDetailing,
