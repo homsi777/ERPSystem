@@ -161,7 +161,7 @@ function DeliveryQueuePage() {
 }
 
 function DeliveryQueueCard({ item }: { item: WarehouseDetailingDto }) {
-  const meta = `${formatDate(item.sentToWarehouseAt)} • ${formatNumber(item.rolls.length)} ثوب`;
+  const meta = `${formatDate(item.sentToWarehouseAt)} • ${formatNumber(item.rolls.length)} ثوب • حاوية ${containerSummary(item.rolls)}`;
 
   return (
     <DataCard
@@ -501,6 +501,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                 value={detailing.representativeUnitPrice != null ? formatNumber(detailing.representativeUnitPrice) : '—'}
               />
               <DetailItem label="عدد الأثواب" value={formatNumber(detailing.rolls.length)} />
+              <DetailItem label="الحاوية" value={containerSummary(detailing.rolls)} />
               <DetailItem label={totalLabel} value={totalEnteredDisplay} />
             </dl>
           </section>
@@ -528,7 +529,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                         <strong>{formatContainerLength(roll.lengthMeters, unitStorageToDpl(roll.unit))}</strong>
                       </div>
                       <p className="line-item__meta">
-                        {roll.fabricDisplayName} / {roll.colorDisplayName}
+                        الحاوية {containerDisplay(roll)} — {roll.fabricDisplayName} / {roll.colorDisplayName}
                       </p>
                     </article>
                   ))}
@@ -545,8 +546,9 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
 
                 {activeRoll ? (
                   <p className="form-hint" style={{ marginBottom: 4 }}>
-                    القادم: ثوب رقم {formatLineIndex(activeRoll.rollSequence)} — {activeRoll.fabricDisplayName} /{' '}
-                    {activeRoll.colorDisplayName} — الوحدة: {lengthUnitArabic(activeRollUnit)}
+                    القادم: ثوب رقم {formatLineIndex(activeRoll.rollSequence)} — الحاوية{' '}
+                    {containerDisplay(activeRoll)} — {activeRoll.fabricDisplayName} / {activeRoll.colorDisplayName} —
+                    الوحدة: {lengthUnitArabic(activeRollUnit)}
                   </p>
                 ) : (
                   <div className="banner banner--success" role="status">
@@ -648,7 +650,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                           </div>
                         </div>
                         <p className="line-item__meta">
-                          {roll.fabricDisplayName} / {roll.colorDisplayName}
+                          الحاوية {containerDisplay(roll)} — {roll.fabricDisplayName} / {roll.colorDisplayName}
                         </p>
                       </article>
                     ))}
@@ -698,6 +700,16 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       <dd>{value}</dd>
     </div>
   );
+}
+
+function containerDisplay(roll: WarehouseDetailingRollDto) {
+  const display = roll.containerDisplay?.trim();
+  return display && display !== '—' ? display : 'غير محددة';
+}
+
+function containerSummary(rolls: WarehouseDetailingRollDto[]) {
+  const containers = Array.from(new Set(rolls.map(containerDisplay)));
+  return containers.join('، ') || 'غير محددة';
 }
 
 function Toast({ toast, onClose }: { toast: ToastState | null; onClose: () => void }) {
