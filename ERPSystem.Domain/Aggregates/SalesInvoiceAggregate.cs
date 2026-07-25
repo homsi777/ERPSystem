@@ -194,10 +194,11 @@ public sealed class SalesInvoiceAggregate : AggregateRoot
     {
         EnsureStatus(SalesInvoiceStatus.AwaitingDetailing);
 
-        var seenSerials = new HashSet<int>();
+        var seenSerials = new HashSet<(Guid RollDetailId, int Serial)>();
         foreach (var entry in entries)
         {
-            if (entry.RollNumber is int serial and > 0 && !seenSerials.Add(serial))
+            if (entry.RollNumber is int serial and > 0 &&
+                !seenSerials.Add((entry.RollDetailId, serial)))
                 throw new WarehouseDetailingException(
                     $"رقم السيريال {serial} مكرر في نفس الفاتورة. كل توب يجب أن يحمل سيريالاً فريداً.");
 

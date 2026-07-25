@@ -471,7 +471,7 @@ internal sealed class InventoryEngine(
     {
         var resolved = new Dictionary<Guid, decimal>();
         var claimedRollIds = new HashSet<Guid>();
-        var claimedSerials = new HashSet<int>();
+        var claimedSerials = new HashSet<(Guid RollDetailId, int Serial)>();
         var submittedDetailIds = entries.Select(e => e.RollDetailId).ToHashSet();
 
         var lineContainerIds = invoice.Items.Select(i => i.ChinaContainerId).Distinct().ToList();
@@ -518,7 +518,7 @@ internal sealed class InventoryEngine(
 
             if (entry.RollNumber is int serial and > 0)
             {
-                if (!claimedSerials.Add(serial))
+                if (!claimedSerials.Add((detail.Id, serial)))
                     throw new InventoryException(
                         $"رقم السيريال {serial} مكرر في نفس التفصيل. كل توب يجب أن يحمل سيريالاً فريداً داخل الفاتورة.");
 
