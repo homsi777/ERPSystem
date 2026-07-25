@@ -560,8 +560,11 @@ internal sealed class InventoryEngine(
                             r.FabricColorId == item.FabricColorId &&
                             r.Status == (int)FabricRollStatus.Available &&
                             r.RemainingLengthMeters > 0 &&
+                            (entry.LengthMeters <= 0 ||
+                             r.RemainingLengthMeters >= entry.LengthMeters) &&
                             !claimedRollIds.Contains(r.Id))
-                        .OrderBy(r => r.RollNumber)
+                        .OrderBy(r => r.RemainingLengthMeters)
+                        .ThenBy(r => r.RollNumber)
                         .FirstOrDefault();
                 }
 
