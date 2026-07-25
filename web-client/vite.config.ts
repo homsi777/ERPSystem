@@ -10,9 +10,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Keep the worker script off the generic *.js edge cache. Nginx serves
-      // this dedicated URL with no-store so every deployment is discovered.
-      filename: 'sw-v3.js',
+      // Keep the long-lived service-worker identity stable across deployments.
+      // Nginx already serves /sw.js with no-store, so changing its URL is not
+      // needed and can make previously installed mobile PWAs lose continuity.
+      filename: 'sw.js',
       includeAssets: ['icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/api\//],
@@ -51,6 +52,7 @@ export default defineConfig({
         ]
       },
       manifest: {
+        id: '/',
         name: 'الأمل.AB — تجارة أقمشة الجينز',
         short_name: 'الأمل.AB',
         description:
@@ -60,20 +62,26 @@ export default defineConfig({
         theme_color: '#185FA5',
         background_color: '#F4F7FB',
         display: 'standalone',
-        start_url: '/inventory',
+        start_url: '/',
         scope: '/',
         icons: [
           {
             src: '/pwa-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: '/pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
