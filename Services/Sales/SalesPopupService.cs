@@ -16,14 +16,17 @@ public static class SalesPopupService
 {
     private static ErpModalWindow? _active;
 
-    public static void ShowOperationsCenter(SalesInvoiceListRow row)
+    public static void ShowOperationsCenter(SalesInvoiceListRow row) =>
+        ShowOperationsCenter(row.Id, row.InvoiceNumber, row.CustomerName);
+
+    public static void ShowOperationsCenter(Guid invoiceId, string invoiceNumber, string customerName)
     {
         var oc = new SalesInvoiceOperationsCenterControl();
-        oc.Initialize(row.Id, initialTab: null);
+        oc.Initialize(invoiceId, initialTab: null);
         var host = new ErpModalWindow();
         host.Configure(
             "مركز عمليات فاتورة البيع",
-            $"{row.InvoiceNumber} — {row.CustomerName}",
+            $"{invoiceNumber} — {customerName}",
             "\uE8A7",
             width: 1180,
             maxHeight: 860);

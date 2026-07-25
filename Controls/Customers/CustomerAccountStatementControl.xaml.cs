@@ -5,6 +5,7 @@ using ERPSystem.Domain.Enums;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
 using ERPSystem.Services.Finance;
+using ERPSystem.Services.Sales;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -74,6 +75,7 @@ public partial class CustomerAccountStatementControl : UserControl
     private Guid? _lastReconciliationDocumentId;
     private CustomerAccountLedgerDto? _ledger;
     private readonly List<CustomerLedgerRow> _allLines = new();
+    private bool _openingDocument;
 
     public CustomerAccountStatementControl()
     {
@@ -299,15 +301,28 @@ public partial class CustomerAccountStatementControl : UserControl
     private void BtnExcel_Click(object sender, RoutedEventArgs e) =>
         ERPSystem.Services.Documents.ListExportService.ExportGrid(LinesGrid, $"كشف حساب - {_customerName}");
 
-    private void DocumentNumber_Click(object sender, MouseButtonEventArgs e)
+    private async void DocumentNumber_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not FrameworkElement fe || fe.DataContext is not CustomerLedgerRow row)
+        if (_openingDocument ||
+            sender is not FrameworkElement fe ||
+            fe.DataContext is not CustomerLedgerRow row)
             return;
 
-        if (row.MovementType == CustomerAccountMovementType.SalesInvoice)
-            MockInteractionService.OpenInvoiceOperationsCenter(row.DocumentNumber);
-        else if (row.MovementType == CustomerAccountMovementType.ReceiptVoucher)
-            MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
+        _openingDocument = true;
+        try
+        {
+            if (row.MovementType == CustomerAccountMovementType.SalesInvoice)
+                SalesPopupService.ShowOperationsCenter(
+                    row.DocumentId,
+                    row.DocumentNumber,
+                    _customerName);
+            else if (row.MovementType == CustomerAccountMovementType.ReceiptVoucher)
+                await ReceiptVoucherPopupService.ShowExistingAsync(row.DocumentId);
+        }
+        finally
+        {
+            _openingDocument = false;
+        }
     }
 
     private void LinesGrid_LoadingRow(object sender, DataGridRowEventArgs e)

@@ -1,5 +1,6 @@
 using ERPSystem.Controls.Accounting;
 using ERPSystem.Dialogs;
+using ERPSystem.Services;
 
 namespace ERPSystem.Services.Finance;
 
@@ -8,6 +9,21 @@ namespace ERPSystem.Services.Finance;
 /// </summary>
 public static class ReceiptVoucherPopupService
 {
+    public static async Task ShowExistingAsync(Guid voucherId)
+    {
+        if (!AppServices.IsInitialized)
+        {
+            MockInteractionService.ShowWarning("قاعدة البيانات غير متصلة.", "سند قبض");
+            return;
+        }
+
+        var result = await FinanceUiService.Instance.GetReceiptVoucherPrintAsync(voucherId);
+        if (!ApplicationResultPresenter.Present(result) || result.Value is null)
+            return;
+
+        ReceiptVoucherDocumentService.ShowVoucherPreview(result.Value, exportPdf: false);
+    }
+
     public static bool ShowForCustomer(Guid customerId, string customerName)
     {
         ReceiptVoucherNavigationContext.PreselectCustomerId = customerId;
