@@ -58,9 +58,6 @@ internal sealed class InventoryOperationsService(
         }
     }
 
-    public Task ReserveForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
-        engine.ReserveForInvoiceAsync(invoice, cancellationToken);
-
     public Task AssignFabricRollsOnDetailingAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default) =>
         engine.AssignFabricRollsOnDetailingAsync(invoice, cancellationToken);
 

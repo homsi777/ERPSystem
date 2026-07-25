@@ -9,7 +9,6 @@ public interface IInventoryOperationsService
         Guid warehouseId,
         IReadOnlyList<(Guid ChinaContainerId, Guid FabricItemId, Guid FabricColorId, int RollCount)> lines,
         CancellationToken cancellationToken = default);
-    Task ReserveForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task<decimal> DeductForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task ReleaseForInvoiceAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);
     Task ReverseInvoiceIssueAsync(SalesInvoiceAggregate invoice, CancellationToken cancellationToken = default);

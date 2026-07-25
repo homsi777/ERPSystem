@@ -270,7 +270,6 @@ public sealed class SendSalesInvoiceToWarehouseHandler(
     ISalesInvoiceRepository invoiceRepository,
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
-    IInventoryOperationsService inventoryOperations,
     IDomainEventDispatcher domainEventDispatcher,
     INotificationService notificationService)
     : ICommandHandler<SendSalesInvoiceToWarehouseCommand, ApplicationResult>
@@ -292,7 +291,6 @@ public sealed class SendSalesInvoiceToWarehouseHandler(
         try
         {
             aggregate.SendToWarehouse();
-            await inventoryOperations.ReserveForInvoiceAsync(aggregate, cancellationToken);
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);
             await notificationService.PublishAsync(new InventoryChangedNotification
@@ -403,6 +401,7 @@ public sealed class SaveWarehouseDetailingDraftHandler(
     IUnitOfWork unitOfWork,
     IPermissionService permissionService,
     ICurrentUserService currentUserService,
+    IInventoryOperationsService inventoryOperations,
     IDomainEventDispatcher domainEventDispatcher)
     : ICommandHandler<SaveWarehouseDetailingDraftCommand, ApplicationResult>
 {
@@ -428,7 +427,32 @@ public sealed class SaveWarehouseDetailingDraftHandler(
                 .Select(e => (e.RollDetailId, e.RollNumber, e.LengthMeters))
                 .ToList();
 
-            aggregate.SaveDetailingDraft(entries, userId);
+            // A physical roll is selected and reserved only when the warehouse employee
+            // actually saves a serial or a measured length. Sending the sales invoice to
+            // the warehouse must never preselect rolls because their physical floor order
+            // is unrelated to the inventory record order.
+            var enteredEntries = entries
+                .Where(e => e.RollNumber is > 0 || e.LengthMeters is > 0)
+                .Select(e => (e.RollDetailId, e.RollNumber, e.LengthMeters ?? 0m))
+                .ToList();
+
+            var resolvedLengths = enteredEntries.Count == 0
+                ? new Dictionary<Guid, decimal>()
+                : await inventoryOperations.ResolveDetailingEntriesAsync(
+                    aggregate,
+                    enteredEntries,
+                    cancellationToken);
+
+            var persistedEntries = entries
+                .Select(e => (
+                    e.RollDetailId,
+                    e.RollNumber,
+                    resolvedLengths.TryGetValue(e.RollDetailId, out var resolvedLength)
+                        ? (decimal?)resolvedLength
+                        : e.LengthMeters))
+                .ToList();
+
+            aggregate.SaveDetailingDraft(persistedEntries, userId);
 
             await invoiceRepository.UpdateAsync(aggregate, cancellationToken);
             await unitOfWork.SaveAndDispatchAsync(domainEventDispatcher, [aggregate], cancellationToken);

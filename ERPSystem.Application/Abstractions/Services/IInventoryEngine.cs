@@ -42,10 +42,6 @@ public interface IInventoryEngine
         PurchaseInvoice invoice,
         CancellationToken cancellationToken = default);
 
-    Task ReserveForInvoiceAsync(
-        SalesInvoiceAggregate invoice,
-        CancellationToken cancellationToken = default);
-
     Task<decimal> IssueForInvoiceAsync(
         SalesInvoiceAggregate invoice,
         CancellationToken cancellationToken = default);
