@@ -27,15 +27,6 @@ export function DetailingAlertBanner() {
   });
 
   const firstInvoice = queueQuery.data?.[0];
-  const firstInvoiceContainers = firstInvoice
-    ? Array.from(
-        new Set(
-          firstInvoice.rolls
-            .map((roll) => roll.containerDisplay?.trim())
-            .filter((value): value is string => Boolean(value && value !== '—'))
-        )
-      ).join('، ')
-    : '';
   const count = canOpenDetailing
     ? queueQuery.data?.length ?? summaryQuery.data?.awaitingDetailingCount ?? 0
     : summaryQuery.data?.awaitingDetailingCount ?? 0;
@@ -47,7 +38,7 @@ export function DetailingAlertBanner() {
     <div className="banner banner--warn detailing-alert" role="status">
       <span>
         {firstInvoice
-          ? `الفاتورة ${firstInvoice.invoiceNumber} للعميل ${firstInvoice.customerName || 'غير محدد'} من الحاوية ${firstInvoiceContainers || 'غير محددة'} بحاجة إلى تفنيد ${formatNumber(firstInvoice.rolls.length)} ثوب${count > 1 ? `، ويوجد ${formatNumber(count - 1)} فاتورة أخرى` : ''}.`
+          ? `الفاتورة ${firstInvoice.invoiceNumber} للعميل ${firstInvoice.customerName || 'غير محدد'} بحاجة إلى تفنيد ${formatNumber(firstInvoice.rolls.length)} ثوب${count > 1 ? `، ويوجد ${formatNumber(count - 1)} فاتورة أخرى` : ''}.`
           : `يوجد ${formatNumber(count)} فاتورة بحاجة إلى تفنيد في المستودع.`}
       </span>
       {canOpenDetailing ? (

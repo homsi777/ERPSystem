@@ -161,7 +161,7 @@ function DeliveryQueuePage() {
 }
 
 function DeliveryQueueCard({ item }: { item: WarehouseDetailingDto }) {
-  const meta = `${formatDate(item.sentToWarehouseAt)} • ${formatNumber(item.rolls.length)} ثوب • حاوية ${containerSummary(item.rolls)}`;
+  const meta = `${formatDate(item.sentToWarehouseAt)} • ${formatNumber(item.rolls.length)} ثوب`;
 
   return (
     <DataCard
@@ -263,7 +263,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     return rolls.every((roll) => {
       const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
       const length = toNumber(lengths[roll.rollDetailId] ?? '');
-      return serial != null && length > 0;
+      return serial != null || length > 0;
     });
   }, [detailingQuery.data, lengths, serials]);
 
@@ -275,7 +275,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
   function isRollFilled(roll: WarehouseDetailingRollDto) {
     const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
     const length = toNumber(lengths[roll.rollDetailId] ?? '');
-    return serial != null && length > 0;
+    return serial != null || length > 0;
   }
 
   const pendingRolls = useMemo(() => sortedRolls.filter((roll) => !isRollFilled(roll)), [sortedRolls, lengths, serials]);
@@ -350,8 +350,8 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
     }
     const serialNum = toRollNumber(quickSerial);
     const lengthNum = toNumber(quickLength);
-    if (serialNum == null || lengthNum <= 0) {
-      setQuickError('أدخلي رقم السيريال والطول معًا لهذا الثوب.');
+    if (serialNum == null && lengthNum <= 0) {
+      setQuickError('أدخل رقم السيريال أو الطول لهذا الثوب؛ يكفي أحدهما.');
       return;
     }
 
@@ -501,7 +501,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                 value={detailing.representativeUnitPrice != null ? formatNumber(detailing.representativeUnitPrice) : '—'}
               />
               <DetailItem label="عدد الأثواب" value={formatNumber(detailing.rolls.length)} />
-              <DetailItem label="الحاوية" value={containerSummary(detailing.rolls)} />
+              <DetailItem label="رقم الحاوية" value={invoiceContainerDisplay(detailing)} />
               <DetailItem label={totalLabel} value={totalEnteredDisplay} />
             </dl>
           </section>
@@ -529,7 +529,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                         <strong>{formatContainerLength(roll.lengthMeters, unitStorageToDpl(roll.unit))}</strong>
                       </div>
                       <p className="line-item__meta">
-                        الحاوية {containerDisplay(roll)} — {roll.fabricDisplayName} / {roll.colorDisplayName}
+                        {roll.fabricDisplayName} / {roll.colorDisplayName}
                       </p>
                     </article>
                   ))}
@@ -541,14 +541,13 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
             ) : (
               <>
                 <p className="form-hint" style={{ marginBottom: 8 }}>
-                  أدخلي رقم السيريال — سيُملأ الطول تلقائيًا من المخزون ويمكنك تعديله عند الحاجة، ثم اضغطي "+ تفنيد".
+                  أدخل رقم السيريال أو الطول؛ يكفي أحدهما. عند إدخال السيريال يُستخرج طول التوب من المخزون تلقائيًا.
                 </p>
 
                 {activeRoll ? (
                   <p className="form-hint" style={{ marginBottom: 4 }}>
-                    القادم: ثوب رقم {formatLineIndex(activeRoll.rollSequence)} — الحاوية{' '}
-                    {containerDisplay(activeRoll)} — {activeRoll.fabricDisplayName} / {activeRoll.colorDisplayName} —
-                    الوحدة: {lengthUnitArabic(activeRollUnit)}
+                    القادم: ثوب رقم {formatLineIndex(activeRoll.rollSequence)} — {activeRoll.fabricDisplayName} /{' '}
+                    {activeRoll.colorDisplayName} — الوحدة: {lengthUnitArabic(activeRollUnit)}
                   </p>
                 ) : (
                   <div className="banner banner--success" role="status">
@@ -632,8 +631,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                         <div className="line-item__head">
                           <span className="line-item__index">{formatLineIndex(roll.rollSequence)}</span>
                           <strong>
-                            سيريال {serials[roll.rollDetailId]} — {lengths[roll.rollDetailId]}{' '}
-                            {lengthAbbrev(unitStorageToDpl(roll.unit))}
+                            {detailingEntrySummary(roll, serials, lengths)}
                           </strong>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button type="button" className="chip-button" onClick={() => startEditRoll(roll)}>
@@ -650,7 +648,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                           </div>
                         </div>
                         <p className="line-item__meta">
-                          الحاوية {containerDisplay(roll)} — {roll.fabricDisplayName} / {roll.colorDisplayName}
+                          {roll.fabricDisplayName} / {roll.colorDisplayName}
                         </p>
                       </article>
                     ))}
@@ -680,7 +678,7 @@ function DeliveryDetailPage({ invoiceId }: { invoiceId: string }) {
                   className="primary-button sticky-form-footer__submit"
                   type="submit"
                   disabled={!allRollsValid || completeMutation.isPending}
-                  title={!allRollsValid ? 'أدخلي رقم السيريال والطول لكل الأثواب قبل الإكمال.' : undefined}
+                  title={!allRollsValid ? 'أدخل رقم السيريال أو الطول لكل ثوب قبل الإكمال.' : undefined}
                 >
                   {completeMutation.isPending ? 'جار الإكمال...' : 'إكمال التفصيل'}
                 </button>
@@ -702,14 +700,29 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function containerDisplay(roll: WarehouseDetailingRollDto) {
-  const display = roll.containerDisplay?.trim();
+function invoiceContainerDisplay(detailing: WarehouseDetailingDto) {
+  const primary =
+    detailing.rolls.find((roll) => roll.chinaContainerId === detailing.chinaContainerId) ??
+    detailing.rolls[0];
+  const display = primary?.containerDisplay?.trim();
   return display && display !== '—' ? display : 'غير محددة';
 }
 
-function containerSummary(rolls: WarehouseDetailingRollDto[]) {
-  const containers = Array.from(new Set(rolls.map(containerDisplay)));
-  return containers.join('، ') || 'غير محددة';
+function detailingEntrySummary(
+  roll: WarehouseDetailingRollDto,
+  serials: Record<string, string>,
+  lengths: Record<string, string>
+) {
+  const serial = toRollNumber(serials[roll.rollDetailId] ?? '');
+  const length = toNumber(lengths[roll.rollDetailId] ?? '');
+  const parts: string[] = [];
+  if (serial != null) {
+    parts.push(`سيريال ${serial}`);
+  }
+  if (length > 0) {
+    parts.push(`${lengths[roll.rollDetailId]} ${lengthAbbrev(unitStorageToDpl(roll.unit))}`);
+  }
+  return parts.join(' — ');
 }
 
 function Toast({ toast, onClose }: { toast: ToastState | null; onClose: () => void }) {

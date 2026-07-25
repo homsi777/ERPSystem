@@ -544,10 +544,10 @@ internal sealed class InventoryEngine(
 
         foreach (var entry in entries)
         {
-            if (entry.RollNumber is not int || entry.RollNumber <= 0)
-                throw new WarehouseDetailingException("A specific fabric roll number is required; length-only sales are not allowed.");
-            if (entry.LengthMeters <= 0)
-                throw new WarehouseDetailingException("The measured whole-roll length must be greater than zero.");
+            var hasSerial = entry.RollNumber is > 0;
+            var hasLength = entry.LengthMeters > 0;
+            if (!hasSerial && !hasLength)
+                throw new WarehouseDetailingException("أدخل رقم التوب (سيريال) أو الطول بالمتر.");
 
             var detail = invoice.RollDetails.FirstOrDefault(d => d.Id == entry.RollDetailId)
                 ?? throw new WarehouseDetailingException("بند التوب غير موجود في الفاتورة.");
@@ -590,6 +590,16 @@ internal sealed class InventoryEngine(
 
                 if (roll.RemainingLengthMeters <= 0)
                     throw new InventoryException($"التوب رقم {serial} لا يحتوي أمتاراً متبقية.");
+
+                // Serial-only entry means the whole remaining roll. A manually entered
+                // length remains valid for partial sales or first measurement of legacy stock.
+                var meters = LegacyOpeningBalanceRollLengthPolicy.ResolveAndValidateSaleLength(
+                    roll, entry.LengthMeters);
+                if (meters > roll.RemainingLengthMeters)
+                {
+                    throw new InventoryException(
+                        $"التوب رقم {serial}: الطول المدخل ({meters:N2}) أكبر من المتبقي ({roll.RemainingLengthMeters:N2}).");
+                }
 
                 var previousRollId = detail.FabricRollId;
                 var stock = await context.WarehouseStocks.FirstAsync(s =>
@@ -636,7 +646,7 @@ internal sealed class InventoryEngine(
                 if (reservation is not null)
                 {
                     reservation.FabricRollId = roll.Id;
-                    reservation.ReservedMeters = entry.LengthMeters;
+                    reservation.ReservedMeters = meters;
                     reservation.Strategy = (int)AllocationStrategy.SpecificRoll;
                 }
                 else if (!await context.InventoryReservations.AnyAsync(r =>
@@ -653,7 +663,7 @@ internal sealed class InventoryEngine(
                         FabricRollId = roll.Id,
                         FabricItemId = item.FabricItemId,
                         FabricColorId = item.FabricColorId,
-                        ReservedMeters = entry.LengthMeters,
+                        ReservedMeters = meters,
                         RollCount = 1,
                         Status = (int)InventoryReservationStatus.Reserved,
                         Strategy = (int)AllocationStrategy.SpecificRoll,
@@ -662,20 +672,6 @@ internal sealed class InventoryEngine(
                         ReferenceLineId = item.Id,
                         CreatedAt = DateTime.UtcNow
                     }, cancellationToken);
-                }
-
-                // A legacy opening-balance roll carries only an even provisional length until its
-                // physical paper label is read for the first time. That first explicit length is
-                // authoritative even when greater than the provisional remaining length.
-
-                // Serial pins the physical roll; optional length allows partial sale. China rolls
-                // and already-confirmed legacy rolls retain the normal remaining-length ceiling.
-                var meters = LegacyOpeningBalanceRollLengthPolicy.ResolveAndValidateSaleLength(
-                    roll, entry.LengthMeters);
-                if (meters > roll.RemainingLengthMeters)
-                {
-                    throw new InventoryException(
-                        $"التوب رقم {serial}: الطول المدخل ({meters:N2}) أكبر من المتبقي ({roll.RemainingLengthMeters:N2}).");
                 }
 
                 resolved[detail.Id] = meters;
