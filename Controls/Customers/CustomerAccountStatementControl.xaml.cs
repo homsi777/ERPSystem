@@ -4,6 +4,7 @@ using ERPSystem.Core;
 using ERPSystem.Domain.Enums;
 using ERPSystem.Services;
 using ERPSystem.Services.Customers;
+using ERPSystem.Services.Finance;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -191,8 +192,17 @@ public partial class CustomerAccountStatementControl : UserControl
         LinesGrid.ItemsSource = rows.ToList();
     }
 
-    private void BtnReceipt_Click(object sender, RoutedEventArgs e) =>
-        MockInteractionService.Navigate(AppModule.Accounting, "Receipts");
+    private async void BtnReceipt_Click(object sender, RoutedEventArgs e)
+    {
+        if (_customerId is not Guid customerId)
+        {
+            MockInteractionService.ShowWarning("اختر عميلاً أولاً.", "سند قبض");
+            return;
+        }
+
+        if (ReceiptVoucherPopupService.ShowForCustomer(customerId, _customerName))
+            await ReloadAsync();
+    }
 
     private async void BtnReconcile_Click(object sender, RoutedEventArgs e)
     {

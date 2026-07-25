@@ -32,6 +32,7 @@ public static class ReceiptVoucherNavigationContext
 /// <summary>سند قبض — إنشاء مسودة وترحيل.</summary>
 public sealed class ReceiptVoucherPageControl : UserControl
 {
+    private readonly bool _dialogMode;
     private readonly ComboBox _paymentMethod = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly ComboBox _customer = new() { MinWidth = 280, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
     private readonly ComboBox _cashbox = new() { MinWidth = 220, IsEditable = false, Style = S("EnterpriseComboBoxStyle") };
@@ -53,6 +54,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
     private readonly Button _post = new() { Content = "ترحيل", Style = S("PrimaryButtonStyle"), MinWidth = 120, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
     private readonly Button _print = new() { Content = "طباعة", Style = S("GhostButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
     private readonly Button _pdf = new() { Content = "PDF", Style = S("GhostButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+    private readonly Button _done = new() { Content = "موافق", Style = S("PrimaryButtonStyle"), MinWidth = 100, Height = 38, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
 
     private readonly DataGrid _allocationsGrid = new()
     {
@@ -71,8 +73,11 @@ public sealed class ReceiptVoucherPageControl : UserControl
     private Guid? _lastVoucherId;
     private bool _busy;
 
-    public ReceiptVoucherPageControl()
+    public event EventHandler? DialogCompleted;
+
+    public ReceiptVoucherPageControl(bool dialogMode = false)
     {
+        _dialogMode = dialogMode;
         var stack = new StackPanel { Margin = new Thickness(16) };
         stack.Children.Add(ErpUiFactory.SectionTitle("سند قبض"));
         stack.Children.Add(ErpUxFactory.InfoBanner("تحصيل نقدي من عميل — احفظ مسودة ثم رحّل السند.", "info"));
@@ -98,6 +103,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
         actions.Children.Add(_post);
         actions.Children.Add(_print);
         actions.Children.Add(_pdf);
+        if (_dialogMode)
+            actions.Children.Add(_done);
         stack.Children.Add(actions);
 
         Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = stack, MaxWidth = 720 };
@@ -107,6 +114,7 @@ public sealed class ReceiptVoucherPageControl : UserControl
         _post.Click += async (_, _) => await PostAsync();
         _print.Click += async (_, _) => await PrintAsync(exportPdf: false);
         _pdf.Click += async (_, _) => await PrintAsync(exportPdf: true);
+        _done.Click += (_, _) => DialogCompleted?.Invoke(this, EventArgs.Empty);
         _customer.SelectionChanged += async (_, _) => await LoadOpenInvoicesAsync();
         _paymentMethod.SelectionChanged += (_, _) => UpdatePaymentMethodUi();
         _cashbox.SelectionChanged += (_, _) => UpdateGlAccountDisplay();
@@ -302,7 +310,11 @@ public sealed class ReceiptVoucherPageControl : UserControl
 
             var preselect = ReceiptVoucherNavigationContext.TakeCustomerId();
             if (preselect is Guid customerId && customers.Value.Any(c => c.Id == customerId))
+            {
                 _customer.SelectedValue = customerId;
+                if (_dialogMode)
+                    _customer.IsEnabled = false;
+            }
         }
 
         await LoadOpenInvoicesAsync();
@@ -406,6 +418,8 @@ public sealed class ReceiptVoucherPageControl : UserControl
             _post.IsEnabled = false;
             _status.Text = "تم الترحيل بنجاح.";
             _amount.Text = "0";
+            if (_dialogMode)
+                _done.IsEnabled = true;
             ERPSystem.Services.Sales.SalesListRefreshHub.RequestRefresh();
             ERPSystem.Services.Customers.CustomerListRefreshHub.RequestRefresh();
             ErpDataRefreshHub.RequestRefresh(ErpDataRefreshScope.Customers | ErpDataRefreshScope.Dashboard);
