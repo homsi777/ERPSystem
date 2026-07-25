@@ -1,5 +1,6 @@
 using ERPSystem.Api.Mapping;
 using ERPSystem.Application.Abstractions;
+using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Sales;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Queries.Sales;
@@ -34,18 +35,21 @@ public static class DetailingEndpoints
 
     private static async Task<IResult> GetQueueAsync(
         [FromQuery] Guid? warehouseId,
+        ICurrentBranchService branchService,
         GetWarehouseDetailingQueueHandler handler,
         CancellationToken cancellationToken)
     {
-        if (warehouseId is not Guid resolvedWarehouseId || resolvedWarehouseId == Guid.Empty)
-        {
-            return Results.Json(
-                new ApiErrorResponse("ValidationFailed", "Warehouse is required.", []),
-                statusCode: StatusCodes.Status400BadRequest);
-        }
+        if (branchService.CompanyId is not Guid companyId ||
+            branchService.BranchId is not Guid branchId)
+            return Results.Unauthorized();
 
         var result = await handler.HandleAsync(
-            new GetWarehouseDetailingQueueQuery { WarehouseId = resolvedWarehouseId },
+            new GetWarehouseDetailingQueueQuery
+            {
+                CompanyId = companyId,
+                BranchId = branchId,
+                WarehouseId = warehouseId is { } id && id != Guid.Empty ? id : null
+            },
             cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);

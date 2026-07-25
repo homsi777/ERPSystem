@@ -25,6 +25,11 @@ public interface ISalesInvoiceRepository
     Task<IReadOnlyList<SalesInvoiceAggregate>> GetDetailingQueueAsync(
         Guid warehouseId,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SalesInvoiceAggregate>> GetDetailingQueueAsync(
+        Guid companyId,
+        Guid branchId,
+        Guid? warehouseId,
+        CancellationToken cancellationToken = default);
     Task AddAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default);
     Task UpdateAsync(SalesInvoiceAggregate aggregate, CancellationToken cancellationToken = default);
 

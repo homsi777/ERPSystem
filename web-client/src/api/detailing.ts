@@ -5,9 +5,13 @@ import type {
   WarehouseDetailingDto
 } from './types.ts';
 
-export function getDetailingQueue(warehouseId: string) {
-  const search = new URLSearchParams({ warehouseId });
-  return apiRequest<WarehouseDetailingDto[]>(`/api/v1/detailing/queue?${search.toString()}`);
+export function getDetailingQueue(warehouseId?: string) {
+  const search = new URLSearchParams();
+  if (warehouseId) {
+    search.set('warehouseId', warehouseId);
+  }
+  const suffix = search.size > 0 ? `?${search.toString()}` : '';
+  return apiRequest<WarehouseDetailingDto[]>(`/api/v1/detailing/queue${suffix}`);
 }
 
 export function getDetailing(invoiceId: string) {

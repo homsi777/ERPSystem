@@ -75,24 +75,36 @@ function DeliveryQueuePage() {
     queryFn: () => getInventoryWarehouses()
   });
 
+  const queueQuery = useQuery({
+    queryKey: ['detailing', 'queue', 'branch'],
+    queryFn: () => getDetailingQueue()
+  });
+
   useEffect(() => {
-    if (warehouseId || !warehousesQuery.data || warehousesQuery.data.length === 0) {
+    if (
+      warehouseId ||
+      !warehousesQuery.data ||
+      warehousesQuery.data.length === 0 ||
+      !queueQuery.data
+    ) {
       return;
     }
+    const pendingWarehouseIds = new Set(queueQuery.data.map((item) => item.warehouseId));
     const preferred =
+      warehousesQuery.data.find((warehouse) => pendingWarehouseIds.has(warehouse.id) && warehouse.isDefault) ??
+      warehousesQuery.data.find((warehouse) => pendingWarehouseIds.has(warehouse.id)) ??
       warehousesQuery.data.find((warehouse) => warehouse.isDefault) ??
       warehousesQuery.data.find((warehouse) => warehouse.nameAr?.includes('رئيسي')) ??
       warehousesQuery.data[0];
     if (preferred) {
       setWarehouseId(preferred.id);
     }
-  }, [warehouseId, warehousesQuery.data]);
+  }, [warehouseId, warehousesQuery.data, queueQuery.data]);
 
-  const queueQuery = useQuery({
-    queryKey: ['detailing', 'queue', warehouseId],
-    queryFn: () => getDetailingQueue(warehouseId),
-    enabled: warehouseId.length > 0
-  });
+  const visibleQueue = useMemo(
+    () => (warehouseId ? (queueQuery.data ?? []).filter((item) => item.warehouseId === warehouseId) : []),
+    [queueQuery.data, warehouseId]
+  );
 
   const headerSummary = (
     <SummaryCard label="بانتظار التفصيل" value={formatNumber(queueQuery.data?.length ?? 0)} tone="amber" />
@@ -130,13 +142,13 @@ function DeliveryQueuePage() {
         <ErrorState message={getErrorMessage(queueQuery.error)} onRetry={() => void queueQuery.refetch()} />
       ) : null}
 
-      {warehouseId && queueQuery.isSuccess && queueQuery.data.length === 0 ? (
+      {warehouseId && queueQuery.isSuccess && visibleQueue.length === 0 ? (
         <EmptyState title="لا توجد فواتير" description="لا توجد فواتير بانتظار التفصيل في هذا المستودع حاليًا." />
       ) : null}
 
-      {warehouseId && queueQuery.isSuccess && queueQuery.data.length > 0 ? (
+      {warehouseId && queueQuery.isSuccess && visibleQueue.length > 0 ? (
         <section className="card-list" aria-label="قائمة انتظار التفصيل">
-          {queueQuery.data.map((item) => (
+          {visibleQueue.map((item) => (
             <Link className="card-link" key={item.invoiceId} to={`/delivery/${item.invoiceId}`}>
               <DeliveryQueueCard item={item} />
             </Link>

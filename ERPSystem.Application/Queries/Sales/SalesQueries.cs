@@ -19,7 +19,9 @@ public sealed class GetSalesInvoiceOperationsCenterQuery
 
 public sealed class GetWarehouseDetailingQueueQuery
 {
-    public Guid WarehouseId { get; init; }
+    public Guid CompanyId { get; init; }
+    public Guid BranchId { get; init; }
+    public Guid? WarehouseId { get; init; }
 }
 
 public sealed class GetSalesWarehouseStockQuery

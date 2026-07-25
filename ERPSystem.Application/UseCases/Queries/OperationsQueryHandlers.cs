@@ -384,7 +384,11 @@ public sealed class GetWarehouseDetailingQueueHandler(
         GetWarehouseDetailingQueueQuery query,
         CancellationToken cancellationToken = default)
     {
-        var invoices = await invoiceRepository.GetDetailingQueueAsync(query.WarehouseId, cancellationToken);
+        var invoices = await invoiceRepository.GetDetailingQueueAsync(
+            query.CompanyId,
+            query.BranchId,
+            query.WarehouseId,
+            cancellationToken);
         var dtos = new List<WarehouseDetailingDto>();
 
         foreach (var invoice in invoices)

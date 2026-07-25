@@ -353,6 +353,28 @@ internal sealed class SalesInvoiceRepository(ErpDbContext context) : ISalesInvoi
         return await MapHeadersToListAggregatesAsync(headers, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<SalesInvoiceAggregate>> GetDetailingQueueAsync(
+        Guid companyId,
+        Guid branchId,
+        Guid? warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.SalesInvoices.AsNoTracking()
+            .Where(i =>
+                i.CompanyId == companyId &&
+                i.BranchId == branchId &&
+                i.Status == (int)SalesInvoiceStatus.AwaitingDetailing);
+
+        if (warehouseId.HasValue)
+            query = query.Where(i => i.WarehouseId == warehouseId.Value);
+
+        var headers = await query
+            .OrderBy(i => i.SentToWarehouseAt)
+            .ToListAsync(cancellationToken);
+
+        return await MapHeadersToListAggregatesAsync(headers, cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, SalesInvoiceCustomerAgingAggregate>> GetReceivablesAgingAggregatesAsync(
         Guid companyId,
         CancellationToken cancellationToken = default)

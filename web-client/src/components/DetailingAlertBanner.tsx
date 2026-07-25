@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getDashboardSummary } from '../api/dashboard.ts';
+import { getDetailingQueue } from '../api/detailing.ts';
 import { useAuth } from '../auth/AuthContext.tsx';
 import { formatNumber } from '../lib/format.ts';
 
 export function DetailingAlertBanner() {
   const { can } = useAuth();
-  const enabled = can('warehouse.detailing') || can('sales.approve') || can('sales.send-to-warehouse');
+  const canOpenDetailing = can('warehouse.detailing');
+  const enabled = canOpenDetailing || can('sales.approve') || can('sales.send-to-warehouse');
 
   const summaryQuery = useQuery({
     queryKey: ['dashboard', 'summary'],
@@ -16,7 +18,18 @@ export function DetailingAlertBanner() {
     staleTime: 30_000
   });
 
-  const count = summaryQuery.data?.awaitingDetailingCount ?? 0;
+  const queueQuery = useQuery({
+    queryKey: ['detailing', 'queue', 'branch'],
+    queryFn: () => getDetailingQueue(),
+    enabled: canOpenDetailing,
+    refetchInterval: 60_000,
+    staleTime: 30_000
+  });
+
+  const firstInvoice = queueQuery.data?.[0];
+  const count = canOpenDetailing
+    ? queueQuery.data?.length ?? summaryQuery.data?.awaitingDetailingCount ?? 0
+    : summaryQuery.data?.awaitingDetailingCount ?? 0;
   if (!enabled || count <= 0) {
     return null;
   }
@@ -24,10 +37,15 @@ export function DetailingAlertBanner() {
   return (
     <div className="banner banner--warn detailing-alert" role="status">
       <span>
-        يوجد {formatNumber(count)} فاتورة بحاجة إلى تفنيد في المستودع.
+        {firstInvoice
+          ? `الفاتورة ${firstInvoice.invoiceNumber} للعميل ${firstInvoice.customerName || 'غير محدد'} بحاجة إلى تفنيد ${formatNumber(firstInvoice.rolls.length)} ثوب${count > 1 ? `، ويوجد ${formatNumber(count - 1)} فاتورة أخرى` : ''}.`
+          : `يوجد ${formatNumber(count)} فاتورة بحاجة إلى تفنيد في المستودع.`}
       </span>
-      {can('warehouse.detailing') ? (
-        <Link className="detailing-alert__link" to="/delivery">
+      {canOpenDetailing ? (
+        <Link
+          className="detailing-alert__link"
+          to={firstInvoice ? `/delivery/${firstInvoice.invoiceId}` : '/delivery'}
+        >
           فتح التسليم
         </Link>
       ) : null}
