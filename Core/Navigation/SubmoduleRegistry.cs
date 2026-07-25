@@ -70,7 +70,6 @@ namespace ERPSystem.Core.Navigation
             {
                 new SubmoduleDef("Chart", "شجرة الحسابات", "\uE8C3"),
                 new SubmoduleDef("Journal", "دفتر اليومية", "\uE8C1"),
-                new SubmoduleDef("JournalBooks", "دفاتر اليومية", "\uE8A5"),
                 new SubmoduleDef("AccountLedger", "كشف حساب", "\uE8A1"),
                 new SubmoduleDef("Receipts", "سند قبض", "\uE7A6"),
                 new SubmoduleDef("Payments", "سند صرف", "\uE719"),
