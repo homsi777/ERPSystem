@@ -31,6 +31,7 @@ public static class SalesEndpoints
         group.MapPost("invoices/{invoiceId:guid}/cancel", CancelInvoiceAsync).WithName("CancelSalesInvoice");
         group.MapPost("invoices/{invoiceId:guid}/reverse", ReverseInvoiceAsync).WithName("ReverseSalesInvoice");
         group.MapGet("invoices/{invoiceId:guid}/below-cost", GetBelowCostAsync).WithName("GetSalesInvoiceBelowCost");
+        group.MapGet("sellable-containers", GetSellableContainersAsync).WithName("GetSalesSellableContainers");
         group.MapGet("warehouse-stock", GetWarehouseStockAsync).WithName("GetSalesWarehouseStock");
         group.MapGet("tax-codes", GetTaxCodesAsync).WithName("GetSalesTaxCodes");
         group.MapPost("invoices/calculate", CalculateInvoiceTaxAsync).WithName("CalculateSalesInvoiceTax");
@@ -212,6 +213,19 @@ public static class SalesEndpoints
         var result = await handler.HandleAsync(new GetSalesWarehouseStockQuery
         {
             ContainerId = containerId,
+            WarehouseId = warehouseId
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetSellableContainersAsync(
+        [FromQuery] Guid warehouseId,
+        GetSalesSellableContainersHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetSalesSellableContainersQuery
+        {
             WarehouseId = warehouseId
         }, cancellationToken);
 

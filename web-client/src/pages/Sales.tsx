@@ -9,12 +9,12 @@ import {
   getSalesInvoice,
   getSalesInvoicePdf,
   getSalesInvoices,
+  getSalesSellableContainers,
   getSalesWarehouseStock,
   getTaxCodes,
   sendSalesInvoiceToWarehouse
 } from '../api/sales.ts';
 import { getCustomers } from '../api/customers.ts';
-import { getContainers } from '../api/containers.ts';
 import { getInventoryWarehouses } from '../api/inventory.ts';
 import { getCashboxLookups } from '../api/lookups.ts';
 import { getApiErrorMessage } from '../lib/apiError.ts';
@@ -415,8 +415,9 @@ function SalesCreatePage() {
   });
 
   const containersQuery = useQuery({
-    queryKey: ['containers', 'in-warehouse'],
-    queryFn: () => getContainers({ status: 6, page: 1, pageSize: 200 })
+    queryKey: ['sales', 'sellable-containers', warehouseId],
+    queryFn: () => getSalesSellableContainers(warehouseId),
+    enabled: warehouseId.length > 0
   });
 
   const taxCodesQuery = useQuery({
@@ -513,6 +514,23 @@ function SalesCreatePage() {
 
   function removeLine(key: string) {
     setLines((current) => current.filter((line) => line.key !== key));
+  }
+
+  function changeWarehouse(nextWarehouseId: string) {
+    if (nextWarehouseId === warehouseId) {
+      return;
+    }
+
+    setWarehouseId(nextWarehouseId);
+    setContainerId('');
+    setLines((current) =>
+      current.map((line) => ({
+        ...line,
+        containerId: '',
+        stockKey: '',
+        unitPrice: '0'
+      }))
+    );
   }
 
   function netLineAmount(line: DraftLine) {
@@ -673,7 +691,7 @@ function SalesCreatePage() {
           <div className="form-field-row form-field-row--2">
             <label className="form-field">
               <span className="form-field__label">المستودع</span>
-              <select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} required>
+              <select value={warehouseId} onChange={(event) => changeWarehouse(event.target.value)} required>
                 <option value="">اختر...</option>
                 {(warehousesQuery.data ?? []).map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
@@ -686,7 +704,7 @@ function SalesCreatePage() {
               <span className="form-field__label">الحاوية</span>
               <select value={containerId} onChange={(event) => setContainerId(event.target.value)} required>
                 <option value="">اختر...</option>
-                {(containersQuery.data?.items ?? []).map((container) => (
+                {(containersQuery.data ?? []).map((container) => (
                   <option key={container.id} value={container.id}>
                     {container.containerNumber}
                   </option>
@@ -799,7 +817,7 @@ function SalesCreatePage() {
                       }}
                     >
                       <option value="">اختر الحاوية...</option>
-                      {(containersQuery.data?.items ?? []).map((container) => (
+                      {(containersQuery.data ?? []).map((container) => (
                         <option key={container.id} value={container.id}>
                           {container.containerNumber}
                         </option>
@@ -829,6 +847,12 @@ function SalesCreatePage() {
                   </label>
                   {line.containerId && lineStockQuery?.isSuccess && lineStockOptions.length === 0 ? (
                     <p className="form-hint form-hint--warn">No available stock for this container.</p>
+                  ) : null}
+                  {line.containerId && lineStockQuery?.isError ? (
+                    <ErrorState
+                      message={getErrorMessage(lineStockQuery.error)}
+                      onRetry={() => void lineStockQuery.refetch()}
+                    />
                   ) : null}
                   <div className="form-field-row form-field-row--2">
                     <label className="form-field">

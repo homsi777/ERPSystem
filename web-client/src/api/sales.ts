@@ -9,6 +9,7 @@ import type {
   SalesInvoiceTaxPreviewDto,
   SalesTaxReportDto,
   SalesWarehouseStockOptionDto,
+  SellableContainerDto,
   TaxCodeDto
 } from './types.ts';
 
@@ -79,6 +80,11 @@ export function reverseSalesInvoice(invoiceId: string, reason: string) {
 export function getSalesWarehouseStock(containerId: string, warehouseId: string) {
   const searchParams = new URLSearchParams({ containerId, warehouseId });
   return apiRequest<SalesWarehouseStockOptionDto[]>(`/api/v1/sales/warehouse-stock?${searchParams.toString()}`);
+}
+
+export function getSalesSellableContainers(warehouseId: string) {
+  const searchParams = new URLSearchParams({ warehouseId });
+  return apiRequest<SellableContainerDto[]>(`/api/v1/sales/sellable-containers?${searchParams.toString()}`);
 }
 
 export function getTaxCodes(effectiveOn?: string) {

@@ -382,6 +382,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetSalesInvoiceOperationsCenterHandler>();
         services.AddScoped<GetWarehouseDetailingQueueHandler>();
         services.AddScoped<GetSalesWarehouseStockHandler>();
+        services.AddScoped<GetSalesSellableContainersHandler>();
         services.AddScoped<GetFabricRollSalesReservationsHandler>();
         services.AddScoped<GetDetailingCandidateRollsHandler>();
         services.AddScoped<CheckSalesInvoiceBelowCostHandler>();

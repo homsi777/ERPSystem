@@ -86,6 +86,13 @@ export type FabricStockBalanceDto = {
   availableYards?: number;
 };
 
+export type SellableContainerDto = {
+  id: string;
+  containerNumber: string;
+  notes: string | null;
+  dplQuantityUnit: DplQuantityUnit | null;
+};
+
 export type FabricSearchProfileDto = {
   fabricItemId: string;
   fabricCode: string;

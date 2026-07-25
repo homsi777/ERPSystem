@@ -1,5 +1,6 @@
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Repositories;
+using ERPSystem.Application.DTOs.Inventory;
 using ERPSystem.Application.DTOs.Sales;
 using ERPSystem.Application.Queries.Sales;
 using ERPSystem.Application.Results;
@@ -50,5 +51,27 @@ public sealed class GetSalesWarehouseStockHandler(
             .ToList();
 
         return ApplicationResult<IReadOnlyList<SalesWarehouseStockOptionDto>>.Success(options);
+    }
+}
+
+public sealed class GetSalesSellableContainersHandler(IInventoryRepository inventoryRepository)
+    : IQueryHandler<GetSalesSellableContainersQuery, ApplicationResult<IReadOnlyList<SellableContainerDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<SellableContainerDto>>> HandleAsync(
+        GetSalesSellableContainersQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        if (query.WarehouseId == Guid.Empty)
+        {
+            return ApplicationResult<IReadOnlyList<SellableContainerDto>>.ValidationFailed(
+                nameof(query.WarehouseId),
+                "Warehouse is required.");
+        }
+
+        var containers = await inventoryRepository.GetSellableContainersAsync(
+            query.WarehouseId,
+            cancellationToken);
+
+        return ApplicationResult<IReadOnlyList<SellableContainerDto>>.Success(containers);
     }
 }
