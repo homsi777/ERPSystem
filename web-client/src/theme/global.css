@@ -2570,6 +2570,19 @@ svg {
   backdrop-filter: blur(14px);
 }
 
+/*
+ * Sales invoices can contain several tall line cards. Their totals must remain
+ * part of the document flow so they never cover the active line/tax fields.
+ * Other compact forms keep their intentionally sticky footer.
+ */
+.sales-create__footer {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  margin-block-start: 12px;
+  margin-block-end: 8px;
+}
+
 .sticky-form-footer__total,
 .sales-create__total {
   display: grid;
@@ -2695,6 +2708,14 @@ svg {
   .sticky-form-footer,
   .sales-create__footer {
     inset-inline: 8px;
+  }
+
+  .sales-create {
+    padding-block-end: 0;
+  }
+
+  .sales-create__footer {
+    inset-inline: auto;
   }
 
   .compact-hero {
