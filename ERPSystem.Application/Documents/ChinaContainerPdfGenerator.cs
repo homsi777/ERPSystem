@@ -324,20 +324,28 @@ public sealed class ChinaContainerPdfGenerator
                     DisplayNumber(inventory.SoldMeters, unit));
                 SummaryCard(row, "قيمة المخزون", Usd(inventory.InventoryValuation));
             });
-            column.Item().PaddingTop(6).Border(1).BorderColor(Border).Column(rows =>
+            column.Item().PaddingTop(6).Row(row =>
             {
-                DetailRow(rows, "إجمالي الأثواب", Integer(inventory.TotalRolls));
-                DetailRow(rows, "الأثواب المتاحة", Integer(inventory.AvailableRolls));
-                DetailRow(rows, "الأثواب المحجوزة", Integer(inventory.ReservedRolls));
-                DetailRow(rows, "الأثواب المباعة", Integer(inventory.SoldRolls));
-                DetailRow(
-                    rows,
+                InventoryFact(row, "إجمالي الأثواب", Integer(inventory.TotalRolls));
+                InventoryFact(row, "الأثواب المتاحة", Integer(inventory.AvailableRolls));
+                InventoryFact(row, "الأثواب المحجوزة", Integer(inventory.ReservedRolls));
+                InventoryFact(row, "الأثواب المباعة", Integer(inventory.SoldRolls));
+                InventoryFact(
+                    row,
                     ChinaImportLengthDisplay.CostPerUnitLabel(unit),
                     Usd(ChinaImportLengthDisplay.FromStoredRate(inventory.CostPerMeter, unit)));
-                DetailRow(rows, "المخزون مرحّل", inventory.IsStockPosted ? "نعم" : "لا");
             });
         });
     }
+
+    private static void InventoryFact(RowDescriptor row, string label, string value) =>
+        row.RelativeItem().PaddingHorizontal(2).Background(Paper).Border(1).BorderColor(Border)
+            .Padding(6).Column(column =>
+            {
+                column.Item().Text(label).FontSize(7.5f).FontColor(Muted);
+                column.Item().PaddingTop(2).ContentFromLeftToRight()
+                    .Text(value).FontSize(8.5f).SemiBold();
+            });
 
     private static (int TotalRolls, decimal TotalMeters) ResolveTotals(
         ContainerOperationsCenterDto operations)
