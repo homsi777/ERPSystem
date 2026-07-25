@@ -1,4 +1,5 @@
 using System.Globalization;
+using ERPSystem.Application.Common;
 using ERPSystem.Application.DTOs.Containers;
 using ERPSystem.Domain.Enums;
 using QuestPDF.Fluent;
@@ -52,16 +53,25 @@ public sealed class ChinaContainerPdfGenerator
                 {
                     column.Spacing(10);
                     column.Item().Element(c => ComposeContainerDetails(c, operations));
-                    column.Item().Element(c => ComposeSummary(c, container));
+                    column.Item().Element(c => ComposeSummary(c, operations));
+                    column.Item().Element(c => ComposeLogistics(c, operations));
 
                     if (container.FabricTypeLines.Count > 0)
-                        column.Item().Element(c => ComposeFabricTypes(c, container.FabricTypeLines));
+                        column.Item().Element(c => ComposeFabricTypes(
+                            c,
+                            container.FabricTypeLines,
+                            container.DplQuantityUnit));
+                    else
+                        column.Item().Element(ComposeEmptyFabricTypes);
 
                     if (container.LandingCost is not null)
                         column.Item().Element(c => ComposeLandingCost(
                             c,
                             container.LandingCost,
-                            container.ChinaInvoiceAmountUsd));
+                            container.ChinaInvoiceAmountUsd,
+                            container.DplQuantityUnit));
+                    else
+                        column.Item().Element(ComposePendingLandingCost);
 
                     if (operations.Inventory is not null)
                         column.Item().Element(c => ComposeInventory(c, operations));
@@ -132,14 +142,59 @@ public sealed class ChinaContainerPdfGenerator
         });
     }
 
-    private static void ComposeSummary(IContainer target, ContainerDetailsDto container)
+    private static void ComposeSummary(IContainer target, ContainerOperationsCenterDto operations)
     {
+        var container = operations.Container;
+        var (totalRolls, totalMeters) = ResolveTotals(operations);
+
         target.Row(row =>
         {
-            SummaryCard(row, "الأثواب", Integer(container.TotalRolls));
-            SummaryCard(row, LengthLabel(container.DplQuantityUnit), Number(container.TotalMeters));
+            SummaryCard(row, "الأثواب", Integer(totalRolls));
+            SummaryCard(
+                row,
+                ChinaImportLengthDisplay.TotalLengthLabel(container.DplQuantityUnit),
+                DisplayLength(totalMeters, container.DplQuantityUnit));
             SummaryCard(row, "فاتورة الصين", Usd(container.ChinaInvoiceAmountUsd));
             SummaryCard(row, "سعر الصرف", Number(container.ExchangeRateToLocalCurrency));
+        });
+    }
+
+    private static void ComposeLogistics(IContainer target, ContainerOperationsCenterDto operations)
+    {
+        var container = operations.Container;
+        target.Column(column =>
+        {
+            column.Item().PaddingBottom(5).Text("البيانات المالية واللوجستية")
+                .FontSize(11).Bold().FontColor(Gold);
+            column.Item().Border(1).BorderColor(Border).Row(row =>
+            {
+                row.RelativeItem().Padding(8).Column(details =>
+                {
+                    details.Item().Text("احتياطي الضريبة المالية").FontSize(8).FontColor(Muted);
+                    details.Item().PaddingTop(2).ContentFromLeftToRight()
+                        .Text(Usd(container.FinancialTaxReserveUsd)).SemiBold();
+                });
+                row.RelativeItem().BorderRight(1).BorderColor(Border).Padding(8).Column(details =>
+                {
+                    details.Item().Text("الوزن").FontSize(8).FontColor(Muted);
+                    details.Item().PaddingTop(2).ContentFromLeftToRight()
+                        .Text(container.TotalWeightKg.HasValue
+                            ? $"{Number(container.TotalWeightKg.Value)} كغ"
+                            : "غير محدد").SemiBold();
+                });
+                row.RelativeItem().BorderRight(1).BorderColor(Border).Padding(8).Column(details =>
+                {
+                    details.Item().Text("تكلفة الوصول").FontSize(8).FontColor(Muted);
+                    details.Item().PaddingTop(2)
+                        .Text(container.LandingCost is null ? "لم تُحسب بعد" : "محسوبة").SemiBold();
+                });
+                row.RelativeItem().BorderRight(1).BorderColor(Border).Padding(8).Column(details =>
+                {
+                    details.Item().Text("ترحيل المخزون").FontSize(8).FontColor(Muted);
+                    details.Item().PaddingTop(2)
+                        .Text(operations.Inventory?.IsStockPosted == true ? "نعم" : "لا").SemiBold();
+                });
+            });
         });
     }
 
@@ -156,7 +211,8 @@ public sealed class ChinaContainerPdfGenerator
 
     private static void ComposeFabricTypes(
         IContainer target,
-        IReadOnlyList<ContainerFabricTypeLineDto> lines)
+        IReadOnlyList<ContainerFabricTypeLineDto> lines,
+        DplQuantityUnit? unit)
     {
         target.Column(column =>
         {
@@ -178,9 +234,9 @@ public sealed class ChinaContainerPdfGenerator
                     HeaderCell(header, "#");
                     HeaderCell(header, "نوع القماش");
                     HeaderCell(header, "الأثواب");
-                    HeaderCell(header, "الطول (م)");
+                    HeaderCell(header, ChinaImportLengthDisplay.LengthColumnHeader(unit));
                     HeaderCell(header, "الوزن (كغ)");
-                    HeaderCell(header, "سعر البيع/م");
+                    HeaderCell(header, ChinaImportLengthDisplay.SalePricePerUnitLabel(unit));
                 });
 
                 foreach (var line in lines.OrderBy(item => item.LineNumber))
@@ -188,18 +244,34 @@ public sealed class ChinaContainerPdfGenerator
                     BodyCell(table, Integer(line.LineNumber));
                     BodyCell(table, line.TypeDisplayName, alignRight: true);
                     BodyCell(table, Integer(line.RollCount));
-                    BodyCell(table, Number(line.LengthMeters));
+                    BodyCell(table, DisplayNumber(line.LengthMeters, unit));
                     BodyCell(table, Number(line.NetWeightKg));
-                    BodyCell(table, line.HasSalePrice ? Usd(line.SalePricePerMeterUsd) : "—");
+                    BodyCell(
+                        table,
+                        line.HasSalePrice
+                            ? Usd(ChinaImportLengthDisplay.FromStoredRate(
+                                line.SalePricePerMeterUsd,
+                                unit))
+                            : "—");
                 }
             });
         });
     }
 
+    private static void ComposeEmptyFabricTypes(IContainer target) =>
+        target.Column(column =>
+        {
+            column.Item().PaddingBottom(5).Text("تفاصيل أنواع الأقمشة")
+                .FontSize(11).Bold().FontColor(Gold);
+            column.Item().Background(Paper).Border(1).BorderColor(Border).Padding(9)
+                .Text("لا توجد بنود أنواع أقمشة مسجلة لهذه الحاوية.").FontColor(Muted);
+        });
+
     private static void ComposeLandingCost(
         IContainer target,
         LandingCostDto cost,
-        decimal chinaInvoiceAmountUsd)
+        decimal chinaInvoiceAmountUsd,
+        DplQuantityUnit? unit)
     {
         target.Column(column =>
         {
@@ -212,6 +284,10 @@ public sealed class ChinaContainerPdfGenerator
                 DetailRow(rows, "الجمارك", Usd(cost.CustomsAmount));
                 DetailRow(rows, "التخليص", Usd(cost.Clearance));
                 DetailRow(rows, "المصاريف الأخرى", Usd(cost.OtherExpenses));
+                DetailRow(
+                    rows,
+                    ChinaImportLengthDisplay.TotalLengthLabel(unit),
+                    DisplayLength(cost.TotalLengthMeters, unit));
                 rows.Item().Background(Navy).PaddingVertical(6).PaddingHorizontal(10).Row(row =>
                 {
                     row.RelativeItem().Text("إجمالي مصاريف الاستيراد").FontColor(Colors.White).Bold();
@@ -222,20 +298,60 @@ public sealed class ChinaContainerPdfGenerator
         });
     }
 
+    private static void ComposePendingLandingCost(IContainer target) =>
+        target.Column(column =>
+        {
+            column.Item().PaddingBottom(5).Text("تكلفة الوصول")
+                .FontSize(11).Bold().FontColor(Gold);
+            column.Item().Background(Paper).Border(1).BorderColor(Border).Padding(9)
+                .Text("لم تُحسب تكلفة الوصول لهذه الحاوية بعد.").FontColor(Muted);
+        });
+
     private static void ComposeInventory(IContainer target, ContainerOperationsCenterDto operations)
     {
         var inventory = operations.Inventory!;
+        var unit = operations.Container.DplQuantityUnit;
         target.Column(column =>
         {
             column.Item().PaddingBottom(5).Text("حالة المخزون").FontSize(11).Bold().FontColor(Gold);
             column.Item().Row(row =>
             {
-                SummaryCard(row, "المتاح (م)", Number(inventory.AvailableMeters));
-                SummaryCard(row, "المحجوز (م)", Number(inventory.ReservedMeters));
-                SummaryCard(row, "المباع (م)", Number(inventory.SoldMeters));
+                SummaryCard(row, $"المتاح ({ChinaImportLengthDisplay.LengthAbbrev(unit)})",
+                    DisplayNumber(inventory.AvailableMeters, unit));
+                SummaryCard(row, $"المحجوز ({ChinaImportLengthDisplay.LengthAbbrev(unit)})",
+                    DisplayNumber(inventory.ReservedMeters, unit));
+                SummaryCard(row, $"المباع ({ChinaImportLengthDisplay.LengthAbbrev(unit)})",
+                    DisplayNumber(inventory.SoldMeters, unit));
                 SummaryCard(row, "قيمة المخزون", Usd(inventory.InventoryValuation));
             });
+            column.Item().PaddingTop(6).Border(1).BorderColor(Border).Column(rows =>
+            {
+                DetailRow(rows, "إجمالي الأثواب", Integer(inventory.TotalRolls));
+                DetailRow(rows, "الأثواب المتاحة", Integer(inventory.AvailableRolls));
+                DetailRow(rows, "الأثواب المحجوزة", Integer(inventory.ReservedRolls));
+                DetailRow(rows, "الأثواب المباعة", Integer(inventory.SoldRolls));
+                DetailRow(
+                    rows,
+                    ChinaImportLengthDisplay.CostPerUnitLabel(unit),
+                    Usd(ChinaImportLengthDisplay.FromStoredRate(inventory.CostPerMeter, unit)));
+                DetailRow(rows, "المخزون مرحّل", inventory.IsStockPosted ? "نعم" : "لا");
+            });
         });
+    }
+
+    private static (int TotalRolls, decimal TotalMeters) ResolveTotals(
+        ContainerOperationsCenterDto operations)
+    {
+        var container = operations.Container;
+        var inventory = operations.Inventory;
+        var inventoryIsAuthoritative = inventory is not null
+            && (inventory.IsStockPosted
+                || container.TotalRolls == 0 && inventory.TotalRolls > 0
+                || container.TotalMeters == 0 && inventory.TotalMeters > 0);
+
+        return inventoryIsAuthoritative
+            ? (inventory!.TotalRolls, inventory.TotalMeters)
+            : (container.TotalRolls, container.TotalMeters);
     }
 
     private static void DetailRow(ColumnDescriptor column, string label, string value) =>
@@ -292,8 +408,14 @@ public sealed class ChinaContainerPdfGenerator
     private static string UnitLabel(DplQuantityUnit? unit) =>
         unit == DplQuantityUnit.Yards ? "ياردة (YDS)" : "متر (M)";
 
-    private static string LengthLabel(DplQuantityUnit? unit) =>
-        unit == DplQuantityUnit.Yards ? "الطول (ياردة)" : "الطول (متر)";
+    private static decimal DisplayValue(decimal meters, DplQuantityUnit? unit) =>
+        ChinaImportLengthDisplay.FromStoredLength(meters, unit);
+
+    private static string DisplayNumber(decimal meters, DplQuantityUnit? unit) =>
+        Number(DisplayValue(meters, unit));
+
+    private static string DisplayLength(decimal meters, DplQuantityUnit? unit) =>
+        $"{DisplayNumber(meters, unit)} {ChinaImportLengthDisplay.LengthAbbrev(unit)}";
 
     private static string Date(DateTime value) => value.ToString("yyyy-MM-dd", WesternNumbers);
     private static string OptionalDate(DateTime? value) => value.HasValue ? Date(value.Value) : "غير محدد";

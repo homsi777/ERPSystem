@@ -72,10 +72,17 @@ export function downloadPdfBlob(blob: Blob, fileName: string) {
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+  anchor.style.display = 'none';
   document.body.appendChild(anchor);
   anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+
+  // Chromium may not start an async Blob download if its URL is revoked in the
+  // same task as the synthetic click. Keep both alive until the browser has
+  // safely consumed the response.
+  window.setTimeout(() => {
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, 60_000);
 }
 
 export async function exportDocumentPdf(payload: DocumentExportPayload): Promise<void> {

@@ -26,31 +26,24 @@ public sealed class ChinaContainerPdfGeneratorTests
                 ShipmentDate = new DateTime(2026, 7, 22),
                 ArrivalDate = new DateTime(2026, 8, 15),
                 Status = ChinaContainerStatus.InWarehouse,
-                TotalRolls = 5,
-                TotalMeters = 5374m,
-                ChinaInvoiceAmountUsd = 1511.81m,
+                // Legacy containers can have zero aggregate totals while their
+                // posted inventory contains the authoritative figures.
+                TotalRolls = 0,
+                TotalMeters = 0m,
+                ChinaInvoiceAmountUsd = 0m,
                 ExchangeRateToLocalCurrency = 1m,
-                DplQuantityUnit = DplQuantityUnit.Meters,
-                FabricTypeLines =
-                [
-                    new ContainerFabricTypeLineDto
-                    {
-                        LineNumber = 1,
-                        TypeDisplayName = "قماش أسود",
-                        RollCount = 5,
-                        LengthMeters = 5374m,
-                        NetWeightKg = 950m,
-                        SalePricePerMeterUsd = 3.75m
-                    }
-                ]
+                DplQuantityUnit = DplQuantityUnit.Yards,
+                FabricTypeLines = []
             },
             Inventory = new ContainerInventoryMetricsDto
             {
-                TotalRolls = 5,
-                TotalMeters = 5374m,
-                AvailableRolls = 5,
-                AvailableMeters = 5374m,
-                InventoryValuation = 1511.81m,
+                TotalRolls = 500,
+                TotalMeters = 41_148m,
+                AvailableRolls = 460,
+                AvailableMeters = 37_856.16m,
+                ReservedRolls = 40,
+                ReservedMeters = 3_291.84m,
+                InventoryValuation = 0m,
                 IsStockPosted = true
             },
             IsReadyForSale = true,
