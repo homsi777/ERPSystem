@@ -276,6 +276,13 @@ read -r -d '' NGINX_LOCATIONS <<LOC || true
 
     location = /health { proxy_pass http://127.0.0.1:${API_PORT}/health; }
 
+    # يجب ألا يُخزّن المتصفح أو CDN ملف عامل الخدمة، وإلا قد تبقى واجهة قديمة بعد النشر.
+    location ~ ^/sw(?:-[A-Za-z0-9._-]+)?\.js$ {
+        try_files \$uri =404;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        expires -1;
+    }
+
     # توجيه SPA (React Router)
     location / {
         try_files \$uri \$uri/ /index.html;

@@ -10,6 +10,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Keep the worker script off the generic *.js edge cache. Nginx serves
+      // this dedicated URL with no-store so every deployment is discovered.
+      filename: 'sw-v3.js',
       includeAssets: ['icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/api\//],
