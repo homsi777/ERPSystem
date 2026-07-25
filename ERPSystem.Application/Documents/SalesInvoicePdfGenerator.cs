@@ -161,14 +161,11 @@ public sealed class SalesInvoicePdfGenerator
         {
             table.ColumnsDefinition(columns =>
             {
-                columns.RelativeColumn(2.6f);
-                columns.RelativeColumn(1.3f);
-                columns.RelativeColumn(1.05f);
-                columns.RelativeColumn(1.2f);
-                columns.RelativeColumn(1.35f);
-                columns.RelativeColumn(1.2f);
-                columns.RelativeColumn(1.2f);
-                columns.RelativeColumn(1.45f);
+                columns.RelativeColumn(3.1f);
+                columns.RelativeColumn(1.7f);
+                columns.RelativeColumn(1.25f);
+                columns.RelativeColumn(1.55f);
+                columns.RelativeColumn(1.65f);
             });
 
             table.Header(header =>
@@ -177,9 +174,6 @@ public sealed class SalesInvoicePdfGenerator
                 HeaderCell(header, "اللون");
                 HeaderCell(header, "عدد الأثواب");
                 HeaderCell(header, "الطول");
-                HeaderCell(header, "سعر الوحدة");
-                HeaderCell(header, "الخصم");
-                HeaderCell(header, "الضريبة");
                 HeaderCell(header, "الإجمالي");
             });
 
@@ -189,9 +183,6 @@ public sealed class SalesInvoicePdfGenerator
                 BodyCell(table, line.ColorDisplayName, TextAlign.Right);
                 BodyCell(table, Integer(line.RollCount));
                 BodyCell(table, line.TotalLengthDisplay);
-                BodyCell(table, Money(line.UnitPrice));
-                BodyCell(table, Money(line.DiscountAmount));
-                BodyCell(table, Money(line.TaxAmount));
                 BodyCell(table, Money(line.LineTotal));
 
             }
@@ -290,11 +281,8 @@ public sealed class SalesInvoicePdfGenerator
     {
         container.AlignLeft().Width(255).Border(1).BorderColor(Border).Column(column =>
         {
-            var lineDiscount = invoice.Lines.Sum(line => line.DiscountAmount);
+            TotalRow(column, "إجمالي عدد الأتواب", invoice.Lines.Sum(line => line.RollCount), false);
             TotalRow(column, "المجموع الفرعي", invoice.SubTotal);
-            TotalRow(column, "خصم الأسطر", lineDiscount);
-            TotalRow(column, "إجمالي الخصم", invoice.DiscountTotal);
-            TotalRow(column, "إجمالي الضريبة", invoice.TaxTotal);
             if (Math.Abs(invoice.RoundingDifference) >= 0.01m)
                 TotalRow(column, "فرق التقريب", invoice.RoundingDifference);
 
@@ -307,11 +295,12 @@ public sealed class SalesInvoicePdfGenerator
         });
     }
 
-    private static void TotalRow(ColumnDescriptor column, string label, decimal value) =>
+    private static void TotalRow(ColumnDescriptor column, string label, decimal value, bool isMoney = true) =>
         column.Item().PaddingVertical(5).PaddingHorizontal(10).Row(row =>
         {
             row.RelativeItem().Text(label);
-            row.ConstantItem(95).AlignLeft().ContentFromLeftToRight().Text(Money(value)).SemiBold();
+            row.ConstantItem(95).AlignLeft().ContentFromLeftToRight()
+                .Text(isMoney ? Money(value) : Integer(decimal.ToInt32(value))).SemiBold();
         });
 
     private static void ComposeFooter(IContainer container, string invoiceNumber)
