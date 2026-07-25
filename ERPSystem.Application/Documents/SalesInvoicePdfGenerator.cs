@@ -59,12 +59,18 @@ public sealed class SalesInvoicePdfGenerator
                     .FontColor(Navy));
                 page.ContentFromRightToLeft();
 
-                page.Header().Element(container => ComposeHeader(container, invoice));
+                page.Header().ShowOnce().Element(container => ComposeHeader(container, invoice));
                 page.Content().PaddingTop(12).Column(column =>
                 {
                     column.Spacing(12);
                     column.Item().Element(container => ComposePartyDetails(container, operations));
-                    column.Item().Element(container => ComposeLines(container, invoice.Lines));
+                    column.Item().Element(container => ComposeLineSummary(container, invoice.Lines));
+                    foreach (var line in invoice.Lines
+                                 .Where(item => item.RollLengths.Count > 0)
+                                 .OrderBy(item => item.LineNumber))
+                    {
+                        column.Item().Element(container => ComposeRollDetailGrid(container, line));
+                    }
                     column.Item().Element(container => ComposeTotals(container, invoice));
                 });
                 page.Footer().Element(container => ComposeFooter(container, invoice.InvoiceNumber));
@@ -149,7 +155,7 @@ public sealed class SalesInvoicePdfGenerator
         });
     }
 
-    private static void ComposeLines(IContainer container, IReadOnlyList<SalesInvoiceLineDto> lines)
+    private static void ComposeLineSummary(IContainer container, IReadOnlyList<SalesInvoiceLineDto> lines)
     {
         container.Table(table =>
         {
@@ -188,16 +194,84 @@ public sealed class SalesInvoicePdfGenerator
                 BodyCell(table, Money(line.TaxAmount));
                 BodyCell(table, Money(line.LineTotal));
 
-                if (line.RollLengths.Count > 0)
-                {
-                    var breakdown = string.Join("     ", line.RollLengths.Select(r => $"({r.RollSequence}) {Number(r.LengthMeters)}"));
-                    table.Cell().ColumnSpan(8).Background(Paper).BorderBottom(0.7f).BorderColor(Border)
-                        .PaddingVertical(4).PaddingHorizontal(8).AlignRight()
-                        .Text($"تفصيل أطوال الأثواب (م): {breakdown}").FontSize(7.5f).FontColor(Muted).Italic();
-                }
             }
         });
     }
+
+    private static void ComposeRollDetailGrid(IContainer container, SalesInvoiceLineDto line)
+    {
+        const int groupsPerRow = 5;
+        var rolls = line.RollLengths
+            .OrderBy(roll => roll.RollNumber ?? roll.RollSequence)
+            .ThenBy(roll => roll.RollSequence)
+            .ToList();
+
+        container.Column(column =>
+        {
+            column.Item().Background(GoldSoft).Border(1).BorderColor(Border)
+                .PaddingVertical(6).PaddingHorizontal(8).Row(row =>
+                {
+                    row.RelativeItem().AlignRight()
+                        .Text($"تفنيد الأطوال - {line.FabricDisplayName} / {line.ColorDisplayName}")
+                        .FontSize(9).SemiBold().FontColor(Navy);
+                    row.AutoItem().ContentFromLeftToRight()
+                        .Text($"{Integer(rolls.Count)} توب")
+                        .FontSize(8).SemiBold().FontColor(Gold);
+                });
+
+            column.Item().Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    for (var group = 0; group < groupsPerRow; group++)
+                    {
+                        columns.RelativeColumn(0.8f);
+                        columns.RelativeColumn(1.15f);
+                    }
+                });
+
+                table.Header(header =>
+                {
+                    for (var group = 0; group < groupsPerRow; group++)
+                    {
+                        RollHeaderCell(header, "رقم التوب");
+                        RollHeaderCell(header, "الطول (م)");
+                    }
+                });
+
+                for (var offset = 0; offset < rolls.Count; offset += groupsPerRow)
+                {
+                    for (var group = 0; group < groupsPerRow; group++)
+                    {
+                        var index = offset + group;
+                        if (index < rolls.Count)
+                        {
+                            var roll = rolls[index];
+                            RollBodyCell(table, Integer(roll.RollNumber ?? roll.RollSequence), true);
+                            RollBodyCell(table, Number(roll.LengthMeters), false);
+                        }
+                        else
+                        {
+                            RollBodyCell(table, "", true);
+                            RollBodyCell(table, "", false);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    private static void RollHeaderCell(TableCellDescriptor table, string text) =>
+        table.Cell().Background(NavySoft).Border(0.5f).BorderColor(Gold)
+            .PaddingVertical(4).PaddingHorizontal(2).AlignCenter().AlignMiddle()
+            .Text(text).FontColor(Colors.White).FontSize(6.8f).SemiBold();
+
+    private static void RollBodyCell(TableDescriptor table, string text, bool isRollNumber) =>
+        table.Cell().Background(isRollNumber ? Paper : Colors.White)
+            .Border(0.45f).BorderColor(Border)
+            .PaddingVertical(3.5f).PaddingHorizontal(2)
+            .AlignCenter().AlignMiddle().ContentFromLeftToRight()
+            .Text(text).FontSize(7.2f).SemiBold();
 
     private static void HeaderCell(TableCellDescriptor table, string text) =>
         table.Cell().Background(NavySoft).Border(0.5f).BorderColor(Gold)

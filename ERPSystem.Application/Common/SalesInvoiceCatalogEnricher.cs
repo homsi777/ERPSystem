@@ -23,7 +23,8 @@ public static class SalesInvoiceCatalogEnricher
     public static IReadOnlyList<SalesInvoiceLineDto> EnrichLines(
         IReadOnlyList<SalesInvoiceLineDto> lines,
         IReadOnlyDictionary<Guid, FabricItem> fabrics,
-        IReadOnlyDictionary<Guid, FabricColor> colors)
+        IReadOnlyDictionary<Guid, FabricColor> colors,
+        IReadOnlyDictionary<Guid, int>? rollNumbers = null)
     {
         if (lines.Count == 0)
             return lines;
@@ -60,7 +61,17 @@ public static class SalesInvoiceCatalogEnricher
                 TaxableAmount = line.TaxableAmount,
                 TaxAmount = line.TaxAmount,
                 Notes = line.Notes,
-                RollLengths = line.RollLengths
+                RollLengths = line.RollLengths.Select(roll => new SalesInvoiceRollLengthDto
+                {
+                    FabricRollId = roll.FabricRollId,
+                    RollNumber = roll.FabricRollId is { } rollId &&
+                                 rollNumbers is not null &&
+                                 rollNumbers.TryGetValue(rollId, out var rollNumber)
+                        ? rollNumber
+                        : roll.RollNumber,
+                    RollSequence = roll.RollSequence,
+                    LengthMeters = roll.LengthMeters
+                }).ToList()
             });
         }
 

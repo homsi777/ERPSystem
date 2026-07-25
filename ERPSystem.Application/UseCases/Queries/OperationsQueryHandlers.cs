@@ -234,7 +234,8 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
     IJournalEntryRepository journalEntryRepository,
     IReceiptInvoicePaymentRepository paymentRepository,
     ISalesReturnRepository salesReturnRepository,
-    IChinaContainerRepository containerRepository)
+    IChinaContainerRepository containerRepository,
+    IInventoryRepository inventoryRepository)
     : IQueryHandler<GetSalesInvoiceOperationsCenterQuery, ApplicationResult<SalesInvoiceOperationsCenterDto>>
 {
     public async Task<ApplicationResult<SalesInvoiceOperationsCenterDto>> HandleAsync(
@@ -265,7 +266,17 @@ public sealed class GetSalesInvoiceOperationsCenterHandler(
         var fabrics = await fabricCatalogRepository.GetItemsByIdsAsync(fabricIds, cancellationToken);
         var colors = await fabricCatalogRepository.GetColorsByIdsAsync(colorIds, cancellationToken);
 
-        var enrichedLines = SalesInvoiceCatalogEnricher.EnrichLines(baseDto.Invoice.Lines, fabrics, colors);
+        var physicalRollIds = aggregate.RollDetails
+            .Where(detail => detail.FabricRollId.HasValue)
+            .Select(detail => detail.FabricRollId!.Value)
+            .Distinct()
+            .ToList();
+        var rollNumbers = await inventoryRepository.GetRollNumbersAsync(physicalRollIds, cancellationToken);
+        var enrichedLines = SalesInvoiceCatalogEnricher.EnrichLines(
+            baseDto.Invoice.Lines,
+            fabrics,
+            colors,
+            rollNumbers);
         var containerIds = aggregate.Items
             .Select(i => i.ChinaContainerId)
             .Append(aggregate.ChinaContainerId)

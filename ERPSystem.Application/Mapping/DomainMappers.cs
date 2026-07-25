@@ -316,6 +316,7 @@ public static class SalesInvoiceMapper
                     .OrderBy(r => r.RollSequence.Value)
                     .Select(r => new SalesInvoiceRollLengthDto
                     {
+                        FabricRollId = r.FabricRollId,
                         RollSequence = r.RollSequence.Value,
                         LengthMeters = r.LengthMeters.Value
                     })

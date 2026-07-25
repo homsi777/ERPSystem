@@ -34,4 +34,9 @@ public interface IInventoryRepository
     Task<IReadOnlyDictionary<Guid, decimal>> GetRollCostsAsync(
         IReadOnlyCollection<Guid> rollIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the persisted physical roll number for each requested roll id.</summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetRollNumbersAsync(
+        IReadOnlyCollection<Guid> rollIds,
+        CancellationToken cancellationToken = default);
 }

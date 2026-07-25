@@ -94,5 +94,11 @@ public sealed class GetSalesSellableContainersHandlerTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyDictionary<Guid, decimal>>(
                 new Dictionary<Guid, decimal>());
+
+        public Task<IReadOnlyDictionary<Guid, int>> GetRollNumbersAsync(
+            IReadOnlyCollection<Guid> rollIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, int>>(
+                new Dictionary<Guid, int>());
     }
 }

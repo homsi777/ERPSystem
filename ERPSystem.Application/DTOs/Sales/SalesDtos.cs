@@ -73,6 +73,8 @@ public sealed class SalesInvoiceLineDto
 /// <summary>Individual roll length for the "تفصيل أطوال التوب" print breakdown — one entry per physical roll on the line.</summary>
 public sealed class SalesInvoiceRollLengthDto
 {
+    public Guid? FabricRollId { get; init; }
+    public int? RollNumber { get; init; }
     public int RollSequence { get; init; }
     public decimal LengthMeters { get; init; }
 }
