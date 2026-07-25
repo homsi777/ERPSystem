@@ -1,4 +1,4 @@
-import { apiRequest } from './client.ts';
+import { apiBlobRequest, apiRequest } from './client.ts';
 import type {
   CalculateLandingCostRequest,
   ChinaContainerStatus,
@@ -34,6 +34,10 @@ export function getContainers(params: ContainerListParams) {
 
 export function getContainerOperations(containerId: string) {
   return apiRequest<ContainerOperationsCenterDto>(`/api/v1/containers/${containerId}/operations`);
+}
+
+export function getContainerPdf(containerId: string) {
+  return apiBlobRequest(`/api/v1/containers/${containerId}/pdf`);
 }
 
 export function createContainer(request: CreateChinaContainerRequest) {

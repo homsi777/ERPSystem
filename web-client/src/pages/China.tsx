@@ -6,6 +6,7 @@ import {
   archiveContainer,
   calculateLandingCost,
   createContainer,
+  getContainerPdf,
   getContainerOperations,
   getContainers,
   moveContainerToWarehouse,
@@ -580,6 +581,10 @@ function ChinaContainerDetailsPage({ containerId }: { containerId: string }) {
                   ]
                 }
               ]
+            }}
+            pdfSource={{
+              fileName: `حاوية الصين - ${container.containerNumber}.pdf`,
+              load: () => getContainerPdf(container.id)
             }}
             onToast={(message, tone = 'success') => setToast({ tone, message })}
           />

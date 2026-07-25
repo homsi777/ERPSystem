@@ -1,4 +1,5 @@
 using ERPSystem.Api.Mapping;
+using ERPSystem.Api.Services;
 using ERPSystem.Application.Abstractions;
 using ERPSystem.Application.Abstractions.Services;
 using ERPSystem.Application.Commands.Containers;
@@ -25,6 +26,9 @@ public static class ContainerEndpoints
 
         group.MapGet("{id:guid}/operations", GetContainerOperationsAsync)
             .WithName("GetContainerOperationsCenter");
+
+        group.MapGet("{id:guid}/pdf", GetContainerPdfAsync)
+            .WithName("GetChinaContainerPdf");
 
         group.MapPost("", CreateContainerAsync)
             .WithName("CreateChinaContainer");
@@ -99,6 +103,31 @@ public static class ContainerEndpoints
         }, cancellationToken);
 
         return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetContainerPdfAsync(
+        Guid id,
+        GetContainerOperationsCenterHandler handler,
+        ChinaContainerPdfService pdfService,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetContainerOperationsCenterQuery
+        {
+            ContainerId = id
+        }, cancellationToken);
+
+        return ApplicationResultHttpMapper.ToHttpResult(result, operations =>
+        {
+            var bytes = pdfService.Generate(operations);
+            var number = SanitizeFileName(operations.Container.ContainerNumber);
+            return Results.File(bytes, "application/pdf", $"حاوية الصين - {number}.pdf");
+        });
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Concat(value.Select(ch => invalid.Contains(ch) ? '-' : ch));
     }
 
     private static async Task<IResult> CreateContainerAsync(

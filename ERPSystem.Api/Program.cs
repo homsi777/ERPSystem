@@ -17,6 +17,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddScoped<ICurrentBranchService, HttpContextBranchService>();
 builder.Services.AddSingleton<SalesInvoicePdfService>();
+builder.Services.AddSingleton<ChinaContainerPdfService>();
 builder.Services.AddSingleton<ExpenseReportPdfService>();
 builder.Services.AddSingleton<ReceiptVoucherPdfService>();
 builder.Services.AddSingleton<PaymentVoucherPdfService>();
