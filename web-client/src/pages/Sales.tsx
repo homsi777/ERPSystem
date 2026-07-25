@@ -18,6 +18,10 @@ import { getCustomers } from '../api/customers.ts';
 import { getInventoryWarehouses } from '../api/inventory.ts';
 import { getCashboxLookups } from '../api/lookups.ts';
 import { getApiErrorMessage } from '../lib/apiError.ts';
+import {
+  buildUntaxedSalesInvoicePreview,
+  requiresRemoteSalesTaxPreview
+} from '../lib/salesInvoicePreview.ts';
 import type {
   CalculateSalesInvoiceTaxRequest,
   CreateSalesInvoiceLineRequest,
@@ -402,6 +406,7 @@ function SalesCreatePage() {
   const [discount, setDiscount] = useState('0');
   const [partialPayment, setPartialPayment] = useState('0');
   const [lines, setLines] = useState<DraftLine[]>([]);
+  const [invoiceDate] = useState(() => new Date().toISOString());
   const [debouncedTaxRequest, setDebouncedTaxRequest] = useState<CalculateSalesInvoiceTaxRequest | null>(null);
 
   const customersQuery = useQuery({
@@ -543,6 +548,8 @@ function SalesCreatePage() {
     return rolls * avgPerRoll * toNumber(line.unitPrice);
   }
 
+  const stockDataRevision = stockQueries.map((query) => query.dataUpdatedAt).join('|');
+
   const taxPreviewRequest = useMemo((): CalculateSalesInvoiceTaxRequest | null => {
     const previewLines = lines
       .map((line, index) => {
@@ -564,26 +571,41 @@ function SalesCreatePage() {
     }
 
     return {
-      invoiceDate: new Date().toISOString(),
+      invoiceDate,
       invoiceDiscountTotal: toNumber(discount),
       lines: previewLines
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, discount, stockByContainer]);
+  }, [lines, discount, invoiceDate, stockDataRevision]);
+
+  const requiresRemoteTaxPreview = requiresRemoteSalesTaxPreview(taxPreviewRequest);
 
   useEffect(() => {
+    if (!requiresRemoteTaxPreview) {
+      setDebouncedTaxRequest(null);
+      return;
+    }
+
     const handle = window.setTimeout(() => setDebouncedTaxRequest(taxPreviewRequest), 300);
     return () => window.clearTimeout(handle);
-  }, [taxPreviewRequest]);
+  }, [requiresRemoteTaxPreview, taxPreviewRequest]);
 
   const taxPreviewQuery = useQuery({
     queryKey: ['sales-invoice-tax-preview', debouncedTaxRequest],
-    queryFn: () => calculateSalesInvoiceTax(debouncedTaxRequest!),
-    enabled: debouncedTaxRequest !== null && debouncedTaxRequest.lines.length > 0,
+    queryFn: ({ signal }) => calculateSalesInvoiceTax(debouncedTaxRequest!, signal),
+    enabled:
+      requiresRemoteTaxPreview &&
+      debouncedTaxRequest !== null &&
+      debouncedTaxRequest.lines.length > 0,
     placeholderData: keepPreviousData
   });
 
-  const taxPreview = taxPreviewQuery.data;
+  const untaxedPreview = useMemo(
+    () => buildUntaxedSalesInvoicePreview(taxPreviewRequest),
+    [taxPreviewRequest]
+  );
+
+  const taxPreview = requiresRemoteTaxPreview ? taxPreviewQuery.data : untaxedPreview;
   const previewGrandTotal = taxPreview?.grandTotal ?? 0;
   const previewValidationErrors = taxPreview?.validationErrors ?? [];
 
@@ -592,7 +614,8 @@ function SalesCreatePage() {
       const payloadLines: CreateSalesInvoiceLineRequest[] = lines
         .map((line, index): CreateSalesInvoiceLineRequest | null => {
           const stock = findStock(line);
-          if (!stock) {
+          const rollCount = Math.round(toNumber(line.rollCount));
+          if (!stock || rollCount <= 0) {
             return null;
           }
           const unitPrice = toNumber(line.unitPrice);
@@ -602,7 +625,7 @@ function SalesCreatePage() {
             chinaContainerId: line.containerId,
             fabricItemId: stock.fabricItemId,
             fabricColorId: stock.fabricColorId,
-            rollCount: Math.round(toNumber(line.rollCount)),
+            rollCount,
             unitPrice,
             originalUnitPrice: stock.salePricePerMeter ?? unitPrice,
             unit,
@@ -649,8 +672,21 @@ function SalesCreatePage() {
       setToast({ tone: 'error', message: 'Choose a container for every invoice line.' });
       return;
     }
+    const unavailableLine = validLines.find((line) => {
+      const stock = findStock(line);
+      const requestedRolls = Math.round(toNumber(line.rollCount));
+      return !stock || requestedRolls > stock.availableRollCount;
+    });
+    if (unavailableLine) {
+      setToast({ tone: 'error', message: 'عدد الأثواب المطلوب يتجاوز المخزون المتاح.' });
+      return;
+    }
     if (previewValidationErrors.length > 0) {
       setToast({ tone: 'error', message: previewValidationErrors[0] ?? 'تعذّر التحقق من الضريبة.' });
+      return;
+    }
+    if (requiresRemoteTaxPreview && (taxPreviewQuery.isError || !taxPreview)) {
+      setToast({ tone: 'error', message: 'تعذر التحقق من الضريبة. أعد المحاولة قبل إنشاء الفاتورة.' });
       return;
     }
     if ((paymentType === '0' || toNumber(partialPayment) > 0) && !cashboxId) {
@@ -893,10 +929,10 @@ function SalesCreatePage() {
 
         <div className="sales-create__footer">
           <div className="sales-create__total">
-            {taxPreviewQuery.isFetching && debouncedTaxRequest ? (
+            {requiresRemoteTaxPreview && taxPreviewQuery.isFetching && debouncedTaxRequest ? (
               <p className="form-hint">جار حساب الضريبة...</p>
             ) : null}
-            {taxPreviewQuery.isError ? (
+            {requiresRemoteTaxPreview && taxPreviewQuery.isError ? (
               <p className="form-hint form-hint--warn">{getErrorMessage(taxPreviewQuery.error)}</p>
             ) : null}
             {previewValidationErrors.length > 0 ? (
@@ -943,7 +979,7 @@ function SalesCreatePage() {
                   <strong>{formatCurrency(taxPreview.grandTotal)}</strong>
                 </div>
               </div>
-            ) : debouncedTaxRequest ? (
+            ) : requiresRemoteTaxPreview && debouncedTaxRequest ? (
               <p className="form-hint">جار حساب الإجمالي...</p>
             ) : (
               <>
@@ -959,7 +995,12 @@ function SalesCreatePage() {
           <button
             className="primary-button sales-create__submit"
             type="submit"
-            disabled={mutation.isPending || previewValidationErrors.length > 0 || taxPreviewQuery.isFetching}
+            disabled={
+              mutation.isPending ||
+              previewValidationErrors.length > 0 ||
+              (requiresRemoteTaxPreview &&
+                (taxPreviewQuery.isFetching || taxPreviewQuery.isError || !taxPreview))
+            }
           >
             {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء مسودة'}
           </button>

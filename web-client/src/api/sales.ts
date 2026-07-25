@@ -96,10 +96,11 @@ export function getTaxCodes(effectiveOn?: string) {
   return apiRequest<TaxCodeDto[]>(`/api/v1/sales/tax-codes${query ? `?${query}` : ''}`);
 }
 
-export function calculateSalesInvoiceTax(request: CalculateSalesInvoiceTaxRequest) {
+export function calculateSalesInvoiceTax(request: CalculateSalesInvoiceTaxRequest, signal?: AbortSignal) {
   return apiRequest<SalesInvoiceTaxPreviewDto>('/api/v1/sales/invoices/calculate', {
     method: 'POST',
-    body: request
+    body: request,
+    signal
   });
 }
 
