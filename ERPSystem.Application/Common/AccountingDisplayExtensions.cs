@@ -27,12 +27,25 @@ public static class AccountingDisplayExtensions
 
     public static string ToDisplay(this DocumentType? sourceType) => sourceType switch
     {
-        DocumentType.SalesInvoice => "فاتورة مبيعات",
-        DocumentType.ChinaContainer => "حاوية استيراد",
-        DocumentType.JournalEntry => "قيد يومية",
+        DocumentType.SalesInvoice => "فاتورة بيع",
+        DocumentType.SalesReturn => "مرتجع بيع",
+        DocumentType.PurchaseInvoice => "فاتورة شراء",
+        DocumentType.PurchaseReturn => "مرتجع شراء",
         DocumentType.ReceiptVoucher => "سند قبض",
         DocumentType.PaymentVoucher => "سند صرف",
+        DocumentType.JournalEntry => "قيد يومية",
+        DocumentType.StockMovement => "حركة مخزون",
+        DocumentType.DeliveryNote => "تسليم",
+        DocumentType.ChinaContainer => "حاوية استيراد",
         DocumentType.ExpensePayment => "صرف مصروف",
+        DocumentType.SupplierOpeningBalance => "رصيد افتتاحي مورد",
+        DocumentType.OpeningBalance => "رصيد افتتاحي",
+        DocumentType.StockTransfer => "تحويل مخزون",
+        DocumentType.Stocktake => "جرد مخزون",
+        DocumentType.PurchaseInvoiceReversal => "عكس فاتورة شراء",
+        DocumentType.CustomerOpeningBalance => "رصيد افتتاحي عميل",
+        DocumentType.CashboxTransfer => "تحويل بين الصناديق",
+        DocumentType.FinanceOpeningBalance => "رصيد افتتاحي مالي",
         null => "—",
         _ => sourceType.Value.ToString()
     };

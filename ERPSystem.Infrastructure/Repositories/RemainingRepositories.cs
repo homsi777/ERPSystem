@@ -989,9 +989,141 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
             })
             .ToDictionaryAsync(x => x.JournalEntryId, cancellationToken);
 
+        var partyByEntry = (await context.JournalEntryLines.AsNoTracking()
+                .Where(line => ids.Contains(line.JournalEntryId) && line.PartyId.HasValue)
+                .Select(line => new { line.JournalEntryId, PartyId = line.PartyId!.Value })
+                .ToListAsync(cancellationToken))
+            .GroupBy(line => line.JournalEntryId)
+            .ToDictionary(group => group.Key, group => group.First().PartyId);
+
+        var salesSourceIds = headers
+            .Where(header => header.SourceType == (int)DocumentType.SalesInvoice && header.SourceId.HasValue)
+            .Select(header => header.SourceId!.Value)
+            .Distinct()
+            .ToList();
+        var salesParties = await context.SalesInvoices.AsNoTracking()
+            .Where(invoice => salesSourceIds.Contains(invoice.Id))
+            .ToDictionaryAsync(invoice => invoice.Id, invoice => invoice.CustomerId, cancellationToken);
+
+        var receiptSourceIds = headers
+            .Where(header => header.SourceType == (int)DocumentType.ReceiptVoucher && header.SourceId.HasValue)
+            .Select(header => header.SourceId!.Value)
+            .Distinct()
+            .ToList();
+        var receiptParties = await context.ReceiptVouchers.AsNoTracking()
+            .Where(voucher => receiptSourceIds.Contains(voucher.Id))
+            .ToDictionaryAsync(voucher => voucher.Id, voucher => voucher.CustomerId, cancellationToken);
+
+        var purchaseSourceIds = headers
+            .Where(header => header.SourceType == (int)DocumentType.PurchaseInvoice && header.SourceId.HasValue)
+            .Select(header => header.SourceId!.Value)
+            .Distinct()
+            .ToList();
+        var purchaseParties = await context.PurchaseInvoices.AsNoTracking()
+            .Where(invoice => purchaseSourceIds.Contains(invoice.Id))
+            .ToDictionaryAsync(invoice => invoice.Id, invoice => invoice.SupplierId, cancellationToken);
+
+        var paymentSourceIds = headers
+            .Where(header => header.SourceType == (int)DocumentType.PaymentVoucher && header.SourceId.HasValue)
+            .Select(header => header.SourceId!.Value)
+            .Distinct()
+            .ToList();
+        var paymentParties = await context.PaymentVouchers.AsNoTracking()
+            .Where(voucher => paymentSourceIds.Contains(voucher.Id))
+            .ToDictionaryAsync(voucher => voucher.Id, voucher => voucher.SupplierId, cancellationToken);
+
+        foreach (var header in headers.Where(header => header.SourceId.HasValue))
+        {
+            var sourceId = header.SourceId!.Value;
+            var partyId = Guid.Empty;
+            var found = header.SourceType switch
+            {
+                (int)DocumentType.SalesInvoice => salesParties.TryGetValue(sourceId, out partyId),
+                (int)DocumentType.ReceiptVoucher => receiptParties.TryGetValue(sourceId, out partyId),
+                (int)DocumentType.PurchaseInvoice => purchaseParties.TryGetValue(sourceId, out partyId),
+                (int)DocumentType.PaymentVoucher => paymentParties.TryGetValue(sourceId, out partyId),
+                _ => false
+            };
+            if (found)
+                partyByEntry[header.Id] = partyId;
+        }
+
+        var expenseSourceIds = headers
+            .Where(header => header.SourceType == (int)DocumentType.ExpensePayment && header.SourceId.HasValue)
+            .Select(header => header.SourceId!.Value)
+            .Distinct()
+            .ToList();
+        var expenseSources = await (
+                from payment in context.ExpensePayments.AsNoTracking()
+                join expense in context.Expenses.AsNoTracking() on payment.ExpenseId equals expense.Id
+                where expenseSourceIds.Contains(payment.Id)
+                select new
+                {
+                    PaymentId = payment.Id,
+                    expense.PayeeName,
+                    expense.SupplierId,
+                    ExpenseName = expense.Name
+                })
+            .ToDictionaryAsync(row => row.PaymentId, cancellationToken);
+
+        var transferSourceIds = headers
+            .Where(header => header.SourceType == (int)DocumentType.CashboxTransfer && header.SourceId.HasValue)
+            .Select(header => header.SourceId!.Value)
+            .Distinct()
+            .ToList();
+        var transferSources = await context.CashboxTransfers.AsNoTracking()
+            .Where(transfer => transferSourceIds.Contains(transfer.Id))
+            .ToDictionaryAsync(transfer => transfer.Id, cancellationToken);
+        var transferCashboxIds = transferSources.Values
+            .SelectMany(transfer => new[] { transfer.FromCashboxId, transfer.ToCashboxId })
+            .Distinct()
+            .ToList();
+        var cashboxNames = await context.Cashboxes.AsNoTracking()
+            .Where(cashbox => transferCashboxIds.Contains(cashbox.Id))
+            .ToDictionaryAsync(cashbox => cashbox.Id, cashbox => cashbox.Name, cancellationToken);
+
+        var allPartyIds = partyByEntry.Values
+            .Concat(expenseSources.Values.Where(expense => expense.SupplierId.HasValue).Select(expense => expense.SupplierId!.Value))
+            .Distinct()
+            .ToList();
+        var partyNames = await context.Customers.AsNoTracking()
+            .Where(customer => allPartyIds.Contains(customer.Id))
+            .ToDictionaryAsync(customer => customer.Id, customer => customer.NameAr, cancellationToken);
+        var supplierNames = await context.Suppliers.AsNoTracking()
+            .Where(supplier => allPartyIds.Contains(supplier.Id))
+            .ToDictionaryAsync(
+                supplier => supplier.Id,
+                supplier => string.IsNullOrWhiteSpace(supplier.NameAr) ? supplier.Name : supplier.NameAr,
+                cancellationToken);
+        foreach (var supplier in supplierNames)
+            partyNames.TryAdd(supplier.Key, supplier.Value);
+
         var rows = headers.Select(h =>
         {
             lineStats.TryGetValue(h.Id, out var stats);
+            var partyName = partyByEntry.TryGetValue(h.Id, out var partyId)
+                ? partyNames.GetValueOrDefault(partyId, "")
+                : "";
+
+            if (h.SourceType == (int)DocumentType.ExpensePayment
+                && h.SourceId is Guid expenseSourceId
+                && expenseSources.TryGetValue(expenseSourceId, out var expense))
+            {
+                partyName = !string.IsNullOrWhiteSpace(expense.PayeeName)
+                    ? expense.PayeeName
+                    : expense.SupplierId is Guid supplierId
+                        ? partyNames.GetValueOrDefault(supplierId, expense.ExpenseName)
+                        : expense.ExpenseName;
+            }
+            else if (h.SourceType == (int)DocumentType.CashboxTransfer
+                     && h.SourceId is Guid transferSourceId
+                     && transferSources.TryGetValue(transferSourceId, out var transfer))
+            {
+                var fromName = cashboxNames.GetValueOrDefault(transfer.FromCashboxId, "صندوق");
+                var toName = cashboxNames.GetValueOrDefault(transfer.ToCashboxId, "صندوق");
+                partyName = $"{fromName} ← {toName}";
+            }
+
             return new JournalEntryListRow
             {
                 Id = h.Id,
@@ -1002,7 +1134,9 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
                 DebitTotal = stats?.DebitTotal ?? 0m,
                 CreditTotal = stats?.CreditTotal ?? 0m,
                 LineCount = stats?.LineCount ?? 0,
-                SourceType = h.SourceType.HasValue ? (DocumentType)h.SourceType.Value : null
+                SourceType = h.SourceType.HasValue ? (DocumentType)h.SourceType.Value : null,
+                SourceId = h.SourceId,
+                PartyName = partyName
             };
         }).ToList();
 
@@ -1046,7 +1180,8 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
                 DebitTotal = stats?.DebitTotal ?? 0m,
                 CreditTotal = stats?.CreditTotal ?? 0m,
                 LineCount = stats?.LineCount ?? 0,
-                SourceType = h.SourceType.HasValue ? (DocumentType)h.SourceType.Value : null
+                SourceType = h.SourceType.HasValue ? (DocumentType)h.SourceType.Value : null,
+                SourceId = h.SourceId
             };
         }).ToList();
     }

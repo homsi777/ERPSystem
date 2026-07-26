@@ -1395,6 +1395,8 @@ export type JournalEntryListDto = {
   lineCount: number;
   sourceType: DocumentType | null;
   sourceTypeDisplay: string | null;
+  sourceId: string | null;
+  partyName: string;
 };
 
 export type JournalEntryLineDetailsDto = {

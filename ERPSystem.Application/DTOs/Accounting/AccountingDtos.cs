@@ -46,6 +46,8 @@ public sealed class JournalEntryListDto
     public int LineCount { get; init; }
     public DocumentType? SourceType { get; init; }
     public string? SourceTypeDisplay { get; init; }
+    public Guid? SourceId { get; init; }
+    public string PartyName { get; init; } = "";
 }
 
 public sealed class JournalEntryDetailsDto

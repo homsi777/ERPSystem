@@ -621,7 +621,9 @@ function JournalTab() {
               <tr>
                 <th>رقم القيد</th>
                 <th>التاريخ</th>
-                <th>الوصف</th>
+                <th>نوع الحركة</th>
+                <th>الطرف / الجهة</th>
+                <th>الوصف والمرجع</th>
                 <th>مدين</th>
                 <th>دائن</th>
                 <th>الحالة</th>
@@ -638,7 +640,12 @@ function JournalTab() {
                     >
                       <td>{row.receipt.voucherNumber}</td>
                       <td>{formatDateOnly(row.receipt.voucherDate)}</td>
-                      <td>سند قبض — {row.receipt.customerName}</td>
+                      <td>سند قبض</td>
+                      <td>{row.receipt.customerName || '—'}</td>
+                      <td>
+                        {row.receipt.paymentMethodName || 'طريقة قبض غير محددة'}
+                        {row.receipt.cashboxName ? ` — ${row.receipt.cashboxName}` : ''}
+                      </td>
                       <td>{formatCurrency(row.receipt.amount)}</td>
                       <td>{formatCurrency(row.receipt.amount)}</td>
                       <td><span className="status-pill status-pill--amber">غير مرحّل</span></td>
@@ -661,6 +668,8 @@ function JournalTab() {
                   >
                     <td>{entry.entryNumber}</td>
                     <td>{formatDateOnly(entry.entryDate)}</td>
+                    <td>{entry.sourceTypeDisplay || 'قيد يدوي'}</td>
+                    <td>{entry.partyName || '—'}</td>
                     <td>{entry.description}</td>
                     <td>{formatCurrency(entry.debitTotal)}</td>
                     <td>{formatCurrency(entry.creditTotal)}</td>

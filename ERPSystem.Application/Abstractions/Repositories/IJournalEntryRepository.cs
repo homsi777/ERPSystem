@@ -47,6 +47,8 @@ public sealed class JournalEntryListRow
     public decimal CreditTotal { get; init; }
     public int LineCount { get; init; }
     public DocumentType? SourceType { get; init; }
+    public Guid? SourceId { get; init; }
+    public string PartyName { get; init; } = "";
 }
 
 public sealed class JournalEntryListFilter

@@ -32,7 +32,9 @@ public sealed class GetJournalEntryListHandler(IJournalEntryRepository journalEn
             CreditTotal = r.CreditTotal,
             LineCount = r.LineCount,
             SourceType = r.SourceType,
-            SourceTypeDisplay = r.SourceType.ToDisplay()
+            SourceTypeDisplay = r.SourceType.ToDisplay(),
+            SourceId = r.SourceId,
+            PartyName = r.PartyName
         }).ToList();
 
         return ApplicationResult<PagedResult<JournalEntryListDto>>.Success(new PagedResult<JournalEntryListDto>
