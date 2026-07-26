@@ -22,6 +22,9 @@ public static class FinanceEndpoints
             .RequireAuthorization();
 
         group.MapGet("/cashboxes", GetCashboxesAsync);
+        group.MapPost("/cashboxes", CreateCashboxAsync);
+        group.MapGet("/cashbox-transfers", GetCashboxTransfersAsync);
+        group.MapPost("/cashbox-transfers", CreateCashboxTransferAsync);
         group.MapGet("/payment-methods", GetPaymentMethodsAsync);
         group.MapGet("/bank-accounts", GetBankAccountsAsync);
         group.MapGet("/cashboxes/reconciliation", GetCashboxReconciliationAsync);
@@ -57,7 +60,64 @@ public static class FinanceEndpoints
         if (branchService.BranchId is not Guid branchId)
             return Results.Unauthorized();
         var list = await handler.HandleAsync(new GetCashboxListQuery { BranchId = branchId }, cancellationToken);
-        return Results.Ok(list);
+        return ApplicationResultHttpMapper.ToHttpResult(list);
+    }
+
+    private static async Task<IResult> CreateCashboxAsync(
+        [FromBody] CreateCashboxRequest request,
+        ICurrentBranchService branchService,
+        ICommandHandler<CreateCashboxCommand, ApplicationResult<Guid>> handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId || branchService.BranchId is not Guid branchId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new CreateCashboxCommand
+        {
+            CompanyId = companyId,
+            BranchId = branchId,
+            Code = request.Code ?? "",
+            Name = request.Name,
+            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency.Trim().ToUpperInvariant()
+        }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetCashboxTransfersAsync(
+        ICurrentBranchService branchService,
+        GetCashboxTransferListHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.BranchId is not Guid branchId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new GetCashboxTransferListQuery
+        {
+            BranchId = branchId
+        }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> CreateCashboxTransferAsync(
+        [FromBody] CreateCashboxTransferRequest request,
+        ICurrentBranchService branchService,
+        ICommandHandler<CreateCashboxTransferCommand, ApplicationResult<Guid>> handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId || branchService.BranchId is not Guid branchId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new CreateCashboxTransferCommand
+        {
+            CompanyId = companyId,
+            BranchId = branchId,
+            FromCashboxId = request.FromCashboxId,
+            ToCashboxId = request.ToCashboxId,
+            Amount = request.Amount,
+            Notes = request.Notes,
+            PostImmediately = true
+        }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 
     private static async Task<IResult> GetPaymentMethodsAsync(
@@ -198,6 +258,14 @@ public static class FinanceEndpoints
         string? Currency,
         decimal? ExchangeRate,
         IReadOnlyList<ReceiptAllocationRequest> Allocations);
+
+    private sealed record CreateCashboxRequest(string? Code, string Name, string? Currency);
+
+    private sealed record CreateCashboxTransferRequest(
+        Guid FromCashboxId,
+        Guid ToCashboxId,
+        decimal Amount,
+        string? Notes);
 
     private sealed record PostFinanceReceiptRequest(string? IdempotencyKey);
 

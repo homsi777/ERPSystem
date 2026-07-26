@@ -1324,6 +1324,43 @@ export type PayExpenseRequest = {
 };
 
 // ── Accounting ────────────────────────────────────────────────────
+export type CashboxListDto = {
+  id: string;
+  code: string;
+  name: string;
+  balance: number;
+  currency: string;
+  isActive: boolean;
+  accountId: string | null;
+  balanceDisplay: string;
+  statusDisplay: string;
+};
+
+export type CashboxTransferListDto = {
+  id: string;
+  transferNumber: string;
+  fromCashboxName: string;
+  toCashboxName: string;
+  transferDate: string;
+  amount: number;
+  currency: string;
+  status: number;
+  statusDisplay: string;
+};
+
+export type CreateCashboxRequest = {
+  code: string | null;
+  name: string;
+  currency: string;
+};
+
+export type CreateCashboxTransferRequest = {
+  fromCashboxId: string;
+  toCashboxId: string;
+  amount: number;
+  notes: string | null;
+};
+
 export type JournalEntryStatus = 0 | 1 | 2 | 3 | 4;
 export type GlAccountType = 1 | 2 | 3 | 4 | 5;
 

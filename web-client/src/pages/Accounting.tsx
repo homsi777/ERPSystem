@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useMemo, useState, type FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   getAccounts,
@@ -8,6 +8,12 @@ import {
   getJournalEntryPdf,
   getTrialBalance
 } from '../api/accounting.ts';
+import {
+  createCashbox,
+  createCashboxTransfer,
+  getCashboxes,
+  getCashboxTransfers
+} from '../api/finance.ts';
 import { getApiErrorMessage } from '../lib/apiError.ts';
 import type { JournalEntryStatus, TrialBalanceLineDto } from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
@@ -15,6 +21,7 @@ import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { ErrorState } from '../components/ErrorState.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
+import { Modal } from '../components/Modal.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import type { DocumentExportPayload } from '../lib/documentExport.ts';
 import { formatCurrency, formatDate, formatDateOnly } from '../lib/format.ts';
@@ -27,7 +34,7 @@ import {
 
 const LIST_PAGE_SIZE = 100;
 
-type AccountingTab = 'summary' | 'trial-balance' | 'journal' | 'accounts';
+type AccountingTab = 'summary' | 'cashboxes' | 'trial-balance' | 'journal' | 'accounts';
 
 export function AccountingPage() {
   const { entryId } = useParams();
@@ -61,6 +68,7 @@ function AccountingHomePage() {
         <section className="form-panel form-compact">
           <div className="tab-strip" role="tablist" aria-label="تبويبات المحاسبة">
             <TabButton active={tab === 'summary'} onClick={() => setTab('summary')} label="الملخص المالي" />
+            <TabButton active={tab === 'cashboxes'} onClick={() => setTab('cashboxes')} label="الصناديق" />
             <TabButton active={tab === 'trial-balance'} onClick={() => setTab('trial-balance')} label="ميزان المراجعة" />
             <TabButton active={tab === 'journal'} onClick={() => setTab('journal')} label="القيود اليومية" />
             <TabButton active={tab === 'accounts'} onClick={() => setTab('accounts')} label="دليل الحسابات" />
@@ -69,6 +77,7 @@ function AccountingHomePage() {
 
         <section className="form-panel form-compact">
           {tab === 'summary' ? <SummaryTab query={trialBalanceQuery} metrics={metrics} /> : null}
+          {tab === 'cashboxes' ? <CashboxesTab /> : null}
           {tab === 'trial-balance' ? <TrialBalanceTab query={trialBalanceQuery} metrics={metrics} /> : null}
           {tab === 'journal' ? <JournalTab /> : null}
           {tab === 'accounts' ? <AccountsTab /> : null}
@@ -179,6 +188,332 @@ function TrialBalanceTab({ query, metrics }: { query: TrialBalanceQuery; metrics
         </tfoot>
       </table>
     </div>
+  );
+}
+
+function CashboxesTab() {
+  const queryClient = useQueryClient();
+  const [dialog, setDialog] = useState<'create' | 'transfer' | null>(null);
+  const [notice, setNotice] = useState('');
+
+  const cashboxesQuery = useQuery({
+    queryKey: ['finance', 'cashboxes'],
+    queryFn: getCashboxes
+  });
+  const transfersQuery = useQuery({
+    queryKey: ['finance', 'cashbox-transfers'],
+    queryFn: getCashboxTransfers
+  });
+
+  const cashboxes = cashboxesQuery.data ?? [];
+  const activeCashboxes = cashboxes.filter((cashbox) => cashbox.isActive);
+  const totalBalance = activeCashboxes.reduce((sum, cashbox) => sum + cashbox.balance, 0);
+
+  function complete(message: string) {
+    setNotice(message);
+    setDialog(null);
+    void queryClient.invalidateQueries({ queryKey: ['finance', 'cashboxes'] });
+    void queryClient.invalidateQueries({ queryKey: ['finance', 'cashbox-transfers'] });
+  }
+
+  if (cashboxesQuery.isLoading) {
+    return <LoadingState />;
+  }
+  if (cashboxesQuery.isError) {
+    return <ErrorState message={getErrorMessage(cashboxesQuery.error)} onRetry={() => void cashboxesQuery.refetch()} />;
+  }
+
+  return (
+    <>
+      <div className="toolbar-row toolbar-row--start">
+        <div>
+          <h2 className="section-heading">إدارة الصناديق</h2>
+          <p className="form-hint">الأرصدة الحية والتحويلات المرحلة بين صناديق الفرع الحالي.</p>
+        </div>
+        <div className="compact-action-row">
+          <button
+            className="ghost-button"
+            type="button"
+            disabled={activeCashboxes.length < 2}
+            onClick={() => setDialog('transfer')}
+          >
+            مناقلة بين صندوقين
+          </button>
+          <button className="primary-button" type="button" onClick={() => setDialog('create')}>
+            إضافة صندوق
+          </button>
+        </div>
+      </div>
+
+      {notice ? <div className="banner banner--success" role="status">{notice}</div> : null}
+
+      <div className="line-list">
+        <div className="price-row">
+          <span>إجمالي أرصدة الصناديق النشطة</span>
+          <strong>{formatCurrency(totalBalance)}</strong>
+        </div>
+        <div className="price-row">
+          <span>عدد الصناديق النشطة</span>
+          <strong>{activeCashboxes.length}</strong>
+        </div>
+      </div>
+
+      {cashboxes.length === 0 ? (
+        <EmptyState title="لا توجد صناديق" description="أضف أول صندوق لبدء عمليات القبض والصرف والمناقلة." />
+      ) : (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>الكود</th>
+                <th>اسم الصندوق</th>
+                <th>العملة</th>
+                <th>الرصيد الحالي</th>
+                <th>حساب الأستاذ</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cashboxes.map((cashbox) => (
+                <tr key={cashbox.id}>
+                  <td>{cashbox.code}</td>
+                  <td>{cashbox.name}</td>
+                  <td>{cashbox.currency}</td>
+                  <td>{formatCurrency(cashbox.balance)}</td>
+                  <td>{cashbox.accountId ? 'مرتبط' : 'غير مرتبط'}</td>
+                  <td>
+                    <span className={`status-pill status-pill--${cashbox.isActive ? 'green' : 'gray'}`}>
+                      {cashbox.isActive ? 'نشط' : 'معطل'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="section-title-row">
+        <div>
+          <h3>آخر المناقلات</h3>
+          <p>تظهر المناقلة بعد ترحيلها وتحديث رصيدي الصندوقين.</p>
+        </div>
+      </div>
+
+      {transfersQuery.isLoading ? <LoadingState /> : null}
+      {transfersQuery.isError ? (
+        <ErrorState message={getErrorMessage(transfersQuery.error)} onRetry={() => void transfersQuery.refetch()} />
+      ) : null}
+      {transfersQuery.isSuccess && (transfersQuery.data?.length ?? 0) === 0 ? (
+        <EmptyState title="لا توجد مناقلات" description="لم تسجل أي مناقلة بين الصناديق حتى الآن." />
+      ) : null}
+      {(transfersQuery.data?.length ?? 0) > 0 ? (
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>رقم المناقلة</th>
+                <th>من صندوق</th>
+                <th>إلى صندوق</th>
+                <th>التاريخ</th>
+                <th>المبلغ</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transfersQuery.data!.slice(0, 20).map((transfer) => (
+                <tr key={transfer.id}>
+                  <td>{transfer.transferNumber}</td>
+                  <td>{transfer.fromCashboxName}</td>
+                  <td>{transfer.toCashboxName}</td>
+                  <td>{formatDate(transfer.transferDate)}</td>
+                  <td>{formatCurrency(transfer.amount)}</td>
+                  <td><span className="status-pill status-pill--green">{transfer.statusDisplay}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {dialog === 'create' ? (
+        <Modal
+          title="إضافة صندوق مالي"
+          subtitle="أنشئ صندوقاً جديداً مرتبطاً بحساب النقدية."
+          onClose={() => setDialog(null)}
+        >
+          <CreateCashboxForm onDone={() => complete('تم إنشاء الصندوق بنجاح.')} onCancel={() => setDialog(null)} />
+        </Modal>
+      ) : null}
+
+      {dialog === 'transfer' ? (
+        <Modal
+          title="مناقلة بين الصناديق"
+          subtitle="تُرحّل المناقلة فوراً ويُحدّث رصيد الصندوقين."
+          onClose={() => setDialog(null)}
+        >
+          <CashboxTransferForm
+            cashboxes={activeCashboxes}
+            onDone={() => complete('تم ترحيل المناقلة وتحديث الأرصدة بنجاح.')}
+            onCancel={() => setDialog(null)}
+          />
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
+function CreateCashboxForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => createCashbox({
+      code: code.trim() || null,
+      name: name.trim(),
+      currency: 'USD'
+    }),
+    onSuccess: onDone,
+    onError: (reason) => setError(getErrorMessage(reason))
+  });
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    if (!name.trim()) {
+      setError('اسم الصندوق مطلوب.');
+      return;
+    }
+    mutation.mutate();
+  }
+
+  return (
+    <form className="form-grid" onSubmit={submit}>
+      {error ? <div className="banner banner--warn form-grid__wide" role="alert">{error}</div> : null}
+      <label className="form-field">
+        <span className="form-field__label">كود الصندوق</span>
+        <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="يُولّد تلقائياً عند تركه فارغاً" />
+      </label>
+      <label className="form-field">
+        <span className="form-field__label">اسم الصندوق *</span>
+        <input value={name} onChange={(event) => setName(event.target.value)} required autoFocus />
+      </label>
+      <label className="form-field">
+        <span className="form-field__label">العملة</span>
+        <input value="USD" readOnly />
+      </label>
+      <div className="compact-action-row form-grid__wide">
+        <button className="primary-button" type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'جار الإنشاء...' : 'إنشاء الصندوق'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onCancel} disabled={mutation.isPending}>
+          إلغاء
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function CashboxTransferForm({
+  cashboxes,
+  onDone,
+  onCancel
+}: {
+  cashboxes: Awaited<ReturnType<typeof getCashboxes>>;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [fromCashboxId, setFromCashboxId] = useState(cashboxes[0]?.id ?? '');
+  const [toCashboxId, setToCashboxId] = useState(cashboxes[1]?.id ?? '');
+  const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
+  const [error, setError] = useState('');
+  const source = cashboxes.find((cashbox) => cashbox.id === fromCashboxId);
+
+  const mutation = useMutation({
+    mutationFn: () => createCashboxTransfer({
+      fromCashboxId,
+      toCashboxId,
+      amount: Number(amount),
+      notes: notes.trim() || null
+    }),
+    onSuccess: onDone,
+    onError: (reason) => setError(getErrorMessage(reason))
+  });
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    const parsedAmount = Number(amount);
+    if (!fromCashboxId || !toCashboxId) {
+      setError('اختر صندوق المصدر وصندوق الوجهة.');
+      return;
+    }
+    if (fromCashboxId === toCashboxId) {
+      setError('يجب أن يكون صندوق الوجهة مختلفاً عن صندوق المصدر.');
+      return;
+    }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError('أدخل مبلغاً صحيحاً أكبر من صفر.');
+      return;
+    }
+    if (source && parsedAmount > source.balance) {
+      setError('المبلغ يتجاوز الرصيد المتاح في صندوق المصدر.');
+      return;
+    }
+    mutation.mutate();
+  }
+
+  return (
+    <form className="form-grid" onSubmit={submit}>
+      {error ? <div className="banner banner--warn form-grid__wide" role="alert">{error}</div> : null}
+      <label className="form-field">
+        <span className="form-field__label">من صندوق *</span>
+        <select value={fromCashboxId} onChange={(event) => setFromCashboxId(event.target.value)} required>
+          {cashboxes.map((cashbox) => (
+            <option key={cashbox.id} value={cashbox.id}>
+              {cashbox.name} - {formatCurrency(cashbox.balance)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="form-field">
+        <span className="form-field__label">إلى صندوق *</span>
+        <select value={toCashboxId} onChange={(event) => setToCashboxId(event.target.value)} required>
+          {cashboxes.map((cashbox) => (
+            <option key={cashbox.id} value={cashbox.id} disabled={cashbox.id === fromCashboxId}>
+              {cashbox.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="form-field">
+        <span className="form-field__label">المبلغ *</span>
+        <input
+          inputMode="decimal"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          required
+          autoFocus
+        />
+        <span className="form-hint">المتاح: {formatCurrency(source?.balance ?? 0)}</span>
+      </label>
+      <label className="form-field">
+        <span className="form-field__label">ملاحظة</span>
+        <input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="سبب المناقلة أو مرجعها" />
+      </label>
+      <div className="compact-action-row form-grid__wide">
+        <button className="primary-button" type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'جار الترحيل...' : 'ترحيل المناقلة'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onCancel} disabled={mutation.isPending}>
+          إلغاء
+        </button>
+      </div>
+    </form>
   );
 }
 
