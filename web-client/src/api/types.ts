@@ -619,6 +619,25 @@ export type CreateReceiptVoucherRequest = {
   allocations: ReceiptAllocationRequest[];
 };
 
+export type VoucherStatus = 0 | 1 | 2 | 3 | 4 | 5;
+
+export type ReceiptVoucherDetailsDto = {
+  id: string;
+  voucherNumber: string;
+  voucherDate: string;
+  status: VoucherStatus;
+  customerName: string;
+  customerPhone: string | null;
+  cashboxName: string;
+  currency: string;
+  amount: number;
+  paymentMethodName: string;
+  allocations: Array<{
+    invoiceNumber: string;
+    amount: number;
+  }>;
+};
+
 export type WarehouseListExtendedDto = {
   id: string;
   code: string;

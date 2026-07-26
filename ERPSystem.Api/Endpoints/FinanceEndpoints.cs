@@ -9,6 +9,7 @@ using ERPSystem.Application.Queries.Finance;
 using ERPSystem.Application.UseCases.Finance;
 using ERPSystem.Application.Results;
 using ERPSystem.Application.Common;
+using ERPSystem.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ERPSystem.Api.Endpoints;
@@ -28,6 +29,8 @@ public static class FinanceEndpoints
         group.MapGet("/payment-methods", GetPaymentMethodsAsync);
         group.MapGet("/bank-accounts", GetBankAccountsAsync);
         group.MapGet("/cashboxes/reconciliation", GetCashboxReconciliationAsync);
+        group.MapGet("/receipts", GetReceiptsAsync);
+        group.MapGet("/receipts/{id:guid}", GetReceiptAsync);
         group.MapPost("/receipts", CreateReceiptAsync);
         group.MapPost("/receipts/{id:guid}/approve", ApproveReceiptAsync);
         group.MapPost("/receipts/{id:guid}/post", PostReceiptAsync);
@@ -35,6 +38,46 @@ public static class FinanceEndpoints
         group.MapGet("/receipts/{id:guid}/pdf", GetReceiptPdfAsync);
 
         return app;
+    }
+
+    private static async Task<IResult> GetReceiptsAsync(
+        [FromQuery] VoucherStatus? status,
+        [FromQuery] Guid? customerId,
+        [FromQuery] bool? pendingOnly,
+        ICurrentBranchService branchService,
+        GetReceiptVoucherListHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new GetReceiptVoucherListQuery
+        {
+            CompanyId = companyId,
+            Status = status,
+            CustomerId = customerId,
+            PendingOnly = pendingOnly ?? false
+        }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
+    private static async Task<IResult> GetReceiptAsync(
+        Guid id,
+        ICurrentBranchService branchService,
+        GetReceiptVoucherPrintHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(
+            new GetReceiptVoucherPrintQuery
+            {
+                VoucherId = id,
+                CompanyId = companyId
+            },
+            cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 
     private static async Task<IResult> GetReceiptPdfAsync(

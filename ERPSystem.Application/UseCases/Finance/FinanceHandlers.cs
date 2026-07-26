@@ -297,6 +297,48 @@ public sealed class GetPaymentVoucherListHandler(
     }
 }
 
+public sealed class GetReceiptVoucherListHandler(
+    IReceiptVoucherRepository voucherRepository,
+    GetReceiptVoucherPrintHandler detailsHandler)
+    : IQueryHandler<GetReceiptVoucherListQuery, ApplicationResult<IReadOnlyList<ReceiptVoucherPrintDto>>>
+{
+    public async Task<ApplicationResult<IReadOnlyList<ReceiptVoucherPrintDto>>> HandleAsync(
+        GetReceiptVoucherListQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var vouchers = await voucherRepository.GetListAsync(
+            query.CompanyId,
+            query.Status,
+            query.CustomerId,
+            cancellationToken);
+
+        if (query.PendingOnly)
+        {
+            vouchers = vouchers
+                .Where(voucher => voucher.Status is VoucherStatus.Draft
+                    or VoucherStatus.Submitted
+                    or VoucherStatus.Approved)
+                .ToList();
+        }
+
+        var result = new List<ReceiptVoucherPrintDto>(vouchers.Count);
+        foreach (var voucher in vouchers)
+        {
+            var details = await detailsHandler.HandleAsync(
+                new GetReceiptVoucherPrintQuery
+                {
+                    VoucherId = voucher.Id,
+                    CompanyId = query.CompanyId
+                },
+                cancellationToken);
+            if (details.IsSuccess && details.Value is not null)
+                result.Add(details.Value);
+        }
+
+        return ApplicationResult<IReadOnlyList<ReceiptVoucherPrintDto>>.Success(result);
+    }
+}
+
 /// <summary>Read model for printing a receipt voucher. Every field is resolved from the actual stored voucher/cashbox/payment-method/allocation records — nothing free-text or invented.</summary>
 public sealed class GetReceiptVoucherPrintHandler(
     IReceiptVoucherRepository voucherRepository,
@@ -311,7 +353,7 @@ public sealed class GetReceiptVoucherPrintHandler(
         CancellationToken cancellationToken = default)
     {
         var voucher = await voucherRepository.GetByIdAsync(query.VoucherId, cancellationToken);
-        if (voucher is null)
+        if (voucher is null || query.CompanyId is Guid companyId && voucher.CompanyId != companyId)
             return ApplicationResult<ReceiptVoucherPrintDto>.NotFound("Receipt voucher not found.");
 
         var customer = await customerRepository.GetByIdAsync(voucher.CustomerId, cancellationToken);

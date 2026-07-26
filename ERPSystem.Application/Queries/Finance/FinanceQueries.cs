@@ -35,6 +35,15 @@ public sealed class GetCashboxOperationsCenterQuery
 public sealed class GetReceiptVoucherPrintQuery
 {
     public Guid VoucherId { get; init; }
+    public Guid? CompanyId { get; init; }
+}
+
+public sealed class GetReceiptVoucherListQuery
+{
+    public Guid CompanyId { get; init; }
+    public VoucherStatus? Status { get; init; }
+    public Guid? CustomerId { get; init; }
+    public bool PendingOnly { get; init; }
 }
 
 public sealed class GetPaymentVoucherPrintQuery

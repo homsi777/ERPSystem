@@ -232,6 +232,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GetCashboxTransferListHandler>();
         services.AddScoped<GetCashboxOperationsCenterHandler>();
         services.AddScoped<GetReceiptVoucherPrintHandler>();
+        services.AddScoped<GetReceiptVoucherListHandler>();
         services.AddScoped<GetPaymentVoucherPrintHandler>();
         services.AddScoped<GetPaymentVoucherDetailsHandler>();
         services.AddScoped<GetPaymentVoucherListHandler>();

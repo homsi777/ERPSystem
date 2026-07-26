@@ -15,15 +15,11 @@ import {
 } from '../api/customers.ts';
 import { getCashboxLookups } from '../api/lookups.ts';
 import {
-  approveReceiptVoucher,
   createReceiptVoucher,
   getBankAccounts,
-  getPaymentMethods,
-  getReceiptVoucherPdf,
-  postReceiptVoucher
+  getPaymentMethods
 } from '../api/receipts.ts';
 import { getApiErrorMessage } from '../lib/apiError.ts';
-import { downloadPdfBlob } from '../lib/documentExport.ts';
 import type {
   CustomerAccountLedgerDto,
   CustomerAccountLedgerLineDto,
@@ -737,8 +733,8 @@ function ReceiptVoucherForm({
   const requiresReference = selectedMethod?.requiresReference ?? false;
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      const voucherId = await createReceiptVoucher({
+    mutationFn: () =>
+      createReceiptVoucher({
         customerId,
         amount: toNumber(amount),
         paymentMethodId: paymentMethodId || undefined,
@@ -747,17 +743,8 @@ function ReceiptVoucherForm({
         reference: requiresReference ? reference : undefined,
         currency: 'USD',
         allocations: []
-      });
-      await approveReceiptVoucher(voucherId);
-      await postReceiptVoucher(voucherId);
-      try {
-        const pdfBlob = await getReceiptVoucherPdf(voucherId);
-        downloadPdfBlob(pdfBlob, `سند قبض - ${voucherId}.pdf`);
-      } catch {
-        /* voucher is posted regardless — PDF download is a bonus, not a blocker */
-      }
-    },
-    onSuccess: () => onDone('تم إنشاء وترحيل سند القبض بنجاح.'),
+      }),
+    onSuccess: () => onDone('تم حفظ سند القبض كمسودة. يمكن للمدير ترحيله من المحاسبة ← القيود اليومية.'),
     onError: (error) => onToast(errorToast(error))
   });
 
@@ -853,9 +840,9 @@ function ReceiptVoucherForm({
         <span className="form-field__label">المبلغ (USD)</span>
         <input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} />
       </label>
-      <p className="form-hint">مسودة → اعتماد → ترحيل. لا تخصيص على فواتير من الويب حالياً.</p>
+      <p className="form-hint">يُحفظ السند كمسودة فقط، ولا يؤثر في رصيد العميل أو الصندوق حتى يرحّله المدير من القيود اليومية.</p>
       <button className="primary-button" type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? 'جار التنفيذ...' : 'حفظ وترحيل'}
+        {mutation.isPending ? 'جار الحفظ...' : 'حفظ مسودة'}
       </button>
     </form>
   );

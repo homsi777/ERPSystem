@@ -1,5 +1,5 @@
 import { apiBlobRequest, apiRequest } from './client.ts';
-import type { CreateReceiptVoucherRequest } from './types.ts';
+import type { CreateReceiptVoucherRequest, ReceiptVoucherDetailsDto } from './types.ts';
 
 export type PaymentMethodDto = {
   id: string;
@@ -34,6 +34,19 @@ export function createReceiptVoucher(request: CreateReceiptVoucherRequest) {
     method: 'POST',
     body: request
   });
+}
+
+export function getReceiptVouchers(params: { pendingOnly?: boolean } = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.pendingOnly !== undefined) {
+    searchParams.set('pendingOnly', String(params.pendingOnly));
+  }
+  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+  return apiRequest<ReceiptVoucherDetailsDto[]>(`/api/v1/finance/receipts${suffix}`);
+}
+
+export function getReceiptVoucher(id: string) {
+  return apiRequest<ReceiptVoucherDetailsDto>(`/api/v1/finance/receipts/${id}`);
 }
 
 export function approveReceiptVoucher(id: string) {

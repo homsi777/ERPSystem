@@ -289,6 +289,30 @@ svg {
   background: rgba(24, 95, 165, 0.06);
 }
 
+.accounting-row > td {
+  transition: background-color 160ms ease;
+}
+
+.accounting-row--unposted > td {
+  background: rgba(139, 92, 45, 0.1);
+}
+
+.accounting-row--unposted:hover > td {
+  background: rgba(139, 92, 45, 0.17);
+}
+
+.accounting-row--posted > td {
+  background: rgba(29, 158, 117, 0.08);
+}
+
+.accounting-row--posted:hover > td {
+  background: rgba(29, 158, 117, 0.14);
+}
+
+.accounting-row--closed > td {
+  background: rgba(106, 119, 138, 0.06);
+}
+
 .status-pill--inline {
   margin-inline-start: 8px;
 }

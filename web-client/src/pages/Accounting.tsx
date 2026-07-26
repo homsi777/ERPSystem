@@ -14,8 +14,18 @@ import {
   getCashboxes,
   getCashboxTransfers
 } from '../api/finance.ts';
+import {
+  getReceiptVoucher,
+  getReceiptVouchers,
+  postReceiptVoucher
+} from '../api/receipts.ts';
 import { getApiErrorMessage } from '../lib/apiError.ts';
-import type { JournalEntryStatus, TrialBalanceLineDto } from '../api/types.ts';
+import type {
+  JournalEntryListDto,
+  JournalEntryStatus,
+  ReceiptVoucherDetailsDto,
+  TrialBalanceLineDto
+} from '../api/types.ts';
 import { AppShell } from '../components/AppShell.tsx';
 import { DocumentActions } from '../components/DocumentActions.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
@@ -519,7 +529,10 @@ function CashboxTransferForm({
 
 function JournalTab() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
 
   const journalQuery = useQuery({
     queryKey: ['accounting', 'journal', status],
@@ -530,8 +543,46 @@ function JournalTab() {
         pageSize: LIST_PAGE_SIZE
       })
   });
+  const pendingReceiptsQuery = useQuery({
+    queryKey: ['finance', 'receipts', 'pending'],
+    queryFn: () => getReceiptVouchers({ pendingOnly: true })
+  });
 
   const rows = journalQuery.data?.items ?? [];
+  const showPendingReceipts = status === '' || status === '0';
+  const workspaceRows = useMemo<JournalWorkspaceRow[]>(() => {
+    const journalRows: JournalWorkspaceRow[] = rows.map((entry) => ({
+      key: `journal-${entry.id}`,
+      kind: 'journal',
+      date: entry.entryDate,
+      entry
+    }));
+    const receiptRows: JournalWorkspaceRow[] = showPendingReceipts
+      ? (pendingReceiptsQuery.data ?? []).map((receipt) => ({
+          key: `receipt-${receipt.id}`,
+          kind: 'receipt',
+          date: receipt.voucherDate,
+          receipt
+        }))
+      : [];
+
+    return [...journalRows, ...receiptRows]
+      .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
+  }, [pendingReceiptsQuery.data, rows, showPendingReceipts]);
+
+  async function handleReceiptPosted() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['accounting', 'journal'] }),
+      queryClient.invalidateQueries({ queryKey: ['accounting', 'trial-balance'] }),
+      queryClient.invalidateQueries({ queryKey: ['finance', 'receipts'] }),
+      queryClient.invalidateQueries({ queryKey: ['finance', 'cashboxes'] }),
+      queryClient.invalidateQueries({ queryKey: ['customers'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-details'] }),
+      queryClient.invalidateQueries({ queryKey: ['customer-ledger'] })
+    ]);
+    setSelectedReceiptId(null);
+    setNotice('تم ترحيل سند القبض وإنشاء القيد المحاسبي وتحديث الأرصدة بنجاح.');
+  }
 
   return (
     <>
@@ -547,15 +598,23 @@ function JournalTab() {
         </select>
       </label>
 
-      {journalQuery.isLoading ? <LoadingState /> : null}
+      {notice ? <div className="banner banner--success" role="status">{notice}</div> : null}
+
+      {journalQuery.isLoading || pendingReceiptsQuery.isLoading ? <LoadingState /> : null}
       {journalQuery.isError ? (
         <ErrorState message={getErrorMessage(journalQuery.error)} onRetry={() => void journalQuery.refetch()} />
       ) : null}
-      {journalQuery.isSuccess && rows.length === 0 ? (
+      {pendingReceiptsQuery.isError ? (
+        <ErrorState
+          message={getErrorMessage(pendingReceiptsQuery.error)}
+          onRetry={() => void pendingReceiptsQuery.refetch()}
+        />
+      ) : null}
+      {journalQuery.isSuccess && pendingReceiptsQuery.isSuccess && workspaceRows.length === 0 ? (
         <EmptyState title="لا توجد قيود" description="لا توجد قيود يومية مطابقة." />
       ) : null}
 
-      {rows.length > 0 ? (
+      {workspaceRows.length > 0 ? (
         <div className="table-scroll">
           <table className="data-table">
             <thead>
@@ -569,25 +628,137 @@ function JournalTab() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((entry) => (
-                <tr key={entry.id} className="clickable-row" onClick={() => navigate(`/accounting/journal/${entry.id}`)}>
-                  <td>{entry.entryNumber}</td>
-                  <td>{formatDateOnly(entry.entryDate)}</td>
-                  <td>{entry.description}</td>
-                  <td>{formatCurrency(entry.debitTotal)}</td>
-                  <td>{formatCurrency(entry.creditTotal)}</td>
-                  <td>
-                    <span className={`status-pill status-pill--${getJournalEntryStatusTone(entry.status)}`}>
-                      {journalEntryStatusLabel(entry.status)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {workspaceRows.map((row) => {
+                if (row.kind === 'receipt') {
+                  return (
+                    <tr
+                      key={row.key}
+                      className="clickable-row accounting-row accounting-row--unposted"
+                      onClick={() => setSelectedReceiptId(row.receipt.id)}
+                    >
+                      <td>{row.receipt.voucherNumber}</td>
+                      <td>{formatDateOnly(row.receipt.voucherDate)}</td>
+                      <td>سند قبض — {row.receipt.customerName}</td>
+                      <td>{formatCurrency(row.receipt.amount)}</td>
+                      <td>{formatCurrency(row.receipt.amount)}</td>
+                      <td><span className="status-pill status-pill--amber">غير مرحّل</span></td>
+                    </tr>
+                  );
+                }
+
+                const entry = row.entry;
+                return (
+                  <tr
+                    key={row.key}
+                    className={`clickable-row accounting-row ${
+                      entry.status === 2
+                        ? 'accounting-row--posted'
+                        : entry.status === 0 || entry.status === 1
+                          ? 'accounting-row--unposted'
+                          : 'accounting-row--closed'
+                    }`}
+                    onClick={() => navigate(`/accounting/journal/${entry.id}`)}
+                  >
+                    <td>{entry.entryNumber}</td>
+                    <td>{formatDateOnly(entry.entryDate)}</td>
+                    <td>{entry.description}</td>
+                    <td>{formatCurrency(entry.debitTotal)}</td>
+                    <td>{formatCurrency(entry.creditTotal)}</td>
+                    <td>
+                      <span className={`status-pill status-pill--${getJournalEntryStatusTone(entry.status)}`}>
+                        {journalEntryStatusLabel(entry.status)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : null}
+
+      {selectedReceiptId ? (
+        <ReceiptPostingModal
+          receiptId={selectedReceiptId}
+          onClose={() => setSelectedReceiptId(null)}
+          onPosted={handleReceiptPosted}
+        />
+      ) : null}
     </>
+  );
+}
+
+type JournalWorkspaceRow =
+  | {
+      key: string;
+      kind: 'journal';
+      date: string;
+      entry: JournalEntryListDto;
+    }
+  | {
+      key: string;
+      kind: 'receipt';
+      date: string;
+      receipt: ReceiptVoucherDetailsDto;
+    };
+
+function ReceiptPostingModal({
+  receiptId,
+  onClose,
+  onPosted
+}: {
+  receiptId: string;
+  onClose: () => void;
+  onPosted: () => Promise<void>;
+}) {
+  const receiptQuery = useQuery({
+    queryKey: ['finance', 'receipt', receiptId],
+    queryFn: () => getReceiptVoucher(receiptId)
+  });
+  const mutation = useMutation({
+    mutationFn: () => postReceiptVoucher(receiptId, `web-journal-receipt:${receiptId}`),
+    onSuccess: onPosted
+  });
+  const receipt = receiptQuery.data;
+
+  return (
+    <Modal
+      title={receipt ? `سند قبض ${receipt.voucherNumber}` : 'بيانات سند القبض'}
+      subtitle="راجع البيانات قبل الترحيل؛ لا يمكن تعديل القيد بعد ترحيله."
+      onClose={mutation.isPending ? () => undefined : onClose}
+    >
+      {receiptQuery.isLoading ? <LoadingState /> : null}
+      {receiptQuery.isError ? (
+        <ErrorState message={getErrorMessage(receiptQuery.error)} onRetry={() => void receiptQuery.refetch()} />
+      ) : null}
+
+      {receipt ? (
+        <div className="page-stack">
+          <dl className="detail-grid">
+            <DetailItem label="رقم السند" value={receipt.voucherNumber} />
+            <DetailItem label="العميل" value={receipt.customerName} />
+            <DetailItem label="التاريخ" value={formatDate(receipt.voucherDate)} />
+            <DetailItem label="طريقة القبض" value={receipt.paymentMethodName || 'غير محددة'} />
+            <DetailItem label="الصندوق" value={receipt.cashboxName || 'حساب بنكي'} />
+            <DetailItem label="المبلغ" value={formatCurrency(receipt.amount)} />
+            <DetailItem label="الحالة" value="غير مرحّل" />
+          </dl>
+
+          {mutation.isError ? (
+            <div className="banner banner--warn" role="alert">{getErrorMessage(mutation.error)}</div>
+          ) : null}
+
+          <div className="compact-action-row">
+            <button className="primary-button" type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+              {mutation.isPending ? 'جار الترحيل...' : 'حفظ وترحيل'}
+            </button>
+            <button className="ghost-button" type="button" onClick={onClose} disabled={mutation.isPending}>
+              إغلاق
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </Modal>
   );
 }
 

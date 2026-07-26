@@ -199,41 +199,57 @@ public sealed class PostReceiptVoucherHandler(
             Reference = t.Reference
         }).ToList();
 
-        var cashbox = await cashboxRepository.GetByIdAsync(voucher.CashboxId, cancellationToken);
-        if (cashbox is null)
-            return ApplicationResult.NotFound("Cashbox not found.");
+        var cashTender = tenderDtos.FirstOrDefault(tender => tender.BankAccountId is null);
+        Cashbox? cashbox = null;
+        if (cashTender is not null)
+        {
+            if (cashTender.CashboxId is not Guid cashboxId || cashboxId == Guid.Empty)
+                return ApplicationResult.ValidationFailed("CashboxId", "Cashbox is required for cash receipts.");
 
-        var cashValidation = await cashboxValidator.ValidateForReceiptAsync(
-            voucher.CompanyId, voucher.CashboxId, cashbox.Currency, cancellationToken);
-        if (!cashValidation.IsValid && tenderDtos.All(t => t.BankAccountId is null))
-            return ApplicationResult.ValidationFailed("CashboxId", cashValidation.ErrorMessage ?? "Cashbox cannot post.");
+            cashbox = await cashboxRepository.GetByIdAsync(cashboxId, cancellationToken);
+            if (cashbox is null)
+                return ApplicationResult.NotFound("Cashbox not found.");
+
+            var cashValidation = await cashboxValidator.ValidateForReceiptAsync(
+                voucher.CompanyId,
+                cashboxId,
+                cashTender.Currency,
+                cancellationToken);
+            if (!cashValidation.IsValid)
+                return ApplicationResult.ValidationFailed(
+                    "CashboxId",
+                    cashValidation.ErrorMessage ?? "Cashbox cannot post.");
+        }
 
         var customer = await customerRepository.GetByIdAsync(voucher.CustomerId, cancellationToken);
         if (customer is null)
             return ApplicationResult.NotFound("Customer not found.");
 
-            var allocated = await voucherRepository.GetAllocatedTotalAsync(voucher.Id, cancellationToken);
-            if (allocated > voucher.Amount.Amount)
-                return ApplicationResult.ValidationFailed("Allocations", "التخصيصات تتجاوز مبلغ السند.");
+        var allocated = await voucherRepository.GetAllocatedTotalAsync(voucher.Id, cancellationToken);
+        if (allocated > voucher.Amount.Amount)
+            return ApplicationResult.ValidationFailed("Allocations", "التخصيصات تتجاوز مبلغ السند.");
 
-            try
-            {
-                await unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-                if (voucher.Status is VoucherStatus.Draft or VoucherStatus.Submitted)
-                    voucher.Approve();
-                voucher.Post();
+            if (voucher.Status is VoucherStatus.Draft or VoucherStatus.Submitted)
+                voucher.Approve();
+            voucher.Post();
 
             var balanceReduction = allocated;
             if (balanceReduction <= 0 && customer.Customer.Balance.Amount > 0)
                 balanceReduction = Math.Min(voucher.Amount.Amount, customer.Customer.Balance.Amount);
             if (balanceReduction > 0)
                 customer.RecordPostedReceipt(balanceReduction);
+
+            if (cashbox is not null)
                 cashbox.ApplyReceipt(voucher.Amount);
 
             await voucherRepository.UpdateAsync(voucher, cancellationToken);
             await customerRepository.UpdateAsync(customer, cancellationToken);
-            await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
+            if (cashbox is not null)
+                await cashboxRepository.UpdateAsync(cashbox, cancellationToken);
 
             await receiptPostingService.PostReceiptCollectionAsync(
                 voucher.Id,
