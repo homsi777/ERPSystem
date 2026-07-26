@@ -47,6 +47,43 @@ export type UserSessionStatusDto = {
   statusDisplay: string;
 };
 
+export type IdentityUserListDto = {
+  id: string;
+  username: string;
+  fullNameAr: string;
+  fullNameEn: string;
+  isActive: boolean;
+  roleIds: string[];
+  roleNames: string[];
+};
+
+export type IdentityRoleListDto = {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  permissionCount: number;
+};
+
+export type PermissionTreeItemDto = {
+  id: string;
+  code: string;
+  labelAr: string;
+};
+
+export type PermissionModuleGroupDto = {
+  moduleKey: string;
+  moduleLabelAr: string;
+  permissions: PermissionTreeItemDto[];
+};
+
+export type RolePermissionsDto = {
+  roleId: string;
+  roleName: string;
+  isSystem: boolean;
+  permissionCodes: string[];
+};
+
 export type AuthTokenResponse = {
   accessToken: string;
   refreshToken: string;

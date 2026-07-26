@@ -12,6 +12,7 @@ import { SalesPage } from './pages/Sales.tsx';
 import { ExpensesPage } from './pages/Expenses.tsx';
 import { AccountingPage } from './pages/Accounting.tsx';
 import { SettingsUserSessionsPage } from './pages/SettingsUserSessions.tsx';
+import { SettingsAccessPage } from './pages/SettingsAccess.tsx';
 import { PurchaseInvoicePage } from './pages/Purchases.tsx';
 
 export function App() {
@@ -46,6 +47,7 @@ export function App() {
         <Route path="/expenses/:expenseId" element={<ExpensesPage />} />
         <Route path="/accounting" element={<AccountingPage />} />
         <Route path="/accounting/journal/:entryId" element={<AccountingPage />} />
+        <Route path="/settings" element={<SettingsAccessPage />} />
         <Route path="/settings/user-sessions" element={<SettingsUserSessionsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/home" replace />} />

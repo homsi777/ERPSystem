@@ -26,6 +26,12 @@ public sealed class CreateIdentityUserCommand
     public IReadOnlyList<Guid> RoleIds { get; init; } = [];
 }
 
+public sealed class UpdateIdentityUserRolesCommand
+{
+    public Guid UserId { get; init; }
+    public IReadOnlyList<Guid> RoleIds { get; init; } = [];
+}
+
 public sealed class UpdateRolePermissionsHandler(
     IIdentityAdminRepository repository,
     IUnitOfWork unitOfWork)
@@ -40,6 +46,10 @@ public sealed class UpdateRolePermissionsHandler(
             await repository.ReplaceRolePermissionsAsync(command.RoleId, command.PermissionCodes, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ApplicationResult.ValidationFailed("permissionCodes", ex.Message);
         }
         catch (Exception ex)
         {
@@ -62,6 +72,10 @@ public sealed class CreateIdentityRoleHandler(
             var id = await repository.CreateRoleAsync(command.Name, command.Description, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult<Guid>.Success(id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ApplicationResult<Guid>.ValidationFailed("name", ex.Message);
         }
         catch (Exception ex)
         {
@@ -102,9 +116,42 @@ public sealed class CreateIdentityUserHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return ApplicationResult<Guid>.Success(userId);
         }
+        catch (InvalidOperationException ex)
+        {
+            return ApplicationResult<Guid>.Conflict(ex.Message);
+        }
         catch (Exception ex)
         {
             return ApplicationResult<Guid>.Failure(ex.Message);
+        }
+    }
+}
+
+public sealed class UpdateIdentityUserRolesHandler(
+    IIdentityAdminRepository repository,
+    IUnitOfWork unitOfWork)
+    : ICommandHandler<UpdateIdentityUserRolesCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        UpdateIdentityUserRolesCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.UserId == Guid.Empty)
+            return ApplicationResult.ValidationFailed("userId", "المستخدم مطلوب.");
+
+        try
+        {
+            await repository.SetUserRolesAsync(command.UserId, command.RoleIds, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ApplicationResult.ValidationFailed("roleIds", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return ApplicationResult.Failure(ex.Message);
         }
     }
 }

@@ -11,12 +11,13 @@ import { isGeneralManager } from './generalManagerAccess.ts';
 export type WebModuleDef = {
   route: string;
   label: string;
-  icon: 'home' | 'inventory' | 'sales' | 'customers' | 'expenses' | 'accounting' | 'china' | 'delivery';
+  icon: 'home' | 'inventory' | 'sales' | 'customers' | 'expenses' | 'accounting' | 'china' | 'delivery' | 'settings';
   modules: string[];
   /** Exact permission codes — at least one required. */
   anyOf?: string[];
   alwaysVisible?: boolean;
   generalManagerOnly?: boolean;
+  showInNavigation?: boolean;
 };
 
 export const WEB_MODULES: WebModuleDef[] = [
@@ -39,6 +40,14 @@ export const WEB_MODULES: WebModuleDef[] = [
     modules: [],
     // Web "التسليم" = warehouse detailing (not sales.deliver logistic confirm).
     anyOf: ['warehouse.detailing']
+  },
+  {
+    route: '/settings',
+    label: 'الإعدادات',
+    icon: 'settings',
+    modules: [],
+    generalManagerOnly: true,
+    showInNavigation: false
   }
 ];
 
@@ -80,7 +89,8 @@ export function canAccessWebModule(permissions: readonly string[], module: WebMo
 }
 
 export function visibleWebModules(permissions: readonly string[]): WebModuleDef[] {
-  return WEB_MODULES.filter((module) => canAccessWebModule(permissions, module));
+  return WEB_MODULES.filter(
+    (module) => module.showInNavigation !== false && canAccessWebModule(permissions, module));
 }
 
 export function isChinaRoute(pathname: string): boolean {

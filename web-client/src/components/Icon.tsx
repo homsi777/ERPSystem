@@ -13,7 +13,8 @@ type IconName =
   | 'back'
   | 'sales'
   | 'expenses'
-  | 'accounting';
+  | 'accounting'
+  | 'settings';
 
 type IconProps = {
   name: IconName;
@@ -90,6 +91,12 @@ const paths: Record<IconName, ReactElement> = {
       <path d="M4 5h16v14H4z" />
       <path d="M4 9h16M9 5v14" />
       <path d="M12 12h5m-5 3h5" />
+    </>
+  ),
+  settings: (
+    <>
+      <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z" />
+      <path d="m19.1 13.4 1.4 1.1-1.8 3.1-1.7-.7a7.8 7.8 0 0 1-1.9 1.1l-.2 1.8h-3.6l-.2-1.8a7.8 7.8 0 0 1-1.9-1.1l-1.7.7-1.8-3.1 1.4-1.1a7.6 7.6 0 0 1 0-2.2L5.7 10l1.8-3.1 1.7.7a7.8 7.8 0 0 1 1.9-1.1l.2-1.8h3.6l.2 1.8A7.8 7.8 0 0 1 17 7.6l1.7-.7 1.8 3.1-1.4 1.1a7.6 7.6 0 0 1 0 2.3Z" />
     </>
   )
 };

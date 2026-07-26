@@ -85,6 +85,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ICommandHandler<UpdateRolePermissionsCommand, ApplicationResult>, UpdateRolePermissionsHandler>();
         services.AddScoped<ICommandHandler<CreateIdentityRoleCommand, ApplicationResult<Guid>>, CreateIdentityRoleHandler>();
         services.AddScoped<ICommandHandler<CreateIdentityUserCommand, ApplicationResult<Guid>>, CreateIdentityUserHandler>();
+        services.AddScoped<ICommandHandler<UpdateIdentityUserRolesCommand, ApplicationResult>, UpdateIdentityUserRolesHandler>();
     }
 
     private static void RegisterHrHandlers(IServiceCollection services)

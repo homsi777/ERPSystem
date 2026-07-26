@@ -7,6 +7,7 @@ public sealed class IdentityUserListDto
     public string FullNameAr { get; init; } = "";
     public string FullNameEn { get; init; } = "";
     public bool IsActive { get; init; }
+    public IReadOnlyList<Guid> RoleIds { get; init; } = [];
     public IReadOnlyList<string> RoleNames { get; init; } = [];
 }
 

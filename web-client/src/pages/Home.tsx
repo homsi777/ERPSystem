@@ -9,10 +9,12 @@ import { Icon } from '../components/Icon.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { SummaryCard } from '../components/SummaryCard.tsx';
 import { visibleWebModules } from '../auth/moduleAccess.ts';
+import { isGeneralManager } from '../auth/generalManagerAccess.ts';
 import { formatCurrency, formatDate, formatNumber } from '../lib/format.ts';
 
 export function HomePage() {
   const { user } = useAuth();
+  const manager = isGeneralManager(user?.permissions ?? []);
   const shortcuts = visibleWebModules(user?.permissions ?? []).filter((module) => module.route !== '/home');
 
   const summaryQuery = useQuery({
@@ -56,10 +58,12 @@ export function HomePage() {
             ) : null}
           </Link>
         ))}
-        <Link className="shortcut-card" to="/settings/user-sessions">
-          <Icon name="home" />
-          <span>حالة المستخدمين</span>
-        </Link>
+        {manager ? (
+          <Link className="shortcut-card" to="/settings">
+            <Icon name="settings" />
+            <span>الإعدادات</span>
+          </Link>
+        ) : null}
       </section>
 
       {summary && summary.recentActivity.length > 0 ? (

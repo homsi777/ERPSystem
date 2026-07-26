@@ -569,6 +569,317 @@ svg {
   opacity: 0.6;
 }
 
+.settings-access__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-block-end: 12px;
+}
+
+.settings-access__heading h2 {
+  margin: 0 0 4px;
+  font-size: 1.08rem;
+}
+
+.settings-access__heading p,
+.settings-access__workspace p,
+.settings-access__permissions p {
+  margin: 0;
+}
+
+.settings-access__sessions-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.settings-access__tabs {
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.settings-access__workspace {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-access__create-form {
+  border-color: rgba(24, 95, 165, 0.28);
+  box-shadow: 0 8px 24px rgba(24, 95, 165, 0.07);
+}
+
+.settings-role-picker {
+  margin: 4px 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.settings-role-picker legend {
+  padding-inline: 6px;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.settings-role-picker__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.settings-role-picker__options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.settings-role-picker__options input,
+.settings-permission-tree input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+  accent-color: var(--color-primary);
+}
+
+.settings-role-picker__options span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-role-picker__options small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.settings-role-picker__options--modal {
+  margin-block-end: 14px;
+}
+
+.settings-user-card {
+  width: 100%;
+  text-align: start;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.settings-user-card > span:last-child {
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.settings-access__modal-actions {
+  margin-block-start: 12px;
+}
+
+.settings-access__roles-layout {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.settings-access__roles-sidebar,
+.settings-access__permissions {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+}
+
+.settings-access__roles-sidebar {
+  padding: 10px;
+}
+
+.settings-access__section-title,
+.settings-access__permissions-head,
+.settings-access__save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-access__section-title {
+  padding: 4px 4px 10px;
+}
+
+.settings-access__section-title span {
+  min-width: 28px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--color-primary);
+  background: rgba(24, 95, 165, 0.1);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.settings-role-list {
+  display: grid;
+  gap: 5px;
+}
+
+.settings-role-list button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--color-text);
+  background: transparent;
+  text-align: start;
+}
+
+.settings-role-list button:hover,
+.settings-role-list button.is-active {
+  border-color: rgba(24, 95, 165, 0.22);
+  background: rgba(24, 95, 165, 0.08);
+}
+
+.settings-role-list button span {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-role-list button small {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.settings-new-role {
+  display: grid;
+  gap: 7px;
+  margin-block-start: 12px;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.settings-new-role input {
+  width: 100%;
+  min-height: 40px;
+  padding-inline: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text);
+  background: #fff;
+  outline: none;
+}
+
+.settings-new-role input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+}
+
+.settings-access__permissions {
+  padding: 12px;
+}
+
+.settings-access__permissions-head {
+  align-items: flex-start;
+  margin-block-end: 10px;
+}
+
+.settings-access__permissions-head h2 {
+  margin: 0 0 3px;
+  font-size: 1rem;
+}
+
+.settings-permission-tree {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-permission-tree details {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.settings-permission-tree summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  color: var(--color-text);
+  background: rgba(244, 247, 251, 0.82);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.settings-permission-tree summary::marker {
+  color: var(--color-primary);
+}
+
+.settings-permission-tree summary label,
+.settings-permission-tree__items label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.settings-permission-tree summary small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+
+.settings-permission-tree__items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px 16px;
+  padding: 9px 12px 12px;
+}
+
+.settings-permission-tree__items label {
+  min-width: 0;
+  padding-block: 7px;
+  border-block-end: 1px solid rgba(220, 229, 239, 0.6);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.settings-access__save-bar {
+  position: sticky;
+  inset-block-end: calc(78px + var(--safe-bottom));
+  z-index: 8;
+  margin-block-start: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(220, 229, 239, 0.94);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(21, 34, 56, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.settings-access__save-bar span {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .search-input {
   flex: 1;
   min-height: 44px;
@@ -2780,6 +3091,36 @@ svg {
 }
 
 @media (max-width: 640px) {
+  .settings-access__roles-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-role-list {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .settings-role-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-role-list button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 132px;
+  }
+
+  .settings-new-role {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-new-role strong,
+  .settings-new-role button {
+    grid-column: 1 / -1;
+  }
+
   .wizard-grid {
     grid-template-columns: 1fr;
   }
@@ -2816,6 +3157,26 @@ svg {
 }
 
 @media (max-width: 560px) {
+  .settings-access__heading,
+  .settings-access__permissions-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-access__sessions-link {
+    width: 100%;
+  }
+
+  .settings-role-picker__options,
+  .settings-permission-tree__items,
+  .settings-new-role {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-access__save-bar {
+    inset-block-end: calc(72px + var(--safe-bottom));
+  }
+
   .app-header__summary {
     grid-template-columns: 1fr;
   }

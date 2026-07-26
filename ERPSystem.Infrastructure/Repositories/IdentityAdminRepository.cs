@@ -41,6 +41,11 @@ internal sealed class IdentityAdminRepository(ErpDbContext context) : IIdentityA
                 FullNameAr = u.FullNameAr,
                 FullNameEn = u.FullNameEn,
                 IsActive = u.IsActive,
+                RoleIds = roleLinks
+                    .Where(ur => ur.UserId == u.Id)
+                    .Select(ur => ur.RoleId)
+                    .Distinct()
+                    .ToList(),
                 RoleNames = names
             };
         }).ToList();
@@ -261,10 +266,27 @@ internal sealed class IdentityAdminRepository(ErpDbContext context) : IIdentityA
         if (userId == IdentityHiddenAccounts.RootUserId)
             throw new InvalidOperationException("Cannot modify this user.");
 
+        var userExists = context.Users.Local.Any(user => user.Id == userId)
+            || await context.Users.AnyAsync(user => user.Id == userId, cancellationToken);
+        if (!userExists)
+            throw new InvalidOperationException("User not found.");
+
+        var distinctRoleIds = roleIds.Distinct().ToList();
+        if (distinctRoleIds.Count > 0)
+        {
+            var existingRoleIds = await context.Roles.AsNoTracking()
+                .Where(role => distinctRoleIds.Contains(role.Id) && role.IsActive)
+                .Select(role => role.Id)
+                .ToListAsync(cancellationToken);
+            var unknownRoleIds = distinctRoleIds.Except(existingRoleIds).ToList();
+            if (unknownRoleIds.Count > 0)
+                throw new InvalidOperationException("One or more selected roles are unavailable.");
+        }
+
         var existing = await context.UserRoles.Where(ur => ur.UserId == userId).ToListAsync(cancellationToken);
         context.UserRoles.RemoveRange(existing);
 
-        foreach (var roleId in roleIds.Distinct())
+        foreach (var roleId in distinctRoleIds)
         {
             context.UserRoles.Add(new UserRoleEntity { UserId = userId, RoleId = roleId });
         }
