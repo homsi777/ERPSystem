@@ -619,13 +619,12 @@ function JournalTab() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>رقم القيد</th>
-                <th>التاريخ</th>
-                <th>نوع الحركة</th>
                 <th>الطرف / الجهة</th>
-                <th>الوصف والمرجع</th>
+                <th>نوع الحركة</th>
+                <th>الوصف</th>
                 <th>مدين</th>
                 <th>دائن</th>
+                <th>التاريخ</th>
                 <th>الحالة</th>
               </tr>
             </thead>
@@ -638,16 +637,17 @@ function JournalTab() {
                       className="clickable-row accounting-row accounting-row--unposted"
                       onClick={() => setSelectedReceiptId(row.receipt.id)}
                     >
-                      <td>{row.receipt.voucherNumber}</td>
-                      <td>{formatDateOnly(row.receipt.voucherDate)}</td>
-                      <td>سند قبض</td>
                       <td>{row.receipt.customerName || '—'}</td>
+                      <td>سند قبض</td>
                       <td>
+                        سند قبض {row.receipt.voucherNumber}
+                        {' — '}
                         {row.receipt.paymentMethodName || 'طريقة قبض غير محددة'}
                         {row.receipt.cashboxName ? ` — ${row.receipt.cashboxName}` : ''}
                       </td>
                       <td>{formatCurrency(row.receipt.amount)}</td>
                       <td>{formatCurrency(row.receipt.amount)}</td>
+                      <td>{formatDateOnly(row.receipt.voucherDate)}</td>
                       <td><span className="status-pill status-pill--amber">غير مرحّل</span></td>
                     </tr>
                   );
@@ -666,13 +666,12 @@ function JournalTab() {
                     }`}
                     onClick={() => navigate(`/accounting/journal/${entry.id}`)}
                   >
-                    <td>{entry.entryNumber}</td>
-                    <td>{formatDateOnly(entry.entryDate)}</td>
-                    <td>{entry.sourceTypeDisplay || 'قيد يدوي'}</td>
                     <td>{entry.partyName || '—'}</td>
+                    <td>{entry.sourceTypeDisplay || 'قيد يدوي'}</td>
                     <td>{entry.description}</td>
                     <td>{formatCurrency(entry.debitTotal)}</td>
                     <td>{formatCurrency(entry.creditTotal)}</td>
+                    <td>{formatDateOnly(entry.entryDate)}</td>
                     <td>
                       <span className={`status-pill status-pill--${getJournalEntryStatusTone(entry.status)}`}>
                         {journalEntryStatusLabel(entry.status)}
