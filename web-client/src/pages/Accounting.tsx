@@ -77,10 +77,10 @@ function AccountingHomePage() {
       <div className="page-stack">
         <section className="form-panel form-compact">
           <div className="tab-strip" role="tablist" aria-label="تبويبات المحاسبة">
-            <TabButton active={tab === 'summary'} onClick={() => setTab('summary')} label="الملخص المالي" />
-            <TabButton active={tab === 'cashboxes'} onClick={() => setTab('cashboxes')} label="الصناديق" />
-            <TabButton active={tab === 'trial-balance'} onClick={() => setTab('trial-balance')} label="ميزان المراجعة" />
             <TabButton active={tab === 'journal'} onClick={() => setTab('journal')} label="القيود اليومية" />
+            <TabButton active={tab === 'cashboxes'} onClick={() => setTab('cashboxes')} label="الصناديق" />
+            <TabButton active={tab === 'summary'} onClick={() => setTab('summary')} label="الملخص المالي" />
+            <TabButton active={tab === 'trial-balance'} onClick={() => setTab('trial-balance')} label="ميزان المراجعة" />
             <TabButton active={tab === 'accounts'} onClick={() => setTab('accounts')} label="دليل الحسابات" />
           </div>
         </section>
