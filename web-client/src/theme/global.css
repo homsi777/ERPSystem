@@ -294,11 +294,11 @@ svg {
 }
 
 .accounting-row--unposted > td {
-  background: rgba(139, 92, 45, 0.1);
+  background: #3adede;
 }
 
 .accounting-row--unposted:hover > td {
-  background: rgba(139, 92, 45, 0.17);
+  background: #31cccc;
 }
 
 .accounting-row--posted > td {
