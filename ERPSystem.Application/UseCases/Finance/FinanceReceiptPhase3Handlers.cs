@@ -109,6 +109,136 @@ public sealed class CreateReceiptVoucherHandler(
     }
 }
 
+public sealed class UpdateReceiptVoucherDraftHandler(
+    IReceiptVoucherRepository voucherRepository,
+    ICustomerRepository customerRepository,
+    ICashboxPostingValidator cashboxValidator,
+    IBankAccountPostingValidator bankAccountValidator,
+    IPaymentMethodRepository paymentMethodRepository,
+    IUnitOfWork unitOfWork,
+    IPermissionService permissionService)
+    : ICommandHandler<UpdateReceiptVoucherDraftCommand, ApplicationResult>
+{
+    public async Task<ApplicationResult> HandleAsync(
+        UpdateReceiptVoucherDraftCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.VoucherId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.VoucherId), "Voucher is required.");
+        if (command.Amount <= 0)
+            return ApplicationResult.ValidationFailed(nameof(command.Amount), "Receipt amount must be greater than zero.");
+        if (command.PaymentMethodId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.PaymentMethodId), "Payment method is required.");
+        if (command.CustomerId == Guid.Empty)
+            return ApplicationResult.ValidationFailed(nameof(command.CustomerId), "Customer is required.");
+        if (command.ExchangeRate <= 0)
+            return ApplicationResult.ValidationFailed(nameof(command.ExchangeRate), "Exchange rate must be greater than zero.");
+
+        if (!await permissionService.CanAsync("finance.receipt.post", cancellationToken))
+            return ApplicationResult.PermissionDenied("Not allowed to edit receipt vouchers before posting.");
+
+        var voucher = await voucherRepository.GetByIdAsync(command.VoucherId, cancellationToken);
+        if (voucher is null || voucher.CompanyId != command.CompanyId)
+            return ApplicationResult.NotFound("Receipt voucher not found.");
+        if (voucher.Status != VoucherStatus.Draft)
+            return ApplicationResult.Conflict("Only draft receipt vouchers can be edited.");
+
+        var customer = await customerRepository.GetByIdAsync(command.CustomerId, cancellationToken);
+        if (customer is null
+            || customer.Customer.CompanyId != command.CompanyId
+            || !customer.Customer.IsActive)
+            return ApplicationResult.ValidationFailed(nameof(command.CustomerId), "Customer is not active.");
+
+        var paymentMethods = await paymentMethodRepository.GetActiveForCompanyAsync(
+            command.CompanyId,
+            cancellationToken);
+        var paymentMethod = paymentMethods.FirstOrDefault(method => method.Id == command.PaymentMethodId);
+        if (paymentMethod is null)
+            return ApplicationResult.ValidationFailed(nameof(command.PaymentMethodId), "Payment method is not active.");
+
+        var usesBank = paymentMethod.RequiresBankAccount
+            || !paymentMethod.RequiresCashbox && command.BankAccountId.HasValue;
+        if (paymentMethod.RequiresReference && string.IsNullOrWhiteSpace(command.Reference))
+            return ApplicationResult.ValidationFailed(nameof(command.Reference), "Payment reference is required.");
+
+        if (usesBank)
+        {
+            if (command.BankAccountId is not Guid bankAccountId || bankAccountId == Guid.Empty)
+                return ApplicationResult.ValidationFailed(nameof(command.BankAccountId), "Bank account is required.");
+
+            var bankValidation = await bankAccountValidator.ValidateForReceiptAsync(
+                command.CompanyId,
+                bankAccountId,
+                command.Currency,
+                command.Reference,
+                cancellationToken);
+            if (!bankValidation.IsValid)
+                return ApplicationResult.ValidationFailed(
+                    nameof(command.BankAccountId),
+                    bankValidation.ErrorMessage ?? "Invalid bank account.");
+        }
+        else
+        {
+            if (command.CashboxId is not Guid cashboxId || cashboxId == Guid.Empty)
+                return ApplicationResult.ValidationFailed(nameof(command.CashboxId), "Cashbox is required.");
+
+            var cashValidation = await cashboxValidator.ValidateForReceiptAsync(
+                command.CompanyId,
+                cashboxId,
+                command.Currency,
+                cancellationToken);
+            if (!cashValidation.IsValid)
+                return ApplicationResult.ValidationFailed(
+                    nameof(command.CashboxId),
+                    cashValidation.ErrorMessage ?? "Invalid cashbox.");
+        }
+
+        var allocated = await voucherRepository.GetAllocatedTotalAsync(voucher.Id, cancellationToken);
+        if (allocated > command.Amount)
+            return ApplicationResult.ValidationFailed(
+                nameof(command.Amount),
+                "Receipt amount cannot be less than its invoice allocations.");
+        if (allocated > 0 && command.CustomerId != voucher.CustomerId)
+            return ApplicationResult.Conflict(
+                "Customer cannot be changed because this receipt is allocated to invoices.");
+
+        try
+        {
+            voucher.UpdateDraftPayment(
+                command.CustomerId,
+                command.PaymentMethodId,
+                usesBank ? null : command.CashboxId,
+                new Money(command.Amount, command.Currency));
+
+            var tender = usesBank
+                ? ReceiptTenderLine.CreateBank(
+                    voucher.Id,
+                    command.PaymentMethodId,
+                    command.BankAccountId!.Value,
+                    new Money(command.Amount, command.Currency),
+                    command.Reference ?? "",
+                    command.Currency,
+                    command.ExchangeRate)
+                : ReceiptTenderLine.CreateCash(
+                    voucher.Id,
+                    command.PaymentMethodId,
+                    command.CashboxId!.Value,
+                    new Money(command.Amount, command.Currency),
+                    command.Currency,
+                    command.ExchangeRate);
+
+            await voucherRepository.UpdateAsync(voucher, cancellationToken);
+            await voucherRepository.UpdateTenderLineAsync(tender, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return ApplicationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return ex.ToFailureResult();
+        }
+    }
+}
+
 public sealed class ApproveReceiptVoucherHandler(
     IReceiptVoucherRepository voucherRepository,
     IUnitOfWork unitOfWork,

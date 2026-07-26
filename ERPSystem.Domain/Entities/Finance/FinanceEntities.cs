@@ -78,6 +78,27 @@ public class ReceiptVoucher
         Status = VoucherStatus.Submitted;
     }
 
+    public void UpdateDraftPayment(
+        Guid customerId,
+        Guid paymentMethodId,
+        Guid? cashboxId,
+        Money amount)
+    {
+        if (Status != VoucherStatus.Draft)
+            throw new Exceptions.AccountingException("Only draft receipt vouchers can be edited.");
+        if (paymentMethodId == Guid.Empty)
+            throw new Exceptions.AccountingException("Payment method is required.");
+        if (customerId == Guid.Empty)
+            throw new Exceptions.AccountingException("Customer is required.");
+        if (amount.Amount <= 0)
+            throw new Exceptions.AccountingException("Receipt amount must be greater than zero.");
+
+        CustomerId = customerId;
+        PaymentMethodId = paymentMethodId;
+        CashboxId = cashboxId ?? Guid.Empty;
+        Amount = amount;
+    }
+
     public void Approve()
     {
         if (Status is not (VoucherStatus.Draft or VoucherStatus.Submitted))

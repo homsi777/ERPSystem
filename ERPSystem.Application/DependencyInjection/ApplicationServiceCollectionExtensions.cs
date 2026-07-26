@@ -213,6 +213,7 @@ public static class ApplicationServiceCollectionExtensions
     private static void RegisterFinanceHandlers(IServiceCollection services)
     {
         services.AddScoped<ICommandHandler<CreateReceiptVoucherCommand, ApplicationResult<Guid>>, CreateReceiptVoucherHandler>();
+        services.AddScoped<ICommandHandler<UpdateReceiptVoucherDraftCommand, ApplicationResult>, UpdateReceiptVoucherDraftHandler>();
         services.AddScoped<ICommandHandler<ApproveReceiptVoucherCommand, ApplicationResult>, ApproveReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<PostReceiptVoucherCommand, ApplicationResult>, PostReceiptVoucherHandler>();
         services.AddScoped<ICommandHandler<CancelReceiptVoucherCommand, ApplicationResult>, CancelReceiptVoucherHandler>();

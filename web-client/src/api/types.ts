@@ -626,9 +626,15 @@ export type ReceiptVoucherDetailsDto = {
   voucherNumber: string;
   voucherDate: string;
   status: VoucherStatus;
+  customerId: string;
   customerName: string;
   customerPhone: string | null;
+  paymentMethodId: string;
+  cashboxId: string | null;
+  bankAccountId: string | null;
   cashboxName: string;
+  bankAccountName: string;
+  reference: string | null;
   currency: string;
   amount: number;
   paymentMethodName: string;
@@ -636,6 +642,17 @@ export type ReceiptVoucherDetailsDto = {
     invoiceNumber: string;
     amount: number;
   }>;
+};
+
+export type UpdateReceiptVoucherDraftRequest = {
+  customerId: string;
+  paymentMethodId: string;
+  cashboxId: string | null;
+  bankAccountId: string | null;
+  amount: number;
+  currency: string;
+  exchangeRate: number;
+  reference: string | null;
 };
 
 export type WarehouseListExtendedDto = {

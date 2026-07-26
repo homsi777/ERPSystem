@@ -32,6 +32,7 @@ public static class FinanceEndpoints
         group.MapGet("/receipts", GetReceiptsAsync);
         group.MapGet("/receipts/{id:guid}", GetReceiptAsync);
         group.MapPost("/receipts", CreateReceiptAsync);
+        group.MapPut("/receipts/{id:guid}", UpdateReceiptDraftAsync);
         group.MapPost("/receipts/{id:guid}/approve", ApproveReceiptAsync);
         group.MapPost("/receipts/{id:guid}/post", PostReceiptAsync);
         group.MapPost("/receipts/{id:guid}/reverse", ReverseReceiptAsync);
@@ -265,6 +266,32 @@ public static class FinanceEndpoints
         return ApplicationResultHttpMapper.ToHttpResult(result);
     }
 
+    private static async Task<IResult> UpdateReceiptDraftAsync(
+        Guid id,
+        [FromBody] UpdateFinanceReceiptDraftRequest request,
+        ICurrentBranchService branchService,
+        ICommandHandler<UpdateReceiptVoucherDraftCommand, ApplicationResult> handler,
+        CancellationToken cancellationToken)
+    {
+        if (branchService.CompanyId is not Guid companyId)
+            return Results.Unauthorized();
+
+        var result = await handler.HandleAsync(new UpdateReceiptVoucherDraftCommand
+        {
+            VoucherId = id,
+            CompanyId = companyId,
+            CustomerId = request.CustomerId,
+            PaymentMethodId = request.PaymentMethodId,
+            CashboxId = request.CashboxId,
+            BankAccountId = request.BankAccountId,
+            Amount = request.Amount,
+            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency,
+            ExchangeRate = request.ExchangeRate ?? 1m,
+            Reference = request.Reference
+        }, cancellationToken);
+        return ApplicationResultHttpMapper.ToHttpResult(result);
+    }
+
     private static async Task<IResult> ApproveReceiptAsync(
         Guid id,
         ICommandHandler<ApproveReceiptVoucherCommand, ApplicationResult> handler,
@@ -301,6 +328,16 @@ public static class FinanceEndpoints
         string? Currency,
         decimal? ExchangeRate,
         IReadOnlyList<ReceiptAllocationRequest> Allocations);
+
+    private sealed record UpdateFinanceReceiptDraftRequest(
+        Guid CustomerId,
+        Guid PaymentMethodId,
+        Guid? CashboxId,
+        Guid? BankAccountId,
+        decimal Amount,
+        string? Currency,
+        decimal? ExchangeRate,
+        string? Reference);
 
     private sealed record CreateCashboxRequest(string? Code, string Name, string? Currency);
 

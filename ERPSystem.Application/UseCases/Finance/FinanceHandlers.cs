@@ -344,6 +344,7 @@ public sealed class GetReceiptVoucherPrintHandler(
     IReceiptVoucherRepository voucherRepository,
     ICustomerRepository customerRepository,
     ICashboxRepository cashboxRepository,
+    IBankAccountRepository bankAccountRepository,
     IPaymentMethodRepository paymentMethodRepository,
     ISalesInvoiceRepository salesInvoiceRepository)
     : IQueryHandler<GetReceiptVoucherPrintQuery, ApplicationResult<ReceiptVoucherPrintDto>>
@@ -357,9 +358,17 @@ public sealed class GetReceiptVoucherPrintHandler(
             return ApplicationResult<ReceiptVoucherPrintDto>.NotFound("Receipt voucher not found.");
 
         var customer = await customerRepository.GetByIdAsync(voucher.CustomerId, cancellationToken);
-        var cashbox = await cashboxRepository.GetByIdAsync(voucher.CashboxId, cancellationToken);
+        var tenders = await voucherRepository.GetTenderLinesAsync(voucher.Id, cancellationToken);
+        var tender = tenders.FirstOrDefault();
+        var cashbox = tender?.CashboxId is Guid cashboxId
+            ? await cashboxRepository.GetByIdAsync(cashboxId, cancellationToken)
+            : null;
+        var bankAccount = tender?.BankAccountId is Guid bankAccountId
+            ? await bankAccountRepository.GetByIdAsync(bankAccountId, cancellationToken)
+            : null;
         var paymentMethods = await paymentMethodRepository.GetActiveForCompanyAsync(voucher.CompanyId, cancellationToken);
-        var paymentMethodName = paymentMethods.FirstOrDefault(m => m.Id == voucher.PaymentMethodId)?.Name ?? "";
+        var paymentMethodId = tender?.PaymentMethodId ?? voucher.PaymentMethodId;
+        var paymentMethodName = paymentMethods.FirstOrDefault(m => m.Id == paymentMethodId)?.Name ?? "";
 
         var allocations = new List<ReceiptVoucherAllocationDto>();
         foreach (var allocation in voucher.Allocations)
@@ -378,10 +387,16 @@ public sealed class GetReceiptVoucherPrintHandler(
             VoucherNumber = voucher.VoucherNumber,
             VoucherDate = voucher.VoucherDate,
             Status = voucher.Status,
+            CustomerId = voucher.CustomerId,
             CustomerName = customer?.Customer.NameAr ?? "",
             CustomerPhone = customer?.Customer.Phone?.Value,
+            PaymentMethodId = paymentMethodId,
+            CashboxId = tender?.CashboxId,
+            BankAccountId = tender?.BankAccountId,
             CashboxName = cashbox?.Name ?? "",
-            Currency = cashbox?.Currency ?? "USD",
+            BankAccountName = bankAccount?.Name ?? "",
+            Reference = tender?.Reference,
+            Currency = tender?.Currency ?? cashbox?.Currency ?? bankAccount?.Currency ?? "USD",
             Amount = voucher.Amount.Amount,
             PaymentMethodName = paymentMethodName,
             Allocations = allocations

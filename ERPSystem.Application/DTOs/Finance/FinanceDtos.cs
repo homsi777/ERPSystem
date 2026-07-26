@@ -38,9 +38,15 @@ public sealed class ReceiptVoucherPrintDto
     public string VoucherNumber { get; init; } = "";
     public DateTime VoucherDate { get; init; }
     public VoucherStatus Status { get; init; }
+    public Guid CustomerId { get; init; }
     public string CustomerName { get; init; } = "";
     public string? CustomerPhone { get; init; }
+    public Guid PaymentMethodId { get; init; }
+    public Guid? CashboxId { get; init; }
+    public Guid? BankAccountId { get; init; }
     public string CashboxName { get; init; } = "";
+    public string BankAccountName { get; init; } = "";
+    public string? Reference { get; init; }
     public string Currency { get; init; } = "USD";
     public decimal Amount { get; init; }
     public string PaymentMethodName { get; init; } = "";

@@ -8,6 +8,7 @@ import {
   getJournalEntryPdf,
   getTrialBalance
 } from '../api/accounting.ts';
+import { getCustomers } from '../api/customers.ts';
 import {
   createCashbox,
   createCashboxTransfer,
@@ -15,9 +16,12 @@ import {
   getCashboxTransfers
 } from '../api/finance.ts';
 import {
+  getBankAccounts,
+  getPaymentMethods,
   getReceiptVoucher,
   getReceiptVouchers,
-  postReceiptVoucher
+  postReceiptVoucher,
+  updateReceiptVoucherDraft
 } from '../api/receipts.ts';
 import { getApiErrorMessage } from '../lib/apiError.ts';
 import type {
@@ -719,54 +723,328 @@ function ReceiptPostingModal({
   onClose: () => void;
   onPosted: () => Promise<void>;
 }) {
+  const [busy, setBusy] = useState(false);
   const receiptQuery = useQuery({
     queryKey: ['finance', 'receipt', receiptId],
     queryFn: () => getReceiptVoucher(receiptId)
-  });
-  const mutation = useMutation({
-    mutationFn: () => postReceiptVoucher(receiptId, `web-journal-receipt:${receiptId}`),
-    onSuccess: onPosted
   });
   const receipt = receiptQuery.data;
 
   return (
     <Modal
       title={receipt ? `سند قبض ${receipt.voucherNumber}` : 'بيانات سند القبض'}
-      subtitle="راجع البيانات قبل الترحيل؛ لا يمكن تعديل القيد بعد ترحيله."
-      onClose={mutation.isPending ? () => undefined : onClose}
+      subtitle={receipt?.status === 0
+        ? 'يمكن تعديل بيانات المسودة ثم حفظها وترحيلها.'
+        : 'راجع البيانات قبل الترحيل؛ لا يمكن تعديل القيد بعد ترحيله.'}
+      onClose={busy ? () => undefined : onClose}
     >
       {receiptQuery.isLoading ? <LoadingState /> : null}
       {receiptQuery.isError ? (
         <ErrorState message={getErrorMessage(receiptQuery.error)} onRetry={() => void receiptQuery.refetch()} />
       ) : null}
 
-      {receipt ? (
-        <div className="page-stack">
-          <dl className="detail-grid">
-            <DetailItem label="رقم السند" value={receipt.voucherNumber} />
-            <DetailItem label="العميل" value={receipt.customerName} />
-            <DetailItem label="التاريخ" value={formatDate(receipt.voucherDate)} />
-            <DetailItem label="طريقة القبض" value={receipt.paymentMethodName || 'غير محددة'} />
-            <DetailItem label="الصندوق" value={receipt.cashboxName || 'حساب بنكي'} />
-            <DetailItem label="المبلغ" value={formatCurrency(receipt.amount)} />
-            <DetailItem label="الحالة" value="غير مرحّل" />
-          </dl>
-
-          {mutation.isError ? (
-            <div className="banner banner--warn" role="alert">{getErrorMessage(mutation.error)}</div>
-          ) : null}
-
-          <div className="compact-action-row">
-            <button className="primary-button" type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-              {mutation.isPending ? 'جار الترحيل...' : 'حفظ وترحيل'}
-            </button>
-            <button className="ghost-button" type="button" onClick={onClose} disabled={mutation.isPending}>
-              إغلاق
-            </button>
-          </div>
-        </div>
+      {receipt?.status === 0 ? (
+        <ReceiptDraftPostingForm
+          receipt={receipt}
+          onClose={onClose}
+          onPosted={onPosted}
+          onBusyChange={setBusy}
+        />
+      ) : null}
+      {receipt && receipt.status !== 0 ? (
+        <ReceiptPostOnlyPanel
+          receipt={receipt}
+          onClose={onClose}
+          onPosted={onPosted}
+          onBusyChange={setBusy}
+        />
       ) : null}
     </Modal>
+  );
+}
+
+function ReceiptDraftPostingForm({
+  receipt,
+  onClose,
+  onPosted,
+  onBusyChange
+}: {
+  receipt: ReceiptVoucherDetailsDto;
+  onClose: () => void;
+  onPosted: () => Promise<void>;
+  onBusyChange: (busy: boolean) => void;
+}) {
+  const [paymentMethodId, setPaymentMethodId] = useState(receipt.paymentMethodId);
+  const [customerId, setCustomerId] = useState(receipt.customerId);
+  const [cashboxId, setCashboxId] = useState(receipt.cashboxId ?? '');
+  const [bankAccountId, setBankAccountId] = useState(receipt.bankAccountId ?? '');
+  const [amount, setAmount] = useState(String(receipt.amount));
+  const [reference, setReference] = useState(receipt.reference ?? '');
+  const [validationError, setValidationError] = useState('');
+
+  const paymentMethodsQuery = useQuery({
+    queryKey: ['finance', 'payment-methods'],
+    queryFn: getPaymentMethods
+  });
+  const customersQuery = useQuery({
+    queryKey: ['customers', 'receipt-draft-editor'],
+    queryFn: () => getCustomers({ page: 1, pageSize: 500 })
+  });
+  const cashboxesQuery = useQuery({
+    queryKey: ['finance', 'cashboxes'],
+    queryFn: getCashboxes
+  });
+  const bankAccountsQuery = useQuery({
+    queryKey: ['finance', 'bank-accounts'],
+    queryFn: getBankAccounts
+  });
+
+  const selectedMethod = (paymentMethodsQuery.data ?? [])
+    .find((method) => method.id === paymentMethodId);
+  const requiresBank = selectedMethod?.requiresBankAccount ?? Boolean(receipt.bankAccountId);
+  const requiresCashbox = selectedMethod?.requiresCashbox ?? !requiresBank;
+  const requiresReference = selectedMethod?.requiresReference ?? false;
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      onBusyChange(true);
+      try {
+        await updateReceiptVoucherDraft(receipt.id, {
+          customerId,
+          paymentMethodId,
+          cashboxId: requiresCashbox ? cashboxId : null,
+          bankAccountId: requiresBank ? bankAccountId : null,
+          amount: Number(amount),
+          currency: receipt.currency || 'USD',
+          exchangeRate: 1,
+          reference: reference.trim() || null
+        });
+        await postReceiptVoucher(receipt.id, `web-journal-receipt:${receipt.id}`);
+      } finally {
+        onBusyChange(false);
+      }
+    },
+    onSuccess: onPosted
+  });
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setValidationError('');
+    const parsedAmount = Number(amount);
+    if (!customerId) {
+      setValidationError('اختر العميل.');
+      return;
+    }
+    if (!paymentMethodId) {
+      setValidationError('اختر طريقة القبض.');
+      return;
+    }
+    if (requiresCashbox && !cashboxId) {
+      setValidationError('اختر الصندوق.');
+      return;
+    }
+    if (requiresBank && !bankAccountId) {
+      setValidationError('اختر الحساب البنكي.');
+      return;
+    }
+    if (requiresReference && !reference.trim()) {
+      setValidationError('أدخل مرجع عملية القبض.');
+      return;
+    }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setValidationError('أدخل مبلغاً صحيحاً أكبر من صفر.');
+      return;
+    }
+    mutation.mutate();
+  }
+
+  const lookupError = customersQuery.error
+    ?? paymentMethodsQuery.error
+    ?? cashboxesQuery.error
+    ?? bankAccountsQuery.error;
+
+  return (
+    <form className="form-grid" onSubmit={submit}>
+      <div className="form-grid__wide">
+        <dl className="detail-grid">
+          <DetailItem label="رقم السند" value={receipt.voucherNumber} />
+          <DetailItem label="العميل" value={receipt.customerName} />
+          <DetailItem label="التاريخ" value={formatDate(receipt.voucherDate)} />
+          <DetailItem label="الحالة" value="مسودة قابلة للتعديل" />
+        </dl>
+      </div>
+
+      {lookupError ? (
+        <div className="banner banner--warn form-grid__wide" role="alert">{getErrorMessage(lookupError)}</div>
+      ) : null}
+      {validationError ? (
+        <div className="banner banner--warn form-grid__wide" role="alert">{validationError}</div>
+      ) : null}
+      {mutation.isError ? (
+        <div className="banner banner--warn form-grid__wide" role="alert">{getErrorMessage(mutation.error)}</div>
+      ) : null}
+
+      <label className="form-field">
+        <span className="form-field__label">العميل *</span>
+        <select
+          value={customerId}
+          onChange={(event) => setCustomerId(event.target.value)}
+          disabled={customersQuery.isLoading || mutation.isPending}
+          required
+        >
+          <option value="">اختر العميل...</option>
+          {(customersQuery.data?.items ?? []).filter((customer) => customer.isActive).map((customer) => (
+            <option key={customer.id} value={customer.id}>
+              {customer.nameAr} — {customer.code}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="form-field">
+        <span className="form-field__label">طريقة القبض *</span>
+        <select
+          value={paymentMethodId}
+          onChange={(event) => setPaymentMethodId(event.target.value)}
+          disabled={paymentMethodsQuery.isLoading || mutation.isPending}
+          required
+        >
+          <option value="">اختر طريقة القبض...</option>
+          {(paymentMethodsQuery.data ?? []).map((method) => (
+            <option key={method.id} value={method.id}>{method.name}</option>
+          ))}
+        </select>
+      </label>
+
+      {requiresCashbox ? (
+        <label className="form-field">
+          <span className="form-field__label">الصندوق *</span>
+          <select
+            value={cashboxId}
+            onChange={(event) => setCashboxId(event.target.value)}
+            disabled={cashboxesQuery.isLoading || mutation.isPending}
+            required
+          >
+            <option value="">اختر الصندوق...</option>
+            {(cashboxesQuery.data ?? []).filter((cashbox) => cashbox.isActive).map((cashbox) => (
+              <option key={cashbox.id} value={cashbox.id}>
+                {cashbox.name} — {formatCurrency(cashbox.balance)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      {requiresBank ? (
+        <label className="form-field">
+          <span className="form-field__label">الحساب البنكي *</span>
+          <select
+            value={bankAccountId}
+            onChange={(event) => setBankAccountId(event.target.value)}
+            disabled={bankAccountsQuery.isLoading || mutation.isPending}
+            required
+          >
+            <option value="">اختر الحساب البنكي...</option>
+            {(bankAccountsQuery.data ?? []).filter((bank) => bank.isActive).map((bank) => (
+              <option key={bank.id} value={bank.id}>{bank.name} — {bank.bankName}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      <label className="form-field">
+        <span className="form-field__label">المبلغ ({receipt.currency || 'USD'}) *</span>
+        <input
+          inputMode="decimal"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          disabled={mutation.isPending}
+          required
+          autoFocus
+        />
+      </label>
+
+      {requiresReference ? (
+        <label className="form-field">
+          <span className="form-field__label">المرجع *</span>
+          <input
+            value={reference}
+            onChange={(event) => setReference(event.target.value)}
+            disabled={mutation.isPending}
+            required
+          />
+        </label>
+      ) : null}
+
+      <div className="compact-action-row form-grid__wide">
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={mutation.isPending || Boolean(lookupError)}
+        >
+          {mutation.isPending ? 'جار الحفظ والترحيل...' : 'حفظ وترحيل'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onClose} disabled={mutation.isPending}>
+          إغلاق
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ReceiptPostOnlyPanel({
+  receipt,
+  onClose,
+  onPosted,
+  onBusyChange
+}: {
+  receipt: ReceiptVoucherDetailsDto;
+  onClose: () => void;
+  onPosted: () => Promise<void>;
+  onBusyChange: (busy: boolean) => void;
+}) {
+  const mutation = useMutation({
+    mutationFn: async () => {
+      onBusyChange(true);
+      try {
+        await postReceiptVoucher(receipt.id, `web-journal-receipt:${receipt.id}`);
+      } finally {
+        onBusyChange(false);
+      }
+    },
+    onSuccess: onPosted
+  });
+
+  return (
+    <div className="page-stack">
+      <dl className="detail-grid">
+        <DetailItem label="رقم السند" value={receipt.voucherNumber} />
+        <DetailItem label="العميل" value={receipt.customerName} />
+        <DetailItem label="التاريخ" value={formatDate(receipt.voucherDate)} />
+        <DetailItem label="طريقة القبض" value={receipt.paymentMethodName || 'غير محددة'} />
+        <DetailItem
+          label="مصدر القبض"
+          value={receipt.cashboxName || receipt.bankAccountName || 'غير محدد'}
+        />
+        <DetailItem label="المبلغ" value={formatCurrency(receipt.amount)} />
+        <DetailItem label="الحالة" value="غير مرحّل" />
+      </dl>
+
+      {mutation.isError ? (
+        <div className="banner banner--warn" role="alert">{getErrorMessage(mutation.error)}</div>
+      ) : null}
+
+      <div className="compact-action-row">
+        <button className="primary-button" type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+          {mutation.isPending ? 'جار الترحيل...' : 'حفظ وترحيل'}
+        </button>
+        <button className="ghost-button" type="button" onClick={onClose} disabled={mutation.isPending}>
+          إغلاق
+        </button>
+      </div>
+    </div>
   );
 }
 

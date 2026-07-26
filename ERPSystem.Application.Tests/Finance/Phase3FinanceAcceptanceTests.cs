@@ -41,6 +41,42 @@ public sealed class Phase3FinanceAcceptanceTests
     }
 
     [Fact]
+    public void Draft_receipt_payment_can_be_edited()
+    {
+        var voucher = ReceiptVoucher.CreateDraft(
+            Guid.NewGuid(), Guid.NewGuid(), "RV-EDIT-001",
+            Guid.NewGuid(), Guid.NewGuid(), PaymentMethodIds.Cash, new Money(200));
+        var newCashboxId = Guid.NewGuid();
+
+        voucher.UpdateDraftPayment(
+            voucher.CustomerId,
+            PaymentMethodIds.Cash,
+            newCashboxId,
+            new Money(350));
+
+        Assert.Equal(newCashboxId, voucher.CashboxId);
+        Assert.Equal(350m, voucher.Amount.Amount);
+        Assert.Equal(VoucherStatus.Draft, voucher.Status);
+    }
+
+    [Fact]
+    public void Posted_receipt_payment_cannot_be_edited()
+    {
+        var voucher = ReceiptVoucher.CreateDraft(
+            Guid.NewGuid(), Guid.NewGuid(), "RV-EDIT-002",
+            Guid.NewGuid(), Guid.NewGuid(), PaymentMethodIds.Cash, new Money(200));
+        voucher.Approve();
+        voucher.Post();
+
+        Assert.Throws<Domain.Exceptions.AccountingException>(() =>
+            voucher.UpdateDraftPayment(
+                voucher.CustomerId,
+                PaymentMethodIds.Cash,
+                Guid.NewGuid(),
+                new Money(350)));
+    }
+
+    [Fact]
     public void Cash_tender_line_links_to_cashbox()
     {
         var cashboxId = Guid.NewGuid();

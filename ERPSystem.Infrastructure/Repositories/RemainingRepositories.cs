@@ -585,6 +585,30 @@ internal sealed class ReceiptVoucherRepository(ErpDbContext context) : IReceiptV
             CardReference = line.CardReference
         }, cancellationToken);
 
+    public async Task UpdateTenderLineAsync(
+        ReceiptTenderLine line,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await context.ReceiptTenderLines
+            .FirstOrDefaultAsync(
+                tender => tender.ReceiptVoucherId == line.ReceiptVoucherId,
+                cancellationToken)
+            ?? throw new InvalidOperationException("Receipt tender line not found.");
+
+        entity.PaymentMethodId = line.PaymentMethodId;
+        entity.CashboxId = line.CashboxId;
+        entity.BankAccountId = line.BankAccountId;
+        entity.Amount = line.Amount.Amount;
+        entity.Currency = line.Currency;
+        entity.ExchangeRate = line.ExchangeRate;
+        entity.BaseAmount = line.BaseAmount;
+        entity.Reference = line.Reference;
+        entity.ChequeNumber = line.ChequeNumber;
+        entity.ChequeDate = line.ChequeDate;
+        entity.CardReference = line.CardReference;
+        entity.UpdatedAt = DateTime.UtcNow;
+    }
+
     public async Task<IReadOnlyList<ReceiptTenderLine>> GetTenderLinesAsync(
         Guid voucherId, CancellationToken cancellationToken = default)
     {
@@ -621,6 +645,10 @@ internal sealed class ReceiptVoucherRepository(ErpDbContext context) : IReceiptV
     {
         var entity = await context.ReceiptVouchers.FirstOrDefaultAsync(v => v.Id == voucher.Id, cancellationToken)
             ?? throw new InvalidOperationException("Receipt voucher not found.");
+        entity.CustomerId = voucher.CustomerId;
+        entity.CashboxId = voucher.CashboxId;
+        entity.PaymentMethodId = voucher.PaymentMethodId;
+        entity.Amount = voucher.Amount.Amount;
         entity.Status = (int)voucher.Status;
         entity.PostedAt = voucher.PostedAt;
         entity.CancelledAt = voucher.CancelledAt;

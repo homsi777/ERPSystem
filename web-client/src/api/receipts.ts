@@ -1,5 +1,9 @@
 import { apiBlobRequest, apiRequest } from './client.ts';
-import type { CreateReceiptVoucherRequest, ReceiptVoucherDetailsDto } from './types.ts';
+import type {
+  CreateReceiptVoucherRequest,
+  ReceiptVoucherDetailsDto,
+  UpdateReceiptVoucherDraftRequest
+} from './types.ts';
 
 export type PaymentMethodDto = {
   id: string;
@@ -47,6 +51,13 @@ export function getReceiptVouchers(params: { pendingOnly?: boolean } = {}) {
 
 export function getReceiptVoucher(id: string) {
   return apiRequest<ReceiptVoucherDetailsDto>(`/api/v1/finance/receipts/${id}`);
+}
+
+export function updateReceiptVoucherDraft(id: string, request: UpdateReceiptVoucherDraftRequest) {
+  return apiRequest<void>(`/api/v1/finance/receipts/${id}`, {
+    method: 'PUT',
+    body: request
+  });
 }
 
 export function approveReceiptVoucher(id: string) {

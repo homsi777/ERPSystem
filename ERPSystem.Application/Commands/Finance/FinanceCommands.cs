@@ -29,6 +29,20 @@ public sealed class PostReceiptVoucherCommand
     public string? IdempotencyKey { get; init; }
 }
 
+public sealed class UpdateReceiptVoucherDraftCommand
+{
+    public Guid VoucherId { get; init; }
+    public Guid CompanyId { get; init; }
+    public Guid CustomerId { get; init; }
+    public Guid PaymentMethodId { get; init; }
+    public Guid? CashboxId { get; init; }
+    public Guid? BankAccountId { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public decimal ExchangeRate { get; init; } = 1m;
+    public string? Reference { get; init; }
+}
+
 public sealed class ApproveReceiptVoucherCommand
 {
     public Guid VoucherId { get; init; }

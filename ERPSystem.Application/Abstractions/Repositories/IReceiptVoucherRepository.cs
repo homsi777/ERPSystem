@@ -13,6 +13,7 @@ public interface IReceiptVoucherRepository
     Task AddAsync(ReceiptVoucher voucher, CancellationToken cancellationToken = default);
     Task UpdateAsync(ReceiptVoucher voucher, CancellationToken cancellationToken = default);
     Task AddTenderLineAsync(ReceiptTenderLine line, CancellationToken cancellationToken = default);
+    Task UpdateTenderLineAsync(ReceiptTenderLine line, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ReceiptTenderLine>> GetTenderLinesAsync(Guid voucherId, CancellationToken cancellationToken = default);
     Task<decimal> GetAllocatedTotalAsync(Guid voucherId, CancellationToken cancellationToken = default);
     Task<bool> ExistsByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default);
