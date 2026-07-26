@@ -29,21 +29,25 @@ public sealed class CustomerLedgerRow
     public string? Notes { get; init; }
     public decimal RunningBalance { get; init; }
     public bool IsReconciled { get; init; }
+    public bool IsReconciliationMarker { get; init; }
+    public bool IsPendingReconciliation => !IsReconciled && !IsReconciliationMarker;
 
     public string DateDisplay => AppFormats.Date(TransactionDate);
     public string RollCountDisplay => RollCount.HasValue ? RollCount.Value.ToString() : "—";
     public string TotalLengthDisplay => SaleLengthUnitHelper.FormatLength(TotalMeters, LengthUnit);
     public string UnitPriceDisplay => UnitPrice.HasValue ? AppFormats.Amount(UnitPrice.Value) : "—";
-    public string LineAmountDisplay => AppFormats.Amount(LineAmount);
+    public string LineAmountDisplay => IsReconciliationMarker ? "—" : AppFormats.Amount(LineAmount);
     public string RunningBalanceDisplay => AppFormats.Amount(RunningBalance);
     public string NotesDisplay => string.IsNullOrWhiteSpace(Notes) ? "—" : Notes;
-    public string MovementTypeDisplay => MovementType switch
-    {
-        CustomerAccountMovementType.SalesInvoice => "فاتورة بيع",
-        CustomerAccountMovementType.SalesReturn => "مرتجع",
-        CustomerAccountMovementType.ReceiptVoucher => "سند قبض",
-        _ => MovementType.ToString()
-    };
+    public string MovementTypeDisplay => IsReconciliationMarker
+        ? "تفاصيل المطابقة"
+        : MovementType switch
+        {
+            CustomerAccountMovementType.SalesInvoice => "فاتورة بيع",
+            CustomerAccountMovementType.SalesReturn => "مرتجع",
+            CustomerAccountMovementType.ReceiptVoucher => "سند قبض",
+            _ => MovementType.ToString()
+        };
 
     public static CustomerLedgerRow FromDto(CustomerAccountLedgerLineDto dto, bool isReconciled) => new()
     {
@@ -60,7 +64,29 @@ public sealed class CustomerLedgerRow
         LineAmount = dto.LineAmount,
         Notes = dto.Notes,
         RunningBalance = dto.RunningBalance,
-        IsReconciled = isReconciled
+        IsReconciled = isReconciled,
+        IsReconciliationMarker = false
+    };
+
+    public static CustomerLedgerRow ReconciliationMarker(
+        DateTime reconciliationDate,
+        decimal reconciliationBalance,
+        Guid? reconciliationDocumentId,
+        string? targetDocumentNumber) => new()
+    {
+        MovementType = CustomerAccountMovementType.ReceiptVoucher,
+        DocumentId = Guid.Empty,
+        EntryId = reconciliationDocumentId ?? Guid.Empty,
+        DocumentNumber = string.IsNullOrWhiteSpace(targetDocumentNumber) ? "مطابقة الكشف" : targetDocumentNumber,
+        TransactionDate = reconciliationDate,
+        FabricDescription = string.IsNullOrWhiteSpace(targetDocumentNumber)
+            ? "تمت مطابقة الحركات حتى هذا الحد"
+            : $"تمت المطابقة حتى المستند {targetDocumentNumber}",
+        LineAmount = 0m,
+        Notes = $"رصيد المطابقة: {AppFormats.Amount(reconciliationBalance)}",
+        RunningBalance = reconciliationBalance,
+        IsReconciled = false,
+        IsReconciliationMarker = true
     };
 }
 
@@ -151,30 +177,37 @@ public partial class CustomerAccountStatementControl : UserControl
             : "—";
 
         _allLines.Clear();
-        var reconciledCutoffIndex = ResolveReconciledCutoffIndex(dto.Lines, dto.LastReconciliationDocumentId);
-        for (var i = 0; i < dto.Lines.Count; i++)
+        var layout = CustomerLedgerReconciliationLayoutResolver.Resolve(
+            dto.Lines,
+            dto.LastReconciliationDocumentId,
+            dto.LastReconciliationDate);
+        var targetDocumentNumber = layout.ReconciledCutoffIndex >= 0
+            ? dto.Lines[layout.ReconciledCutoffIndex].DocumentNumber
+            : null;
+
+        for (var i = 0; i <= dto.Lines.Count; i++)
         {
-            var isReconciled = reconciledCutoffIndex >= 0 && i <= reconciledCutoffIndex;
-            _allLines.Add(CustomerLedgerRow.FromDto(dto.Lines[i], isReconciled));
+            if (layout.HasReconciliation &&
+                i == layout.MarkerInsertIndex &&
+                dto.LastReconciliationDate.HasValue &&
+                dto.LastReconciliationBalance.HasValue)
+            {
+                _allLines.Add(CustomerLedgerRow.ReconciliationMarker(
+                    dto.LastReconciliationDate.Value,
+                    dto.LastReconciliationBalance.Value,
+                    dto.LastReconciliationDocumentId,
+                    targetDocumentNumber));
+            }
+
+            if (i < dto.Lines.Count)
+            {
+                _allLines.Add(CustomerLedgerRow.FromDto(
+                    dto.Lines[i],
+                    layout.HasReconciliation && i <= layout.ReconciledCutoffIndex));
+            }
         }
 
         ApplyFilters();
-    }
-
-    private static int ResolveReconciledCutoffIndex(
-        IReadOnlyList<CustomerAccountLedgerLineDto> lines,
-        Guid? reconciliationDocumentId)
-    {
-        if (!reconciliationDocumentId.HasValue || lines.Count == 0)
-            return -1;
-
-        for (var i = 0; i < lines.Count; i++)
-        {
-            if (lines[i].EntryId == reconciliationDocumentId.Value)
-                return i;
-        }
-
-        return -1;
     }
 
     private void ApplyFilters()
@@ -185,6 +218,7 @@ public partial class CustomerAccountStatementControl : UserControl
         if (!string.IsNullOrEmpty(term))
         {
             rows = rows.Where(r =>
+                r.IsReconciliationMarker ||
                 r.DocumentNumber.Contains(term, StringComparison.OrdinalIgnoreCase) ||
                 r.FabricDescription.Contains(term, StringComparison.OrdinalIgnoreCase) ||
                 r.MovementTypeDisplay.Contains(term, StringComparison.OrdinalIgnoreCase) ||
@@ -214,7 +248,9 @@ public partial class CustomerAccountStatementControl : UserControl
             return;
         }
 
-        var visibleRows = (LinesGrid.ItemsSource as IEnumerable<CustomerLedgerRow>)?.ToList() ?? _allLines;
+        var visibleRows = ((LinesGrid.ItemsSource as IEnumerable<CustomerLedgerRow>) ?? _allLines)
+            .Where(row => !row.IsReconciliationMarker)
+            .ToList();
         if (visibleRows.Count == 0)
         {
             MockInteractionService.ShowWarning("لا توجد حركات للمطابقة في الفترة المحددة.", "مطابقة الكشف");
@@ -222,7 +258,7 @@ public partial class CustomerAccountStatementControl : UserControl
         }
 
         var selected = LinesGrid.SelectedItem as CustomerLedgerRow;
-        var target = selected ?? visibleRows[^1];
+        var target = selected is { IsReconciliationMarker: false } ? selected : visibleRows[^1];
 
         var confirm = MockInteractionService.Confirm(
             $"مطابقة الكشف حتى السطر:\n{target.MovementTypeDisplay} — {target.DocumentNumber}\n" +
@@ -259,7 +295,7 @@ public partial class CustomerAccountStatementControl : UserControl
 
         var visibleRows = (LinesGrid.ItemsSource as IEnumerable<CustomerLedgerRow>)?.ToList();
         var lines = visibleRows is { Count: > 0 } && !string.IsNullOrWhiteSpace(TxtSearch?.Text)
-            ? visibleRows.Select(ToLineDto).ToList()
+            ? visibleRows.Where(row => !row.IsReconciliationMarker).Select(ToLineDto).ToList()
             : _ledger.Lines;
 
         var ledgerForExport = new CustomerAccountLedgerDto
@@ -305,7 +341,8 @@ public partial class CustomerAccountStatementControl : UserControl
     {
         if (_openingDocument ||
             sender is not FrameworkElement fe ||
-            fe.DataContext is not CustomerLedgerRow row)
+            fe.DataContext is not CustomerLedgerRow row ||
+            row.IsReconciliationMarker)
             return;
 
         _openingDocument = true;
@@ -327,7 +364,30 @@ public partial class CustomerAccountStatementControl : UserControl
 
     private void LinesGrid_LoadingRow(object sender, DataGridRowEventArgs e)
     {
-        if (e.Row.Item is CustomerLedgerRow row && row.IsReconciled)
+        if (e.Row.Item is not CustomerLedgerRow row)
+            return;
+
+        if (row.IsReconciliationMarker)
+        {
+            e.Row.Background = new SolidColorBrush(Color.FromRgb(15, 42, 74));
+            e.Row.Foreground = Brushes.White;
+            e.Row.FontWeight = FontWeights.SemiBold;
+            e.Row.Cursor = Cursors.Arrow;
+            return;
+        }
+
+        if (row.IsReconciled)
+        {
+            e.Row.Background = new SolidColorBrush(Color.FromRgb(220, 252, 231));
+            e.Row.Foreground = new SolidColorBrush(Color.FromRgb(22, 101, 52));
+        }
+        else
+        {
             e.Row.Background = new SolidColorBrush(Color.FromRgb(254, 226, 226));
+            e.Row.Foreground = new SolidColorBrush(Color.FromRgb(153, 27, 27));
+        }
+
+        e.Row.FontWeight = FontWeights.Normal;
+        e.Row.Cursor = Cursors.Hand;
     }
 }

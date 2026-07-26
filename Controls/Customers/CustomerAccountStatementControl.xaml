@@ -167,9 +167,23 @@
                         <DataGridTemplateColumn Header="رقم المستند" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding DocumentNumber}" Foreground="#DC2626"
-                                               FontWeight="SemiBold" Cursor="Hand" TextDecorations="Underline"
-                                               MouseLeftButtonUp="DocumentNumber_Click"/>
+                                    <TextBlock Text="{Binding DocumentNumber}"
+                                               MouseLeftButtonUp="DocumentNumber_Click">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                                <Setter Property="TextDecorations" Value="Underline"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsReconciliationMarker}" Value="True">
+                                                        <Setter Property="Cursor" Value="Arrow"/>
+                                                        <Setter Property="TextDecorations" Value="{x:Null}"/>
+                                                        <Setter Property="IsHitTestVisible" Value="False"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
