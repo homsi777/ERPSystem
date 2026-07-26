@@ -505,6 +505,70 @@ svg {
   background: #fff;
 }
 
+.journal-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.85fr) minmax(180px, 1fr) minmax(210px, 1.5fr);
+  gap: 10px;
+  align-items: end;
+  margin-block-end: 14px;
+}
+
+.journal-filter-bar__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.journal-filter-bar__field input,
+.journal-filter-bar__field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 11px;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.journal-filter-bar__field input:focus,
+.journal-filter-bar__field select:focus {
+  border-color: rgba(24, 95, 165, 0.62);
+  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+}
+
+.journal-filter-bar__date {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.journal-filter-bar__clear {
+  min-height: 42px;
+  padding-inline: 10px;
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.journal-filter-bar__clear:disabled {
+  color: var(--color-muted);
+  cursor: default;
+  opacity: 0.6;
+}
+
 .search-input {
   flex: 1;
   min-height: 44px;
@@ -2784,6 +2848,28 @@ svg {
   .toolbar-row .primary-button,
   .price-row {
     width: 100%;
+  }
+
+  .journal-filter-bar {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) minmax(0, 1.45fr);
+    gap: 6px;
+  }
+
+  .journal-filter-bar__field {
+    font-size: 0.72rem;
+  }
+
+  .journal-filter-bar__field input,
+  .journal-filter-bar__field select {
+    min-height: 40px;
+    padding-inline: 7px;
+    font-size: 0.76rem;
+  }
+
+  .journal-filter-bar__clear {
+    min-height: 40px;
+    padding-inline: 7px;
+    font-size: 0.72rem;
   }
 
   .price-row {

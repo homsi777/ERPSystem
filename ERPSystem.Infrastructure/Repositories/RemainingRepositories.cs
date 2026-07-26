@@ -988,9 +988,76 @@ internal sealed class JournalEntryRepository(ErpDbContext context) : IJournalEnt
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             var term = filter.Search.Trim();
+            var normalizedTerm = term.ToLower();
+            var matchingCustomerIds = context.Customers.AsNoTracking()
+                .Where(customer =>
+                    customer.CompanyId == companyId &&
+                    (customer.NameAr.ToLower().Contains(normalizedTerm) ||
+                     customer.NameEn.ToLower().Contains(normalizedTerm)))
+                .Select(customer => customer.Id);
+            var matchingSupplierIds = context.Suppliers.AsNoTracking()
+                .Where(supplier =>
+                    supplier.CompanyId == companyId &&
+                    (supplier.Name.ToLower().Contains(normalizedTerm) ||
+                     supplier.NameAr.ToLower().Contains(normalizedTerm) ||
+                     supplier.NameEn.ToLower().Contains(normalizedTerm)))
+                .Select(supplier => supplier.Id);
+
             query = query.Where(j =>
-                j.EntryNumber.Contains(term) ||
-                j.Description.Contains(term));
+                j.EntryNumber.ToLower().Contains(normalizedTerm) ||
+                j.Description.ToLower().Contains(normalizedTerm) ||
+                context.JournalEntryLines.Any(line =>
+                    line.JournalEntryId == j.Id &&
+                    line.PartyId.HasValue &&
+                    (matchingCustomerIds.Contains(line.PartyId.Value) ||
+                     matchingSupplierIds.Contains(line.PartyId.Value))) ||
+                (j.SourceType == (int)DocumentType.SalesInvoice &&
+                 j.SourceId.HasValue &&
+                 context.SalesInvoices.Any(invoice =>
+                     invoice.Id == j.SourceId.Value &&
+                     invoice.CompanyId == companyId &&
+                     matchingCustomerIds.Contains(invoice.CustomerId))) ||
+                (j.SourceType == (int)DocumentType.ReceiptVoucher &&
+                 j.SourceId.HasValue &&
+                 context.ReceiptVouchers.Any(voucher =>
+                     voucher.Id == j.SourceId.Value &&
+                     voucher.CompanyId == companyId &&
+                     matchingCustomerIds.Contains(voucher.CustomerId))) ||
+                (j.SourceType == (int)DocumentType.PurchaseInvoice &&
+                 j.SourceId.HasValue &&
+                 context.PurchaseInvoices.Any(invoice =>
+                     invoice.Id == j.SourceId.Value &&
+                     invoice.CompanyId == companyId &&
+                     matchingSupplierIds.Contains(invoice.SupplierId))) ||
+                (j.SourceType == (int)DocumentType.PaymentVoucher &&
+                 j.SourceId.HasValue &&
+                 context.PaymentVouchers.Any(voucher =>
+                     voucher.Id == j.SourceId.Value &&
+                     voucher.CompanyId == companyId &&
+                     matchingSupplierIds.Contains(voucher.SupplierId))) ||
+                (j.SourceType == (int)DocumentType.ExpensePayment &&
+                 j.SourceId.HasValue &&
+                 context.ExpensePayments.Any(payment =>
+                     payment.Id == j.SourceId.Value &&
+                     context.Expenses.Any(expense =>
+                         expense.Id == payment.ExpenseId &&
+                         expense.CompanyId == companyId &&
+                         ((expense.PayeeName != null &&
+                           expense.PayeeName.ToLower().Contains(normalizedTerm)) ||
+                          expense.Name.ToLower().Contains(normalizedTerm) ||
+                          (expense.SupplierId.HasValue &&
+                           matchingSupplierIds.Contains(expense.SupplierId.Value)))))) ||
+                (j.SourceType == (int)DocumentType.CashboxTransfer &&
+                 j.SourceId.HasValue &&
+                 context.CashboxTransfers.Any(transfer =>
+                     transfer.Id == j.SourceId.Value &&
+                     transfer.CompanyId == companyId &&
+                     (context.Cashboxes.Any(cashbox =>
+                          cashbox.Id == transfer.FromCashboxId &&
+                          cashbox.Name.ToLower().Contains(normalizedTerm)) ||
+                      context.Cashboxes.Any(cashbox =>
+                          cashbox.Id == transfer.ToCashboxId &&
+                          cashbox.Name.ToLower().Contains(normalizedTerm))))));
         }
 
         var total = await query.CountAsync(cancellationToken);

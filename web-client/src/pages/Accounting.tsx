@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -535,14 +535,20 @@ function JournalTab() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
+  const [entryDate, setEntryDate] = useState('');
+  const [partySearch, setPartySearch] = useState('');
+  const deferredPartySearch = useDeferredValue(partySearch.trim());
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
   const journalQuery = useQuery({
-    queryKey: ['accounting', 'journal', status],
+    queryKey: ['accounting', 'journal', status, entryDate, deferredPartySearch],
     queryFn: () =>
       getJournalEntries({
+        search: deferredPartySearch || undefined,
         status: status === '' ? undefined : (Number(status) as JournalEntryStatus),
+        from: entryDate || undefined,
+        to: entryDate || undefined,
         page: 1,
         pageSize: LIST_PAGE_SIZE
       })
@@ -554,6 +560,7 @@ function JournalTab() {
 
   const rows = journalQuery.data?.items ?? [];
   const showPendingReceipts = status === '' || status === '0';
+  const normalizedPartySearch = deferredPartySearch.toLocaleLowerCase('ar');
   const workspaceRows = useMemo<JournalWorkspaceRow[]>(() => {
     const journalRows: JournalWorkspaceRow[] = rows.map((entry) => ({
       key: `journal-${entry.id}`,
@@ -562,17 +569,24 @@ function JournalTab() {
       entry
     }));
     const receiptRows: JournalWorkspaceRow[] = showPendingReceipts
-      ? (pendingReceiptsQuery.data ?? []).map((receipt) => ({
-          key: `receipt-${receipt.id}`,
-          kind: 'receipt',
-          date: receipt.voucherDate,
-          receipt
-        }))
+      ? (pendingReceiptsQuery.data ?? [])
+          .filter((receipt) => !entryDate || receipt.voucherDate.slice(0, 10) === entryDate)
+          .filter(
+            (receipt) =>
+              !normalizedPartySearch ||
+              receipt.customerName.toLocaleLowerCase('ar').includes(normalizedPartySearch)
+          )
+          .map((receipt) => ({
+            key: `receipt-${receipt.id}`,
+            kind: 'receipt',
+            date: receipt.voucherDate,
+            receipt
+          }))
       : [];
 
     return [...journalRows, ...receiptRows]
       .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime());
-  }, [pendingReceiptsQuery.data, rows, showPendingReceipts]);
+  }, [entryDate, normalizedPartySearch, pendingReceiptsQuery.data, rows, showPendingReceipts]);
 
   async function handleReceiptPosted() {
     await Promise.all([
@@ -590,17 +604,50 @@ function JournalTab() {
 
   return (
     <>
-      <label className="inline-field">
-        الحالة
-        <select value={status} onChange={(event) => setStatus(event.target.value)}>
-          <option value="">كل الحالات</option>
-          {journalEntryStatusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="journal-filter-bar" role="search" aria-label="تصفية القيود اليومية">
+        <label className="journal-filter-bar__field">
+          <span>الحالة</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">كل الحالات</option>
+            {journalEntryStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="journal-filter-bar__field">
+          <span>التاريخ</span>
+          <span className="journal-filter-bar__date">
+            <input
+              type="date"
+              value={entryDate}
+              onChange={(event) => setEntryDate(event.target.value)}
+              aria-label="تاريخ القيود"
+            />
+            <button
+              type="button"
+              className="journal-filter-bar__clear"
+              onClick={() => setEntryDate('')}
+              disabled={!entryDate}
+            >
+              الكل
+            </button>
+          </span>
+        </label>
+
+        <label className="journal-filter-bar__field">
+          <span>بحث</span>
+          <input
+            type="search"
+            value={partySearch}
+            onChange={(event) => setPartySearch(event.target.value)}
+            placeholder="اسم الطرف / الجهة"
+            aria-label="البحث باسم الطرف أو الجهة"
+          />
+        </label>
+      </div>
 
       {notice ? <div className="banner banner--success" role="status">{notice}</div> : null}
 
