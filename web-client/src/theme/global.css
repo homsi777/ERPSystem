@@ -302,11 +302,11 @@ svg {
 }
 
 .accounting-row--posted > td {
-  background: rgba(29, 158, 117, 0.08);
+  background: #1de055;
 }
 
 .accounting-row--posted:hover > td {
-  background: rgba(29, 158, 117, 0.14);
+  background: #18ca4b;
 }
 
 .accounting-row--closed > td {
