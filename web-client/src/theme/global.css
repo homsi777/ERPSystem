@@ -294,11 +294,11 @@ svg {
 }
 
 .accounting-row--unposted > td {
-  background: #3adede;
+  background: #2114d3;
 }
 
 .accounting-row--unposted:hover > td {
-  background: #31cccc;
+  background: #2114d3;
 }
 
 .accounting-row--posted > td {
