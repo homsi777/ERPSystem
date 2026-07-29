@@ -34,6 +34,7 @@ namespace ERPSystem.Core.Navigation
                 new SubmoduleDef("OpeningStock", "مواد أول مدة", "\uE710"),
                 new SubmoduleDef("Stocktake", "الجرد", "\uE7B3"),
                 new SubmoduleDef("Transfers", "المناقلات", "\uE8AB"),
+                new SubmoduleDef("Kartela", "كارتيلة", "\uE749"),
                 new SubmoduleDef("Settings", "إعدادات المخزون", "\uE713"),
                 new SubmoduleDef("Reports", "التقارير", "\uE9D2"),
             },

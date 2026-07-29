@@ -1,0 +1,289 @@
+<UserControl x:Class="ERPSystem.Views.Inventory.KartelaLabelDesignerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:inventory="clr-namespace:ERPSystem.ViewModels.Inventory"
+             FlowDirection="RightToLeft"
+             Background="{StaticResource AppBgBrush}"
+             MinWidth="820"
+             MinHeight="520">
+    <UserControl.Resources>
+        <Style x:Key="EditorFieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style x:Key="CompactRowButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource IconButtonStyle}">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="2,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1.05*" MinWidth="390"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="1.35*" MinWidth="420"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- المحرر: العمود الأيمن -->
+        <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="تصميم الكارتيلة"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           Margin="0,0,0,14"/>
+
+                <Grid Grid.Row="1" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="نوع اللصاقة" Style="{StaticResource EditorFieldLabelStyle}"/>
+                        <ComboBox ItemsSource="{Binding LabelTypes}"
+                                  SelectedItem="{Binding SelectedLabelType}"
+                                  DisplayMemberPath="DisplayName"
+                                  Style="{StaticResource EnterpriseComboBoxStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="عدد النسخ" Style="{StaticResource EditorFieldLabelStyle}"/>
+                        <TextBox Text="{Binding CopiesText, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource EnterpriseInputStyle}"
+                                 TextAlignment="Center"
+                                 FlowDirection="LeftToRight"
+                                 MaxLength="3"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="2">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,0,0,6">
+                        <ItemsControl x:Name="RowsItemsControl"
+                                      ItemsSource="{Binding ActiveRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type inventory:KartelaLabelRowViewModel}">
+                                    <Border Background="{StaticResource SurfaceAltBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="10"
+                                            Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource EnterpriseInputStyle}"
+                                                     FlowDirection="RightToLeft"
+                                                     TextAlignment="Right"
+                                                     AcceptsReturn="True"
+                                                     TextWrapping="Wrap"
+                                                     MinHeight="36"
+                                                     MaxHeight="72"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     ToolTip="نص السطر"/>
+
+                                            <Grid Margin="0,8,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="0.8*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="1.05*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="1.2*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <ComboBox Grid.Column="0"
+                                                          ItemsSource="{Binding DataContext.FontSizes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          SelectedItem="{Binding FontSize}"
+                                                          Style="{StaticResource EnterpriseComboBoxStyle}"
+                                                          ToolTip="حجم الخط"/>
+
+                                                <ComboBox Grid.Column="2"
+                                                          ItemsSource="{Binding DataContext.Alignments, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          SelectedValuePath="Value"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding Alignment}"
+                                                          Style="{StaticResource EnterpriseComboBoxStyle}"
+                                                          ToolTip="محاذاة النص"/>
+
+                                                <ComboBox Grid.Column="4"
+                                                          ItemsSource="{Binding DataContext.CareSymbols, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          SelectedValuePath="Value"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectedValue="{Binding CareSymbol}"
+                                                          Style="{StaticResource EnterpriseComboBoxStyle}"
+                                                          ToolTip="رمز عناية اختياري"/>
+                                            </Grid>
+
+                                            <DockPanel Margin="0,8,0,0" LastChildFill="False">
+                                                <CheckBox DockPanel.Dock="Right"
+                                                          IsChecked="{Binding IsBold}"
+                                                          Content="خط عريض"
+                                                          VerticalAlignment="Center"
+                                                          FontWeight="SemiBold"
+                                                          Margin="0,0,10,0"/>
+
+                                                <StackPanel DockPanel.Dock="Left"
+                                                            Orientation="Horizontal"
+                                                            FlowDirection="LeftToRight">
+                                                    <Button Content="&#xE74A;"
+                                                            Style="{StaticResource CompactRowButtonStyle}"
+                                                            Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="تحريك لأعلى"/>
+                                                    <Button Content="&#xE74B;"
+                                                            Style="{StaticResource CompactRowButtonStyle}"
+                                                            Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="تحريك لأسفل"/>
+                                                    <Button Content="&#xE74D;"
+                                                            Foreground="{StaticResource DangerBrush}"
+                                                            Style="{StaticResource CompactRowButtonStyle}"
+                                                            Command="{Binding DataContext.DeleteRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="حذف السطر"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border Background="{StaticResource SurfaceAltBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="24">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasRows}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE710;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="26"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,10"/>
+                            <TextBlock Text="أضف سطرًا لبدء تصميم اللصاقة"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="13"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Grid Grid.Row="3" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            Content="إضافة سطر"
+                            Command="{Binding AddRowCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            MinWidth="105"/>
+                    <Button Grid.Column="2"
+                            Content="مسح الكل"
+                            Command="{Binding ClearAllCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            MinWidth="90"/>
+                    <Button Grid.Column="4"
+                            Content="طباعة"
+                            Command="{Binding PrintCommand}"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            MinWidth="100"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- المعاينة: العمود الأيسر -->
+        <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="معاينة اللصاقة"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Grid.Row="1"
+                           Text="المقاس الفعلي: 100 × 80 مم"
+                           FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,4,0,14"/>
+
+                <Border Grid.Row="2"
+                        Background="{StaticResource SurfaceAltBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="18">
+                    <Viewbox Stretch="Uniform"
+                             StretchDirection="DownOnly"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Stretch">
+                        <ContentControl x:Name="PreviewHost"/>
+                    </Viewbox>
+                </Border>
+
+                <Border Grid.Row="3"
+                        Background="{StaticResource WarningBgBrush}"
+                        BorderBrush="{StaticResource WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="10"
+                        Margin="0,12,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOverflowing}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="تنبيه: المحتوى يتجاوز مساحة 100 × 80 مم ولن يُسمح بطباعته قبل تقليله."
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -2,6 +2,7 @@ using ERPSystem.Controls;
 using ERPSystem.Controls.Inventory;
 using ERPSystem.Core;
 using ERPSystem.Helpers;
+using ERPSystem.Services;
 using ERPSystem.Services.Inventory;
 using ERPSystem.Views.Reports;
 using System.Windows;
@@ -44,7 +45,7 @@ public static class InventoryViews
 {
     private static readonly HashSet<string> KnownRouteKeys = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Dashboard", "Categories", "ImportExcel", "OpeningStock", "Stocktake", "Transfers",
+        "Dashboard", "Categories", "ImportExcel", "OpeningStock", "Stocktake", "Transfers", "Kartela",
         "Settings", "Reports", "Warehouses", "WarehouseForm", "WarehouseOperationsCenter",
         "TransferForm", "StocktakeForm", "OpeningStockForm"
     };
@@ -59,6 +60,7 @@ public static class InventoryViews
         "OpeningStock" => Wrap(new InventoryOpeningStockPageControl()),
         "Stocktake" => Wrap(new InventoryStocktakeListPageControl()),
         "Transfers" => Wrap(new InventoryTransferListPageControl()),
+        "Kartela" => AppServices.GetRequiredService<KartelaLabelDesignerView>(),
         "Settings" => BuildSettings(),
         "Reports" => ModuleReportsViews.CreateHub(AppModule.Inventory),
         "Warehouses" => BuildWarehousesHub(),
